@@ -703,7 +703,7 @@
   </div>
 
   <script>
-    const BACKEND_URL = "";
+    const BACKEND_URL = ""; // usa /api (Netlify redirect) ou mesma origem no Render
 
     let recognition;
     let isRecording = false;
@@ -1362,38 +1362,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       }
     }
 
-
-      interactionsStatus.textContent = "Analisando interações medicamentosas...";
-      interactionsStatus.classList.add("loading-dot");
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/interacoes-medicamentosas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ medicamentos: meds })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (interações medicamentosas):", resp.status, txt);
-          interactionsStatus.textContent = "Não foi possível analisar as interações medicamentosas.";
-          interactionsStatus.classList.remove("loading-dot");
-          return;
-        }
-
-        const data = await resp.json();
-        interactionsBox.textContent = formatInteractionsList(data.interacoes, data.observacoes);
-
-        interactionsStatus.textContent = "Administração segura de medicamentos (registro de enfermagem) atualizadas.";
-        interactionsStatus.classList.remove("loading-dot");
-      } catch (err) {
-        console.error("Erro ao analisar interações medicamentosas:", err);
-        interactionsStatus.textContent = "Erro ao analisar as interações medicamentosas.";
-        interactionsStatus.classList.remove("loading-dot");
-      }
-    }
-
-
     function formatPresentationsMaxDoseList(itens) {
       const items = Array.isArray(itens) ? itens : [];
       if (!items.length) {
@@ -1468,37 +1436,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       } finally {
         presentationsMaxDoseStatus.classList.remove("loading-dot");
         presentationsMaxDoseStatus.textContent = "";
-      }
-    }
-
-
-      presentationsMaxDoseStatus.textContent = "Consultando apresentações e dosagem máxima...";
-      presentationsMaxDoseStatus.classList.add("loading-dot");
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/apresentacoes-dosagem-maxima", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ medicamentos: meds })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (apresentações/dosagem máxima):", resp.status, txt);
-          presentationsMaxDoseStatus.textContent = "Não foi possível obter apresentações e dosagem máxima.";
-          presentationsMaxDoseStatus.classList.remove("loading-dot");
-          return;
-        }
-
-        const data = await resp.json();
-        presentationsMaxDoseBox.textContent = formatPresentationsMaxDoseList(data.itens);
-
-        presentationsMaxDoseStatus.textContent = "Apresentações e dosagem máxima atualizadas.";
-        presentationsMaxDoseStatus.classList.remove("loading-dot");
-      } catch (err) {
-        console.error("Erro ao consultar apresentações/dosagem máxima:", err);
-        presentationsMaxDoseStatus.textContent = "Erro ao consultar apresentações e dosagem máxima.";
-        presentationsMaxDoseStatus.classList.remove("loading-dot");
       }
     }
 
@@ -2157,38 +2094,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       }
     }
 
-
-      rxTypeStatus.textContent = "Classificando tipo de receituário...";
-      rxTypeStatus.classList.add("loading-dot");
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/tipo-receituario", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ medicamentos: meds })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (tipo de receituário):", resp.status, txt);
-          rxTypeStatus.textContent = "Não foi possível classificar o tipo de receituário.";
-          rxTypeStatus.classList.remove("loading-dot");
-          return;
-        }
-
-        const data = await resp.json();
-        const itens = Array.isArray(data.itens) ? data.itens : [];
-        rxTypeBox.textContent = formatRxTypeList(itens);
-
-        rxTypeStatus.textContent = "Checklist de segurança do paciente atualizado.";
-        rxTypeStatus.classList.remove("loading-dot");
-      } catch (err) {
-        console.error("Erro ao classificar tipo de receituário:", err);
-        rxTypeStatus.textContent = "Erro ao classificar o tipo de receituário.";
-        rxTypeStatus.classList.remove("loading-dot");
-      }
-    }
-
     async function updateClassifications() {
       classificationsStatus.textContent = "";
 
@@ -2227,39 +2132,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       } finally {
         classificationsStatus.classList.remove("loading-dot");
         classificationsStatus.textContent = "";
-      }
-    }
-
-
-      classificationsStatus.textContent = "Classificando medicamentos em gestação e lactação...";
-      classificationsStatus.classList.add("loading-dot");
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/classificar-gestacao-lactacao", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ medicamentos: meds })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (classificação):", resp.status, txt);
-          classificationsStatus.textContent = "Não foi possível classificar os medicamentos.";
-          classificationsStatus.classList.remove("loading-dot");
-          return;
-        }
-
-        const data = await resp.json();
-
-        pregnancyBox.textContent = formatClassificationList(data.gestacao);
-        lactationBox.textContent = formatClassificationList(data.lactacao);
-
-        classificationsStatus.textContent = "Classificação atualizada.";
-        classificationsStatus.classList.remove("loading-dot");
-      } catch (err) {
-        console.error("Erro ao classificar medicamentos:", err);
-        classificationsStatus.textContent = "Erro ao classificar os medicamentos.";
-        classificationsStatus.classList.remove("loading-dot");
       }
     }
 
