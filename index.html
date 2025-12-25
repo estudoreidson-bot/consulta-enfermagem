@@ -1,0 +1,2626 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Atendimento de Enfermagem</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .page {
+      width: 100%;
+      max-width: 800px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin: 20px 0 10px 0;
+      text-align: center;
+    }
+    .center-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 30px 20px 25px 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 420px;
+      margin-top: 10px;
+    }
+    #recordBtn {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 10px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    #recordBtn.start {
+      background: #28a745;
+    }
+    #recordBtn.recording {
+      background: #dc3545;
+    }
+    #recordBtn:active {
+      transform: scale(0.97);
+    }
+    #startNotice {
+      font-size: 13px;
+      color: #555;
+      text-align: center;
+      margin-top: 8px;
+      margin-bottom: 8px;
+    }
+    #timer {
+      font-size: 26px;
+      margin-top: 16px;
+      font-family: "Courier New", monospace;
+    }
+    #micStatus {
+      margin-top: 8px;
+      font-size: 14px;
+      text-align: center;
+      color: #333;
+      min-height: 20px;
+    }
+    .controls-row {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    #pauseBtn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      background: #6c757d;
+      color: #fff;
+      font-size: 13px;
+      display: none;
+    }
+    #pauseLabel {
+      font-size: 12px;
+      color: #555;
+      margin-top: 6px;
+      text-align: center;
+    }
+    #finishHint {
+      font-size: 12px;
+      color: #555;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .results-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      width: 100%;
+      max-width: 800px;
+      margin-top: 20px;
+    }
+    .results-card h2 {
+      margin-top: 0;
+    }
+    .error {
+      color: #b00020;
+      margin-top: 8px;
+      font-size: 13px;
+      text-align: center;
+    }
+    .loading-dot::after {
+      content: "...";
+      animation: dots 1s steps(3, end) infinite;
+    }
+    @keyframes dots {
+      0% { content: ""; }
+      33% { content: "."; }
+      66% { content: ".."; }
+      100% { content: "..."; }
+    }
+
+    .soap-block {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 10px;
+      background: #fafafa;
+    }
+    .soap-block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .soap-label {
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .soap-textarea {
+      width: 100%;
+      min-height: 60px;
+      resize: vertical;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      font-size: 14px;
+      font-family: inherit;
+      background: #ffffff;
+    }
+    .copy-soap-btn {
+      padding: 4px 8px;
+      border-radius: 12px;
+      border: 1px solid #0c5460;
+      background: #ffffff;
+      color: #0c5460;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .copy-soap-btn:hover {
+      background: #e6f2f5;
+    }
+
+    .prescription-textarea {
+      width: 100%;
+      min-height: 140px;
+      resize: vertical;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fafafa;
+      white-space: pre-wrap;
+    }
+
+    .prescription-actions {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    #copyPrescriptionBtn,
+    #copyHospitalPrescriptionBtn,
+    #printHospitalPrescriptionBtn,
+    #generateHospitalPrescriptionBtn,
+    #updateClassificationsBtn,
+    #printPregnancyBtn,
+    #printLactationBtn,
+    #updateRxTypeBtn,
+    #printRxTypeBtn,
+    #copyFullSoapBtn,
+    #printSoapBtn,
+    #updateInteractionsBtn,
+    #printInteractionsBtn
+{
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: 1px solid #0c5460;
+      background: #ffffff;
+      color: #0c5460;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    #copyPrescriptionBtn:hover,
+    #copyHospitalPrescriptionBtn:hover,
+    #printHospitalPrescriptionBtn:hover,
+    #generateHospitalPrescriptionBtn:hover,
+    #updateClassificationsBtn:hover,
+    #printPregnancyBtn:hover,
+    #printLactationBtn:hover,
+    #updateRxTypeBtn:hover,
+    #printRxTypeBtn:hover,
+    #copyFullSoapBtn:hover,
+    #printSoapBtn:hover,
+    #updateInteractionsBtn:hover,
+    #printInteractionsBtn:hover
+{
+      background: #e6f2f5;
+    }
+
+    #printBtn {
+      margin-top: 0;
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      background: #0c5460;
+      color: #fff;
+      font-size: 14px;
+      display: none;
+    }
+
+    #recommendationsBtn {
+      margin-left: 0;
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: 1px solid #dc3545;
+      background: #dc3545;
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    #recommendationsBtn:hover {
+      background: #c82333;
+      border-color: #c82333;
+    }
+
+    
+    #generateHospitalPrescriptionBtn {
+      border: 1px solid #dc3545;
+      background: #dc3545;
+      color: #fff;
+    }
+    #generateHospitalPrescriptionBtn:hover {
+      background: #c82333;
+      border-color: #c82333;
+    }
+.soap-title-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .recommendations-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 360px;
+      max-width: 100%;
+      height: 100vh;
+      background: #ffffff;
+      box-shadow: -2px 0 8px rgba(0,0,0,0.15);
+      display: none;
+      flex-direction: column;
+      padding: 16px;
+      z-index: 1000;
+    }
+    .recommendations-panel.visible {
+      display: flex;
+    }
+    .recommendations-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .recommendations-header h3 {
+      margin: 0;
+      font-size: 16px;
+    }
+    .close-panel-btn {
+      border: none;
+      background: transparent;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+    .recommendations-status {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 8px;
+    }
+    .recommendations-list {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    .recommendation-item {
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 6px;
+    }
+    .ask-questions-btn {
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      background: #007bff;
+      color: #fff;
+      font-size: 14px;
+    }
+    .ask-questions-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .recommendations-footer {
+      font-size: 11px;
+      color: #666;
+      margin-top: 8px;
+    }
+
+    .questions-timer {
+      font-size: 18px;
+      margin-top: 10px;
+      font-family: "Courier New", monospace;
+      text-align: center;
+      color: #333;
+    }
+
+    .mini-status {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #555;
+      min-height: 16px;
+    }
+
+    .classification-box {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fafafa;
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.35;
+      min-height: 48px;
+    }
+
+    .section-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .section-header-row h2 {
+      margin: 0;
+    }
+
+    .module-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      width: 100%;
+      max-width: 800px;
+      margin-top: 20px;
+    }
+    .module-card h2 {
+      margin-top: 0;
+    }
+    .inline-input-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .text-input {
+      flex: 1;
+      min-width: 220px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      font-size: 14px;
+      font-family: inherit;
+      background: #ffffff;
+    }
+    .answer-box {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 12px;
+      background: #fafafa;
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.4;
+      min-height: 70px;
+      margin-top: 12px;
+    }
+    .small-record-btn {
+      padding: 10px 16px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      color: #fff;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .small-record-btn.start {
+      background: #28a745;
+    }
+    .small-record-btn.recording {
+      background: #dc3545;
+    }
+    .small-record-btn:active {
+      transform: scale(0.98);
+    }
+    .report-actions {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    @media (max-width: 480px) {
+      #recordBtn {
+        width: 150px;
+        height: 150px;
+        font-size: 18px;
+      }
+      .prescription-actions {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  
+
+    .patientinfo-panel {
+      border: 1px solid #e6e6e6;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: #fafafa;
+    }
+    .patientinfo-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .mini-timer {
+      font-size: 16px;
+      font-weight: bold;
+      min-width: 64px;
+    }
+    .patient-summary {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #333;
+      white-space: pre-wrap;
+    }
+
+
+  
+    #patientInfoBtn {
+      background: #b00020;
+      border-color: #b00020;
+    }
+    #patientInfoBtn:hover {
+      filter: brightness(0.95);
+    }
+
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>Atendimento de Enfermagem</h1>
+
+    <div class="center-card">
+      <button id="recordBtn" class="start">Iniciar atendimento</button>
+
+      <p id="startNotice">
+        Assim que iniciar a gravação, informe sempre o nome completo do paciente, idade e peso para que o SOAP e a prescrição sejam gerados corretamente.
+      </p>
+
+      <div id="timer">00:00</div>
+      <div id="micStatus">Clique em "Iniciar atendimento" para começar.</div>
+
+      <div class="controls-row">
+        <button id="pauseBtn">Pausar</button>
+      </div>
+      <div id="pauseLabel">Use o botão pequeno para pausar e retomar a consulta.</div>
+
+      <div id="finishHint">
+        Para encerrar a consulta e gerar o SOAP, clique novamente no botão grande vermelho.
+      </div>
+
+      <div id="soapError" class="error"></div>
+    </div>
+
+    <div id="resultsCard" class="results-card hidden">
+
+      <div id="patientInfoPanel" class="patientinfo-panel">
+        <div class="patientinfo-row">
+          <button id="patientInfoBtn" class="small-record-btn">Coletar dados essenciais</button>
+          <div id="patientInfoTimer" class="mini-timer">00:00</div>
+          <div id="patientInfoStatus" class="mini-status"></div>
+        </div>
+        <div id="patientInfoSummary" class="patient-summary"></div>
+      </div>
+
+
+      <div class="section-header-row">
+        <div class="soap-title-actions">
+          <h2>SOAP</h2>
+          <button id="copyFullSoapBtn">Copiar SOAP</button>
+          <button id="printSoapBtn">Imprimir SOAP</button>
+        </div>
+        <button id="recommendationsBtn">Perguntas essenciais</button>
+      </div>
+
+      <div class="soap-block">
+        <div class="soap-block-header">
+          <span class="soap-label">S</span>
+          <button class="copy-soap-btn" data-part="S">Copiar</button>
+        </div>
+        <textarea id="soapS" class="soap-textarea"></textarea>
+      </div>
+
+      <div class="soap-block">
+        <div class="soap-block-header">
+          <span class="soap-label">O</span>
+          <button class="copy-soap-btn" data-part="O">Copiar</button>
+        </div>
+        <textarea id="soapO" class="soap-textarea"></textarea>
+      </div>
+
+      <div class="soap-block">
+        <div class="soap-block-header">
+          <span class="soap-label">A</span>
+          <button class="copy-soap-btn" data-part="A">Copiar</button>
+        </div>
+        <textarea id="soapA" class="soap-textarea"></textarea>
+      </div>
+
+      <div class="soap-block">
+        <div class="soap-block-header">
+          <span class="soap-label">P</span>
+          <button class="copy-soap-btn" data-part="P">Copiar</button>
+        </div>
+        <textarea id="soapP" class="soap-textarea"></textarea>
+      </div>
+
+      <h2>Plano de Cuidados (Prescrição de Enfermagem)</h2>
+      <textarea id="prescriptionOutput" class="prescription-textarea"></textarea>
+
+      <div class="prescription-actions">
+        <button id="copyPrescriptionBtn">Copiar plano de cuidados</button>
+        <button id="printBtn">Imprimir plano de cuidados</button>
+      </div>
+
+      <h2>Passagem de Plantão (SBAR)</h2>
+      <textarea id="hospitalPrescriptionOutput" class="prescription-textarea"></textarea>
+
+      <div class="prescription-actions">
+        <button id="generateHospitalPrescriptionBtn">Gerar SBAR</button>
+        <button id="copyHospitalPrescriptionBtn">Copiar plano de cuidados hospitalar</button>
+        <button id="printHospitalPrescriptionBtn">Imprimir plano de cuidados hospitalar</button>
+      </div>
+      <div id="hospitalPrescriptionStatus" class="mini-status"></div>
+
+      <h2>SAE (Processo de Enfermagem)</h2>
+      <div id="pregnancyBox" class="classification-box">Nenhum conteúdo disponível.</div>
+      <div class="prescription-actions">
+        <button id="updateClassificationsBtn">Atualizar classificação</button>
+        <button id="printPregnancyBtn">Imprimir SAE</button>
+      </div>
+
+      <h2>Orientações ao paciente</h2>
+      <div id="lactationBox" class="classification-box">Nenhum conteúdo disponível.</div>
+      <div class="prescription-actions">
+        <button id="printLactationBtn">Imprimir orientações</button>
+      </div>
+
+      <h2>Checklist de segurança do paciente</h2>
+      <div id="rxTypeBox" class="classification-box">Nenhum conteúdo disponível.</div>
+      <div class="prescription-actions">
+        <button id="updateRxTypeBtn">Atualizar checklist</button>
+        <button id="printRxTypeBtn">Imprimir checklist</button>
+      </div>
+      <div id="rxTypeStatus" class="mini-status"></div>
+
+      <h2>Administração segura de medicamentos (registro de enfermagem)</h2>
+      <div id="interactionsBox" class="classification-box">Nenhum conteúdo disponível.</div>
+      <div class="prescription-actions">
+        <button id="updateInteractionsBtn">Atualizar registro</button>
+        <button id="printInteractionsBtn">Imprimir registro</button>
+      </div>
+      <div id="interactionsStatus" class="mini-status"></div>
+      <h2>Curativos e feridas</h2>
+      <div id="presentationsMaxDoseBox" class="classification-box">Nenhum conteúdo disponível.</div>
+      <div class="prescription-actions">
+        <button id="updatePresentationsMaxDoseBtn">Atualizar curativos</button>
+        <button id="printPresentationsMaxDoseBtn">Imprimir curativos</button>
+      </div>
+      <div id="presentationsMaxDoseStatus" class="mini-status"></div>
+
+
+
+      <div id="classificationsStatus" class="mini-status"></div>
+    </div>
+
+    <div id="medicalDoubtsCard" class="module-card">
+      <h2>Dúvidas de Enfermagem</h2>
+      <p class="mini-status" style="margin-top: 0;">Digite sua dúvida e pressione Enter para obter uma resposta.</p>
+      <input id="medicalDoubtInput" class="text-input" type="text" placeholder="Digite aqui sua dúvida médica e pressione Enter" autocomplete="off" />
+      <div id="medicalDoubtStatus" class="mini-status"></div>
+      <div id="medicalDoubtAnswer" class="answer-box"></div>
+    </div>
+
+    <div id="patientReportCard" class="module-card">
+      <h2>Relatórios de Enfermagem</h2>
+      <p class="mini-status" style="margin-top: 0;">Grave o conteúdo do relatório em voz alta. Informe a finalidade (por exemplo: INSS, CAPS/saúde mental, escola, trabalho, advogado, assistência social, aquisição de insumos) e, se necessário, leia os exames durante a gravação. Ao encerrar, o relatório será gerado automaticamente.</p>
+
+      <div class="inline-input-row">
+        <button id="reportRecordBtn" class="small-record-btn start">Gravar relatório</button>
+        <div id="reportTimer" style="font-size: 18px; font-family: 'Courier New', monospace;">00:00</div>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <input id="reportPurposeInput" class="text-input" type="text" placeholder="Finalidade do relatório (opcional)" autocomplete="off" />
+      </div>
+      <div style="margin-top: 8px;">
+        <input id="reportRecipientInput" class="text-input" type="text" placeholder="Destinatário (opcional)" autocomplete="off" />
+      </div>
+
+      <div id="reportStatus" class="mini-status"></div>
+
+      <textarea id="reportOutput" class="prescription-textarea" placeholder="O relatório gerado aparecerá aqui." style="margin-top: 12px;"></textarea>
+
+      <div class="report-actions">
+        <button id="copyReportBtn">Copiar relatório</button>
+        <button id="printReportBtn">Imprimir relatório</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="recommendationsPanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Perguntas essenciais para anamnese</h3>
+      <button id="closeRecommendationsBtn" class="close-panel-btn" aria-label="Fechar painel de recomendações">X</button>
+    </div>
+    <div id="recommendationsStatus" class="recommendations-status">
+      Clique em "Perguntas essenciais" para gerar perguntas complementares essenciais.
+    </div>
+    <div id="recommendationsList" class="recommendations-list"></div>
+    <button id="askQuestionsBtn" class="ask-questions-btn" disabled>Complementar avaliação</button>
+    <div id="questionsTimer" class="questions-timer hidden">00:00</div>
+    <p class="recommendations-footer">
+      Ao clicar em "Complementar avaliação", uma nova gravação será iniciada para você aplicar essas perguntas diretamente ao paciente.
+      As respostas serão usadas para atualizar automaticamente o SOAP e a conduta.
+    </p>
+  </div>
+
+  <script>
+    const BACKEND_URL = "https://consulta-medica-gravacao.onrender.com";
+
+    let recognition;
+    let isRecording = false;
+    let isPaused = false;
+    let finalTranscript = "";
+    let baseTranscript = "";
+    let baseTranscriptRaw = "";
+    let timerInterval = null;
+    let startTime = null;
+    let accumulatedSeconds = 0;
+    let currentSoapRaw = "";
+
+    const recordBtn = document.getElementById("recordBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const timerEl = document.getElementById("timer");
+    const micStatus = document.getElementById("micStatus");
+    const resultsCard = document.getElementById("resultsCard");
+    const soapError = document.getElementById("soapError");
+    const printBtn = document.getElementById("printBtn");
+
+    const soapS = document.getElementById("soapS");
+    const soapO = document.getElementById("soapO");
+    const soapA = document.getElementById("soapA");
+    const soapP = document.getElementById("soapP");
+
+    const prescriptionOutput = document.getElementById("prescriptionOutput");
+
+    const hospitalPrescriptionOutput = document.getElementById("hospitalPrescriptionOutput");
+    const generateHospitalPrescriptionBtn = document.getElementById("generateHospitalPrescriptionBtn");
+    const copyHospitalPrescriptionBtn = document.getElementById("copyHospitalPrescriptionBtn");
+    const printHospitalPrescriptionBtn = document.getElementById("printHospitalPrescriptionBtn");
+    const hospitalPrescriptionStatus = document.getElementById("hospitalPrescriptionStatus");
+
+    const pregnancyBox = document.getElementById("pregnancyBox");
+    const lactationBox = document.getElementById("lactationBox");
+    const rxTypeBox = document.getElementById("rxTypeBox");
+    const updateRxTypeBtn = document.getElementById("updateRxTypeBtn");
+    const printRxTypeBtn = document.getElementById("printRxTypeBtn");
+    const rxTypeStatus = document.getElementById("rxTypeStatus");
+
+    const interactionsBox = document.getElementById("interactionsBox");
+    const updateInteractionsBtn = document.getElementById("updateInteractionsBtn");
+    const printInteractionsBtn = document.getElementById("printInteractionsBtn");
+    const interactionsStatus = document.getElementById("interactionsStatus");
+    const presentationsMaxDoseBox = document.getElementById("presentationsMaxDoseBox");
+    const updatePresentationsMaxDoseBtn = document.getElementById("updatePresentationsMaxDoseBtn");
+    const printPresentationsMaxDoseBtn = document.getElementById("printPresentationsMaxDoseBtn");
+    const presentationsMaxDoseStatus = document.getElementById("presentationsMaxDoseStatus");
+
+    const updateClassificationsBtn = document.getElementById("updateClassificationsBtn");
+    const classificationsStatus = document.getElementById("classificationsStatus");
+    const printPregnancyBtn = document.getElementById("printPregnancyBtn");
+    const printLactationBtn = document.getElementById("printLactationBtn");
+
+    const recommendationsBtn = document.getElementById("recommendationsBtn");
+    const recommendationsPanel = document.getElementById("recommendationsPanel");
+    const closeRecommendationsBtn = document.getElementById("closeRecommendationsBtn");
+    const recommendationsStatus = document.getElementById("recommendationsStatus");
+    const recommendationsList = document.getElementById("recommendationsList");
+    const askQuestionsBtn = document.getElementById("askQuestionsBtn");
+    const questionsTimerEl = document.getElementById("questionsTimer");
+
+    const soapCopyButtons = document.querySelectorAll(".copy-soap-btn");
+    const copyPrescriptionBtn = document.getElementById("copyPrescriptionBtn");
+
+    const copyFullSoapBtn = document.getElementById("copyFullSoapBtn");
+    const printSoapBtn = document.getElementById("printSoapBtn");
+
+    const medicalDoubtInput = document.getElementById("medicalDoubtInput");
+    const medicalDoubtStatus = document.getElementById("medicalDoubtStatus");
+    const medicalDoubtAnswer = document.getElementById("medicalDoubtAnswer");
+
+
+    // ============================
+    // MÓDULO: Coletar dados essenciais (NOVO)
+    // ============================
+    const patientInfoBtn = document.getElementById("patientInfoBtn");
+    const patientInfoTimerEl = document.getElementById("patientInfoTimer");
+    const patientInfoStatus = document.getElementById("patientInfoStatus");
+    const patientInfoSummary = document.getElementById("patientInfoSummary");
+
+    let patientContext = { nome: null, idade: null, peso_kg: null };
+
+    let patientInfoRecognition = null;
+    let patientInfoIsRecording = false;
+    let patientInfoFinalTranscript = "";
+    let patientInfoTimerInterval = null;
+    let patientInfoStartTime = null;
+    let patientInfoAccumulatedSeconds = 0;
+
+    function resetPatientInfoTimer() {
+      patientInfoAccumulatedSeconds = 0;
+      patientInfoStartTime = null;
+      if (patientInfoTimerInterval) clearInterval(patientInfoTimerInterval);
+      patientInfoTimerInterval = null;
+      if (patientInfoTimerEl) patientInfoTimerEl.textContent = "00:00";
+    }
+
+    function updatePatientInfoTimer() {
+      const now = Date.now();
+      const seconds = patientInfoAccumulatedSeconds + Math.floor((now - patientInfoStartTime) / 1000);
+      const m = ("0" + Math.floor(seconds / 60)).slice(-2);
+      const s = ("0" + (seconds % 60)).slice(-2);
+      if (patientInfoTimerEl) patientInfoTimerEl.textContent = `${m}:${s}`;
+    }
+
+    function startPatientInfoTimer() {
+      patientInfoStartTime = Date.now();
+      if (patientInfoTimerInterval) clearInterval(patientInfoTimerInterval);
+      patientInfoTimerInterval = setInterval(updatePatientInfoTimer, 200);
+    }
+
+    function stopPatientInfoTimer() {
+      if (!patientInfoStartTime) return;
+      const now = Date.now();
+      patientInfoAccumulatedSeconds += Math.floor((now - patientInfoStartTime) / 1000);
+      patientInfoStartTime = null;
+      if (patientInfoTimerInterval) clearInterval(patientInfoTimerInterval);
+      patientInfoTimerInterval = null;
+    }
+
+    function formatPatientSummary(ctx) {
+      const parts = [];
+      if (ctx?.nome) parts.push(`Nome: ${ctx.nome}`);
+      if (ctx?.idade) parts.push(`Idade: ${ctx.idade}`);
+      if (ctx?.peso_kg !== null && ctx?.peso_kg !== undefined) parts.push(`Peso: ${ctx.peso_kg} kg`);
+      return parts.length ? parts.join(" | ") : "";
+    }
+
+    function buildTranscriptWithPatientContext(rawTranscript) {
+      let t = String(rawTranscript || "").trim();
+      if (!t) return "";
+
+      t = t.replace(/^Dados do paciente:[\s\S]*?\n{2,}/i, "").trim();
+
+      const hasAny = !!(patientContext?.nome || patientContext?.idade || (patientContext?.peso_kg !== null && patientContext?.peso_kg !== undefined));
+      if (!hasAny) return t;
+
+      const headerParts = [];
+      if (patientContext.nome) headerParts.push(`Nome completo: ${patientContext.nome}.`);
+      if (patientContext.idade) headerParts.push(`Idade: ${patientContext.idade}.`);
+      if (patientContext.peso_kg !== null && patientContext.peso_kg !== undefined) headerParts.push(`Peso: ${patientContext.peso_kg} kg.`);
+
+      const header = `Dados do paciente: ${headerParts.join(" ")}\n\n`;
+      return header + t;
+    }
+
+    function initPatientInfoSpeech() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) return false;
+
+      patientInfoRecognition = new SR();
+      patientInfoRecognition.lang = "pt-BR";
+      patientInfoRecognition.continuous = true;
+      patientInfoRecognition.interimResults = true;
+
+      patientInfoRecognition.onresult = (event) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const txt = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            patientInfoFinalTranscript += txt + " ";
+          }
+        }
+      };
+
+      patientInfoRecognition.onerror = (e) => {
+        console.warn("Erro no reconhecimento (dados do paciente):", e);
+      };
+
+      return true;
+    }
+
+    
+    function getNursingContext() {
+      const t = (baseTranscriptRaw || baseTranscript || finalTranscript || "").trim();
+      const s = (soapS?.value || "").trim();
+      const o = (soapO?.value || "").trim();
+      const a = (soapA?.value || "").trim();
+      const p = (soapP?.value || "").trim();
+      const plano = (prescriptionOutput?.value || "").trim();
+      const sbar = (hospitalPrescriptionOutput?.value || "").trim();
+      const parts = [];
+      if (t) parts.push("TRANSCRIÇÃO:\n" + t);
+      if (s || o || a || p) parts.push("EVOLUÇÃO (SOAP):\nS: " + s + "\nO: " + o + "\nA: " + a + "\nP: " + p);
+      if (plano) parts.push("PLANO DE CUIDADOS:\n" + plano);
+      if (sbar) parts.push("SBAR:\n" + sbar);
+      return parts.join("\n\n").trim();
+    }
+
+async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText) {
+      const t = String(transcricao || "").trim();
+      if (!t) return;
+
+      soapError.textContent = "";
+      micStatus.innerText = statusText || "Atualizando SOAP e prescrição...";
+      micStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            transcricao: t,
+            finalidade: (reportPurposeInput?.value || "").trim(),
+            destinatario: (reportRecipientInput?.value || "").trim()
+          })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend:", resp.status, txt);
+          soapError.textContent = "Erro ao gerar evolução/plano de cuidados. Verifique o backend e tente novamente.";
+          micStatus.innerText = "Falha ao gerar o resumo.";
+          micStatus.classList.remove("loading-dot");
+          return;
+        }
+
+        const data = await resp.json();
+        const soap = data.soap || "";
+        const prescricao = data.prescricao || "";
+
+        updateSoapFromString(soap);
+        prescriptionOutput.value = prescricao;
+        printBtn.style.display = prescricao ? "inline-block" : "none";
+
+        micStatus.innerText = "Atualização concluída.";
+        micStatus.classList.remove("loading-dot");
+
+        await updateClassifications();
+        await updateRxTypes();
+        await updateInteractions();
+              await updatePresentationsMaxDose();
+} catch (e) {
+        console.error(e);
+        soapError.textContent = "Erro ao gerar evolução e plano de cuidados (falha de rede ou backend).";
+        micStatus.innerText = "Falha ao gerar o resumo.";
+        micStatus.classList.remove("loading-dot");
+      }
+    }
+
+    async function applyPatientContextAndRefreshAll() {
+      const rawCandidate = (baseTranscriptRaw || "").trim() || (finalTranscript || "").trim() || (baseTranscript || "").trim();
+      if (!rawCandidate) {
+        patientInfoStatus.textContent = "Não há transcrição da consulta para atualizar.";
+        return;
+      }
+
+      const cleanedRaw = rawCandidate.replace(/^Dados do paciente:[\s\S]*?\n{2,}/i, "").trim();
+      baseTranscriptRaw = cleanedRaw;
+
+      const transcricaoAtualizada = buildTranscriptWithPatientContext(cleanedRaw);
+      baseTranscript = transcricaoAtualizada;
+
+      await generateSoapAndPrescriptionFromTranscript(transcricaoAtualizada, "Atualizando SOAP e prescrição com nome/idade/peso...");
+}
+
+    async function startPatientInfoRecording() {
+      if (!patientInfoBtn) return;
+
+      patientInfoStatus.textContent = "Gravando... Dite nome completo, idade e peso.";
+      patientInfoStatus.classList.add("loading-dot");
+      patientInfoBtn.textContent = "Finalizar nome/idade/peso";
+
+      patientInfoFinalTranscript = "";
+      resetPatientInfoTimer();
+      startPatientInfoTimer();
+
+      try { if (recognition) recognition.stop(); } catch (e) {}
+      try { if (questionsRecognition) questionsRecognition.stop(); } catch (e) {}
+      try { if (reportRecognition) reportRecognition.stop(); } catch (e) {}
+
+      if (!patientInfoRecognition) {
+        const ok = initPatientInfoSpeech();
+        if (!ok) {
+          patientInfoStatus.classList.remove("loading-dot");
+          patientInfoStatus.textContent = "Navegador sem suporte a reconhecimento de voz.";
+          patientInfoBtn.textContent = "Coletar dados essenciais";
+          stopPatientInfoTimer();
+          return;
+        }
+      }
+
+      patientInfoIsRecording = true;
+      try {
+        patientInfoRecognition.start();
+      } catch (e) {
+        console.warn("Erro ao iniciar reconhecimento (dados do paciente):", e);
+      }
+    }
+
+    async function stopPatientInfoRecordingAndApply() {
+      patientInfoIsRecording = false;
+      stopPatientInfoTimer();
+
+      patientInfoBtn.textContent = "Coletar dados essenciais";
+
+      if (patientInfoRecognition) {
+        try { patientInfoRecognition.stop(); } catch (e) {}
+      }
+
+      const transcricaoCurta = patientInfoFinalTranscript.trim();
+      if (!transcricaoCurta) {
+        patientInfoStatus.classList.remove("loading-dot");
+        patientInfoStatus.textContent = "Nenhuma fala foi capturada.";
+        return;
+      }
+
+      patientInfoStatus.textContent = "Processando nome/idade/peso...";
+      patientInfoStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/extrair-dados-paciente", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcricao: transcricaoCurta })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (dados do paciente):", resp.status, txt);
+          patientInfoStatus.classList.remove("loading-dot");
+          patientInfoStatus.textContent = "Não foi possível extrair os dados do paciente.";
+          return;
+        }
+
+        const data = await resp.json();
+        patientContext = {
+          nome: (data?.nome || null),
+          idade: (data?.idade || null),
+          peso_kg: (typeof data?.peso_kg === "number" && Number.isFinite(data.peso_kg)) ? data.peso_kg : null
+        };
+
+        const resumo = formatPatientSummary(patientContext);
+        patientInfoSummary.textContent = resumo ? resumo : "Dados do paciente não identificados com segurança.";
+        patientInfoStatus.classList.remove("loading-dot");
+        patientInfoStatus.textContent = resumo ? "Dados do paciente atualizados." : "Sem dados suficientes para atualizar.";
+
+        await applyPatientContextAndRefreshAll();
+      } catch (e) {
+        console.error(e);
+        patientInfoStatus.classList.remove("loading-dot");
+        patientInfoStatus.textContent = "Falha de rede ou backend ao extrair dados do paciente.";
+      }
+    }
+
+    if (patientInfoBtn) {
+      patientInfoBtn.addEventListener("click", async () => {
+        if (patientInfoIsRecording) {
+          await stopPatientInfoRecordingAndApply();
+        } else {
+          await startPatientInfoRecording();
+        }
+      });
+    }
+
+
+    const reportRecordBtn = document.getElementById("reportRecordBtn");
+    const reportTimerEl = document.getElementById("reportTimer");
+    const reportStatus = document.getElementById("reportStatus");
+    const reportOutput = document.getElementById("reportOutput");
+    const copyReportBtn = document.getElementById("copyReportBtn");
+    const printReportBtn = document.getElementById("printReportBtn");
+    const reportPurposeInput = document.getElementById("reportPurposeInput");
+    const reportRecipientInput = document.getElementById("reportRecipientInput");
+
+
+    let reportRecognition = null;
+    let reportIsRecording = false;
+    let reportIsPaused = false;
+    let reportFinalTranscript = "";
+    let reportTimerInterval = null;
+    let reportStartTime = null;
+    let reportAccumulatedSeconds = 0;
+
+    // Rodada adicional de perguntas (aba lateral)
+    let questionsRecognition = null;
+    let questionsIsRecording = false;
+    let questionsFinalTranscript = "";
+    let questionsTimerInterval = null;
+    let questionsStartTime = null;
+    let questionsAccumulatedSeconds = 0;
+
+    function escapeHtml(text) {
+      return String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function initSpeech() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        micStatus.innerText =
+          "Seu navegador não suporta reconhecimento de voz. Use Google Chrome em um computador.";
+        return;
+      }
+      recognition = new SR();
+      recognition.lang = "pt-BR";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + " ";
+          }
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Erro no reconhecimento de voz:", event.error);
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+          micStatus.innerText =
+            "Permita o acesso ao microfone nas configurações do navegador e tente novamente.";
+        } else {
+          micStatus.innerText =
+            "Ocorreu um erro no reconhecimento de voz. Tente novamente.";
+        }
+      };
+
+      recognition.onend = () => {
+        if (isRecording && !isPaused) {
+          try {
+            recognition.start();
+          } catch (err) {
+            console.warn("Não foi possível retomar reconhecimento:", err);
+          }
+        }
+      };
+    }
+
+    function updateTimer() {
+      const now = Date.now();
+      const seconds = accumulatedSeconds + Math.floor((now - startTime) / 1000);
+      const m = ("0" + Math.floor(seconds / 60)).slice(-2);
+      const s = ("0" + (seconds % 60)).slice(-2);
+      timerEl.innerText = `${m}:${s}`;
+    }
+
+    function startTimer() {
+      startTime = Date.now();
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(updateTimer, 500);
+    }
+
+    function pauseTimer() {
+      if (!startTime) return;
+      const now = Date.now();
+      accumulatedSeconds += Math.floor((now - startTime) / 1000);
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    function resetTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = null;
+      startTime = null;
+      accumulatedSeconds = 0;
+      timerEl.innerText = "00:00";
+    }
+
+    function resetNewModulesUI() {
+      hospitalPrescriptionOutput.value = "";
+      hospitalPrescriptionStatus.textContent = "";
+      classificationsStatus.textContent = "";
+      pregnancyBox.textContent = "Nenhum conteúdo disponível.";
+      lactationBox.textContent = "Nenhum conteúdo disponível.";
+      if (rxTypeBox) rxTypeBox.textContent = "Nenhum conteúdo disponível.";
+      if (rxTypeStatus) rxTypeStatus.textContent = "";
+      if (interactionsBox) interactionsBox.textContent = "Nenhum conteúdo disponível.";
+      if (interactionsStatus) interactionsStatus.textContent = "";
+      if (presentationsMaxDoseBox) presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
+      if (presentationsMaxDoseStatus) presentationsMaxDoseStatus.textContent = "";
+    }
+
+    async function finalizarConsulta() {
+      soapError.textContent = "";
+      micStatus.innerText = "Gerando SOAP e prescrição com base na gravação...";
+      micStatus.classList.add("loading-dot");
+
+      if (recognition) {
+        try {
+          recognition.stop();
+        } catch (e) {
+          console.warn("Erro ao parar reconhecimento:", e);
+        }
+      }
+
+      pauseTimer();
+
+      const transcricao = finalTranscript.trim();
+      if (!transcricao) {
+        micStatus.classList.remove("loading-dot");
+        micStatus.innerText =
+          "Nenhuma fala foi capturada. Verifique o microfone e tente novamente.";
+        return;
+      }
+
+      baseTranscriptRaw = transcricao;
+
+      const transcricaoParaGeracao = buildTranscriptWithPatientContext(transcricao);
+      baseTranscript = transcricaoParaGeracao;
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcricao: transcricaoParaGeracao, finalidade: (reportPurposeInput?.value || "").trim(), destinatario: (reportRecipientInput?.value || "").trim() })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend:", resp.status, txt);
+          soapError.textContent =
+            "Erro ao gerar evolução/plano de cuidados. Verifique o backend e tente novamente.";
+          micStatus.innerText = "Falha ao gerar o resumo.";
+          micStatus.classList.remove("loading-dot");
+          return;
+        }
+
+        const data = await resp.json();
+        const soap = data.soap || "";
+        const prescricao = data.prescricao || "";
+
+        updateSoapFromString(soap);
+
+        prescriptionOutput.value = prescricao;
+        printBtn.style.display = prescricao ? "inline-block" : "none";
+
+        micStatus.innerText = "Consulta encerrada. SOAP e prescrição gerados.";
+        micStatus.classList.remove("loading-dot");
+
+        await updateClassifications();
+        await updateRxTypes();
+        await updateInteractions();
+              await updatePresentationsMaxDose();
+} catch (e) {
+        console.error(e);
+        soapError.textContent =
+          "Erro ao gerar evolução e plano de cuidados (falha de rede ou backend).";
+        micStatus.innerText = "Falha ao gerar o resumo.";
+        micStatus.classList.remove("loading-dot");
+      }
+    }
+
+    function splitSoap(soapText) {
+      const sections = { S: "", O: "", A: "", P: "" };
+      if (!soapText) return sections;
+
+      const regex = /\b([SOAP])\s*:\s*([\s\S]*?)(?=\b[SOAP]\s*:|$)/g;
+      let match;
+      while ((match = regex.exec(soapText)) !== null) {
+        const key = match[1].toUpperCase();
+        sections[key] = match[2].trim();
+      }
+      return sections;
+    }
+
+    function updateSoapFromString(soapText) {
+      currentSoapRaw = soapText || "";
+      const parts = splitSoap(currentSoapRaw);
+
+      soapS.value = parts.S || "";
+      soapO.value = parts.O || "";
+      soapA.value = parts.A || "";
+      soapP.value = parts.P || "";
+
+      resultsCard.classList.remove("hidden");
+    }
+
+    function getCombinedSoapFromFields() {
+      const s = soapS.value.trim();
+      const o = soapO.value.trim();
+      const a = soapA.value.trim();
+      const p = soapP.value.trim();
+
+      let combined = "";
+      if (s) combined += "S: " + s + "\n";
+      if (o) combined += "O: " + o + "\n";
+      if (a) combined += "A: " + a + "\n";
+      if (p) combined += "P: " + p;
+      currentSoapRaw = combined;
+      return combined;
+    }
+
+
+    function formatInteractionsList(interacoes, observacoes) {
+      const items = Array.isArray(interacoes) ? interacoes : [];
+      if (!items.length) {
+        const obs = (observacoes || "").trim();
+        return obs
+          ? ("Nenhuma interação clinicamente relevante identificada com segurança para os medicamentos prescritos.\n\nObservações:\n" + obs)
+          : "Nenhuma interação clinicamente relevante identificada com segurança para os medicamentos prescritos.";
+      }
+
+      const parts = [];
+      for (const it of items) {
+        const meds = Array.isArray(it?.medicamentos) ? it.medicamentos : [];
+        const a = meds[0] ? String(meds[0]) : "não informado";
+        const b = meds[1] ? String(meds[1]) : "não informado";
+        const grav = it?.gravidade ? String(it.gravidade) : "indeterminada";
+        const desc = it?.descricao ? String(it.descricao) : "";
+        const riscos = it?.riscos ? String(it.riscos) : "";
+        const conduta = it?.conduta ? String(it.conduta) : "";
+
+        let block = a + " + " + b + " (gravidade: " + grav + ")";
+        if (desc.trim()) block += "\nInteração: " + desc.trim();
+        if (riscos.trim()) block += "\nRiscos: " + riscos.trim();
+        if (conduta.trim()) block += "\nConduta: " + conduta.trim();
+        parts.push(block);
+      }
+
+      const obs = (observacoes || "").trim();
+      if (obs) {
+        parts.push("Observações:\n" + obs);
+      }
+      return parts.join("\n\n");
+    }
+
+    async function updateInteractions() {
+      if (!interactionsBox || !interactionsStatus) return;
+
+      interactionsStatus.textContent = "";
+      const contexto = getNursingContext();
+      if (!contexto) {
+        interactionsBox.textContent = "Nenhum conteúdo disponível.";
+        return;
+      }
+
+      interactionsStatus.textContent = "Gerando registro de administração segura...";
+      interactionsStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/interacoes-medicamentosas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contexto })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP:", resp.status, txt);
+          interactionsBox.textContent = "Falha ao gerar registro.";
+          return;
+        }
+
+        const data = await resp.json().catch(() => ({}));
+        interactionsBox.textContent = (data.registro || "").trim() || "Nenhum conteúdo disponível.";
+      } catch (e) {
+        console.error(e);
+        interactionsBox.textContent = "Falha ao gerar registro (rede/backend).";
+      } finally {
+        interactionsStatus.classList.remove("loading-dot");
+        interactionsStatus.textContent = "";
+      }
+    }
+
+
+      interactionsStatus.textContent = "Analisando interações medicamentosas...";
+      interactionsStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/interacoes-medicamentosas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ medicamentos: meds })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (interações medicamentosas):", resp.status, txt);
+          interactionsStatus.textContent = "Não foi possível analisar as interações medicamentosas.";
+          interactionsStatus.classList.remove("loading-dot");
+          return;
+        }
+
+        const data = await resp.json();
+        interactionsBox.textContent = formatInteractionsList(data.interacoes, data.observacoes);
+
+        interactionsStatus.textContent = "Administração segura de medicamentos (registro de enfermagem) atualizadas.";
+        interactionsStatus.classList.remove("loading-dot");
+      } catch (err) {
+        console.error("Erro ao analisar interações medicamentosas:", err);
+        interactionsStatus.textContent = "Erro ao analisar as interações medicamentosas.";
+        interactionsStatus.classList.remove("loading-dot");
+      }
+    }
+
+
+    function formatPresentationsMaxDoseList(itens) {
+      const items = Array.isArray(itens) ? itens : [];
+      if (!items.length) {
+        return "Nenhuma informação disponível para os medicamentos prescritos.";
+      }
+
+      const lines = [];
+      for (const it of items) {
+        const med = it?.medicamento ? String(it.medicamento).trim() : "não informado";
+        const a = it?.apresentacoes || {};
+        const doseMax = it?.dosagem_maxima_diaria ? String(it.dosagem_maxima_diaria).trim() : "";
+
+        lines.push("Medicamento: " + med);
+        lines.push("Apresentações disponíveis:");
+
+        const map = [
+          ["Comprimido simples", a.comprimido_simples],
+          ["Comprimido revestido", a.comprimido_revestido],
+          ["Cápsula", a.capsula],
+          ["Suspensão oral", a.suspensao_oral],
+          ["Gotas", a.gotas],
+          ["Solução oral", a.solucao_oral],
+          ["Solução injetável", a.solucao_injetavel],
+          ["Endovenosa", a.endovenosa],
+          ["Intramuscular", a.intramuscular]
+        ];
+
+        for (const [label, val] of map) {
+          const v = String(val || "").trim() || "não informado";
+          lines.push("- " + label + ": " + v);
+        }
+
+        lines.push("Dosagem máxima diária: " + (doseMax || "não informado"));
+        lines.push("");
+      }
+
+      return lines.join("\n").trim();
+    }
+
+    async function updatePresentationsMaxDose() {
+      if (!presentationsMaxDoseBox || !presentationsMaxDoseStatus) return;
+
+      presentationsMaxDoseStatus.textContent = "";
+      const contexto = getNursingContext();
+      if (!contexto) {
+        presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
+        return;
+      }
+
+      presentationsMaxDoseStatus.textContent = "Gerando registro de curativos e feridas...";
+      presentationsMaxDoseStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/apresentacoes-dosagem-maxima", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contexto })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP:", resp.status, txt);
+          presentationsMaxDoseBox.textContent = "Falha ao gerar curativos.";
+          return;
+        }
+
+        const data = await resp.json().catch(() => ({}));
+        presentationsMaxDoseBox.textContent = (data.curativos || "").trim() || "Nenhum conteúdo disponível.";
+      } catch (e) {
+        console.error(e);
+        presentationsMaxDoseBox.textContent = "Falha ao gerar curativos (rede/backend).";
+      } finally {
+        presentationsMaxDoseStatus.classList.remove("loading-dot");
+        presentationsMaxDoseStatus.textContent = "";
+      }
+    }
+
+
+      presentationsMaxDoseStatus.textContent = "Consultando apresentações e dosagem máxima...";
+      presentationsMaxDoseStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/apresentacoes-dosagem-maxima", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ medicamentos: meds })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (apresentações/dosagem máxima):", resp.status, txt);
+          presentationsMaxDoseStatus.textContent = "Não foi possível obter apresentações e dosagem máxima.";
+          presentationsMaxDoseStatus.classList.remove("loading-dot");
+          return;
+        }
+
+        const data = await resp.json();
+        presentationsMaxDoseBox.textContent = formatPresentationsMaxDoseList(data.itens);
+
+        presentationsMaxDoseStatus.textContent = "Apresentações e dosagem máxima atualizadas.";
+        presentationsMaxDoseStatus.classList.remove("loading-dot");
+      } catch (err) {
+        console.error("Erro ao consultar apresentações/dosagem máxima:", err);
+        presentationsMaxDoseStatus.textContent = "Erro ao consultar apresentações e dosagem máxima.";
+        presentationsMaxDoseStatus.classList.remove("loading-dot");
+      }
+    }
+
+    function updateQuestionsTimer() {
+      const now = Date.now();
+      const seconds = questionsAccumulatedSeconds + Math.floor((now - questionsStartTime) / 1000);
+      const m = ("0" + Math.floor(seconds / 60)).slice(-2);
+      const s = ("0" + (seconds % 60)).slice(-2);
+      questionsTimerEl.innerText = `${m}:${s}`;
+    }
+
+    function startQuestionsTimer() {
+      questionsStartTime = Date.now();
+      if (questionsTimerInterval) clearInterval(questionsTimerInterval);
+      questionsTimerInterval = setInterval(updateQuestionsTimer, 500);
+    }
+
+    function pauseQuestionsTimer() {
+      if (!questionsStartTime) return;
+      const now = Date.now();
+      questionsAccumulatedSeconds += Math.floor((now - questionsStartTime) / 1000);
+      if (questionsTimerInterval) clearInterval(questionsTimerInterval);
+      questionsTimerInterval = null;
+    }
+
+    function resetQuestionsTimer() {
+      if (questionsTimerInterval) clearInterval(questionsTimerInterval);
+      questionsTimerInterval = null;
+      questionsStartTime = null;
+      questionsAccumulatedSeconds = 0;
+      questionsTimerEl.innerText = "00:00";
+    }
+
+    function initQuestionsSpeech() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        return null;
+      }
+
+      const rec = new SR();
+      rec.lang = "pt-BR";
+      rec.continuous = true;
+      rec.interimResults = true;
+
+      rec.onresult = (event) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            questionsFinalTranscript += transcript + " ";
+          }
+        }
+      };
+
+      rec.onerror = (event) => {
+        console.error("Erro no reconhecimento das perguntas:", event.error);
+        recommendationsStatus.textContent =
+          "Ocorreu um erro no reconhecimento de voz das perguntas. Tente novamente.";
+        recommendationsStatus.classList.remove("loading-dot");
+      };
+
+      rec.onend = () => {
+        if (questionsIsRecording) {
+          try {
+            rec.start();
+          } catch (err) {
+            console.warn("Não foi possível retomar reconhecimento das perguntas:", err);
+          }
+        }
+      };
+
+      return rec;
+    }
+
+    function startQuestionsRecording() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        recommendationsStatus.textContent =
+          "Seu navegador não suporta reconhecimento de voz. Use Google Chrome em um computador.";
+        return;
+      }
+
+      if (!questionsRecognition) {
+        questionsRecognition = initQuestionsSpeech();
+        if (!questionsRecognition) return;
+      }
+
+      questionsIsRecording = true;
+      questionsFinalTranscript = "";
+
+      questionsTimerEl.classList.remove("hidden");
+      resetQuestionsTimer();
+      startQuestionsTimer();
+
+      askQuestionsBtn.textContent = "Encerrar perguntas";
+      closeRecommendationsBtn.disabled = true;
+      closeRecommendationsBtn.style.opacity = "0.5";
+
+      recommendationsStatus.textContent =
+        "Gravando perguntas e respostas. Quando terminar, clique em \"Encerrar perguntas\".";
+      recommendationsStatus.classList.remove("loading-dot");
+
+      try {
+        questionsRecognition.start();
+      } catch (e) {
+        console.warn("Erro ao iniciar reconhecimento das perguntas:", e);
+      }
+    }
+
+    async function stopQuestionsRecordingAndUpdateSoap() {
+      questionsIsRecording = false;
+
+      if (questionsRecognition) {
+        try {
+          questionsRecognition.stop();
+        } catch (e) {
+          console.warn("Erro ao parar reconhecimento das perguntas:", e);
+        }
+      }
+
+      pauseQuestionsTimer();
+
+      const qa = (questionsFinalTranscript || "").trim();
+      if (!qa) {
+        recommendationsStatus.textContent = "Nenhuma fala foi capturada nesta rodada de perguntas.";
+        askQuestionsBtn.textContent = "Complementar avaliação";
+        closeRecommendationsBtn.disabled = false;
+        closeRecommendationsBtn.style.opacity = "1";
+        askQuestionsBtn.disabled = false;
+        resetQuestionsTimer();
+        questionsTimerEl.classList.add("hidden");
+        return;
+      }
+
+      const soapAtual = getCombinedSoapFromFields();
+      if (!soapAtual) {
+        recommendationsStatus.textContent = "Não há SOAP disponível para atualizar.";
+        askQuestionsBtn.textContent = "Complementar avaliação";
+        closeRecommendationsBtn.disabled = false;
+        closeRecommendationsBtn.style.opacity = "1";
+        askQuestionsBtn.disabled = false;
+        return;
+      }
+
+      askQuestionsBtn.disabled = true;
+      recommendationsStatus.textContent = "Atualizando SOAP e módulos com as novas respostas...";
+      recommendationsStatus.classList.add("loading-dot");
+
+      const transcricaoBase = (baseTranscript || finalTranscript || "").trim();
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/atualizar-soap-perguntas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            soap_atual: soapAtual,
+            perguntas_e_respostas: qa,
+            transcricao_base: transcricaoBase
+          })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (atualizar perguntas):", resp.status, txt);
+          recommendationsStatus.textContent = "Não foi possível atualizar o SOAP com as novas respostas.";
+          recommendationsStatus.classList.remove("loading-dot");
+          askQuestionsBtn.disabled = false;
+          return;
+        }
+
+        const data = await resp.json();
+        const soap = data.soap || "";
+        const prescricao = data.prescricao || "";
+
+        if (soap) {
+          updateSoapFromString(soap);
+        }
+        if (prescricao) {
+          prescriptionOutput.value = prescricao;
+          printBtn.style.display = "inline-block";
+        }
+
+        const appended =
+          (transcricaoBase ? transcricaoBase + "\n\n" : "") +
+          "RODADA ADICIONAL DE PERGUNTAS E RESPOSTAS:\n" +
+          qa +
+          "\n";
+        baseTranscript = appended;
+        finalTranscript = appended;
+
+        recommendationsStatus.textContent = "SOAP atualizado com as novas respostas.";
+        recommendationsStatus.classList.remove("loading-dot");
+
+        await updateClassifications();
+        await updateRxTypes();
+        await updateInteractions();
+      } catch (err) {
+        console.error("Erro geral ao atualizar SOAP com perguntas:", err);
+        recommendationsStatus.textContent = "Erro ao atualizar o SOAP com as novas respostas.";
+        recommendationsStatus.classList.remove("loading-dot");
+      } finally {
+        askQuestionsBtn.textContent = "Complementar avaliação";
+        askQuestionsBtn.disabled = false;
+        closeRecommendationsBtn.disabled = false;
+        closeRecommendationsBtn.style.opacity = "1";
+        resetQuestionsTimer();
+        questionsTimerEl.classList.add("hidden");
+        recommendationsPanel.classList.remove("visible");
+      }
+    }
+
+    async function fetchRecommendations() {
+      const combinedSoap = getCombinedSoapFromFields();
+      if (!combinedSoap) {
+        soapError.textContent =
+          "Não há SOAP gerado ainda para sugerir perguntas complementares.";
+        return;
+      }
+
+      // Reseta qualquer rodada anterior de perguntas
+      if (questionsIsRecording && questionsRecognition) {
+        try {
+          questionsIsRecording = false;
+          questionsRecognition.stop();
+        } catch (e) {}
+      }
+      askQuestionsBtn.textContent = "Complementar avaliação";
+      askQuestionsBtn.disabled = true;
+      closeRecommendationsBtn.disabled = false;
+      closeRecommendationsBtn.style.opacity = "1";
+      resetQuestionsTimer();
+      questionsTimerEl.classList.add("hidden");
+
+      recommendationsPanel.classList.add("visible");
+      recommendationsStatus.textContent =
+        "Gerando perguntas complementares essenciais com base na queixa e no SOAP...";
+      recommendationsStatus.classList.add("loading-dot");
+      recommendationsList.innerHTML = "";
+
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/recomendacoes-anamnese", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            soap: combinedSoap
+          })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error(
+            "Erro HTTP do backend (recomendações):",
+            resp.status,
+            txt
+          );
+          recommendationsStatus.textContent =
+            "Não foi possível gerar as recomendações de perguntas.";
+          recommendationsStatus.classList.remove("loading-dot");
+          return;
+        }
+
+        const data = await resp.json();
+        const perguntas = Array.isArray(data.perguntas) ? data.perguntas : [];
+
+        if (!perguntas.length) {
+          recommendationsStatus.textContent =
+            "Nenhuma pergunta complementar foi sugerida para este caso.";
+          recommendationsStatus.classList.remove("loading-dot");
+          return;
+        }
+
+        recommendationsList.innerHTML = "";
+        perguntas.forEach((q, index) => {
+          const item = document.createElement("div");
+          item.className = "recommendation-item";
+          item.textContent = (index + 1) + ". " + q;
+          recommendationsList.appendChild(item);
+        });
+
+        recommendationsStatus.textContent =
+          "Use estas perguntas para aprofundar a anamnese com o paciente.";
+        recommendationsStatus.classList.remove("loading-dot");
+        askQuestionsBtn.disabled = false;
+      } catch (err) {
+        console.error("Erro geral ao buscar recomendações:", err);
+        recommendationsStatus.textContent =
+          "Erro ao gerar recomendações de perguntas.";
+        recommendationsStatus.classList.remove("loading-dot");
+      }
+    }
+
+    async function handleAskQuestionsFromPanel() {
+      if (!questionsIsRecording) {
+        startQuestionsRecording();
+      } else {
+        await stopQuestionsRecordingAndUpdateSoap();
+      }
+    }
+
+    function startRecording() {
+      if (!recognition) {
+        initSpeech();
+        if (!recognition) {
+          return;
+        }
+      }
+
+      isRecording = true;
+      isPaused = false;
+      finalTranscript = "";
+      baseTranscript = "";
+      resultsCard.classList.add("hidden");
+      printBtn.style.display = "none";
+      prescriptionOutput.value = "";
+      soapS.value = "";
+      soapO.value = "";
+      soapA.value = "";
+      soapP.value = "";
+      resetNewModulesUI();
+
+      pauseBtn.style.display = "inline-block";
+      pauseBtn.innerText = "Pausar";
+      recordBtn.className = "recording";
+      recordBtn.innerText = "Encerrar consulta";
+      micStatus.innerText = "Gravando consulta...";
+      soapError.textContent = "";
+      resultsCard.classList.add("hidden");
+
+      resetTimer();
+      startTimer();
+
+      try {
+        recognition.start();
+      } catch (e) {
+        console.warn("Erro ao iniciar reconhecimento:", e);
+      }
+    }
+
+    function stopRecording() {
+      isRecording = false;
+      isPaused = false;
+      if (recognition) {
+        try {
+          recognition.stop();
+        } catch (e) {
+          console.warn("Erro ao parar reconhecimento:", e);
+        }
+      }
+      pauseTimer();
+      recordBtn.className = "start";
+      recordBtn.innerText = "Iniciar atendimento";
+      pauseBtn.style.display = "none";
+    }
+
+    function pauseRecording() {
+      if (!isRecording || isPaused) return;
+      isPaused = true;
+      if (recognition) {
+        try {
+          recognition.stop();
+        } catch (e) {
+          console.warn("Erro ao pausar reconhecimento:", e);
+        }
+      }
+      pauseTimer();
+      pauseBtn.innerText = "Retomar";
+      micStatus.innerText = "Consulta pausada.";
+    }
+
+    function resumeRecording() {
+      if (!isRecording || !isPaused) return;
+      isPaused = false;
+      if (recognition) {
+        try {
+          recognition.start();
+        } catch (e) {
+          console.warn("Erro ao retomar reconhecimento:", e);
+        }
+      }
+      startTimer();
+      pauseBtn.innerText = "Pausar";
+      micStatus.innerText = "Gravando consulta...";
+    }
+
+    function copyToClipboard(text) {
+      if (!text) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(() => {
+          alert("Não foi possível copiar o texto.");
+        });
+      } else {
+        const temp = document.createElement("textarea");
+        temp.value = text;
+        document.body.appendChild(temp);
+        temp.select();
+        try {
+          document.execCommand("copy");
+        } catch (e) {
+          alert("Não foi possível copiar o texto.");
+        }
+        document.body.removeChild(temp);
+      }
+    }
+
+    function getSoapSectionText(letter) {
+      switch (letter) {
+        case "S":
+          return soapS.value.trim();
+        case "O":
+          return soapO.value.trim();
+        case "A":
+          return soapA.value.trim();
+        case "P":
+          return soapP.value.trim();
+        default:
+          return "";
+      }
+    }
+
+    function openPrintWindow(title, text) {
+      const content = (text || "").trim();
+      if (!content) {
+        alert("Não há conteúdo para imprimir.");
+        return;
+      }
+
+      const w = window.open("", "_blank", "width=800,height=600");
+      if (!w) {
+        alert("Não foi possível abrir a janela de impressão.");
+        return;
+      }
+
+      w.document.write("<html><head><title>" + escapeHtml(title) + "</title></head><body>");
+      w.document.write("<pre style='font-family: Arial, sans-serif; white-space: pre-wrap;'>" +
+        escapeHtml(content) +
+        "</pre>");
+      w.document.write("</body></html>");
+      w.document.close();
+      w.focus();
+      w.print();
+    }
+
+    
+    function extractMedicationsFromPrescriptionText(text) {
+      const raw = String(text || "").replace(/\r/g, "").trim();
+      if (!raw) return [];
+
+      const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
+
+      const meds = [];
+
+      // Heurística principal:
+      // - Prescrição ambulatorial: medicamentos aparecem em lista numerada e a seção "Orientações:" deve ser ignorada.
+      // - Prescrição hospitalar: medicamentos aparecem em bullets dentro das seções
+      //   "Medicamentos contínuos:" e/ou "Medicamentos se necessário:".
+
+      const isHospital =
+        lines.some(l => /^medicamentos\s+cont[ií]nuos\s*:/i.test(l)) ||
+        lines.some(l => /^medicamentos\s+se\s+necess[aá]rio\s*:/i.test(l)) ||
+        lines.some(l => /^medicamentos\s+se\s+necessario\s*:/i.test(l));
+
+      if (!isHospital) {
+        for (const line of lines) {
+          const low = line.toLowerCase();
+
+          // Para de coletar ao entrar em orientações/assinatura
+          if (low.startsWith("orientações:") || low.startsWith("orientacoes:")) break;
+          if (low.startsWith("assinatura:")) break;
+          if (low.startsWith("médico") || low.startsWith("medico")) break;
+
+          const m = line.match(/^\s*\d+\s*[\.\)]\s*([^—–-]+?)\s*(?:[—–-].*)?$/);
+          if (m && m[1]) {
+            const name = m[1].trim();
+            if (name && name.length >= 2) meds.push(name);
+          }
+        }
+      } else {
+        let section = null; // "cont", "prn", "other"
+
+        for (const line of lines) {
+          const low = line.toLowerCase();
+
+          if (/^medicamentos\s+cont[ií]nuos\s*:/i.test(line) || /^medicamentos\s+continuos\s*:/i.test(line)) {
+            section = "cont";
+            continue;
+          }
+          if (/^medicamentos\s+se\s+necess[aá]rio\s*:/i.test(line) || /^medicamentos\s+se\s+necessario\s*:/i.test(line)) {
+            section = "prn";
+            continue;
+          }
+
+          // Qualquer outro cabeçalho em formato "X:" encerra a seção de medicamentos
+          if (/^[a-zA-ZÀ-ÿ].*:\s*$/.test(line) && !/^medicamentos\s+/i.test(line)) {
+            section = "other";
+            continue;
+          }
+
+          // Captura bullets apenas nas seções corretas
+          const isBullet = /^\s*[-•]\s+/.test(line);
+          if (!isBullet) continue;
+          if (section !== "cont" && section !== "prn") continue;
+
+          const m = line.match(/^\s*[-•]\s*([^—–-]+?)\s*(?:[—–-].*)?$/);
+          if (!m || !m[1]) continue;
+
+          const name = m[1].trim();
+          if (!name || name.length < 2) continue;
+          if (/^(n[aã]o informado)$/i.test(name)) continue;
+
+          meds.push(name);
+        }
+      }
+
+      // Deduplicação preservando ordem
+      const seen = new Set();
+      const unique = [];
+      for (const x of meds) {
+        const key = x.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        unique.push(x);
+      }
+
+      return unique.slice(0, 60);
+    }
+
+    function getAllPrescribedMedications() {
+      const amb = prescriptionOutput.value || "";
+      const hosp = hospitalPrescriptionOutput.value || "";
+      const meds = [
+        ...extractMedicationsFromPrescriptionText(amb),
+        ...extractMedicationsFromPrescriptionText(hosp)
+      ];
+
+      const seen = new Set();
+      const unique = [];
+      for (const x of meds) {
+        const key = x.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        unique.push(x);
+      }
+      return unique.slice(0, 60);
+    }
+
+    async function generateHospitalPrescription() {
+      hospitalPrescriptionStatus.textContent = "";
+      const transcricao = (baseTranscript || finalTranscript || "").trim();
+
+      if (!transcricao) {
+        hospitalPrescriptionStatus.textContent = "Não há transcrição disponível para gerar o SBAR.";
+        return;
+      }
+
+      hospitalPrescriptionStatus.textContent = "Gerando SBAR...";
+      hospitalPrescriptionStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/prescricao-hospitalar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcricao, finalidade: (reportPurposeInput?.value || "").trim(), destinatario: (reportRecipientInput?.value || "").trim() })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (SBAR):", resp.status, txt);
+          hospitalPrescriptionStatus.textContent = "Não foi possível gerar a SBAR.";
+          hospitalPrescriptionStatus.classList.remove("loading-dot");
+          return;
+        }
+
+        const data = await resp.json();
+        const presc = data.prescricao_hospitalar || "";
+
+        hospitalPrescriptionOutput.value = presc;
+        hospitalPrescriptionStatus.textContent = presc ? "Prescrição hospitalar gerada." : "Não foi possível gerar a SBAR.";
+        hospitalPrescriptionStatus.classList.remove("loading-dot");
+
+        await updateClassifications();
+        await updateRxTypes();
+        await updateInteractions();
+      } catch (err) {
+        console.error("Erro ao gerar SBAR:", err);
+        hospitalPrescriptionStatus.textContent = "Erro ao gerar SBAR.";
+        hospitalPrescriptionStatus.classList.remove("loading-dot");
+      }
+    }
+
+    function formatClassificationList(items) {
+      if (!Array.isArray(items) || !items.length) {
+        return "Nenhum conteúdo disponível.";
+      }
+      const lines = [];
+      for (const it of items) {
+        const med = (it && it.medicamento) ? String(it.medicamento) : "não informado";
+        const cat = (it && it.categoria) ? String(it.categoria) : "NA";
+        const desc = (it && it.descricao) ? String(it.descricao) : "categoria não informada (dados insuficientes)";
+        if (cat === "NA") {
+          lines.push(med + ": categoria não informada (dados insuficientes)");
+        } else {
+          lines.push(med + ": " + cat + " (" + desc + ")");
+        }
+      }
+      return lines.join("\n");
+    }
+
+    function formatRxTypeList(items) {
+      if (!Array.isArray(items) || !items.length) {
+        return "Nenhum conteúdo disponível.";
+      }
+      const lines = [];
+      for (const it of items) {
+        const med = (it && it.medicamento) ? String(it.medicamento) : "não informado";
+        const tipo = (it && it.tipo_receituario) ? String(it.tipo_receituario) : "Outros";
+        lines.push(med + ": " + tipo);
+      }
+      return lines.join("\n");
+    }
+
+    async function updateRxTypes() {
+      if (!rxTypeBox || !rxTypeStatus) return;
+
+      rxTypeStatus.textContent = "";
+      const contexto = getNursingContext();
+      if (!contexto) {
+        rxTypeBox.textContent = "Nenhum conteúdo disponível.";
+        return;
+      }
+
+      rxTypeStatus.textContent = "Gerando checklist de segurança...";
+      rxTypeStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/tipo-receituario", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contexto })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP:", resp.status, txt);
+          rxTypeBox.textContent = "Falha ao gerar checklist.";
+          return;
+        }
+
+        const data = await resp.json().catch(() => ({}));
+        rxTypeBox.textContent = (data.checklist || "").trim() || "Nenhum conteúdo disponível.";
+      } catch (e) {
+        console.error(e);
+        rxTypeBox.textContent = "Falha ao gerar checklist (rede/backend).";
+      } finally {
+        rxTypeStatus.classList.remove("loading-dot");
+        rxTypeStatus.textContent = "";
+      }
+    }
+
+
+      rxTypeStatus.textContent = "Classificando tipo de receituário...";
+      rxTypeStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/tipo-receituario", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ medicamentos: meds })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (tipo de receituário):", resp.status, txt);
+          rxTypeStatus.textContent = "Não foi possível classificar o tipo de receituário.";
+          rxTypeStatus.classList.remove("loading-dot");
+          return;
+        }
+
+        const data = await resp.json();
+        const itens = Array.isArray(data.itens) ? data.itens : [];
+        rxTypeBox.textContent = formatRxTypeList(itens);
+
+        rxTypeStatus.textContent = "Checklist de segurança do paciente atualizado.";
+        rxTypeStatus.classList.remove("loading-dot");
+      } catch (err) {
+        console.error("Erro ao classificar tipo de receituário:", err);
+        rxTypeStatus.textContent = "Erro ao classificar o tipo de receituário.";
+        rxTypeStatus.classList.remove("loading-dot");
+      }
+    }
+
+    async function updateClassifications() {
+      classificationsStatus.textContent = "";
+
+      const contexto = getNursingContext();
+      if (!contexto) {
+        pregnancyBox.textContent = "Nenhum conteúdo disponível.";
+        lactationBox.textContent = "Nenhum conteúdo disponível.";
+        return;
+      }
+
+      classificationsStatus.textContent = "Gerando SAE e orientações...";
+      classificationsStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/classificar-gestacao-lactacao", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contexto })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP:", resp.status, txt);
+          pregnancyBox.textContent = "Falha ao gerar SAE.";
+          lactationBox.textContent = "Falha ao gerar orientações.";
+          return;
+        }
+
+        const data = await resp.json().catch(() => ({}));
+        pregnancyBox.textContent = (data.sae || "").trim() || "Nenhum conteúdo disponível.";
+        lactationBox.textContent = (data.orientacoes || "").trim() || "Nenhum conteúdo disponível.";
+      } catch (e) {
+        console.error(e);
+        pregnancyBox.textContent = "Falha ao gerar SAE (rede/backend).";
+        lactationBox.textContent = "Falha ao gerar orientações (rede/backend).";
+      } finally {
+        classificationsStatus.classList.remove("loading-dot");
+        classificationsStatus.textContent = "";
+      }
+    }
+
+
+      classificationsStatus.textContent = "Classificando medicamentos em gestação e lactação...";
+      classificationsStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/classificar-gestacao-lactacao", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ medicamentos: meds })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (classificação):", resp.status, txt);
+          classificationsStatus.textContent = "Não foi possível classificar os medicamentos.";
+          classificationsStatus.classList.remove("loading-dot");
+          return;
+        }
+
+        const data = await resp.json();
+
+        pregnancyBox.textContent = formatClassificationList(data.gestacao);
+        lactationBox.textContent = formatClassificationList(data.lactacao);
+
+        classificationsStatus.textContent = "Classificação atualizada.";
+        classificationsStatus.classList.remove("loading-dot");
+      } catch (err) {
+        console.error("Erro ao classificar medicamentos:", err);
+        classificationsStatus.textContent = "Erro ao classificar os medicamentos.";
+        classificationsStatus.classList.remove("loading-dot");
+      }
+    }
+
+    function updateReportTimer() {
+      const now = Date.now();
+      const seconds = reportAccumulatedSeconds + Math.floor((now - reportStartTime) / 1000);
+      const m = ("0" + Math.floor(seconds / 60)).slice(-2);
+      const s = ("0" + (seconds % 60)).slice(-2);
+      reportTimerEl.innerText = `${m}:${s}`;
+    }
+
+    function startReportTimer() {
+      reportStartTime = Date.now();
+      if (reportTimerInterval) clearInterval(reportTimerInterval);
+      reportTimerInterval = setInterval(updateReportTimer, 500);
+    }
+
+    function pauseReportTimer() {
+      if (!reportStartTime) return;
+      const now = Date.now();
+      reportAccumulatedSeconds += Math.floor((now - reportStartTime) / 1000);
+      if (reportTimerInterval) clearInterval(reportTimerInterval);
+      reportTimerInterval = null;
+    }
+
+    function resetReportTimer() {
+      if (reportTimerInterval) clearInterval(reportTimerInterval);
+      reportTimerInterval = null;
+      reportStartTime = null;
+      reportAccumulatedSeconds = 0;
+      reportTimerEl.innerText = "00:00";
+    }
+
+    function initReportSpeech() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        reportStatus.textContent =
+          "Seu navegador não suporta reconhecimento de voz. Use Google Chrome em um computador.";
+        return null;
+      }
+
+      const rec = new SR();
+      rec.lang = "pt-BR";
+      rec.continuous = true;
+      rec.interimResults = true;
+
+      rec.onresult = (event) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            reportFinalTranscript += transcript + " ";
+          }
+        }
+      };
+
+      rec.onerror = (event) => {
+        console.error("Erro no reconhecimento do relatório:", event.error);
+        reportStatus.textContent =
+          "Ocorreu um erro no reconhecimento de voz do relatório. Tente novamente.";
+      };
+
+      rec.onend = () => {
+        if (reportIsRecording && !reportIsPaused) {
+          try {
+            rec.start();
+          } catch (err) {
+            console.warn("Não foi possível retomar reconhecimento do relatório:", err);
+          }
+        }
+      };
+
+      return rec;
+    }
+
+    async function startReportRecording() {
+      reportStatus.textContent = "";
+      reportOutput.value = "";
+      reportFinalTranscript = "";
+
+      if (!reportRecognition) {
+        reportRecognition = initReportSpeech();
+        if (!reportRecognition) return;
+      }
+
+      reportIsRecording = true;
+      reportIsPaused = false;
+
+      reportRecordBtn.className = "small-record-btn recording";
+      reportRecordBtn.innerText = "Encerrar gravação";
+      reportStatus.textContent = "Gravando relatório...";
+      reportStatus.classList.remove("loading-dot");
+      reportStatus.classList.add("loading-dot");
+
+      resetReportTimer();
+      startReportTimer();
+
+      try {
+        reportRecognition.start();
+      } catch (e) {
+        console.warn("Erro ao iniciar reconhecimento do relatório:", e);
+      }
+    }
+
+    async function stopReportRecordingAndGenerate() {
+      reportIsRecording = false;
+      reportIsPaused = false;
+
+      if (reportRecognition) {
+        try {
+          reportRecognition.stop();
+        } catch (e) {
+          console.warn("Erro ao parar reconhecimento do relatório:", e);
+        }
+      }
+
+      pauseReportTimer();
+
+      reportRecordBtn.className = "small-record-btn start";
+      reportRecordBtn.innerText = "Gravar relatório";
+
+      const transcricao = reportFinalTranscript.trim();
+      if (!transcricao) {
+        reportStatus.classList.remove("loading-dot");
+        reportStatus.textContent = "Nenhuma fala foi capturada no relatório.";
+        return;
+      }
+
+      reportStatus.textContent = "Gerando relatório clínico...";
+      reportStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcricao, finalidade: (reportPurposeInput?.value || "").trim(), destinatario: (reportRecipientInput?.value || "").trim() })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (relatório):", resp.status, txt);
+          reportStatus.textContent = "Não foi possível gerar o relatório.";
+          reportStatus.classList.remove("loading-dot");
+          return;
+        }
+
+        const data = await resp.json();
+        const relatorio = data.relatorio || "";
+        reportOutput.value = relatorio;
+
+        reportStatus.textContent = relatorio ? "Relatório gerado." : "Não foi possível gerar o relatório.";
+        reportStatus.classList.remove("loading-dot");
+      } catch (err) {
+        console.error("Erro ao gerar relatório:", err);
+        reportStatus.textContent = "Erro ao gerar relatório.";
+        reportStatus.classList.remove("loading-dot");
+      }
+    }
+
+    async function submitMedicalDoubt() {
+      const q = (medicalDoubtInput.value || "").trim();
+      if (!q) return;
+
+      medicalDoubtStatus.textContent = "Respondendo dúvida...";
+      medicalDoubtStatus.classList.add("loading-dot");
+      medicalDoubtAnswer.textContent = "";
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/duvidas-enfermagem", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ duvida: q })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (dúvidas):", resp.status, txt);
+          medicalDoubtStatus.textContent = "Não foi possível responder a dúvida.";
+          medicalDoubtStatus.classList.remove("loading-dot");
+          return;
+        }
+
+        const data = await resp.json();
+        const resposta = data.resposta || "";
+        medicalDoubtAnswer.textContent = resposta || "Sem resposta disponível.";
+        medicalDoubtStatus.textContent = "Resposta gerada.";
+        medicalDoubtStatus.classList.remove("loading-dot");
+      } catch (err) {
+        console.error("Erro ao responder dúvida:", err);
+        medicalDoubtStatus.textContent = "Erro ao responder a dúvida.";
+        medicalDoubtStatus.classList.remove("loading-dot");
+      }
+    }
+
+    recordBtn.onclick = () => {
+      if (!isRecording) {
+        startRecording();
+      } else {
+        stopRecording();
+        finalizarConsulta();
+      }
+    };
+
+    pauseBtn.onclick = () => {
+      if (!isRecording) return;
+      if (!isPaused) {
+        pauseRecording();
+      } else {
+        resumeRecording();
+      }
+    };
+
+    printBtn.onclick = () => {
+      openPrintWindow("Plano de Cuidados (Prescrição de Enfermagem)", prescriptionOutput.value);
+    };
+
+    recommendationsBtn.addEventListener("click", () => {
+      fetchRecommendations();
+    });
+
+    closeRecommendationsBtn.addEventListener("click", () => {
+      if (questionsIsRecording) {
+        recommendationsStatus.textContent =
+          "Finalize a gravação das perguntas clicando em \"Encerrar perguntas\" antes de fechar.";
+        return;
+      }
+      recommendationsPanel.classList.remove("visible");
+    });
+
+    askQuestionsBtn.addEventListener("click", () => {
+      handleAskQuestionsFromPanel();
+    });
+
+    soapCopyButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const part = btn.getAttribute("data-part");
+        const sectionText = getSoapSectionText(part);
+        if (!sectionText) {
+          alert("Seção " + part + " está vazia.");
+          return;
+        }
+        copyToClipboard(part + ": " + sectionText);
+      });
+    });
+
+    if (copyFullSoapBtn) {
+      copyFullSoapBtn.addEventListener("click", () => {
+        const full = getCombinedSoapFromFields();
+        if (!full.trim()) {
+          alert("Não há SOAP disponível para copiar.");
+          return;
+        }
+        copyToClipboard(full);
+      });
+    }
+
+    if (printSoapBtn) {
+      printSoapBtn.addEventListener("click", () => {
+        const full = getCombinedSoapFromFields();
+        openPrintWindow("SOAP", full);
+      });
+    }
+
+    copyPrescriptionBtn.addEventListener("click", () => {
+      const text = prescriptionOutput.value.trim();
+      if (!text) {
+        alert("Não há prescrição para copiar.");
+        return;
+      }
+      copyToClipboard(text);
+    });
+
+    generateHospitalPrescriptionBtn.addEventListener("click", () => {
+      generateHospitalPrescription();
+    });
+
+    copyHospitalPrescriptionBtn.addEventListener("click", () => {
+      const text = hospitalPrescriptionOutput.value.trim();
+      if (!text) {
+        alert("Não há SBAR para copiar.");
+        return;
+      }
+      copyToClipboard(text);
+    });
+
+    printHospitalPrescriptionBtn.addEventListener("click", () => {
+      openPrintWindow("Passagem de Plantão (SBAR)", hospitalPrescriptionOutput.value);
+    });
+
+    updateClassificationsBtn.addEventListener("click", () => {
+      updateClassifications().then(() => updateInteractions()).then(() => updatePresentationsMaxDose());
+    });
+
+    updateRxTypeBtn.addEventListener("click", () => {
+      updateRxTypes().then(() => updateInteractions()).then(() => updatePresentationsMaxDose());
+    });
+
+    if (updateInteractionsBtn) {
+      updateInteractionsBtn.addEventListener("click", () => {
+        updateInteractions();
+      });
+    }
+
+
+    if (updatePresentationsMaxDoseBtn) {
+      updatePresentationsMaxDoseBtn.addEventListener("click", () => {
+        updatePresentationsMaxDose();
+      });
+    }
+
+    if (printPresentationsMaxDoseBtn) {
+      printPresentationsMaxDoseBtn.addEventListener("click", () => {
+        openPrintWindow("Curativos e feridas", presentationsMaxDoseBox ? presentationsMaxDoseBox.textContent : "");
+      });
+    }
+
+
+    if (printInteractionsBtn) {
+      printInteractionsBtn.addEventListener("click", () => {
+        openPrintWindow("Administração segura de medicamentos (registro de enfermagem)", interactionsBox ? interactionsBox.textContent : "");
+      });
+    }
+
+    printRxTypeBtn.addEventListener("click", () => {
+      openPrintWindow("Checklist de segurança do paciente", rxTypeBox ? rxTypeBox.textContent : "");
+    });
+
+    printPregnancyBtn.addEventListener("click", () => {
+      openPrintWindow("SAE (Processo de Enfermagem)", pregnancyBox.textContent);
+    });
+
+    printLactationBtn.addEventListener("click", () => {
+      openPrintWindow("Orientações ao paciente", lactationBox.textContent);
+    });
+
+    medicalDoubtInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        submitMedicalDoubt();
+      }
+    });
+
+    reportRecordBtn.addEventListener("click", () => {
+      if (!reportIsRecording) {
+        startReportRecording();
+      } else {
+        stopReportRecordingAndGenerate();
+      }
+    });
+
+    copyReportBtn.addEventListener("click", () => {
+      const text = reportOutput.value.trim();
+      if (!text) {
+        alert("Não há relatório para copiar.");
+        return;
+      }
+      copyToClipboard(text);
+    });
+
+    printReportBtn.addEventListener("click", () => {
+      openPrintWindow("Relatórios de Enfermagem", reportOutput.value);
+    });
+  </script>
+</body>
+</html>
