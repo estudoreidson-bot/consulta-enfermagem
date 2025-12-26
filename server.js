@@ -10,7 +10,7 @@ const port = process.env.PORT || 3000;
 
 // Configurações básicas
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: "15mb" }));
 
 // Servir o index.html (útil para testes locais)
 app.use(express.static(path.join(__dirname)));
@@ -54,8 +54,9 @@ async function callOpenAIJson(prompt) {
   }
 }
 
-// Função para chamar o modelo com imagem (data URL) e retornar JSON
-async function callOpenAIVisionJson(prompt, imagemDataUrl) {
+
+// Função para chamar o modelo com uma imagem (data URL) + texto
+async function callOpenAIVision(promptText, imageDataUrl) {
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.2,
@@ -63,14 +64,20 @@ async function callOpenAIVisionJson(prompt, imagemDataUrl) {
       {
         role: "user",
         content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: imagemDataUrl } }
+          { type: "text", text: promptText },
+          { type: "image_url", image_url: { url: imageDataUrl } }
         ]
       }
-    ]
+    ],
   });
 
-  const raw = (completion.choices?.[0]?.message?.content || "").trim();
+  const content = completion.choices?.[0]?.message?.content || "";
+  return content.trim();
+}
+
+// Função para obter JSON do modelo (visão) com fallback
+async function callOpenAIVisionJson(promptText, imageDataUrl) {
+  const raw = await callOpenAIVision(promptText, imageDataUrl);
 
   try {
     return JSON.parse(raw);
@@ -81,23 +88,16 @@ async function callOpenAIVisionJson(prompt, imagemDataUrl) {
       const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
       return JSON.parse(jsonSlice);
     }
-    throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
+    throw new Error("Resposta do modelo (visão) não pôde ser convertida em JSON.");
   }
 }
+
 
 // Pequena validação para limitar tamanho e evitar abusos
 function normalizeText(input, maxLen) {
   const s = (typeof input === "string" ? input : "").trim();
   if (!s) return "";
   return s.length > maxLen ? s.slice(0, maxLen) : s;
-}
-
-function normalizeImageDataUrl(input, maxLen) {
-  const s = (typeof input === "string" ? input : "").trim();
-  if (!s) return "";
-  // Aceita apenas data URLs de imagem e limita tamanho para reduzir abuso
-  if (!s.startsWith("data:image/")) return "";
-  return s.length > maxLen ? "" : s;
 }
 
 function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
@@ -714,61 +714,124 @@ Contexto:
 });
 
 
+
+
 // ======================================================================
-// ROTA 4.4 – ANÁLISE DE LESÃO POR FOTO (CURATIVOS E FERIDAS) (NOVA)
+// ROTA 4.35 – CURATIVOS E FERIDAS POR FOTO (NOVA)
 // ======================================================================
 
-app.post("/api/analisar-lesao", async (req, res) => {
+app.post("/api/analisar-lesao-imagem", async (req, res) => {
   try {
-    const { imagem_data_url } = req.body || {};
-    const safeImage = normalizeImageDataUrl(imagem_data_url, 4_000_000); // ~4MB em caracteres
+    const { image_data_url } = req.body || {};
+    const img = typeof image_data_url === "string" ? image_data_url.trim() : "";
 
-    if (!safeImage) {
-      return res.status(400).json({
-        error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
-      });
+    if (!img || !img.startsWith("data:image/")) {
+      return res.status(400).json({ error: "Imagem inválida. Envie uma imagem no formato data URL." });
+    }
+    if (img.length > 12_000_000) {
+      return res.status(413).json({ error: "Imagem muito grande. Envie uma foto menor." });
     }
 
     const prompt = `
-Você é um enfermeiro humano elaborando um REGISTRO DE CURATIVOS E FERIDAS com base em uma foto de lesão.
+Você é um enfermeiro humano. Você recebeu UMA FOTO de uma lesão/ferida/pele.
 
-Tarefa:
-1) Descrever somente características VISÍVEIS e com linguagem prudente (sem inventar).
-2) Recomendar prescrição e cuidados de enfermagem de forma objetiva e segura, aplicável no dia a dia.
-3) Informar sinais de alerta e critérios objetivos para encaminhamento/avaliação médica.
+Objetivo:
+1) Descrever de forma objetiva apenas o que estiver visível na imagem (sem inventar).
+2) Se a imagem não permitir avaliação segura (foco ruim, escura, ângulo inadequado), diga isso e peça nova foto.
+3) Sugerir cuidados de enfermagem e prescrição de curativo de forma segura e geral (limpeza, cobertura, frequência, proteção, controle de exsudato, alívio de pressão quando aplicável), sem inventar medidas.
+4) Incluir sinais de alarme e critérios para encaminhar/escalação.
 
 Regras obrigatórias:
-- Não fazer diagnóstico médico definitivo.
-- Se a imagem estiver insuficiente (iluminação, foco, ângulo), diga "não informado" nos itens que não forem confiáveis.
-- Evitar afirmações absolutas quando houver incerteza.
+- Não invente tamanho, profundidade, estágio, etiologia ou diagnóstico se não for possível afirmar pela imagem.
+- Não afirmar presença/ausência de infecção, isquemia ou necrose sem evidência visual clara; se houver dúvida, declarar dúvida.
+- Evite nomes comerciais e evite prescrever medicamentos sistêmicos.
 - Sem emojis e sem símbolos gráficos.
+- Use "não informado" quando necessário.
 
-Formato de saída: JSON estrito:
+Formato de saída: JSON estrito, sem texto fora do JSON:
 {
-  "caracteristicas": "string",
-  "prescricao_cuidados": "string",
-  "sinais_alarme": "string"
+  "texto": "Texto final pronto para copiar/imprimir."
 }
 
-Orientações esperadas:
-- Incluir higiene/limpeza, cobertura, frequência de troca, proteção da pele perilesional, controle de dor, prevenção de infecção quando aplicável.
-- Se houver suspeita visual de gravidade (necrose extensa, sangramento ativo importante, exposição de estruturas profundas, sinais compatíveis com infecção importante), orientar priorização de avaliação médica.
+No texto final, use esta estrutura:
+- Observações da imagem (somente o visível)
+- Cuidados e prescrição de curativo (itens objetivos)
+- Reavaliação e documentação
+- Sinais de alarme e quando escalar
 `;
 
-    const data = await callOpenAIVisionJson(prompt, safeImage);
-
-    const caracteristicas = typeof data?.caracteristicas === "string" ? data.caracteristicas.trim() : "";
-    const prescricao_cuidados = typeof data?.prescricao_cuidados === "string" ? data.prescricao_cuidados.trim() : "";
-    const sinais_alarme = typeof data?.sinais_alarme === "string" ? data.sinais_alarme.trim() : "";
-
-    return res.json({
-      caracteristicas: caracteristicas || "não informado",
-      prescricao_cuidados: prescricao_cuidados || "não informado",
-      sinais_alarme: sinais_alarme || "não informado"
-    });
+    const data = await callOpenAIVisionJson(prompt, img);
+    const texto = typeof data?.texto === "string" ? data.texto.trim() : "";
+    return res.json({ texto });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao analisar a lesão." });
+    return res.status(500).json({ error: "Falha interna ao analisar a imagem da lesão." });
+  }
+});
+
+
+
+
+// ======================================================================
+// ROTA 4.36 – ADMINISTRAÇÃO SEGURA DE MEDICAMENTOS POR FOTO (NOVA)
+// ======================================================================
+
+app.post("/api/analisar-prescricao-imagem", async (req, res) => {
+  try {
+    const { image_data_url } = req.body || {};
+    const img = typeof image_data_url === "string" ? image_data_url.trim() : "";
+
+    if (!img || !img.startsWith("data:image/")) {
+      return res.status(400).json({ error: "Imagem inválida. Envie uma imagem no formato data URL." });
+    }
+    if (img.length > 12_000_000) {
+      return res.status(413).json({ error: "Imagem muito grande. Envie uma foto menor." });
+    }
+
+    const prompt = `
+Você é um enfermeiro humano. Você recebeu UMA FOTO de uma PRESCRIÇÃO MÉDICA.
+
+Objetivo:
+1) Transcrever apenas o que estiver legível (sem adivinhar). Se estiver ilegível, dizer explicitamente o que não dá para ler.
+2) Organizar os itens prescritos em uma lista: medicamento, dose/concentração, via, frequência/horário e duração, quando constar.
+3) Para cada item, dizer a finalidade habitual (para que serve) de forma geral.
+4) Avaliar riscos e inconsistências relevantes para a enfermagem, com foco em segurança do paciente:
+   - via/forma de administração, diluição/preparo quando NÃO estiver informado,
+   - necessidade de checagens antes de administrar (alergias, sinais vitais, glicemia, função renal/hepática quando pertinente),
+   - medicamentos de alto risco (apontar como "alto risco" quando aplicável),
+   - duplicidades óbvias ou alertas de dose/frequência apenas se estiverem claramente problemáticos na própria prescrição.
+5) Interações medicamentosas:
+   - Só citar interações quando houver alta confiança e relevância clínica.
+   - Se não for possível confirmar com segurança, escrever "não foi possível confirmar interações com segurança apenas pela imagem, sem histórico e sem base de dados".
+6) Preparo/diluição:
+   - Se a prescrição NÃO informar diluição, volume final, diluente, velocidade de infusão ou compatibilidades, escrever "não informado" e orientar a consultar protocolo institucional/bula e farmácia.
+   - NÃO inventar diluições.
+
+Regras obrigatórias:
+- Não invente nomes, doses, vias ou horários.
+- Sem emojis e sem símbolos gráficos.
+- Se estiver faltando dado crítico para administração segura, sinalizar como "pendência" e orientar a esclarecer antes de administrar.
+
+Formato de saída: JSON estrito, sem texto fora do JSON:
+{
+  "texto": "Texto final pronto para copiar/imprimir."
+}
+
+No texto final, use esta estrutura:
+- Prescrição transcrita (apenas o que estiver legível)
+- Medicamentos identificados e finalidade habitual
+- Pontos de atenção, riscos e pendências para enfermagem
+- Interações medicamentosas (se possível confirmar)
+- Administração e preparo (o que está informado e o que não está informado)
+- Conclusão de segurança (se pode administrar agora ou se deve esclarecer pendências)
+`;
+
+    const data = await callOpenAIVisionJson(prompt, img);
+    const texto = typeof data?.texto === "string" ? data.texto.trim() : "";
+    return res.json({ texto });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao analisar a prescrição." });
   }
 });
 
