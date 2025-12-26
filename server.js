@@ -54,11 +54,50 @@ async function callOpenAIJson(prompt) {
   }
 }
 
+// Função para chamar o modelo com imagem (data URL) e retornar JSON
+async function callOpenAIVisionJson(prompt, imagemDataUrl) {
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    temperature: 0.2,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: imagemDataUrl } }
+        ]
+      }
+    ]
+  });
+
+  const raw = (completion.choices?.[0]?.message?.content || "").trim();
+
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    const firstBrace = raw.indexOf("{");
+    const lastBrace = raw.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
+      return JSON.parse(jsonSlice);
+    }
+    throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
+  }
+}
+
 // Pequena validação para limitar tamanho e evitar abusos
 function normalizeText(input, maxLen) {
   const s = (typeof input === "string" ? input : "").trim();
   if (!s) return "";
   return s.length > maxLen ? s.slice(0, maxLen) : s;
+}
+
+function normalizeImageDataUrl(input, maxLen) {
+  const s = (typeof input === "string" ? input : "").trim();
+  if (!s) return "";
+  // Aceita apenas data URLs de imagem e limita tamanho para reduzir abuso
+  if (!s.startsWith("data:image/")) return "";
+  return s.length > maxLen ? "" : s;
 }
 
 function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
@@ -671,6 +710,65 @@ Contexto:
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "Falha interna ao gerar a classificação de risco." });
+  }
+});
+
+
+// ======================================================================
+// ROTA 4.4 – ANÁLISE DE LESÃO POR FOTO (CURATIVOS E FERIDAS) (NOVA)
+// ======================================================================
+
+app.post("/api/analisar-lesao", async (req, res) => {
+  try {
+    const { imagem_data_url } = req.body || {};
+    const safeImage = normalizeImageDataUrl(imagem_data_url, 4_000_000); // ~4MB em caracteres
+
+    if (!safeImage) {
+      return res.status(400).json({
+        error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
+      });
+    }
+
+    const prompt = `
+Você é um enfermeiro humano elaborando um REGISTRO DE CURATIVOS E FERIDAS com base em uma foto de lesão.
+
+Tarefa:
+1) Descrever somente características VISÍVEIS e com linguagem prudente (sem inventar).
+2) Recomendar prescrição e cuidados de enfermagem de forma objetiva e segura, aplicável no dia a dia.
+3) Informar sinais de alerta e critérios objetivos para encaminhamento/avaliação médica.
+
+Regras obrigatórias:
+- Não fazer diagnóstico médico definitivo.
+- Se a imagem estiver insuficiente (iluminação, foco, ângulo), diga "não informado" nos itens que não forem confiáveis.
+- Evitar afirmações absolutas quando houver incerteza.
+- Sem emojis e sem símbolos gráficos.
+
+Formato de saída: JSON estrito:
+{
+  "caracteristicas": "string",
+  "prescricao_cuidados": "string",
+  "sinais_alarme": "string"
+}
+
+Orientações esperadas:
+- Incluir higiene/limpeza, cobertura, frequência de troca, proteção da pele perilesional, controle de dor, prevenção de infecção quando aplicável.
+- Se houver suspeita visual de gravidade (necrose extensa, sangramento ativo importante, exposição de estruturas profundas, sinais compatíveis com infecção importante), orientar priorização de avaliação médica.
+`;
+
+    const data = await callOpenAIVisionJson(prompt, safeImage);
+
+    const caracteristicas = typeof data?.caracteristicas === "string" ? data.caracteristicas.trim() : "";
+    const prescricao_cuidados = typeof data?.prescricao_cuidados === "string" ? data.prescricao_cuidados.trim() : "";
+    const sinais_alarme = typeof data?.sinais_alarme === "string" ? data.sinais_alarme.trim() : "";
+
+    return res.json({
+      caracteristicas: caracteristicas || "não informado",
+      prescricao_cuidados: prescricao_cuidados || "não informado",
+      sinais_alarme: sinais_alarme || "não informado"
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao analisar a lesão." });
   }
 });
 

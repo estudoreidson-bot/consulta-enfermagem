@@ -264,15 +264,20 @@
     #copyHospitalPrescriptionBtn,
     #printHospitalPrescriptionBtn,
     #generateHospitalPrescriptionBtn,
-    #updateClassificationsBtn,
+    #copyRiskTriageBtn,
+    #printRiskTriageBtn,
+    #copyPregnancyBtn,
     #printPregnancyBtn,
+    #copyLactationBtn,
     #printLactationBtn,
     #updateRxTypeBtn,
     #printRxTypeBtn,
     #copyFullSoapBtn,
     #printSoapBtn,
     #updateInteractionsBtn,
-    #printInteractionsBtn
+    #printInteractionsBtn,
+    #copyWoundCareBtn,
+    #printWoundCareBtn
 {
       padding: 8px 18px;
       border-radius: 20px;
@@ -286,15 +291,20 @@
     #copyHospitalPrescriptionBtn:hover,
     #printHospitalPrescriptionBtn:hover,
     #generateHospitalPrescriptionBtn:hover,
-    #updateClassificationsBtn:hover,
+    #copyRiskTriageBtn:hover,
+    #printRiskTriageBtn:hover,
+    #copyPregnancyBtn:hover,
     #printPregnancyBtn:hover,
+    #copyLactationBtn:hover,
     #printLactationBtn:hover,
     #updateRxTypeBtn:hover,
     #printRxTypeBtn:hover,
     #copyFullSoapBtn:hover,
     #printSoapBtn:hover,
     #updateInteractionsBtn:hover,
-    #printInteractionsBtn:hover
+    #printInteractionsBtn:hover,
+    #copyWoundCareBtn:hover,
+    #printWoundCareBtn:hover
 {
       background: #e6f2f5;
     }
@@ -574,6 +584,24 @@
     .small-record-btn:active {
       transform: scale(0.98);
     }
+
+    .danger-btn {
+      padding: 10px 16px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      color: #fff;
+      background: #dc3545;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .danger-btn:hover {
+      background: #c82333;
+    }
+    .danger-btn:active {
+      transform: scale(0.98);
+    }
     .report-actions {
       margin-top: 10px;
       display: flex;
@@ -754,7 +782,7 @@
         <div id="riskTriageLegend" class="risk-legend"></div>
       </div>
       <div class="prescription-actions">
-        <button id="updateRiskTriageBtn">Atualizar classificação de risco</button>
+        <button id="copyRiskTriageBtn">Copiar Classificação de risco</button>
         <button id="printRiskTriageBtn">Imprimir classificação de risco</button>
       </div>
       <div id="riskTriageStatus" class="mini-status"></div>
@@ -762,13 +790,14 @@
       <h2>SAE (Processo de Enfermagem)</h2>
       <div id="pregnancyBox" class="classification-box">Nenhum conteúdo disponível.</div>
       <div class="prescription-actions">
-        <button id="updateClassificationsBtn">Atualizar classificação</button>
+        <button id="copyPregnancyBtn">Copiar SAE</button>
         <button id="printPregnancyBtn">Imprimir SAE</button>
       </div>
 
       <h2>Orientações ao paciente</h2>
       <div id="lactationBox" class="classification-box">Nenhum conteúdo disponível.</div>
       <div class="prescription-actions">
+        <button id="copyLactationBtn">Copiar orientações</button>
         <button id="printLactationBtn">Imprimir orientações</button>
       </div>
 
@@ -790,8 +819,10 @@
       <h2>Curativos e feridas</h2>
       <div id="presentationsMaxDoseBox" class="classification-box">Nenhum conteúdo disponível.</div>
       <div class="prescription-actions">
-        <button id="updatePresentationsMaxDoseBtn">Atualizar curativos</button>
-        <button id="printPresentationsMaxDoseBtn">Imprimir curativos</button>
+        <button id="woundPhotoBtn" class="danger-btn">Tirar foto</button>
+        <button id="copyWoundCareBtn">Copiar prescrição e cuidados</button>
+        <button id="printWoundCareBtn">Imprimir prescrição e cuidados</button>
+        <input id="woundPhotoInput" type="file" accept="image/*" capture="environment" style="display:none;" />
       </div>
       <div id="presentationsMaxDoseStatus" class="mini-status"></div>
 
@@ -910,7 +941,7 @@
     const riskTriageBadge = document.getElementById("riskTriageBadge");
     const riskTriageMeaning = document.getElementById("riskTriageMeaning");
     const riskTriageLegend = document.getElementById("riskTriageLegend");
-    const updateRiskTriageBtn = document.getElementById("updateRiskTriageBtn");
+    const copyRiskTriageBtn = document.getElementById("copyRiskTriageBtn");
     const printRiskTriageBtn = document.getElementById("printRiskTriageBtn");
     const riskTriageStatus = document.getElementById("riskTriageStatus");
     const rxTypeBox = document.getElementById("rxTypeBox");
@@ -923,11 +954,14 @@
     const printInteractionsBtn = document.getElementById("printInteractionsBtn");
     const interactionsStatus = document.getElementById("interactionsStatus");
     const presentationsMaxDoseBox = document.getElementById("presentationsMaxDoseBox");
-    const updatePresentationsMaxDoseBtn = document.getElementById("updatePresentationsMaxDoseBtn");
-    const printPresentationsMaxDoseBtn = document.getElementById("printPresentationsMaxDoseBtn");
+    const woundPhotoBtn = document.getElementById("woundPhotoBtn");
+    const woundPhotoInput = document.getElementById("woundPhotoInput");
+    const copyWoundCareBtn = document.getElementById("copyWoundCareBtn");
+    const printWoundCareBtn = document.getElementById("printWoundCareBtn");
     const presentationsMaxDoseStatus = document.getElementById("presentationsMaxDoseStatus");
 
-    const updateClassificationsBtn = document.getElementById("updateClassificationsBtn");
+    const copyPregnancyBtn = document.getElementById("copyPregnancyBtn");
+    const copyLactationBtn = document.getElementById("copyLactationBtn");
     const classificationsStatus = document.getElementById("classificationsStatus");
     const printPregnancyBtn = document.getElementById("printPregnancyBtn");
     const printLactationBtn = document.getElementById("printLactationBtn");
@@ -1255,8 +1289,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         await updateRxTypes();
         await updateRiskTriage();
         await updateInteractions();
-              await updatePresentationsMaxDose();
-} catch (e) {
+      } catch (e) {
         console.error(e);
         soapError.textContent = "Erro ao gerar evolução e plano de cuidados (falha de rede ou backend).";
         micStatus.innerText = "Falha ao gerar o resumo.";
@@ -1709,8 +1742,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         await updateRxTypes();
         await updateRiskTriage();
         await updateInteractions();
-              await updatePresentationsMaxDose();
-} catch (e) {
+      } catch (e) {
         console.error(e);
         soapError.textContent =
           "Erro ao gerar evolução e plano de cuidados (falha de rede ou backend).";
@@ -1902,6 +1934,71 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       } catch (e) {
         console.error(e);
         presentationsMaxDoseBox.textContent = "Falha ao gerar curativos (rede/backend).";
+      } finally {
+        presentationsMaxDoseStatus.classList.remove("loading-dot");
+        presentationsMaxDoseStatus.textContent = "";
+      }
+    }
+
+    // ============================
+    // MÓDULO: Curativos e feridas por foto (NOVO)
+    // ============================
+    let lastWoundCareText = "";
+
+    function formatWoundCareResult(data) {
+      const caracteristicas = String(data?.caracteristicas || "").trim();
+      const prescricao = String(data?.prescricao_cuidados || "").trim();
+      const sinais = String(data?.sinais_alarme || "").trim();
+
+      const parts = [];
+      parts.push("Curativos e feridas");
+      parts.push("");
+      parts.push("Características observadas:");
+      parts.push(caracteristicas || "não informado");
+      parts.push("");
+      parts.push("Prescrição e cuidados de enfermagem:");
+      parts.push(prescricao || "não informado");
+      parts.push("");
+      parts.push("Sinais de alerta e critérios de encaminhamento:");
+      parts.push(sinais || "não informado");
+      return parts.join("\n").trim();
+    }
+
+    async function analyzeWoundFromPhotoDataUrl(dataUrl) {
+      if (!presentationsMaxDoseBox || !presentationsMaxDoseStatus) return;
+
+      const img = String(dataUrl || "").trim();
+      if (!img.startsWith("data:image/")) {
+        presentationsMaxDoseBox.textContent = "Falha ao ler a imagem. Tente novamente.";
+        return;
+      }
+
+      presentationsMaxDoseStatus.textContent = "Analisando a foto da lesão e gerando prescrição e cuidados...";
+      presentationsMaxDoseStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/analisar-lesao", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imagem_data_url: img })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP:", resp.status, txt);
+          presentationsMaxDoseBox.textContent = "Falha ao analisar a lesão. Verifique o backend e tente novamente.";
+          lastWoundCareText = "";
+          return;
+        }
+
+        const data = await resp.json().catch(() => ({}));
+        const text = formatWoundCareResult(data);
+        lastWoundCareText = text;
+        presentationsMaxDoseBox.textContent = text || "Nenhum conteúdo disponível.";
+      } catch (e) {
+        console.error(e);
+        presentationsMaxDoseBox.textContent = "Falha ao analisar a lesão (rede/backend).";
+        lastWoundCareText = "";
       } finally {
         presentationsMaxDoseStatus.classList.remove("loading-dot");
         presentationsMaxDoseStatus.textContent = "";
@@ -2905,17 +3002,18 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       openPrintWindow("Passagem de Plantão (SBAR)", hospitalPrescriptionOutput.value);
     });
 
-    updateClassificationsBtn.addEventListener("click", () => {
-      updateClassifications().then(() => updateRiskTriage()).then(() => updateInteractions()).then(() => updatePresentationsMaxDose());
-    });
-
     updateRxTypeBtn.addEventListener("click", () => {
-      updateRxTypes().then(() => updateRiskTriage()).then(() => updateInteractions()).then(() => updatePresentationsMaxDose());
+      updateRxTypes().then(() => updateRiskTriage()).then(() => updateInteractions());
     });
 
-    if (updateRiskTriageBtn) {
-      updateRiskTriageBtn.addEventListener("click", () => {
-        updateRiskTriage();
+    if (copyRiskTriageBtn) {
+      copyRiskTriageBtn.addEventListener("click", () => {
+        const text = (riskTriageMeaning && riskTriageMeaning.dataset && riskTriageMeaning.dataset.printText) ? riskTriageMeaning.dataset.printText : "";
+        if (!text.trim()) {
+          alert("Não há classificação de risco para copiar.");
+          return;
+        }
+        copyToClipboard(text);
       });
     }
 
@@ -2934,15 +3032,49 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     }
 
 
-    if (updatePresentationsMaxDoseBtn) {
-      updatePresentationsMaxDoseBtn.addEventListener("click", () => {
-        updatePresentationsMaxDose();
+
+    if (woundPhotoBtn && woundPhotoInput) {
+      woundPhotoBtn.addEventListener("click", () => {
+        woundPhotoInput.value = "";
+        woundPhotoInput.click();
+      });
+
+      woundPhotoInput.addEventListener("change", () => {
+        const file = woundPhotoInput.files && woundPhotoInput.files[0];
+        if (!file) return;
+
+        if (!file.type || !file.type.startsWith("image/")) {
+          alert("O arquivo selecionado não é uma imagem.");
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = String(reader.result || "");
+          analyzeWoundFromPhotoDataUrl(dataUrl);
+        };
+        reader.onerror = () => {
+          alert("Falha ao ler a imagem. Tente novamente.");
+        };
+        reader.readAsDataURL(file);
       });
     }
 
-    if (printPresentationsMaxDoseBtn) {
-      printPresentationsMaxDoseBtn.addEventListener("click", () => {
-        openPrintWindow("Curativos e feridas", presentationsMaxDoseBox ? presentationsMaxDoseBox.textContent : "");
+    if (copyWoundCareBtn) {
+      copyWoundCareBtn.addEventListener("click", () => {
+        const text = String(lastWoundCareText || presentationsMaxDoseBox?.textContent || "").trim();
+        if (!text) {
+          alert("Não há prescrição e cuidados para copiar.");
+          return;
+        }
+        copyToClipboard(text);
+      });
+    }
+
+    if (printWoundCareBtn) {
+      printWoundCareBtn.addEventListener("click", () => {
+        const text = String(lastWoundCareText || presentationsMaxDoseBox?.textContent || "");
+        openPrintWindow("Curativos e feridas", text);
       });
     }
 
@@ -2961,9 +3093,31 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       openPrintWindow("SAE (Processo de Enfermagem)", pregnancyBox.textContent);
     });
 
+    if (copyPregnancyBtn) {
+      copyPregnancyBtn.addEventListener("click", () => {
+        const text = String(pregnancyBox?.textContent || "").trim();
+        if (!text) {
+          alert("Não há SAE para copiar.");
+          return;
+        }
+        copyToClipboard(text);
+      });
+    }
+
     printLactationBtn.addEventListener("click", () => {
       openPrintWindow("Orientações ao paciente", lactationBox.textContent);
     });
+
+    if (copyLactationBtn) {
+      copyLactationBtn.addEventListener("click", () => {
+        const text = String(lactationBox?.textContent || "").trim();
+        if (!text) {
+          alert("Não há orientações para copiar.");
+          return;
+        }
+        copyToClipboard(text);
+      });
+    }
 
     medicalDoubtInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
