@@ -43,6 +43,66 @@
       max-width: 420px;
       margin-top: 10px;
     }
+
+    .live-guidance {
+      width: 100%;
+      background: #f9fbff;
+      border: 1px solid #d7e6ff;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+    .live-guidance-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .live-guidance-title {
+      font-weight: bold;
+      font-size: 13px;
+      color: #0c5460;
+      margin: 0;
+    }
+    .live-guidance-context {
+      font-size: 12px;
+      color: #555;
+      text-align: right;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 55%;
+    }
+    .live-guidance-status {
+      font-size: 12px;
+      color: #555;
+      margin: 0 0 8px 0;
+      min-height: 16px;
+    }
+    .live-guidance-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .live-guidance-item {
+      background: #ffffff;
+      border-radius: 10px;
+      border: 1px solid #e4eefc;
+      padding: 8px;
+      font-size: 13px;
+      line-height: 1.35;
+      color: #1f2937;
+    }
+    .live-guidance-empty {
+      font-size: 12px;
+      color: #666;
+      background: #ffffff;
+      border-radius: 10px;
+      border: 1px dashed #c8d8f5;
+      padding: 8px;
+    }
     #recordBtn {
       width: 180px;
       height: 180px;
@@ -516,6 +576,17 @@
     <h1>Atendimento de Enfermagem</h1>
 
     <div class="center-card">
+      <div id="liveGuidance" class="live-guidance">
+        <div class="live-guidance-header">
+          <p class="live-guidance-title">Perguntas e procedimentos essenciais</p>
+          <p id="liveGuidanceContext" class="live-guidance-context"></p>
+        </div>
+        <p id="liveGuidanceStatus" class="live-guidance-status">Inicie o atendimento para receber perguntas e procedimentos necessários em tempo real.</p>
+        <div id="liveGuidanceList" class="live-guidance-list">
+          <div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>
+        </div>
+      </div>
+
       <button id="recordBtn" class="start">Iniciar atendimento</button>
 
       <p id="startNotice">
@@ -716,6 +787,17 @@
     let accumulatedSeconds = 0;
     let currentSoapRaw = "";
 
+    // ============================
+    // MÓDULO: Perguntas e procedimentos essenciais em tempo real (NOVO)
+    // ============================
+    let interimTranscript = "";
+    let guidanceInFlight = false;
+    let guidanceLastSentAt = 0;
+    let guidanceLastSentHash = "";
+    let guidanceContextLabel = "";
+    let guidanceItems = [];
+    let guidanceLoopTimer = null;
+
     const recordBtn = document.getElementById("recordBtn");
     const pauseBtn = document.getElementById("pauseBtn");
     const timerEl = document.getElementById("timer");
@@ -723,6 +805,11 @@
     const resultsCard = document.getElementById("resultsCard");
     const soapError = document.getElementById("soapError");
     const printBtn = document.getElementById("printBtn");
+
+    const liveGuidance = document.getElementById("liveGuidance");
+    const liveGuidanceContext = document.getElementById("liveGuidanceContext");
+    const liveGuidanceStatus = document.getElementById("liveGuidanceStatus");
+    const liveGuidanceList = document.getElementById("liveGuidanceList");
 
     const soapS = document.getElementById("soapS");
     const soapO = document.getElementById("soapO");
@@ -1093,6 +1180,147 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         .replace(/>/g, "&gt;");
     }
 
+    // ============================
+    // Perguntas e procedimentos essenciais em tempo real (UI + chamadas backend)
+    // ============================
+    function renderLiveGuidance() {
+      if (!liveGuidance || !liveGuidanceList || !liveGuidanceStatus || !liveGuidanceContext) return;
+
+      if (!isRecording) {
+        liveGuidanceContext.textContent = "";
+        liveGuidanceStatus.textContent = "Inicie o atendimento para receber perguntas e procedimentos necessários em tempo real.";
+        liveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma sugestão por enquanto.</div>";
+        return;
+      }
+
+      const ctx = (guidanceContextLabel || "").trim();
+      liveGuidanceContext.textContent = ctx ? ("Atendimento: " + ctx) : "";
+
+      if (guidanceItems && guidanceItems.length) {
+        liveGuidanceStatus.textContent = "Sugestões essenciais em tempo real (as já respondidas desaparecem automaticamente).";
+        liveGuidanceList.innerHTML = "";
+        guidanceItems.forEach((txt) => {
+          const div = document.createElement("div");
+          div.className = "live-guidance-item";
+          div.textContent = String(txt || "").trim();
+          liveGuidanceList.appendChild(div);
+        });
+        return;
+      }
+
+      liveGuidanceStatus.textContent = "Nenhuma pergunta/procedimento adicional necessário no momento.";
+      liveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Siga a conversa normalmente. Novas sugestões podem aparecer conforme surgirem lacunas.</div>";
+    }
+
+    function resetLiveGuidanceState() {
+      interimTranscript = "";
+      guidanceInFlight = false;
+      guidanceLastSentAt = 0;
+      guidanceLastSentHash = "";
+      guidanceContextLabel = "";
+      guidanceItems = [];
+      if (guidanceLoopTimer) {
+        clearInterval(guidanceLoopTimer);
+        guidanceLoopTimer = null;
+      }
+      renderLiveGuidance();
+    }
+
+    function getPartialTranscriptForGuidance() {
+      const combined = ((finalTranscript || "") + " " + (interimTranscript || "")).trim();
+      if (!combined) return "";
+      // Mantém só a parte final para reduzir custo e latência
+      const MAX = 6000;
+      return combined.length > MAX ? combined.slice(combined.length - MAX) : combined;
+    }
+
+    function hashForGuidance(text) {
+      const t = String(text || "").toLowerCase();
+      if (!t) return "";
+      // Hash simples baseado no final do texto (suficiente para evitar chamadas repetidas)
+      const tail = t.slice(-700);
+      return String(t.length) + "::" + tail;
+    }
+
+    async function requestLiveGuidanceUpdate(force) {
+      if (!isRecording || isPaused) return;
+      if (guidanceInFlight) return;
+
+      const partial = getPartialTranscriptForGuidance();
+      if (!partial || partial.length < 50) {
+        guidanceContextLabel = "";
+        guidanceItems = [];
+        renderLiveGuidance();
+        return;
+      }
+
+      const now = Date.now();
+      const h = hashForGuidance(partial);
+
+      // Evita spam de chamadas
+      if (!force) {
+        if (now - guidanceLastSentAt < 3500) return;
+        if (h === guidanceLastSentHash && now - guidanceLastSentAt < 15000) return;
+      }
+
+      guidanceInFlight = true;
+      guidanceLastSentAt = now;
+      guidanceLastSentHash = h;
+
+      if (liveGuidanceStatus) {
+        liveGuidanceStatus.textContent = "Identificando o atendimento e gerando perguntas/procedimentos essenciais...";
+        liveGuidanceStatus.classList.add("loading-dot");
+      }
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/guia-tempo-real", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            transcricao: partial,
+            itens_atuais: Array.isArray(guidanceItems) ? guidanceItems : []
+          })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (guia em tempo real):", resp.status, txt);
+          return;
+        }
+
+        const data = await resp.json().catch(() => ({}));
+        const ctx = (typeof data?.contexto === "string") ? data.contexto.trim() : "";
+        const itens = Array.isArray(data?.itens) ? data.itens : [];
+
+        guidanceContextLabel = ctx;
+        guidanceItems = itens.map(x => String(x || "").trim()).filter(Boolean).slice(0, 5);
+      } catch (e) {
+        console.error("Erro ao atualizar guia em tempo real:", e);
+      } finally {
+        guidanceInFlight = false;
+        if (liveGuidanceStatus) liveGuidanceStatus.classList.remove("loading-dot");
+        renderLiveGuidance();
+      }
+    }
+
+    function startGuidanceLoop() {
+      if (guidanceLoopTimer) clearInterval(guidanceLoopTimer);
+      guidanceLoopTimer = setInterval(() => {
+        requestLiveGuidanceUpdate(false);
+      }, 4000);
+
+      // Primeira tentativa logo no início
+      requestLiveGuidanceUpdate(true);
+    }
+
+    function stopGuidanceLoop() {
+      if (guidanceLoopTimer) {
+        clearInterval(guidanceLoopTimer);
+        guidanceLoopTimer = null;
+      }
+      if (liveGuidanceStatus) liveGuidanceStatus.classList.remove("loading-dot");
+    }
+
     function initSpeech() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) {
@@ -1106,12 +1334,19 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       recognition.interimResults = true;
 
       recognition.onresult = (event) => {
+        let interim = "";
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             finalTranscript += transcript + " ";
+          } else {
+            interim += transcript;
           }
         }
+
+        interimTranscript = interim.trim();
+        // Atualiza perguntas/procedimentos em tempo real sem atrapalhar a gravação
+        requestLiveGuidanceUpdate(false);
       };
 
       recognition.onerror = (event) => {
@@ -1764,6 +1999,10 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       soapError.textContent = "";
       resultsCard.classList.add("hidden");
 
+      resetLiveGuidanceState();
+      renderLiveGuidance();
+      startGuidanceLoop();
+
       resetTimer();
       startTimer();
 
@@ -1777,6 +2016,11 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     function stopRecording() {
       isRecording = false;
       isPaused = false;
+
+      stopGuidanceLoop();
+      interimTranscript = "";
+      renderLiveGuidance();
+
       if (recognition) {
         try {
           recognition.stop();
@@ -1793,6 +2037,10 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     function pauseRecording() {
       if (!isRecording || isPaused) return;
       isPaused = true;
+
+      stopGuidanceLoop();
+      if (liveGuidanceStatus) liveGuidanceStatus.textContent = "Consulta pausada. As sugestões em tempo real serão retomadas ao retomar a gravação.";
+
       if (recognition) {
         try {
           recognition.stop();
@@ -1808,6 +2056,9 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     function resumeRecording() {
       if (!isRecording || !isPaused) return;
       isPaused = false;
+
+      startGuidanceLoop();
+
       if (recognition) {
         try {
           recognition.start();

@@ -234,6 +234,66 @@ SOAP:
 
 
 
+// ======================================================================
+// ROTA 2.0 – GUIA EM TEMPO REAL (PERGUNTAS/PROCEDIMENTOS ESSENCIAIS)
+// ======================================================================
+
+app.post("/api/guia-tempo-real", async (req, res) => {
+  try {
+    const { transcricao, itens_atuais } = req.body || {};
+
+    const safeTranscricao = normalizeText(transcricao || "", 6000);
+    const safeItensAtuais = normalizeArrayOfStrings(itens_atuais, 8, 220);
+
+    if (!safeTranscricao) {
+      return res.json({ contexto: "", itens: [] });
+    }
+
+    const itensText = safeItensAtuais.length
+      ? safeItensAtuais.map((x, i) => `${i + 1}) ${x}`).join("\n")
+      : "(nenhum)";
+
+    const prompt = `
+Você é um enfermeiro humano e experiente, guiando um atendimento em tempo real com base na transcrição parcial de uma conversa enfermeiro-paciente (português do Brasil).
+
+Objetivo:
+1) Identificar, de forma provável, qual o tipo de atendimento que está sendo realizado (ex.: dor torácica, febre, ferida/curativo, dispneia, hipertensão, glicemia alterada, cefaleia, vômitos/diarreia, saúde mental, gestante, pediatria etc.).
+2) Gerar somente perguntas e procedimentos ESSENCIAIS (mínimo necessário) que aumentem a qualidade e a segurança do atendimento, evitando qualquer item redundante ou sem necessidade.
+3) Atualizar a lista de itens pendentes: se uma pergunta/procedimento já foi abordado na conversa, ele deve desaparecer; se houver nova lacuna relevante, pode incluir um novo item, mantendo no máximo 5 itens no total.
+
+Regras obrigatórias:
+- Sem emojis e sem símbolos gráficos.
+- Não invente dados.
+- Itens devem ser curtos e acionáveis.
+- Não faça diagnóstico médico definitivo.
+- Se o contexto ainda estiver incerto, retorne contexto vazio e no máximo 2 itens gerais (ex.: sinais vitais, sinais de alarme) apenas se realmente necessários.
+
+Formato de saída: JSON estrito, sem texto fora do JSON:
+{
+  "contexto": "string curta (ou vazio se incerto)",
+  "itens": ["item 1", "item 2", "..."]
+}
+
+Itens pendentes atuais:
+${itensText}
+
+Transcrição parcial:
+"""${safeTranscricao}"""
+`;
+
+    const data = await callOpenAIJson(prompt);
+    const contexto = typeof data?.contexto === "string" ? data.contexto.trim() : "";
+    const itens = normalizeArrayOfStrings(data?.itens, 5, 240);
+
+    return res.json({ contexto, itens });
+  } catch (e) {
+    console.error(e);
+    return res.json({ contexto: "", itens: [] });
+  }
+});
+
+
+
 
 // ======================================================================
 // ROTA 2.1 – ATUALIZAR SOAP E PRESCRIÇÃO A PARTIR DE PERGUNTAS/RESPOSTAS
