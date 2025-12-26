@@ -234,66 +234,6 @@ SOAP:
 
 
 
-// ======================================================================
-// ROTA 2.0 – GUIA EM TEMPO REAL (PERGUNTAS/PROCEDIMENTOS ESSENCIAIS)
-// ======================================================================
-
-app.post("/api/guia-tempo-real", async (req, res) => {
-  try {
-    const { transcricao, itens_atuais } = req.body || {};
-
-    const safeTranscricao = normalizeText(transcricao || "", 6000);
-    const safeItensAtuais = normalizeArrayOfStrings(itens_atuais, 8, 220);
-
-    if (!safeTranscricao) {
-      return res.json({ contexto: "", itens: [] });
-    }
-
-    const itensText = safeItensAtuais.length
-      ? safeItensAtuais.map((x, i) => `${i + 1}) ${x}`).join("\n")
-      : "(nenhum)";
-
-    const prompt = `
-Você é um enfermeiro humano e experiente, guiando um atendimento em tempo real com base na transcrição parcial de uma conversa enfermeiro-paciente (português do Brasil).
-
-Objetivo:
-1) Identificar, de forma provável, qual o tipo de atendimento que está sendo realizado (ex.: dor torácica, febre, ferida/curativo, dispneia, hipertensão, glicemia alterada, cefaleia, vômitos/diarreia, saúde mental, gestante, pediatria etc.).
-2) Gerar somente perguntas e procedimentos ESSENCIAIS (mínimo necessário) que aumentem a qualidade e a segurança do atendimento, evitando qualquer item redundante ou sem necessidade.
-3) Atualizar a lista de itens pendentes: se uma pergunta/procedimento já foi abordado na conversa, ele deve desaparecer; se houver nova lacuna relevante, pode incluir um novo item, mantendo no máximo 5 itens no total.
-
-Regras obrigatórias:
-- Sem emojis e sem símbolos gráficos.
-- Não invente dados.
-- Itens devem ser curtos e acionáveis.
-- Não faça diagnóstico médico definitivo.
-- Se o contexto ainda estiver incerto, retorne contexto vazio e no máximo 2 itens gerais (ex.: sinais vitais, sinais de alarme) apenas se realmente necessários.
-
-Formato de saída: JSON estrito, sem texto fora do JSON:
-{
-  "contexto": "string curta (ou vazio se incerto)",
-  "itens": ["item 1", "item 2", "..."]
-}
-
-Itens pendentes atuais:
-${itensText}
-
-Transcrição parcial:
-"""${safeTranscricao}"""
-`;
-
-    const data = await callOpenAIJson(prompt);
-    const contexto = typeof data?.contexto === "string" ? data.contexto.trim() : "";
-    const itens = normalizeArrayOfStrings(data?.itens, 5, 240);
-
-    return res.json({ contexto, itens });
-  } catch (e) {
-    console.error(e);
-    return res.json({ contexto: "", itens: [] });
-  }
-});
-
-
-
 
 // ======================================================================
 // ROTA 2.1 – ATUALIZAR SOAP E PRESCRIÇÃO A PARTIR DE PERGUNTAS/RESPOSTAS
@@ -643,6 +583,96 @@ Fala:
 });
 
 
+
+
+
+
+// ======================================================================
+// ROTA 4.3 – CLASSIFICAÇÃO DE RISCO POR CORES (NOVA)
+// ======================================================================
+
+app.post("/api/classificacao-risco", async (req, res) => {
+  try {
+    const { contexto } = req.body || {};
+    if (!contexto || !String(contexto).trim()) {
+      return res.json({
+        cor: "Não informado",
+        significado: "Sem dados suficientes para classificar.",
+        legenda: [
+          { cor: "Vermelho", significado: "Emergência. Atendimento imediato." },
+          { cor: "Laranja", significado: "Muito urgente. Prioridade alta de atendimento." },
+          { cor: "Amarelo", significado: "Urgente. Necessita avaliação em curto prazo." },
+          { cor: "Verde", significado: "Pouco urgente. Pode aguardar com segurança, mantendo reavaliação se piora." },
+          { cor: "Azul", significado: "Não urgente. Caso de baixa gravidade, orientar e agendar conforme necessidade." }
+        ]
+      });
+    }
+
+    const safeContexto = normalizeText(contexto, 25000);
+
+    const prompt = `
+Você é um enfermeiro humano realizando CLASSIFICAÇÃO DE RISCO por cores com base no contexto do atendimento (transcrição + SOAP + conduta).
+
+Tarefa:
+1) Escolher UMA cor entre: Vermelho, Laranja, Amarelo, Verde, Azul.
+2) Explicar de forma curta o significado da cor escolhida para priorização do atendimento.
+3) Sempre devolver também uma legenda com o significado de cada cor.
+
+Regras obrigatórias:
+- Não invente sinais vitais, sintomas ou exames. Use apenas o que estiver no contexto.
+- Se o contexto estiver insuficiente para classificar com segurança, retorne "Não informado" e explique que faltam dados críticos.
+- Sem emojis e sem símbolos gráficos.
+- Não fazer diagnóstico médico definitivo.
+
+Formato de saída: JSON estrito, sem texto fora do JSON:
+{
+  "cor": "Vermelho|Laranja|Amarelo|Verde|Azul|Não informado",
+  "significado": "string curta",
+  "legenda": [
+    { "cor": "Vermelho", "significado": "..." },
+    { "cor": "Laranja", "significado": "..." },
+    { "cor": "Amarelo", "significado": "..." },
+    { "cor": "Verde", "significado": "..." },
+    { "cor": "Azul", "significado": "..." }
+  ]
+}
+
+Contexto:
+\"\"\"${safeContexto}\"\"\"
+`;
+
+    const data = await callOpenAIJson(prompt);
+
+    const cor = typeof data?.cor === "string" ? data.cor.trim() : "Não informado";
+    const significado = typeof data?.significado === "string" ? data.significado.trim() : "";
+    const legendaRaw = Array.isArray(data?.legenda) ? data.legenda : [];
+
+    const legenda = legendaRaw
+      .map((x) => ({
+        cor: normalizeText(x?.cor || "", 30),
+        significado: normalizeText(x?.significado || "", 220)
+      }))
+      .filter((x) => x.cor && x.significado)
+      .slice(0, 5);
+
+    const legendaFallback = [
+      { cor: "Vermelho", significado: "Emergência. Atendimento imediato." },
+      { cor: "Laranja", significado: "Muito urgente. Prioridade alta de atendimento." },
+      { cor: "Amarelo", significado: "Urgente. Necessita avaliação em curto prazo." },
+      { cor: "Verde", significado: "Pouco urgente. Pode aguardar com segurança, mantendo reavaliação se piora." },
+      { cor: "Azul", significado: "Não urgente. Caso de baixa gravidade, orientar e agendar conforme necessidade." }
+    ];
+
+    return res.json({
+      cor: cor || "Não informado",
+      significado: significado || (cor && cor !== "Não informado" ? "Priorizar atendimento conforme classificação." : "Sem dados suficientes para classificar."),
+      legenda: legenda.length ? legenda : legendaFallback
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao gerar a classificação de risco." });
+  }
+});
 
 
 

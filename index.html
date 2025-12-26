@@ -439,6 +439,71 @@
       min-height: 48px;
     }
 
+    .risk-triage-box {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 12px;
+      background: #fafafa;
+    }
+    .risk-triage-current {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .risk-badge {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: #fff;
+      font-weight: bold;
+      font-size: 13px;
+      min-width: 120px;
+      text-align: center;
+    }
+    .risk-none { background: #6c757d; }
+    .risk-vermelho { background: #dc3545; }
+    .risk-laranja { background: #fd7e14; }
+    .risk-amarelo { background: #ffc107; color: #1f2937; }
+    .risk-verde { background: #28a745; }
+    .risk-azul { background: #0d6efd; }
+
+    .risk-meaning {
+      font-size: 14px;
+      line-height: 1.35;
+      color: #1f2937;
+      white-space: pre-wrap;
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .risk-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13px;
+      color: #1f2937;
+    }
+    .risk-legend-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .risk-legend-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      margin-top: 2px;
+      flex: 0 0 14px;
+    }
+    .swatch-vermelho { background: #dc3545; }
+    .swatch-laranja { background: #fd7e14; }
+    .swatch-amarelo { background: #ffc107; }
+    .swatch-verde { background: #28a745; }
+    .swatch-azul { background: #0d6efd; }
+
+
     .section-header-row {
       display: flex;
       justify-content: space-between;
@@ -590,7 +655,7 @@
       <button id="recordBtn" class="start">Iniciar atendimento</button>
 
       <p id="startNotice">
-        Assim que iniciar a gravação, informe sempre o nome completo do paciente, idade e peso para que o SOAP e a prescrição sejam gerados corretamente.
+        Assim que iniciar a gravação, informe sempre o nome completo do paciente, idade, peso e sinais vitais (PA, FC, FR, SpO2 e temperatura) para que o SOAP e a prescrição sejam gerados corretamente.
       </p>
 
       <div id="timer">00:00</div>
@@ -678,6 +743,21 @@
         <button id="printHospitalPrescriptionBtn">Imprimir plano de cuidados hospitalar</button>
       </div>
       <div id="hospitalPrescriptionStatus" class="mini-status"></div>
+
+
+      <h2>Classificação de risco por cores</h2>
+      <div class="risk-triage-box">
+        <div class="risk-triage-current">
+          <span id="riskTriageBadge" class="risk-badge risk-none">Não informado</span>
+          <div id="riskTriageMeaning" class="risk-meaning">Nenhum conteúdo disponível.</div>
+        </div>
+        <div id="riskTriageLegend" class="risk-legend"></div>
+      </div>
+      <div class="prescription-actions">
+        <button id="updateRiskTriageBtn">Atualizar classificação de risco</button>
+        <button id="printRiskTriageBtn">Imprimir classificação de risco</button>
+      </div>
+      <div id="riskTriageStatus" class="mini-status"></div>
 
       <h2>SAE (Processo de Enfermagem)</h2>
       <div id="pregnancyBox" class="classification-box">Nenhum conteúdo disponível.</div>
@@ -826,6 +906,13 @@
 
     const pregnancyBox = document.getElementById("pregnancyBox");
     const lactationBox = document.getElementById("lactationBox");
+
+    const riskTriageBadge = document.getElementById("riskTriageBadge");
+    const riskTriageMeaning = document.getElementById("riskTriageMeaning");
+    const riskTriageLegend = document.getElementById("riskTriageLegend");
+    const updateRiskTriageBtn = document.getElementById("updateRiskTriageBtn");
+    const printRiskTriageBtn = document.getElementById("printRiskTriageBtn");
+    const riskTriageStatus = document.getElementById("riskTriageStatus");
     const rxTypeBox = document.getElementById("rxTypeBox");
     const updateRxTypeBtn = document.getElementById("updateRxTypeBtn");
     const printRxTypeBtn = document.getElementById("printRxTypeBtn");
@@ -980,6 +1067,151 @@
       return parts.join("\n\n").trim();
     }
 
+    // ============================
+    // MÓDULO: Classificação de risco por cores (NOVO)
+    // ============================
+    const RISK_LEGEND_DEFAULT = [
+      { cor: "Vermelho", significado: "Emergência. Atendimento imediato." },
+      { cor: "Laranja", significado: "Muito urgente. Prioridade alta de atendimento." },
+      { cor: "Amarelo", significado: "Urgente. Necessita avaliação em curto prazo." },
+      { cor: "Verde", significado: "Pouco urgente. Pode aguardar com segurança, mantendo reavaliação se piora." },
+      { cor: "Azul", significado: "Não urgente. Caso de baixa gravidade, orientar e agendar conforme necessidade." }
+    ];
+
+    function normalizeRiskColorLabel(label) {
+      const t = String(label || "").trim().toLowerCase();
+      if (!t) return "Não informado";
+      if (t.includes("vermelh")) return "Vermelho";
+      if (t.includes("laranj")) return "Laranja";
+      if (t.includes("amarel")) return "Amarelo";
+      if (t.includes("verd")) return "Verde";
+      if (t.includes("azul")) return "Azul";
+      if (t.includes("nao informado") || t.includes("não informado") || t.includes("indefin")) return "Não informado";
+      return label.trim();
+    }
+
+    function applyRiskBadgeColor(cor) {
+      if (!riskTriageBadge) return;
+      riskTriageBadge.classList.remove("risk-none", "risk-vermelho", "risk-laranja", "risk-amarelo", "risk-verde", "risk-azul");
+      const c = normalizeRiskColorLabel(cor);
+      if (c === "Vermelho") riskTriageBadge.classList.add("risk-vermelho");
+      else if (c === "Laranja") riskTriageBadge.classList.add("risk-laranja");
+      else if (c === "Amarelo") riskTriageBadge.classList.add("risk-amarelo");
+      else if (c === "Verde") riskTriageBadge.classList.add("risk-verde");
+      else if (c === "Azul") riskTriageBadge.classList.add("risk-azul");
+      else riskTriageBadge.classList.add("risk-none");
+    }
+
+    function renderRiskLegend(legendArr) {
+      if (!riskTriageLegend) return;
+      const legend = Array.isArray(legendArr) && legendArr.length ? legendArr : RISK_LEGEND_DEFAULT;
+
+      riskTriageLegend.innerHTML = "";
+      legend.forEach((item) => {
+        const cor = normalizeRiskColorLabel(item?.cor || "");
+        const significado = String(item?.significado || "").trim();
+
+        const row = document.createElement("div");
+        row.className = "risk-legend-row";
+
+        const swatch = document.createElement("div");
+        swatch.className = "risk-legend-swatch " + (
+          cor === "Vermelho" ? "swatch-vermelho" :
+          cor === "Laranja" ? "swatch-laranja" :
+          cor === "Amarelo" ? "swatch-amarelo" :
+          cor === "Verde" ? "swatch-verde" :
+          cor === "Azul" ? "swatch-azul" : ""
+        );
+
+        const txt = document.createElement("div");
+        txt.style.flex = "1";
+        txt.textContent = cor + (significado ? (": " + significado) : "");
+
+        row.appendChild(swatch);
+        row.appendChild(txt);
+        riskTriageLegend.appendChild(row);
+      });
+    }
+
+    function buildRiskPrintText(cor, significado, legendArr) {
+      const c = normalizeRiskColorLabel(cor);
+      const s = String(significado || "").trim();
+      const legend = Array.isArray(legendArr) && legendArr.length ? legendArr : RISK_LEGEND_DEFAULT;
+
+      const lines = [];
+      lines.push("Classificação de risco: " + c);
+      if (s) lines.push("Significado: " + s);
+      lines.push("");
+      lines.push("Legenda:");
+      legend.forEach((it) => {
+        const lc = normalizeRiskColorLabel(it?.cor || "");
+        const ls = String(it?.significado || "").trim();
+        lines.push(lc + ": " + ls);
+      });
+      return lines.join("\n");
+    }
+
+    async function updateRiskTriage() {
+      if (!riskTriageStatus) return;
+
+      const contexto = getNursingContext();
+      if (!contexto) {
+        if (riskTriageBadge) {
+          riskTriageBadge.textContent = "Não informado";
+          applyRiskBadgeColor("Não informado");
+        }
+        if (riskTriageMeaning) riskTriageMeaning.textContent = "Nenhum conteúdo disponível.";
+        renderRiskLegend(RISK_LEGEND_DEFAULT);
+        riskTriageStatus.textContent = "Sem conteúdo suficiente para classificar.";
+        return;
+      }
+
+      riskTriageStatus.textContent = "Gerando classificação de risco...";
+      riskTriageStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/classificacao-risco", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contexto })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (classificação de risco):", resp.status, txt);
+          riskTriageStatus.classList.remove("loading-dot");
+          riskTriageStatus.textContent = "Não foi possível gerar a classificação de risco.";
+          return;
+        }
+
+        const data = await resp.json();
+
+        const cor = normalizeRiskColorLabel(data?.cor || "Não informado");
+        const significado = String(data?.significado || "").trim();
+        const legenda = Array.isArray(data?.legenda) ? data.legenda : RISK_LEGEND_DEFAULT;
+
+        if (riskTriageBadge) {
+          riskTriageBadge.textContent = cor;
+          applyRiskBadgeColor(cor);
+        }
+        if (riskTriageMeaning) {
+          riskTriageMeaning.textContent = significado ? significado : "Sem significado disponível.";
+        }
+        renderRiskLegend(legenda);
+
+        // Guarda texto para impressão
+        riskTriageMeaning.dataset.printText = buildRiskPrintText(cor, significado, legenda);
+
+        riskTriageStatus.classList.remove("loading-dot");
+        riskTriageStatus.textContent = "Classificação atualizada.";
+      } catch (e) {
+        console.error(e);
+        riskTriageStatus.classList.remove("loading-dot");
+        riskTriageStatus.textContent = "Falha de rede ou backend ao gerar a classificação de risco.";
+      }
+    }
+
+
 async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText) {
       const t = String(transcricao || "").trim();
       if (!t) return;
@@ -1021,6 +1253,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
         await updateClassifications();
         await updateRxTypes();
+        await updateRiskTriage();
         await updateInteractions();
               await updatePresentationsMaxDose();
 } catch (e) {
@@ -1474,6 +1707,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
         await updateClassifications();
         await updateRxTypes();
+        await updateRiskTriage();
         await updateInteractions();
               await updatePresentationsMaxDose();
 } catch (e) {
@@ -2672,12 +2906,26 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     });
 
     updateClassificationsBtn.addEventListener("click", () => {
-      updateClassifications().then(() => updateInteractions()).then(() => updatePresentationsMaxDose());
+      updateClassifications().then(() => updateRiskTriage()).then(() => updateInteractions()).then(() => updatePresentationsMaxDose());
     });
 
     updateRxTypeBtn.addEventListener("click", () => {
-      updateRxTypes().then(() => updateInteractions()).then(() => updatePresentationsMaxDose());
+      updateRxTypes().then(() => updateRiskTriage()).then(() => updateInteractions()).then(() => updatePresentationsMaxDose());
     });
+
+    if (updateRiskTriageBtn) {
+      updateRiskTriageBtn.addEventListener("click", () => {
+        updateRiskTriage();
+      });
+    }
+
+    if (printRiskTriageBtn) {
+      printRiskTriageBtn.addEventListener("click", () => {
+        const text = (riskTriageMeaning && riskTriageMeaning.dataset && riskTriageMeaning.dataset.printText) ? riskTriageMeaning.dataset.printText : "";
+        openPrintWindow("Classificação de risco por cores", text);
+      });
+    }
+
 
     if (updateInteractionsBtn) {
       updateInteractionsBtn.addEventListener("click", () => {
