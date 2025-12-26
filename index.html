@@ -706,6 +706,118 @@
       display: none !important;
     }
 
+    .consult-type-panel {
+      width: 100%;
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .consult-type-title {
+      margin: 0 0 10px 0;
+      font-weight: bold;
+      font-size: 13px;
+      color: #111827;
+    }
+    .consult-type-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .consult-type-btn {
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid #0c5460;
+      background: #ffffff;
+      color: #0c5460;
+      font-size: 13px;
+      cursor: pointer;
+      flex: 1 1 160px;
+      text-align: center;
+      font-weight: 600;
+    }
+    .consult-type-btn:hover {
+      background: #e6f2f5;
+    }
+    .consult-type-btn.active {
+      background: #0c5460;
+      color: #ffffff;
+    }
+    .consult-guide-drawer {
+      width: 100%;
+      background: #f9fbff;
+      border: 1px solid #d7e6ff;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .consult-guide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .consult-guide-title {
+      font-weight: bold;
+      font-size: 14px;
+      color: #0c5460;
+      margin: 0 0 4px 0;
+    }
+    .consult-guide-subtitle {
+      font-size: 12px;
+      color: #555;
+      margin: 0;
+    }
+    .consult-guide-close {
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .trimester-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 8px 0 10px 0;
+    }
+    .trimester-btn {
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid #0c5460;
+      background: #ffffff;
+      color: #0c5460;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .trimester-btn.active {
+      background: #0c5460;
+      color: #ffffff;
+    }
+    .consult-guide-content {
+      font-size: 13px;
+      color: #111827;
+      line-height: 1.4;
+    }
+    .guide-section-title {
+      font-weight: bold;
+      margin: 10px 0 6px 0;
+      color: #111827;
+    }
+    .consult-guide-content ol {
+      margin: 0 0 6px 18px;
+      padding: 0;
+    }
+    .consult-guide-content li {
+      margin: 0 0 6px 0;
+    }
+
+
   </style>
 </head>
 <body>
@@ -713,6 +825,35 @@
     <h1>Atendimento de Enfermagem</h1>
 
     <div class="center-card">
+
+      <div id="consultTypePanel" class="consult-type-panel">
+        <p class="consult-type-title">Guias de consulta</p>
+        <div class="consult-type-buttons">
+          <button class="consult-type-btn" type="button" data-consult="prenatal">Consulta pré-natal por trimestre</button>
+          <button class="consult-type-btn" type="button" data-consult="puericultura">Consulta puericultura</button>
+          <button class="consult-type-btn" type="button" data-consult="planejamento">Consulta planejamento familiar</button>
+          <button class="consult-type-btn" type="button" data-consult="hiperdia">Consulta hiperdia</button>
+        </div>
+
+        <div id="consultGuideDrawer" class="consult-guide-drawer hidden">
+          <div class="consult-guide-header">
+            <div>
+              <p id="consultGuideTitle" class="consult-guide-title"></p>
+              <p id="consultGuideSubtitle" class="consult-guide-subtitle"></p>
+            </div>
+            <button id="closeConsultGuideBtn" class="consult-guide-close" type="button">Fechar</button>
+          </div>
+
+          <div id="prenatalTrimesterRow" class="trimester-row hidden">
+            <button class="trimester-btn" type="button" data-tri="1">1º trimestre</button>
+            <button class="trimester-btn" type="button" data-tri="2">2º trimestre</button>
+            <button class="trimester-btn" type="button" data-tri="3">3º trimestre</button>
+          </div>
+
+          <div id="consultGuideContent" class="consult-guide-content"></div>
+        </div>
+      </div>
+
       <div id="liveGuidance" class="live-guidance">
         <div class="live-guidance-header">
           <p class="live-guidance-title">Perguntas e procedimentos essenciais</p>
@@ -1379,8 +1520,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         await updateClassifications();
         await updateRxTypes();
         await updateRiskTriage();
-        await updateInteractions();
-        } catch (e) {
+        await await } catch (e) {
         console.error(e);
         soapError.textContent = "Erro ao gerar evolução e plano de cuidados (falha de rede ou backend).";
         micStatus.innerText = "Falha ao gerar o resumo.";
@@ -1832,8 +1972,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         await updateClassifications();
         await updateRxTypes();
         await updateRiskTriage();
-        await updateInteractions();
-        } catch (e) {
+        await await } catch (e) {
         console.error(e);
         soapError.textContent =
           "Erro ao gerar evolução e plano de cuidados (falha de rede ou backend).";
@@ -1917,19 +2056,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     }
 
     
-      
-
-    async function updateInteractions() {
-      if (!interactionsBox || !interactionsStatus) return;
-
-      interactionsStatus.textContent = "";
-      const contexto = getNursingContext();
-      if (!contexto) {
-        interactionsBox.textContent = "Nenhum conteúdo disponível.";
-        return;
-      }
-
-interactionsStatus.textContent = "Gerando registro de administração segura...";
+      interactionsStatus.textContent = "Gerando registro de administração segura...";
       interactionsStatus.classList.add("loading-dot");
 
       try {
@@ -1997,19 +2124,7 @@ interactionsStatus.textContent = "Gerando registro de administração segura..."
     }
 
     
-      
-
-    async function updatePresentationsMaxDose() {
-      if (!presentationsMaxDoseBox || !presentationsMaxDoseStatus) return;
-
-      presentationsMaxDoseStatus.textContent = "";
-      const contexto = getNursingContext();
-      if (!contexto) {
-        presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
-        return;
-      }
-
-presentationsMaxDoseStatus.textContent = "Gerando registro de curativos e feridas...";
+      presentationsMaxDoseStatus.textContent = "Gerando registro de curativos e feridas...";
       presentationsMaxDoseStatus.classList.add("loading-dot");
 
       try {
@@ -2228,9 +2343,7 @@ presentationsMaxDoseStatus.textContent = "Gerando registro de curativos e ferida
 
         await updateClassifications();
         await updateRxTypes();
-        await updateRiskTriage();
-        await updateInteractions();
-        } catch (err) {
+        await } catch (err) {
         console.error("Erro geral ao atualizar SOAP com perguntas:", err);
         recommendationsStatus.textContent = "Erro ao atualizar o SOAP com as novas respostas.";
         recommendationsStatus.classList.remove("loading-dot");
@@ -2451,9 +2564,7 @@ presentationsMaxDoseStatus.textContent = "Gerando registro de curativos e ferida
         } catch (e) {
           alert("Não foi possível copiar o texto.");
         }
-        document.body.removeChild(temp);
-      }
-    }
+
 
     function showImageChoice(cameraInputEl, fileInputEl) {
       pendingCameraInput = cameraInputEl || null;
@@ -2517,6 +2628,9 @@ presentationsMaxDoseStatus.textContent = "Gerando registro de curativos e ferida
       } catch (e) {
         interactionsStatus.textContent = "Falha ao analisar prescrição.";
         interactionsBox.textContent = "Nenhum conteúdo disponível.";
+      }
+    }
+        document.body.removeChild(temp);
       }
     }
 
@@ -2697,9 +2811,7 @@ presentationsMaxDoseStatus.textContent = "Gerando registro de curativos e ferida
 
         await updateClassifications();
         await updateRxTypes();
-        await updateRiskTriage();
-        await updateInteractions();
-        } catch (err) {
+        await } catch (err) {
         console.error("Erro ao gerar SBAR:", err);
         hospitalPrescriptionStatus.textContent = "Erro ao gerar SBAR.";
         hospitalPrescriptionStatus.classList.remove("loading-dot");
@@ -3271,6 +3383,278 @@ presentationsMaxDoseStatus.textContent = "Gerando registro de curativos e ferida
       printMedSafetyBtn.addEventListener("click", () => {
         openPrintWindow("Administração segura de medicamentos (registro de enfermagem)", interactionsBox ? interactionsBox.textContent : "");
       });
+    }
+
+
+
+    const consultTypeButtons = Array.from(document.querySelectorAll(".consult-type-btn"));
+    const consultGuideDrawer = document.getElementById("consultGuideDrawer");
+    const consultGuideTitle = document.getElementById("consultGuideTitle");
+    const consultGuideSubtitle = document.getElementById("consultGuideSubtitle");
+    const consultGuideContent = document.getElementById("consultGuideContent");
+    const closeConsultGuideBtn = document.getElementById("closeConsultGuideBtn");
+    const prenatalTrimesterRow = document.getElementById("prenatalTrimesterRow");
+    const trimesterButtons = Array.from(document.querySelectorAll(".trimester-btn"));
+
+    let selectedConsultType = null;
+    let selectedPrenatalTrimester = "1";
+
+    const guideData = {
+      puericultura: {
+        title: "Consulta de puericultura",
+        subtitle: "Sequência sugerida para orientar perguntas e procedimentos iniciais.",
+        sections: [
+          {
+            title: "Perguntas essenciais",
+            items: [
+              "Identificação e contexto: idade, cuidador presente, motivo da consulta, dúvidas principais da família.",
+              "História desde a última consulta: intercorrências, internações, uso de medicamentos, alergias, exposição a doentes.",
+              "Alimentação: aleitamento materno (exclusivo ou não), fórmula, frequência, aceitação, introdução alimentar (se aplicável), consumo de água, ingestão de ultraprocessados.",
+              "Eliminações: diurese, evacuações (frequência, consistência, sangue, dor), sinais de desidratação.",
+              "Sono e rotina: padrão de sono, despertares, ambiente, segurança do sono, telas.",
+              "Desenvolvimento: marcos motores e linguagem conforme idade, interação social, audição/visão percebidas, comportamento.",
+              "Segurança e ambiente: quedas, engasgo, afogamento, acidentes domésticos, cadeira no carro, fumaça, violência, condições de moradia.",
+              "Vacinas: conferir caderneta, doses atrasadas, reações prévias.",
+              "Saúde bucal: higiene, erupção dentária, uso de flúor (conforme orientação local)."
+            ]
+          },
+          {
+            title: "Procedimentos e exame físico",
+            items: [
+              "Sinais vitais quando indicado: temperatura, frequência cardíaca e respiratória, saturação se sintomas respiratórios.",
+              "Antropometria: peso, estatura/comprimento, perímetro cefálico (especialmente em menores), cálculo e registro na curva (OMS).",
+              "Exame físico direcionado: pele e mucosas, hidratação, orofaringe, otoscopia se queixa, ausculta cardíaca e pulmonar, abdome, genitais quando indicado.",
+              "Triagem de sinais de gravidade: prostração, desconforto respiratório, sinais de desidratação, febre persistente, convulsão, cianose, recusa de líquidos.",
+              "Orientações finais: alimentação por faixa etária, sinais de alarme, retorno programado e vacinação."
+            ]
+          }
+        ]
+      },
+
+      planejamento: {
+        title: "Consulta de planejamento familiar",
+        subtitle: "Sequência sugerida para escolha do método com segurança.",
+        sections: [
+          {
+            title: "Perguntas essenciais",
+            items: [
+              "Objetivo do paciente: evitar gestação, espaçar, planejar para quando, ou tratar sintomas (sangramento, cólica).",
+              "História reprodutiva: gestações, partos, abortos, complicações, lactação atual, desejo reprodutivo do casal.",
+              "Data da última menstruação, regularidade do ciclo, sangramentos anormais, suspeita de gestação atual.",
+              "Doenças e riscos: hipertensão, diabetes, enxaqueca com aura, trombose, doença hepática, câncer de mama, tabagismo, pós-parto recente.",
+              "Medicamentos em uso e possíveis interações (ex.: indutores enzimáticos).",
+              "História ginecológica: IST prévias, corrimentos, dor pélvica, última citologia conforme protocolo local.",
+              "Risco de IST e necessidade de dupla proteção (preservativo).",
+              "Preferências: método diário ou de longa duração, desejo de método sem hormônio, tolerância a sangramento irregular."
+            ]
+          },
+          {
+            title: "Procedimentos e orientações",
+            items: [
+              "Sinais vitais e avaliação clínica básica: pressão arterial e peso/IMC (essencial antes de métodos combinados).",
+              "Teste de gravidez quando houver dúvida ou critério clínico.",
+              "Aconselhamento estruturado: eficácia, modo de uso, efeitos adversos, contraindicações e sinais de alarme do método escolhido.",
+              "Reforçar preservativo para IST e como usar corretamente.",
+              "Planejar retorno: adaptação do método, manejo de efeitos e revisão de segurança."
+            ]
+          }
+        ]
+      },
+
+      hiperdia: {
+        title: "Consulta de Hiperdia (HAS e/ou DM)",
+        subtitle: "Sequência sugerida para acompanhamento e segurança do cuidado.",
+        sections: [
+          {
+            title: "Perguntas essenciais",
+            items: [
+              "Motivo da consulta: rotina, sintomas, aferições alteradas, falta de medicação, intercorrências recentes.",
+              "Adesão ao tratamento: horários, esquecimento, efeitos adversos, dificuldades de acesso aos medicamentos.",
+              "Pressão e glicemias: valores recentes, sintomas de hipo/hiperglicemia, desmaios, palpitações, cefaleia, visão turva.",
+              "Estilo de vida: alimentação, sal, açúcar, atividade física, álcool, tabagismo, sono e estresse.",
+              "Complicações e rastreios: dor torácica, dispneia, edema, claudicação, feridas nos pés, perda de sensibilidade, alterações visuais, sintomas urinários.",
+              "Comorbidades: doença renal, AVC prévio, infarto, dislipidemia; vacinas e cuidados preventivos."
+            ]
+          },
+          {
+            title: "Procedimentos e exame físico",
+            items: [
+              "Aferir sinais vitais: pressão arterial, frequência cardíaca, peso, circunferência abdominal quando aplicável.",
+              "Glicemia capilar quando indicado; registrar jejum/pós-prandial conforme contexto.",
+              "Avaliação de pés (DM): inspeção, pulsos, sensibilidade (monofilamento se disponível), orientações de autocuidado.",
+              "Sinais de gravidade: PA muito elevada com sintomas, hipoglicemia, hiperglicemia importante com sinais de desidratação, dor torácica, dispneia.",
+              "Reforçar plano: metas, adesão, autocuidado, retorno e quando procurar urgência."
+            ]
+          }
+        ]
+      },
+
+      prenatal: {
+        title: "Consulta pré-natal",
+        subtitle: "Escolha o trimestre para ver perguntas e procedimentos em ordem.",
+        trimesters: {
+          "1": {
+            subtitle: "1º trimestre (até 13 semanas e 6 dias)",
+            sections: [
+              {
+                title: "Perguntas essenciais",
+                items: [
+                  "Identificação e dados essenciais: nome completo, idade, peso, sinais vitais iniciais e queixa/objetivo da consulta.",
+                  "Data da última menstruação, regularidade menstrual, cálculo de idade gestacional e data provável do parto conforme rotina do serviço.",
+                  "História obstétrica: gestações anteriores, partos, abortos, complicações (pré-eclâmpsia, hemorragia, prematuridade).",
+                  "Sintomas atuais: náuseas/vômitos, dor abdominal, sangramento vaginal, corrimento, febre, disúria.",
+                  "Comorbidades: hipertensão, diabetes, epilepsia, doença renal, tireoide, trombofilias; uso de medicamentos e suplementos.",
+                  "Alergias, uso de álcool/tabaco/outras substâncias, situação social e apoio.",
+                  "Vacinação e exames anteriores, histórico de IST e testagens."
+                ]
+              },
+              {
+                title: "Procedimentos e exame físico",
+                items: [
+                  "Aferir sinais vitais e peso; calcular IMC e registrar.",
+                  "Avaliar edema, sinais de anemia/desidratação e exame clínico direcionado.",
+                  "Solicitar/confirmar exames iniciais conforme rotina local: hemograma, tipagem ABO/Rh e Coombs indireto quando indicado, glicemia, sorologias (sífilis, HIV, hepatites), exame de urina e urocultura, outros conforme protocolo.",
+                  "Orientações: sinais de alarme (sangramento, dor forte, febre, perda de líquidos), suplementação prescrita e hábitos saudáveis.",
+                  "Se idade gestacional permitir e houver recurso, auscultar batimentos cardíacos fetais conforme prática do serviço."
+                ]
+              }
+            ]
+          },
+          "2": {
+            subtitle: "2º trimestre (14 a 27 semanas e 6 dias)",
+            sections: [
+              {
+                title: "Perguntas essenciais",
+                items: [
+                  "Evolução desde a última consulta: intercorrências, urgências, uso e adesão a medicamentos/suplementos.",
+                  "Movimentação fetal (quando aplicável): início, frequência percebida, redução de movimentos.",
+                  "Sintomas de alerta: cefaleia intensa, escotomas, dor epigástrica, edema importante, sangramento, perda de líquido, febre, disúria.",
+                  "Revisar exames e vacinação; reforçar orientações e plano de retorno."
+                ]
+              },
+              {
+                title: "Procedimentos e exame físico",
+                items: [
+                  "Aferir sinais vitais e peso; avaliar edema.",
+                  "Medir altura uterina e comparar com idade gestacional; avaliar apresentação quando possível.",
+                  "Auscultar batimentos cardíacos fetais conforme rotina do serviço.",
+                  "Revisar/solicitar exames do período conforme rotina local (inclui rastreios de anemia e diabetes gestacional quando indicado).",
+                  "Orientar sinais de trabalho de parto prematuro e quando procurar urgência."
+                ]
+              }
+            ]
+          },
+          "3": {
+            subtitle: "3º trimestre (28 semanas até o parto)",
+            sections: [
+              {
+                title: "Perguntas essenciais",
+                items: [
+                  "Movimentos fetais e percepção materna; redução de movimentos é sinal de alerta.",
+                  "Sintomas de pré-eclâmpsia e urgência: cefaleia intensa, visão turva, dor epigástrica, edema súbito, falta de ar.",
+                  "Sinais de trabalho de parto: contrações ritmadas, perda de tampão mucoso, sangramento, perda de líquido.",
+                  "Plano de parto e rede de referência: onde buscar assistência, transporte, acompanhante, documentação.",
+                  "Revisar exames do final da gestação conforme rotina local e vacinação."
+                ]
+              },
+              {
+                title: "Procedimentos e exame físico",
+                items: [
+                  "Aferir sinais vitais e peso; atenção reforçada à pressão arterial e edema.",
+                  "Medir altura uterina, avaliar apresentação fetal e auscultar batimentos cardíacos fetais.",
+                  "Reforçar orientações: sinais de alarme, preparo para o parto, amamentação e cuidados no pós-parto imediato.",
+                  "Planejar retorno mais frequente conforme idade gestacional e risco."
+                ]
+              }
+            ]
+          }
+        }
+      }
+    };
+
+    function renderGuideSections(sections) {
+      if (!consultGuideContent) return;
+      const parts = [];
+      for (const section of sections || []) {
+        parts.push(`<div class="guide-section-title">${escapeHtml(section.title)}</div>`);
+        parts.push("<ol>");
+        for (const item of section.items || []) {
+          parts.push(`<li>${escapeHtml(item)}</li>`);
+        }
+        parts.push("</ol>");
+      }
+      consultGuideContent.innerHTML = parts.join("");
+    }
+
+    function openGuideFor(type) {
+      selectedConsultType = type;
+      consultTypeButtons.forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.consult === type);
+      });
+
+      if (!consultGuideDrawer || !consultGuideTitle || !consultGuideSubtitle) return;
+
+      consultGuideDrawer.classList.remove("hidden");
+      const data = guideData[type];
+
+      if (!data) {
+        consultGuideTitle.textContent = "Guia não disponível";
+        consultGuideSubtitle.textContent = "";
+        consultGuideContent.innerHTML = "";
+        prenatalTrimesterRow?.classList.add("hidden");
+        return;
+      }
+
+      consultGuideTitle.textContent = data.title || "";
+      consultGuideSubtitle.textContent = data.subtitle || "";
+
+      if (type === "prenatal") {
+        prenatalTrimesterRow?.classList.remove("hidden");
+        setPrenatalTrimester(selectedPrenatalTrimester);
+      } else {
+        prenatalTrimesterRow?.classList.add("hidden");
+        renderGuideSections(data.sections || []);
+      }
+    }
+
+    function setPrenatalTrimester(tri) {
+      selectedPrenatalTrimester = String(tri || "1");
+      trimesterButtons.forEach(b => {
+        b.classList.toggle("active", b.dataset.tri === selectedPrenatalTrimester);
+      });
+
+      const data = guideData.prenatal;
+      const t = data?.trimesters?.[selectedPrenatalTrimester];
+      if (!t) {
+        consultGuideSubtitle.textContent = guideData.prenatal.subtitle || "";
+        consultGuideContent.innerHTML = "";
+        return;
+      }
+
+      consultGuideSubtitle.textContent = t.subtitle || guideData.prenatal.subtitle || "";
+      renderGuideSections(t.sections || []);
+    }
+
+    function closeGuide() {
+      consultGuideDrawer?.classList.add("hidden");
+      consultTypeButtons.forEach(btn => btn.classList.remove("active"));
+      selectedConsultType = null;
+    }
+
+    if (consultTypeButtons.length) {
+      consultTypeButtons.forEach(btn => {
+        btn.addEventListener("click", () => openGuideFor(btn.dataset.consult || ""));
+      });
+    }
+
+    if (trimesterButtons.length) {
+      trimesterButtons.forEach(btn => {
+        btn.addEventListener("click", () => setPrenatalTrimester(btn.dataset.tri || "1"));
+      });
+    }
+
+    if (closeConsultGuideBtn) {
+      closeConsultGuideBtn.addEventListener("click", closeGuide);
     }
 
 
