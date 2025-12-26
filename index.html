@@ -3076,7 +3076,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         }
         copyToClipboard(part + ": " + sectionText);
       });
-    });
 
     if (copyFullSoapBtn) {
       copyFullSoapBtn.addEventListener("click", () => {
@@ -3120,7 +3119,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
     printHospitalPrescriptionBtn.addEventListener("click", () => {
       openPrintWindow("Passagem de Plantão (SBAR)", hospitalPrescriptionOutput.value);
-    });
     });
 
     if (printRiskTriageBtn) {
