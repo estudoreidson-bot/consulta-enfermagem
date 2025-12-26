@@ -1520,7 +1520,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         await updateClassifications();
         await updateRxTypes();
         await updateRiskTriage();
-        await await } catch (e) {
+        } catch (e) {
         console.error(e);
         soapError.textContent = "Erro ao gerar evolução e plano de cuidados (falha de rede ou backend).";
         micStatus.innerText = "Falha ao gerar o resumo.";
@@ -1972,7 +1972,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         await updateClassifications();
         await updateRxTypes();
         await updateRiskTriage();
-        await await } catch (e) {
+        } catch (e) {
         console.error(e);
         soapError.textContent =
           "Erro ao gerar evolução e plano de cuidados (falha de rede ou backend).";
@@ -2055,7 +2055,10 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       return parts.join("\n\n");
     }
 
-    
+
+    async function updateMedicationSafetyFromContext(contexto) {
+      if (!interactionsBox || !interactionsStatus) return;
+
       interactionsStatus.textContent = "Gerando registro de administração segura...";
       interactionsStatus.classList.add("loading-dot");
 
@@ -2123,7 +2126,10 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       return lines.join("\n").trim();
     }
 
-    
+
+    async function updateWoundCareFromContext(contexto) {
+      if (!presentationsMaxDoseBox || !presentationsMaxDoseStatus) return;
+
       presentationsMaxDoseStatus.textContent = "Gerando registro de curativos e feridas...";
       presentationsMaxDoseStatus.classList.add("loading-dot");
 
@@ -2343,7 +2349,8 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
         await updateClassifications();
         await updateRxTypes();
-        await } catch (err) {
+        await updateRiskTriage();
+      } catch (err) {
         console.error("Erro geral ao atualizar SOAP com perguntas:", err);
         recommendationsStatus.textContent = "Erro ao atualizar o SOAP com as novas respostas.";
         recommendationsStatus.classList.remove("loading-dot");
@@ -2548,6 +2555,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       micStatus.innerText = "Gravando consulta...";
     }
 
+    
     function copyToClipboard(text) {
       if (!text) return;
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2564,7 +2572,9 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         } catch (e) {
           alert("Não foi possível copiar o texto.");
         }
-
+        document.body.removeChild(temp);
+      }
+    }
 
     function showImageChoice(cameraInputEl, fileInputEl) {
       pendingCameraInput = cameraInputEl || null;
@@ -2599,7 +2609,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image_data_url: dataUrl })
         });
-        const data = await resp.json();
+        const data = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(data?.error || "Falha ao analisar imagem.");
         const texto = (data?.texto || "").trim();
         presentationsMaxDoseBox.textContent = texto || "Nenhum conteúdo disponível.";
@@ -2620,7 +2630,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image_data_url: dataUrl })
         });
-        const data = await resp.json();
+        const data = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(data?.error || "Falha ao analisar prescrição.");
         const texto = (data?.texto || "").trim();
         interactionsBox.textContent = texto || "Nenhum conteúdo disponível.";
@@ -2628,9 +2638,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       } catch (e) {
         interactionsStatus.textContent = "Falha ao analisar prescrição.";
         interactionsBox.textContent = "Nenhum conteúdo disponível.";
-      }
-    }
-        document.body.removeChild(temp);
       }
     }
 
@@ -2811,7 +2818,8 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
         await updateClassifications();
         await updateRxTypes();
-        await } catch (err) {
+        await updateRiskTriage();
+      } catch (err) {
         console.error("Erro ao gerar SBAR:", err);
         hospitalPrescriptionStatus.textContent = "Erro ao gerar SBAR.";
         hospitalPrescriptionStatus.classList.remove("loading-dot");
