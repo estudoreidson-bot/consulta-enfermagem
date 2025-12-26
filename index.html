@@ -1379,7 +1379,8 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         await updateClassifications();
         await updateRxTypes();
         await updateRiskTriage();
-        await await } catch (e) {
+        await updateInteractions();
+        } catch (e) {
         console.error(e);
         soapError.textContent = "Erro ao gerar evolução e plano de cuidados (falha de rede ou backend).";
         micStatus.innerText = "Falha ao gerar o resumo.";
@@ -1831,7 +1832,8 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         await updateClassifications();
         await updateRxTypes();
         await updateRiskTriage();
-        await await } catch (e) {
+        await updateInteractions();
+        } catch (e) {
         console.error(e);
         soapError.textContent =
           "Erro ao gerar evolução e plano de cuidados (falha de rede ou backend).";
@@ -1915,7 +1917,19 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     }
 
     
-      interactionsStatus.textContent = "Gerando registro de administração segura...";
+      
+
+    async function updateInteractions() {
+      if (!interactionsBox || !interactionsStatus) return;
+
+      interactionsStatus.textContent = "";
+      const contexto = getNursingContext();
+      if (!contexto) {
+        interactionsBox.textContent = "Nenhum conteúdo disponível.";
+        return;
+      }
+
+interactionsStatus.textContent = "Gerando registro de administração segura...";
       interactionsStatus.classList.add("loading-dot");
 
       try {
@@ -1983,7 +1997,19 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     }
 
     
-      presentationsMaxDoseStatus.textContent = "Gerando registro de curativos e feridas...";
+      
+
+    async function updatePresentationsMaxDose() {
+      if (!presentationsMaxDoseBox || !presentationsMaxDoseStatus) return;
+
+      presentationsMaxDoseStatus.textContent = "";
+      const contexto = getNursingContext();
+      if (!contexto) {
+        presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
+        return;
+      }
+
+presentationsMaxDoseStatus.textContent = "Gerando registro de curativos e feridas...";
       presentationsMaxDoseStatus.classList.add("loading-dot");
 
       try {
@@ -2202,7 +2228,9 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
         await updateClassifications();
         await updateRxTypes();
-        await } catch (err) {
+        await updateRiskTriage();
+        await updateInteractions();
+        } catch (err) {
         console.error("Erro geral ao atualizar SOAP com perguntas:", err);
         recommendationsStatus.textContent = "Erro ao atualizar o SOAP com as novas respostas.";
         recommendationsStatus.classList.remove("loading-dot");
@@ -2423,7 +2451,9 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         } catch (e) {
           alert("Não foi possível copiar o texto.");
         }
-
+        document.body.removeChild(temp);
+      }
+    }
 
     function showImageChoice(cameraInputEl, fileInputEl) {
       pendingCameraInput = cameraInputEl || null;
@@ -2487,9 +2517,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       } catch (e) {
         interactionsStatus.textContent = "Falha ao analisar prescrição.";
         interactionsBox.textContent = "Nenhum conteúdo disponível.";
-      }
-    }
-        document.body.removeChild(temp);
       }
     }
 
@@ -2670,7 +2697,9 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
         await updateClassifications();
         await updateRxTypes();
-        await } catch (err) {
+        await updateRiskTriage();
+        await updateInteractions();
+        } catch (err) {
         console.error("Erro ao gerar SBAR:", err);
         hospitalPrescriptionStatus.textContent = "Erro ao gerar SBAR.";
         hospitalPrescriptionStatus.classList.remove("loading-dot");
