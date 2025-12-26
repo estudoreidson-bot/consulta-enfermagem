@@ -430,50 +430,6 @@ Contexto:
 
 
 
-// ======================================================================
-// ROTA 4.1 – TIPO DE RECEITUÁRIO POR MEDICAMENTO (NOVA)
-// ======================================================================
-
-app.post("/api/tipo-receituario", async (req, res) => {
-  try {
-    const { contexto } = req.body || {};
-    if (!contexto || !String(contexto).trim()) {
-      return res.json({ checklist: "" });
-    }
-
-    const safeContexto = normalizeText(contexto, 25000);
-
-    const prompt = `
-Você é um enfermeiro humano. Gere um CHECKLIST DE SEGURANÇA DO PACIENTE adequado ao caso (para atendimento e/ou procedimento e/ou administração de medicamentos).
-
-Inclua itens quando aplicáveis:
-- Identificação do paciente.
-- Alergias e riscos.
-- Sinais vitais e reavaliação.
-- Materiais e técnica do procedimento.
-- Consentimento quando aplicável.
-- Registro de intercorrências e conduta.
-- Critérios para escalar ao médico.
-
-Regras:
-- Sem emojis e sem símbolos gráficos.
-- Seja objetivo.
-
-Formato de saída: JSON estrito:
-{ "checklist": "..." }
-
-Contexto:
-"""${safeContexto}"""
-`;
-
-    const data = await callOpenAIJson(prompt);
-    const checklist = typeof data?.checklist === "string" ? data.checklist.trim() : "";
-    return res.json({ checklist });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar checklist." });
-  }
-});
 
 
 
@@ -994,32 +950,36 @@ app.post("/api/duvidas-enfermagem", async (req, res) => {
 
 app.post("/api/gerar-relatorio", async (req, res) => {
   try {
-    const { transcricao, finalidade, destinatario } = req.body || {};
+    const { transcricao } = req.body || {};
 
     if (!transcricao || !String(transcricao).trim()) {
       return res.json({ relatorio: "" });
     }
 
     const safeTranscricao = normalizeText(transcricao, 25000);
-    const safeFinalidade = normalizeText(finalidade || "", 300);
-    const safeDestinatario = normalizeText(destinatario || "", 200);
 
     const prompt = `
 Você é um enfermeiro humano redigindo um relatório/declaração de enfermagem com base na transcrição do atendimento.
 
+Objetivo:
+- Identificar a FINALIDADE do relatório a partir da própria transcrição (por exemplo: INSS, CAPS/saúde mental, escola, trabalho, advogado, assistência social, aquisição de insumos, etc).
+- Produzir um RELATÓRIO DE ENFERMAGEM compatível com a finalidade identificada, pronto para impressão.
+
 Regras:
 - Português do Brasil.
 - Sem emojis e sem símbolos gráficos.
-- Não invente dados.
-- Não faça diagnóstico médico definitivo.
-- Estrutura clara e curta, pronta para imprimir.
+- Não invente dados. Se faltar informação, use "não informado" ou "não foi referido".
+- Não faça diagnóstico médico definitivo. Descreva achados e condutas de enfermagem.
+- Texto claro, objetivo e formal.
+
+Formato do relatório:
+- Cabeçalho: "RELATÓRIO DE ENFERMAGEM"
+- Campo "Finalidade:" com a finalidade identificada (se não estiver explícita, "não informado").
+- Corpo em parágrafos curtos: identificação (se dita), histórico/queixa, achados objetivos mencionados, condutas/orientações, e considerações pertinentes à finalidade.
+- Data: "Data: ____/____/____" (deixe em branco).
 
 Formato de saída: JSON estrito:
 { "relatorio": "..." }
-
-Dados adicionais:
-Finalidade: "${safeFinalidade}"
-Destinatário: "${safeDestinatario}"
 
 Transcrição:
 """${safeTranscricao}"""

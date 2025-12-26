@@ -267,9 +267,7 @@
     #copySaeBtn,
     #printPregnancyBtn,
     #printLactationBtn,
-    #updateRxTypeBtn,
-    #printRxTypeBtn,
-    #copyFullSoapBtn,
+        #copyFullSoapBtn,
     #printSoapBtn,
     #updateInteractionsBtn,
     #printInteractionsBtn
@@ -289,9 +287,7 @@
     #copySaeBtn:hover,
     #printPregnancyBtn:hover,
     #printLactationBtn:hover,
-    #updateRxTypeBtn:hover,
-    #printRxTypeBtn:hover,
-    #copyFullSoapBtn:hover,
+        #copyFullSoapBtn:hover,
     #printSoapBtn:hover,
     #updateInteractionsBtn:hover,
     #printInteractionsBtn:hover
@@ -985,25 +981,16 @@
         <button id="copyOrientationsBtn">Copiar orientações</button>
         <button id="printLactationBtn">Imprimir orientações</button>
       </div>
-
-      <h2>Checklist de segurança do paciente</h2>
-      <div id="rxTypeBox" class="classification-box">Nenhum conteúdo disponível.</div>
-      <div class="prescription-actions">
-        <button id="updateRxTypeBtn">Atualizar checklist</button>
-        <button id="printRxTypeBtn">Imprimir checklist</button>
-      </div>
-      <div id="rxTypeStatus" class="mini-status"></div>
 <div id="classificationsStatus" class="mini-status"></div>
     </div>
 
     
     <div id="medSafetyCard" class="module-card">
       <h2>Administração segura de medicamentos (registro de enfermagem)</h2>
-      <p class="mini-status" style="margin-top: 0;">
+                  <p class="mini-status" style="margin-top: 0;">
         Use o botão para fotografar a prescrição médica. O sistema irá transcrever o que estiver legível, organizar os medicamentos, apontar riscos e inconsistências relevantes para a enfermagem e sinalizar interações importantes quando for possível confirmar com segurança.
       </p>
-
-      <div class="prescription-actions">
+<div class="prescription-actions">
         <button id="medPhotoBtn" class="photo-btn">Tirar foto</button>
         <button id="copyMedSafetyBtn">Copiar segurança dos medicamentos</button>
         <button id="printMedSafetyBtn">Imprimir segurança dos medicamentos</button>
@@ -1043,30 +1030,17 @@
       <div id="medicalDoubtAnswer" class="answer-box"></div>
     </div>
 
-    <div id="patientReportCard" class="module-card">
+        <div id="patientReportCard" class="module-card">
       <h2>Relatórios de Enfermagem</h2>
-      <p class="mini-status" style="margin-top: 0;">Grave o conteúdo do relatório em voz alta. Informe a finalidade (por exemplo: INSS, CAPS/saúde mental, escola, trabalho, advogado, assistência social, aquisição de insumos) e, se necessário, leia os exames durante a gravação. Ao encerrar, o relatório será gerado automaticamente.</p>
+      <p class="mini-status" style="margin-top: 0;">Grave o conteúdo do relatório em voz alta. Pergunte ao paciente qual a finalidade do relatório e peça que ele diga claramente durante a gravação (por exemplo: INSS, CAPS/saúde mental, escola, trabalho, advogado, assistência social, aquisição de insumos). Ao encerrar, a própria gravação será usada para identificar a finalidade e gerar automaticamente o relatório de enfermagem adequado.</p>
 
       <div class="inline-input-row">
         <button id="reportRecordBtn" class="small-record-btn start">Gravar relatório</button>
-        <div id="reportTimer" style="font-size: 18px; font-family: 'Courier New', monospace;">00:00</div>
-      </div>
-
-      <div style="margin-top: 10px;">
-        <input id="reportPurposeInput" class="text-input" type="text" placeholder="Finalidade do relatório (opcional)" autocomplete="off" />
-      </div>
-      <div style="margin-top: 8px;">
-        <input id="reportRecipientInput" class="text-input" type="text" placeholder="Destinatário (opcional)" autocomplete="off" />
       </div>
 
       <div id="reportStatus" class="mini-status"></div>
 
       <textarea id="reportOutput" class="prescription-textarea" placeholder="O relatório gerado aparecerá aqui." style="margin-top: 12px;"></textarea>
-
-      <div class="report-actions">
-        <button id="copyReportBtn">Copiar relatório</button>
-        <button id="printReportBtn">Imprimir relatório</button>
-      </div>
     </div>
 
   </div>
@@ -1162,10 +1136,6 @@
     const copyRiskTriageBtn = document.getElementById("copyRiskTriageBtn");
     const printRiskTriageBtn = document.getElementById("printRiskTriageBtn");
     const riskTriageStatus = document.getElementById("riskTriageStatus");
-    const rxTypeBox = document.getElementById("rxTypeBox");
-    const updateRxTypeBtn = document.getElementById("updateRxTypeBtn");
-    const printRxTypeBtn = document.getElementById("printRxTypeBtn");
-    const rxTypeStatus = document.getElementById("rxTypeStatus");
 
     const copySaeBtn = document.getElementById("copySaeBtn");
     const classificationsStatus = document.getElementById("classificationsStatus");
@@ -1490,11 +1460,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            transcricao: t,
-            finalidade: (reportPurposeInput?.value || "").trim(),
-            destinatario: (reportRecipientInput?.value || "").trim()
-          })
+          body: JSON.stringify({ transcricao: t })
         });
 
         if (!resp.ok) {
@@ -1518,7 +1484,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         micStatus.classList.remove("loading-dot");
 
         await updateClassifications();
-        await updateRxTypes();
         await updateRiskTriage();
         } catch (e) {
         console.error(e);
@@ -1643,24 +1608,15 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       });
     }
 
-
     const reportRecordBtn = document.getElementById("reportRecordBtn");
-    const reportTimerEl = document.getElementById("reportTimer");
     const reportStatus = document.getElementById("reportStatus");
     const reportOutput = document.getElementById("reportOutput");
-    const copyReportBtn = document.getElementById("copyReportBtn");
-    const printReportBtn = document.getElementById("printReportBtn");
-    const reportPurposeInput = document.getElementById("reportPurposeInput");
-    const reportRecipientInput = document.getElementById("reportRecipientInput");
 
 
     let reportRecognition = null;
     let reportIsRecording = false;
     let reportIsPaused = false;
     let reportFinalTranscript = "";
-    let reportTimerInterval = null;
-    let reportStartTime = null;
-    let reportAccumulatedSeconds = 0;
 
     // Rodada adicional de perguntas (aba lateral)
     let questionsRecognition = null;
@@ -1904,8 +1860,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       classificationsStatus.textContent = "";
       pregnancyBox.textContent = "Nenhum conteúdo disponível.";
       lactationBox.textContent = "Nenhum conteúdo disponível.";
-      if (rxTypeBox) rxTypeBox.textContent = "Nenhum conteúdo disponível.";
-      if (rxTypeStatus) rxTypeStatus.textContent = "";
       if (interactionsBox) interactionsBox.textContent = "Nenhum conteúdo disponível.";
       if (interactionsStatus) interactionsStatus.textContent = "";
       if (presentationsMaxDoseBox) presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
@@ -1944,7 +1898,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao: transcricaoParaGeracao, finalidade: (reportPurposeInput?.value || "").trim(), destinatario: (reportRecipientInput?.value || "").trim() })
+          body: JSON.stringify({ transcricao: transcricaoParaGeracao })
         });
 
         if (!resp.ok) {
@@ -1970,7 +1924,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         micStatus.classList.remove("loading-dot");
 
         await updateClassifications();
-        await updateRxTypes();
         await updateRiskTriage();
         } catch (e) {
         console.error(e);
@@ -2348,7 +2301,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         recommendationsStatus.classList.remove("loading-dot");
 
         await updateClassifications();
-        await updateRxTypes();
         await updateRiskTriage();
       } catch (err) {
         console.error("Erro geral ao atualizar SOAP com perguntas:", err);
@@ -2798,7 +2750,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         const resp = await fetch(BACKEND_URL + "/api/prescricao-hospitalar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao, finalidade: (reportPurposeInput?.value || "").trim(), destinatario: (reportRecipientInput?.value || "").trim() })
+          body: JSON.stringify({ transcricao })
         });
 
         if (!resp.ok) {
@@ -2817,7 +2769,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         hospitalPrescriptionStatus.classList.remove("loading-dot");
 
         await updateClassifications();
-        await updateRxTypes();
         await updateRiskTriage();
       } catch (err) {
         console.error("Erro ao gerar SBAR:", err);
@@ -2842,57 +2793,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         }
       }
       return lines.join("\n");
-    }
-
-    function formatRxTypeList(items) {
-      if (!Array.isArray(items) || !items.length) {
-        return "Nenhum conteúdo disponível.";
-      }
-      const lines = [];
-      for (const it of items) {
-        const med = (it && it.medicamento) ? String(it.medicamento) : "não informado";
-        const tipo = (it && it.tipo_receituario) ? String(it.tipo_receituario) : "Outros";
-        lines.push(med + ": " + tipo);
-      }
-      return lines.join("\n");
-    }
-
-    async function updateRxTypes() {
-      if (!rxTypeBox || !rxTypeStatus) return;
-
-      rxTypeStatus.textContent = "";
-      const contexto = getNursingContext();
-      if (!contexto) {
-        rxTypeBox.textContent = "Nenhum conteúdo disponível.";
-        return;
-      }
-
-      rxTypeStatus.textContent = "Gerando checklist de segurança...";
-      rxTypeStatus.classList.add("loading-dot");
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/tipo-receituario", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contexto })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP:", resp.status, txt);
-          rxTypeBox.textContent = "Falha ao gerar checklist.";
-          return;
-        }
-
-        const data = await resp.json().catch(() => ({}));
-        rxTypeBox.textContent = (data.checklist || "").trim() || "Nenhum conteúdo disponível.";
-      } catch (e) {
-        console.error(e);
-        rxTypeBox.textContent = "Falha ao gerar checklist (rede/backend).";
-      } finally {
-        rxTypeStatus.classList.remove("loading-dot");
-        rxTypeStatus.textContent = "";
-      }
     }
 
     async function updateClassifications() {
@@ -2936,35 +2836,37 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       }
     }
 
-    function updateReportTimer() {
-      const now = Date.now();
-      const seconds = reportAccumulatedSeconds + Math.floor((now - reportStartTime) / 1000);
-      const m = ("0" + Math.floor(seconds / 60)).slice(-2);
-      const s = ("0" + (seconds % 60)).slice(-2);
-      reportTimerEl.innerText = `${m}:${s}`;
+    let reportTimerInterval = null;
+    let reportTimerSeconds = 0;
+
+    function formatSecondsMMSS(totalSeconds) {
+      const secs = Math.max(0, Number(totalSeconds) || 0);
+      const m = ("0" + Math.floor(secs / 60)).slice(-2);
+      const s = ("0" + (secs % 60)).slice(-2);
+      return `${m}:${s}`;
     }
 
-    function startReportTimer() {
-      reportStartTime = Date.now();
+    function updateReportStatusTimer() {
+      if (!reportIsRecording) return;
+      const mmss = formatSecondsMMSS(reportTimerSeconds);
+      reportStatus.textContent = `Gravando relatório... ${mmss}`;
+    }
+
+    function startReportStatusTimer() {
+      reportTimerSeconds = 0;
       if (reportTimerInterval) clearInterval(reportTimerInterval);
-      reportTimerInterval = setInterval(updateReportTimer, 500);
+      updateReportStatusTimer();
+      reportTimerInterval = setInterval(() => {
+        reportTimerSeconds += 1;
+        updateReportStatusTimer();
+      }, 1000);
     }
 
-    function pauseReportTimer() {
-      if (!reportStartTime) return;
-      const now = Date.now();
-      reportAccumulatedSeconds += Math.floor((now - reportStartTime) / 1000);
+    function stopReportStatusTimer() {
       if (reportTimerInterval) clearInterval(reportTimerInterval);
       reportTimerInterval = null;
     }
 
-    function resetReportTimer() {
-      if (reportTimerInterval) clearInterval(reportTimerInterval);
-      reportTimerInterval = null;
-      reportStartTime = null;
-      reportAccumulatedSeconds = 0;
-      reportTimerEl.innerText = "00:00";
-    }
 
     function initReportSpeech() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -3026,8 +2928,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       reportStatus.classList.remove("loading-dot");
       reportStatus.classList.add("loading-dot");
 
-      resetReportTimer();
-      startReportTimer();
+      startReportStatusTimer();
 
       try {
         reportRecognition.start();
@@ -3048,7 +2949,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         }
       }
 
-      pauseReportTimer();
+      stopReportStatusTimer();
 
       reportRecordBtn.className = "small-record-btn start";
       reportRecordBtn.innerText = "Gravar relatório";
@@ -3067,7 +2968,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao, finalidade: (reportPurposeInput?.value || "").trim(), destinatario: (reportRecipientInput?.value || "").trim() })
+          body: JSON.stringify({ transcricao })
         });
 
         if (!resp.ok) {
@@ -3220,9 +3121,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     printHospitalPrescriptionBtn.addEventListener("click", () => {
       openPrintWindow("Passagem de Plantão (SBAR)", hospitalPrescriptionOutput.value);
     });
-
-    updateRxTypeBtn.addEventListener("click", () => {
-      updateRxTypes().then(() => updateRiskTriage());
     });
 
     if (printRiskTriageBtn) {
@@ -3265,9 +3163,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         copyToClipboard(text);
       });
     }
-
-    printRxTypeBtn.addEventListener("click", () => {
-      openPrintWindow("Checklist de segurança do paciente", rxTypeBox ? rxTypeBox.textContent : "");
     });
 
     printPregnancyBtn.addEventListener("click", () => {
@@ -3679,19 +3574,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       } else {
         stopReportRecordingAndGenerate();
       }
-    });
-
-    copyReportBtn.addEventListener("click", () => {
-      const text = reportOutput.value.trim();
-      if (!text) {
-        alert("Não há relatório para copiar.");
-        return;
-      }
-      copyToClipboard(text);
-    });
-
-    printReportBtn.addEventListener("click", () => {
-      openPrintWindow("Relatórios de Enfermagem", reportOutput.value);
     });
   </script>
 </body>
