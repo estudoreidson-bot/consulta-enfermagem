@@ -814,6 +814,84 @@
     }
 
 
+  
+    /* Padronização de botões de copiar e imprimir */
+    .btn-copy {
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: 1px solid #fd7e14 !important;
+      background: #fd7e14 !important;
+      color: #ffffff !important;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.05s, opacity 0.15s;
+    }
+    .btn-copy:hover { opacity: 0.92; }
+    .btn-copy:active { transform: scale(0.98); }
+
+    .btn-print {
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: 1px solid #0d6efd !important;
+      background: #0d6efd !important;
+      color: #ffffff !important;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.05s, opacity 0.15s;
+    }
+    .btn-print:hover { opacity: 0.92; }
+    .btn-print:active { transform: scale(0.98); }
+
+    /* Botões "Copiar" por seção do SOAP (mesma identidade visual, tamanho menor) */
+    .copy-soap-btn {
+      border: 1px solid #fd7e14 !important;
+      background: #fd7e14 !important;
+      color: #ffffff !important;
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .copy-soap-btn:hover { opacity: 0.92; }
+
+    /* Botão flutuante de contato via WhatsApp */
+    .whatsapp-fab {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: none;
+      background: #25D366;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.20);
+      cursor: pointer;
+      text-decoration: none;
+      z-index: 2000;
+    }
+    .whatsapp-fab:active { transform: scale(0.98); }
+    .whatsapp-fab svg { width: 28px; height: 28px; fill: #ffffff; }
+    .whatsapp-fab-label {
+      position: fixed;
+      right: 84px;
+      bottom: 28px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #111827;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      z-index: 2000;
+      user-select: none;
+    }
+    @media (max-width: 520px) {
+      .whatsapp-fab-label { display: none; }
+    }
+
   </style>
 </head>
 <body>
@@ -897,8 +975,8 @@
       <div class="section-header-row">
         <div class="soap-title-actions">
           <h2>SOAP</h2>
-          <button id="copyFullSoapBtn">Copiar SOAP</button>
-          <button id="printSoapBtn">Imprimir SOAP</button>
+          <button id="copyFullSoapBtn" class="btn-copy">Copiar SOAP</button>
+          <button id="printSoapBtn" class="btn-print">Imprimir SOAP</button>
         </div>
         <button id="recommendationsBtn">Perguntas essenciais</button>
       </div>
@@ -939,8 +1017,8 @@
       <textarea id="prescriptionOutput" class="prescription-textarea"></textarea>
 
       <div class="prescription-actions">
-        <button id="copyPrescriptionBtn">Copiar plano de cuidados</button>
-        <button id="printBtn">Imprimir plano de cuidados</button>
+        <button id="copyPrescriptionBtn" class="btn-copy">Copiar plano de cuidados</button>
+        <button id="printBtn" class="btn-print">Imprimir plano de cuidados</button>
       </div>
 
       <h2>Passagem de Plantão (SBAR)</h2>
@@ -948,8 +1026,8 @@
 
       <div class="prescription-actions">
         <button id="generateHospitalPrescriptionBtn">Gerar SBAR</button>
-        <button id="copyHospitalPrescriptionBtn">Copiar plano de cuidados hospitalar</button>
-        <button id="printHospitalPrescriptionBtn">Imprimir plano de cuidados hospitalar</button>
+        <button id="copyHospitalPrescriptionBtn" class="btn-copy">Copiar plano de cuidados hospitalar</button>
+        <button id="printHospitalPrescriptionBtn" class="btn-print">Imprimir plano de cuidados hospitalar</button>
       </div>
       <div id="hospitalPrescriptionStatus" class="mini-status"></div>
 
@@ -963,23 +1041,23 @@
         <div id="riskTriageLegend" class="risk-legend"></div>
       </div>
       <div class="prescription-actions">
-        <button id="copyRiskTriageBtn">Copiar classificação de risco</button>
-        <button id="printRiskTriageBtn">Imprimir classificação de risco</button>
+        <button id="copyRiskTriageBtn" class="btn-copy">Copiar classificação de risco</button>
+        <button id="printRiskTriageBtn" class="btn-print">Imprimir classificação de risco</button>
       </div>
       <div id="riskTriageStatus" class="mini-status"></div>
 
       <h2>SAE (Processo de Enfermagem)</h2>
       <div id="pregnancyBox" class="classification-box">Nenhum conteúdo disponível.</div>
       <div class="prescription-actions">
-        <button id="copySaeBtn">Copiar SAE</button>
-        <button id="printPregnancyBtn">Imprimir SAE</button>
+        <button id="copySaeBtn" class="btn-copy">Copiar SAE</button>
+        <button id="printPregnancyBtn" class="btn-print">Imprimir SAE</button>
       </div>
 
       <h2>Orientações ao paciente</h2>
       <div id="lactationBox" class="classification-box">Nenhum conteúdo disponível.</div>
       <div class="prescription-actions">
-        <button id="copyOrientationsBtn">Copiar orientações</button>
-        <button id="printLactationBtn">Imprimir orientações</button>
+        <button id="copyOrientationsBtn" class="btn-copy">Copiar orientações</button>
+        <button id="printLactationBtn" class="btn-print">Imprimir orientações</button>
       </div>
 <div id="classificationsStatus" class="mini-status"></div>
     </div>
@@ -992,8 +1070,8 @@
       </p>
 <div class="prescription-actions">
         <button id="medPhotoBtn" class="photo-btn">Tirar foto</button>
-        <button id="copyMedSafetyBtn">Copiar segurança dos medicamentos</button>
-        <button id="printMedSafetyBtn">Imprimir segurança dos medicamentos</button>
+        <button id="copyMedSafetyBtn" class="btn-copy">Copiar segurança dos medicamentos</button>
+        <button id="printMedSafetyBtn" class="btn-print">Imprimir segurança dos medicamentos</button>
       </div>
 
       <div id="interactionsStatus" class="mini-status"></div>
@@ -1011,8 +1089,8 @@
 
       <div class="prescription-actions">
         <button id="woundPhotoBtn" class="photo-btn">Tirar foto</button>
-        <button id="copyWoundBtn">Copiar prescrição e cuidados</button>
-        <button id="printWoundBtn">Imprimir prescrição e cuidados</button>
+        <button id="copyWoundBtn" class="btn-copy">Copiar prescrição e cuidados</button>
+        <button id="printWoundBtn" class="btn-print">Imprimir prescrição e cuidados</button>
       </div>
 
       <div id="presentationsMaxDoseStatus" class="mini-status"></div>
@@ -3574,5 +3652,20 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       }
     });
   </script>
+
+  <div class="whatsapp-fab-label">Entrar em contato</div>
+  <a
+    class="whatsapp-fab"
+    href="https://wa.me/5575981457012?text=Ol%C3%A1%21%20Gostaria%20de%20reportar%20um%20erro%2C%20tirar%20uma%20d%C3%BAvida%20ou%20enviar%20uma%20sugest%C3%A3o."
+    target="_blank"
+    rel="noopener"
+    aria-label="Entrar em contato pelo WhatsApp"
+    title="Reportar erros, dúvidas e sugestões"
+  >
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M19.5 14.5c-.7 0-1.4-.1-2.1-.3a1 1 0 0 0-1 .2l-1.3 1.3a13.1 13.1 0 0 1-5.8-5.8l1.3-1.3a1 1 0 0 0 .2-1c-.2-.7-.3-1.4-.3-2.1a1 1 0 0 0-1-1H6.5a1 1 0 0 0-1 1c0 6.1 4.9 11 11 11a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1z"></path>
+    </svg>
+  </a>
+
 </body>
 </html>
