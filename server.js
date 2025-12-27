@@ -1052,256 +1052,245 @@ function guessContextAndHypothesis(t) {
 }
 
 
-function stripAccents(s) {
-  try {
-    return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  } catch {
-    return String(s || "");
+function detectConsultType(t) {
+  const s = String(t || "").toLowerCase();
+
+  // Puerpério / pós-parto
+  if (
+    s.includes("puerp") ||
+    s.includes("pós-parto") ||
+    s.includes("pos parto") ||
+    s.includes("resguardo") ||
+    s.includes("loqu") ||
+    s.includes("parto há") ||
+    s.includes("parto ha")
+  ) {
+    return "Puerpério";
   }
+
+  // Pré-natal
+  if (
+    s.includes("pré-natal") ||
+    s.includes("pre natal") ||
+    s.includes("prenatal") ||
+    s.includes("gestante") ||
+    s.includes("gravidez") ||
+    s.includes("dum") ||
+    s.includes("dpp")
+  ) {
+    return "Pré-natal";
+  }
+
+  // Puericultura
+  if (
+    s.includes("puericultura") ||
+    s.includes("caderneta") ||
+    s.includes("vacina") ||
+    s.includes("consulta do bebê") ||
+    s.includes("consulta do bebe") ||
+    s.includes("bebê") ||
+    s.includes("bebe") ||
+    s.includes("criança") ||
+    s.includes("crianca")
+  ) {
+    return "Puericultura";
+  }
+
+  // Hiperdia
+  if (
+    s.includes("hiperdia") ||
+    s.includes("hipertenso") ||
+    s.includes("hipertens") ||
+    s.includes("pressão alta") ||
+    s.includes("pressao alta") ||
+    s.includes("has") ||
+    s.includes("diabetes") ||
+    s.includes("diabét") ||
+    s.includes("diabet") ||
+    s.includes("dm") ||
+    s.includes("glicem") ||
+    s.includes("insulina") ||
+    s.includes("metform")
+  ) {
+    return "Hiperdia";
+  }
+
+  // Planejamento familiar
+  if (
+    s.includes("planejamento familiar") ||
+    s.includes("anticoncepc") ||
+    s.includes("diu") ||
+    s.includes("implante") ||
+    s.includes("laquea") ||
+    s.includes("vasect") ||
+    s.includes("método") ||
+    s.includes("metodo") ||
+    s.includes("pílula") ||
+    s.includes("pilula") ||
+    s.includes("injeção") ||
+    s.includes("injec")
+  ) {
+    return "Planejamento familiar";
+  }
+
+  return "Consulta geral";
 }
 
-function detectConsultType(transcricao, tipoAtual) {
-  const raw = stripAccents(String(transcricao || "")).toLowerCase();
-  const curr = stripAccents(String(tipoAtual || "")).toLowerCase();
-
-  const has = (arr) => arr.some(k => raw.includes(k));
-  const hasCurr = (arr) => arr.some(k => curr.includes(k));
-
-  // Mantém tipo atual se o texto recente não contradiz, para evitar ficar oscilando
-  if (tipoAtual && hasCurr(["pre natal","prenatal","gestante"]) && !has(["puericultura","hiperdia","planejamento familiar","puerperio","pos parto"])) {
-    return { code: "prenatal", label: "Pré-natal" };
+function baseProceduresForType(tipo) {
+  const t = String(tipo || "");
+  if (t === "Pré-natal") {
+    return [
+      "Aferir sinais vitais (PA, FC, FR, SpO2, temperatura) e peso; avaliar edema e sinais de alarme hipertensivo.",
+      "Calcular/confirmar idade gestacional (DUM, USG) e registrar DPP; revisar cartão da gestante e exames prévios.",
+      "Avaliar altura uterina e apresentação fetal; auscultar batimentos cardíacos fetais quando aplicável.",
+      "Orientar sinais de risco (sangramento, perda de líquido, cefaleia intensa/escotomas, dor epigástrica, redução de movimentos fetais) e definir retorno conforme risco.",
+      "Revisar vacinação e suplementação (ácido fólico/ferro) conforme rotina local."
+    ];
   }
-  if (tipoAtual && hasCurr(["puerperio","pos parto","resguardo"]) && !has(["puericultura","hiperdia","planejamento familiar","pre natal","prenatal","gestante"])) {
-    return { code: "puerperio", label: "Puerpério" };
+  if (t === "Puerpério") {
+    return [
+      "Aferir sinais vitais e avaliar dor; checar sangramento/loquiação e involução uterina.",
+      "Examinar mamas e avaliar amamentação (pega, fissuras, mastite/ingurgitamento).",
+      "Avaliar ferida operatória/períneo e sinais de infecção (febre, dor intensa, secreção, mau odor).",
+      "Rastrear saúde mental no pós-parto (humor, ansiedade, ideação, apoio social) e orientar rede de suporte.",
+      "Orientar planejamento reprodutivo e sinais de alarme (hemorragia, dispneia, dor em panturrilha, febre)."
+    ];
   }
-  if (tipoAtual && hasCurr(["puericultura","crianca","beb"]) && !has(["pre natal","prenatal","gestante","puerperio","pos parto","hiperdia","planejamento familiar"])) {
-    return { code: "puericultura", label: "Puericultura" };
+  if (t === "Puericultura") {
+    return [
+      "Aferir antropometria (peso, estatura, perímetro cefálico quando aplicável) e plotar curvas na caderneta.",
+      "Avaliar desenvolvimento neuropsicomotor, alimentação (aleitamento/introdução), sono e eliminação.",
+      "Revisar vacinação/caderneta, suplementações e orientar prevenção de acidentes.",
+      "Realizar exame físico completo dirigido por idade (pele, cardio, resp, abdome, orofaringe, quadril, visão/audição).",
+      "Orientar sinais de alerta e programar retorno conforme faixa etária."
+    ];
   }
-  if (tipoAtual && hasCurr(["hiperdia","hipertens","diabet"]) && !has(["pre natal","prenatal","gestante","puericultura","planejamento familiar","puerperio","pos parto"])) {
-    return { code: "hiperdia", label: "Hiperdia" };
+  if (t === "Hiperdia") {
+    return [
+      "Aferir pressão arterial corretamente, peso e circunferência abdominal; revisar metas individuais.",
+      "Revisar medicações/adesão e efeitos adversos; avaliar sinais de hipoglicemia/hiperglicemia e descompensação.",
+      "Avaliar complicações: exame de pés (sensibilidade, pulsos, lesões), sintomas cardiovasculares e renais.",
+      "Revisar exames conforme rotina (glicemia/HbA1c, lipídios, creatinina, albuminúria) e encaminhamentos necessários.",
+      "Orientar plano de cuidados: dieta, atividade física, cessação de tabagismo, autocuidado e retorno."
+    ];
   }
-  if (tipoAtual && hasCurr(["planejamento familiar","anticoncepc","diu","laque"]) && !has(["pre natal","prenatal","gestante","puericultura","hiperdia","puerperio","pos parto"])) {
-    return { code: "planejamento", label: "Planejamento familiar" };
+  if (t === "Planejamento familiar") {
+    return [
+      "Confirmar DUM e possibilidade de gestação (quando indicado, teste de gravidez); aferir sinais vitais e IMC.",
+      "Avaliar contraindicações e fatores de risco (tabagismo, enxaqueca com aura, trombose, hipertensão, câncer de mama, lactação).",
+      "Aconselhar métodos (eficácia, efeitos, preferências) e reforçar dupla proteção (preservativo).",
+      "Avaliar necessidade de abordagem de ISTs conforme risco e orientar prevenção.",
+      "Registrar escolha do método, orientar uso correto e agendar retorno/seguimento."
+    ];
   }
-
-  if (has(["puerperio", "pos parto", "p\u00f3s parto", "resguardo", "loquio", "l\u00f3quio", "cesarea", "ces\u00e1rea"])) {
-    return { code: "puerperio", label: "Puerpério" };
-  }
-  if (has(["pre natal", "prenatal", "gestante", "gravidez", "gr\u00e1vida", "dpp", "dum", "idade gestacional", "movimentos fetais"])) {
-    return { code: "prenatal", label: "Pré-natal" };
-  }
-  if (has(["puericultura", "crianca", "crian\u00e7a", "beb", "vacina", "cartao de vacina", "cart\u00e3o de vacina", "crescimento", "desenvolvimento"])) {
-    return { code: "puericultura", label: "Puericultura" };
-  }
-  if (has(["hiperdia", "hipertens", "pressao alta", "press\u00e3o alta", "diabet", "glic", "a1c", "hba1c", "insulina"])) {
-    return { code: "hiperdia", label: "Hiperdia" };
-  }
-  if (has(["planejamento familiar", "anticoncepc", "diu", "implante", "camisinha", "preservativo", "p\u00edlula", "inje\u00e7\u00e3o", "laque", "vasect", "escolher metodo", "m\u00e9todo"])) {
-    return { code: "planejamento", label: "Planejamento familiar" };
-  }
-
-  return { code: "geral", label: "Atendimento geral" };
+  // Consulta geral
+  return [
+    "Aferir sinais vitais e avaliar estado geral.",
+    "Realizar exame físico dirigido à queixa e checar sinais de gravidade.",
+    "Revisar medicações em uso e alergias.",
+    "Orientar sinais de alarme e definir retorno/encaminhamento quando necessário."
+  ];
 }
 
-function proceduresBaseByType(code) {
-  switch (String(code || "")) {
-    case "prenatal":
-      return [
-        "Aferir sinais vitais (PA, FC, FR, temperatura; SpO2 se indicado) e peso; avaliar ganho ponderal.",
-        "Avaliar edema, sinais de anemia e hidratação; exame físico direcionado.",
-        "Avaliar altura uterina e movimentos fetais conforme idade gestacional; auscultar BCF quando aplicável.",
-        "Revisar exames e calendário de vacinas da gestante; orientar suplementação conforme rotina.",
-        "Checar sinais de alarme e orientar retorno imediato (sangramento, perda de líquido, dor intensa, cefaleia intensa, alterações visuais, dor em epigástrio, redução de movimentos fetais)."
-      ];
-    case "puerperio":
-      return [
-        "Aferir sinais vitais e avaliar estado geral (dor, febre, hidratação).",
-        "Avaliar sangramento e lóquios; investigar sinais de infecção (odor fétido, dor pélvica, febre).",
-        "Avaliar involução uterina quando aplicável e exame de ferida operatória/lacerações.",
-        "Avaliar mamas e amamentação; orientar pega, fissuras, ingurgitamento e sinais de mastite.",
-        "Triar saúde mental e risco psicossocial no puerpério; orientar apoio e sinais de alerta.",
-        "Discutir planejamento reprodutivo e métodos contraceptivos no pós-parto."
-      ];
-    case "puericultura":
-      return [
-        "Medir peso, estatura/comprimento e perímetro cefálico; avaliar curvas de crescimento.",
-        "Avaliar marcos do desenvolvimento neuropsicomotor e interação; triagem de sinais de atraso.",
-        "Revisar cartão de vacinas e atualizar orientações de rotina conforme idade.",
-        "Avaliar alimentação, eliminação, sono e ambiente; orientar práticas seguras.",
-        "Exame físico completo com foco em sinais de doença crônica ou aguda."
-      ];
-    case "hiperdia":
-      return [
-        "Aferir PA e peso/IMC; avaliar circunferência abdominal quando pertinente.",
-        "Revisar adesão a medicamentos, efeitos adversos e acesso; checar técnica de uso quando aplicável.",
-        "Avaliar sinais/sintomas de complicações (cardiovasculares, renais, neurológicas) e sinais de alarme.",
-        "Inspecionar pés em diabéticos; orientar cuidado com pés e prevenção de lesões.",
-        "Reforçar plano de cuidados: alimentação, atividade física, cessação de tabagismo e metas.",
-        "Revisar necessidade de exames periódicos e rastreios conforme protocolo local."
-      ];
-    case "planejamento":
-      return [
-        "Confirmar objetivo do casal/pessoa (evitar gestação, espaçamento ou tentativa de gestar) e preferências.",
-        "Aferir PA e avaliar fatores de risco/contraindicações para métodos (trombose, enxaqueca com aura, tabagismo, HAS, etc.).",
-        "Avaliar risco de gestação atual (data da última menstruação, atraso, testes quando necessário).",
-        "Orientar opções de métodos e uso correto; discutir efeitos adversos e sinais de alerta.",
-        "Reforçar prevenção de IST e dupla proteção quando indicado."
-      ];
-    default:
-      return [
-        "Aferir sinais vitais e avaliar gravidade; identificar sinais de alarme.",
-        "Exame físico direcionado e orientações de retorno conforme evolução."
-      ];
-  }
-}
+function heuristicQuestions(transcricao) {
+  const t = String(transcricao || "").toLowerCase();
+  const tipo_consulta = detectConsultType(t);
+  const base_procedimentos = baseProceduresForType(tipo_consulta);
 
-function typeSpecificQuestions(code, t) {
-  const s = stripAccents(String(t || "")).toLowerCase();
-  const out = [];
-  const push = (x) => {
-    const v = String(x || "").trim();
-    if (!v) return;
-    if (!out.some(a => a.toLowerCase() === v.toLowerCase())) out.push(v);
-  };
-
-  if (code === "prenatal") {
-    push("Confirmar idade gestacional (DUM/DPP) e se é gestação de risco ou houve intercorrências anteriores.");
-    push("Investigar sinais de alarme na gestação: sangramento, perda de líquido, dor abdominal intensa, cefaleia intensa, alterações visuais, dor em epigástrio, redução de movimentos fetais.");
-    push("Perguntar sintomas atuais e comorbidades/medicações em uso (HAS, diabetes, infecções, uso de substâncias).");
-    if (s.includes("pressao") || s.includes("hipertens")) push("Perguntar sobre sintomas de pré-eclâmpsia e aferir PA com repetição; investigar edema e ganho de peso recente.");
-    if (s.includes("diabet") || s.includes("glic")) push("Checar controle glicêmico, hipoglicemias e sinais de infecção urinária/candidíase.");
-  } else if (code === "puerperio") {
-    push("Confirmar dias pós-parto, tipo de parto e se houve complicações (hemorragia, hipertensão, infecção).");
-    push("Perguntar sobre sangramento/lóquios e sinais de infecção: febre, calafrios, dor pélvica, odor fétido, secreção em ferida.");
-    push("Perguntar sobre amamentação (dor, fissuras, febre, vermelhidão mamária) e sintomas emocionais (humor, ansiedade, sono, ideação).");
-  } else if (code === "puericultura") {
-    push("Confirmar idade da criança e se a consulta é de rotina ou há queixas específicas hoje.");
-    push("Perguntar sobre alimentação (aleitamento/introdução alimentar), eliminações e sono; investigar sinais de desidratação se houver diarreia/vômitos.");
-    push("Revisar vacinação e marcos do desenvolvimento (sustenta cabeça, senta, anda, fala) conforme idade; perguntar sobre preocupações da família.");
-  } else if (code === "hiperdia") {
-    push("Confirmar se a consulta é para acompanhamento de hipertensão/diabetes, renovação de receitas ou sintomas novos.");
-    push("Perguntar adesão ao tratamento, efeitos adversos e se houve descompensação recente (picos pressóricos, hipoglicemia/hiperglicemia).");
-    push("Investigar sinais de complicação: dor torácica, dispneia, edema, cefaleia intensa, alterações visuais, parestesias, feridas em pés.");
-  } else if (code === "planejamento") {
-    push("Qual o objetivo do planejamento hoje (evitar gestação, espaçar, método atual com efeitos adversos, desejo de engravidar)?");
-    push("Confirmar data da última menstruação, regularidade do ciclo e possibilidade de gestação atual.");
-    push("Checar contraindicações para métodos hormonais/DIU: enxaqueca com aura, trombose, tabagismo, hipertensão, sangramento inexplicado, IST recente.");
-  } else {
-    // geral
-    push("Confirmar início e evolução do quadro (quando começou e como piorou/melhorou).");
-    push("Aferir sinais vitais e saturação; verificar sinais de alarme relevantes ao quadro.");
-  }
-
-  return out;
-}
-
-function heuristicQuestions(transcricao, tipoAtual) {
-  const tRaw = String(transcricao || "");
-  const t = tRaw.toLowerCase();
-
-  const det = detectConsultType(tRaw, tipoAtual);
-  const tipo_consulta = det.label;
-  const tipo_code = det.code;
-
-  let contexto = tipo_consulta && tipo_code !== "geral" ? tipo_consulta : "";
-  let hipotese = "";
-
-  // Heurística de hipótese: em consultas programáticas, prioriza o tipo de consulta.
-  // Se houver sinais/sintomas marcantes, tenta manter uma hipótese clínica principal.
-  const gh = guessContextAndHypothesis(t);
-  if (tipo_code !== "geral") {
+  let { contexto, hipotese } = guessContextAndHypothesis(t);
+  if (tipo_consulta && tipo_consulta !== "Consulta geral") {
     contexto = tipo_consulta;
-    hipotese = "Consulta de " + tipo_consulta;
-    const hasAcute =
-      t.includes("dor") || t.includes("febre") || t.includes("tosse") || t.includes("falta de ar") ||
-      t.includes("sangr") || t.includes("vomit") || t.includes("diarre") || t.includes("corrimento");
-    if (hasAcute && gh && gh.hipotese) {
-      hipotese = hipotese + " com hipótese adicional: " + gh.hipotese;
-    }
-  } else {
-    contexto = gh.contexto || "Atendimento geral";
-    hipotese = gh.hipotese || "";
   }
 
-  const procedimentos_base = proceduresBaseByType(tipo_code);
-
-  const procedimentos_adicionais = [];
-  const pushProc = (s) => {
-    const x = String(s || "").trim();
-    if (!x) return;
-    if (!procedimentos_adicionais.some(a => a.toLowerCase() === x.toLowerCase())) procedimentos_adicionais.push(x);
-  };
-
-  // Procedimentos adicionais por sinais de gravidade / queixa
-  if (t.includes("febre") || t.includes("calafrio")) pushProc("Avaliar foco infeccioso, sinais de toxemia e necessidade de exames conforme quadro.");
-  if (t.includes("falta de ar") || t.includes("dispne") || t.includes("chiado")) pushProc("Avaliar sinais de gravidade respiratória e necessidade de oximetria e ausculta.");
-  if (t.includes("dor no peito") || t.includes("torac") || t.includes("opress")) pushProc("Avaliar sinais de gravidade e considerar ECG conforme protocolo/serviço.");
-  if (t.includes("sangr") || t.includes("hemorrag")) pushProc("Avaliar instabilidade hemodinâmica e necessidade de encaminhamento imediato.");
-  if (tipo_code === "prenatal" && (t.includes("sangr") || t.includes("perda de liquido") || t.includes("perda de l\u00edquido"))) {
-    pushProc("Avaliar sinais de ameaça ao bem-estar materno-fetal e necessidade de encaminhamento imediato.");
-  }
-  if (tipo_code === "hiperdia" && (t.includes("pressao") || t.includes("press\u00e3o") || t.includes("cefale"))) {
-    pushProc("Repetir aferição de PA, avaliar sinais de emergência hipertensiva e conduta conforme protocolo.");
-  }
 
   const q = [];
-  const pushQ = (s) => {
+  const push = (s) => {
     const x = String(s || "").trim();
     if (!x) return;
     if (!q.some(a => a.toLowerCase() === x.toLowerCase())) q.push(x);
   };
 
-  // Perguntas iniciais guiadas pelo tipo de consulta
-  typeSpecificQuestions(tipo_code, tRaw).forEach(pushQ);
-
-  // Perguntas complementares por sintomas (sem substituir o foco do tipo de consulta)
-  if (t.includes("febre") || t.includes("calafrio")) {
-    pushQ("Perguntar pico da febre, padrão (contínua/intermitente) e uso/resposta a antitérmicos.");
-    pushQ("Investigar sinais de alarme: prostração importante, rigidez de nuca, dispneia, confusão, desidratação.");
+  // Perguntas iniciais por tipo de consulta (no máximo 3; extremamente necessárias)
+  if (tipo_consulta === "Pré-natal") {
+    push("Confirmar DUM e idade gestacional; houve ultrassom? Alguma intercorrência nesta gestação?");
+    push("Há sinais de alarme: sangramento, perda de líquido, dor abdominal forte, cefaleia intensa/escotomas, dor epigástrica, falta de ar?");
+    push("Movimentos fetais estão presentes (se aplicável)? Como está a pressão em casa e edema?");
+  } else if (tipo_consulta === "Puerpério") {
+    push("Quantos dias desde o parto? Foi vaginal ou cesárea? Como está o sangramento/loquiação?");
+    push("Há febre, dor forte, mau odor, secreção na ferida ou dor/empedramento nas mamas?");
+    push("Como está o humor e o sono? Consegue amamentar? Há apoio em casa?");
+  } else if (tipo_consulta === "Puericultura") {
+    push("Qual a idade da criança? Está com algum sintoma hoje (febre, tosse, vômitos, diarreia, falta de ar)?");
+    push("Como está a alimentação (aleitamento/introdução), sono e eliminações? Alguma preocupação com desenvolvimento?");
+    push("Vacinas estão em dia na caderneta? Houve internações, alergias ou uso de medicamentos recentes?");
+  } else if (tipo_consulta === "Hiperdia") {
+    push("Como estão as medidas recentes de pressão/glicemia? Houve sintomas de hipoglicemia/hiperglicemia ou picos de pressão?");
+    push("Está usando as medicações corretamente? Algum efeito adverso, falta de medicamentos ou dificuldade de adesão?");
+    push("Há sintomas de complicações: dor no peito, falta de ar, edema, visão turva, feridas nos pés, dormência?");
+  } else if (tipo_consulta === "Planejamento familiar") {
+    push("Qual sua intenção reprodutiva (deseja engravidar agora, mais tarde ou evitar)? Data da última menstruação e chance de gestação?");
+    push("Você tem contraindicações relevantes: tabagismo, enxaqueca com aura, trombose, hipertensão, câncer de mama, lactação?");
+    push("Qual método você prefere (DIU, implante, pílula, injetável, preservativo)? Já usou algum e teve efeitos?");
   }
 
-  if (t.includes("dor no peito") || t.includes("torác") || t.includes("torac") || t.includes("opress")) {
-    pushQ("Caracterizar dor torácica (início, duração, irradiação, intensidade) e sintomas associados.");
-    pushQ("Investigar dispneia, sudorese, náuseas, síncope e fatores de risco cardiovasculares.");
+
+
+  push("Confirmar início e evolução do quadro (quando começou e como piorou/melhorou).");
+  push("Aferir sinais vitais e saturação; verificar sinais de alarme relevantes ao quadro.");
+
+  if (t.includes("febre") || t.includes("calafrio")) {
+    push("Perguntar pico da febre, padrão (contínua/intermitente) e uso/resposta a antitérmicos.");
+    push("Perguntar sinais de gravidade: prostração importante, confusão, rigidez de nuca, dispneia, dor torácica.");
+  }
+
+  if (t.includes("dor de garganta") || t.includes("garganta") || t.includes("amígdala")) {
+    push("Perguntar presença de tosse, coriza, rouquidão e contato com casos semelhantes.");
+    push("Verificar exsudato/hiperemia amigdalar, linfonodos cervicais dolorosos e febre (critérios clínicos).");
+  }
+
+  if (t.includes("tosse") || t.includes("coriza") || t.includes("catarro")) {
+    push("Caracterizar tosse (seca/produtiva), dispneia, dor pleurítica e duração do quadro.");
+    push("Checar sinais de alarme respiratório e comorbidades (asma/DPOC, cardiopatia, imunossupressão).");
+  }
+
+  if (t.includes("dor no peito") || t.includes("torác") || t.includes("opress")) {
+    push("Caracterizar dor torácica: início, duração, irradiação, fatores de melhora/piora e sintomas associados.");
+    push("Investigar dispneia, sudorese, náuseas, síncope e fatores de risco cardiovasculares.");
   }
 
   if (t.includes("falta de ar") || t.includes("dispne") || t.includes("chiado")) {
-    pushQ("Perguntar intensidade/limitação funcional, gatilhos, sibilância e resposta a broncodilatador.");
-    pushQ("Investigar sinais de gravidade: fala entrecortada, uso de musculatura acessória, cianose, SpO2 baixa.");
+    push("Perguntar intensidade/limitação funcional, gatilhos, sibilância e resposta a broncodilatador.");
+    push("Investigar sinais de gravidade: fala entrecortada, uso de musculatura acessória, cianose, SpO2 baixa.");
   }
 
   if (t.includes("dor abdominal") || t.includes("abdome") || t.includes("barriga")) {
-    pushQ("Caracterizar dor abdominal (localização, irradiação, intensidade, relação com alimentação/evacuação).");
-    pushQ("Perguntar náuseas/vômitos, diarreia, febre, e sinais de desidratação.");
-    pushQ("Perguntar sintomas urinários e, se aplicável, possibilidade de gestação.");
+    push("Caracterizar dor abdominal (localização, irradiação, intensidade, relação com alimentação/evacuação).");
+    push("Perguntar náuseas/vômitos, diarreia, febre, e sinais de desidratação.");
+    push("Perguntar sintomas urinários e, se aplicável, possibilidade de gestação.");
   }
 
   if (t.includes("diarre") || t.includes("vômit") || t.includes("vomit") || t.includes("náuse") || t.includes("enjoo")) {
-    pushQ("Perguntar número de episódios, sangue/muco nas fezes e tolerância a líquidos.");
-    pushQ("Investigar sinais de desidratação (sede, oligúria, tontura) e fatores de risco.");
+    push("Perguntar número de episódios, sangue/muco nas fezes e tolerância a líquidos.");
+    push("Avaliar risco de desidratação (diurese, sede intensa, sonolência) e sinais de alarme.");
   }
 
-  if (t.includes("urina") || t.includes("ardor") || t.includes("disur")) {
-    pushQ("Perguntar disúria, urgência, polaciúria, dor lombar e febre.");
-    pushQ("Investigar corrimento/IST e, se aplicável, gestação.");
+  if ((t.includes("urina") || t.includes("xixi") || t.includes("disúria") || t.includes("ardor")) && (t.includes("dor") || t.includes("frequên") || t.includes("urgên") || t.includes("febre"))) {
+    push("Perguntar disúria, urgência, polaciúria, dor lombar e febre; investigar gestação quando aplicável.");
+    push("Se possível, realizar EAS/urocultura conforme protocolo/local.");
+  }
+
+  if (t.includes("cefale") || t.includes("dor de cabeça")) {
+    push("Caracterizar cefaleia (início súbito vs. progressivo, intensidade, padrão, sintomas associados).");
+    push("Investigar sinais de alarme: déficit focal, rigidez de nuca, febre, pior cefaleia da vida, vômitos em jato.");
   }
 
   if (t.includes("sangr") || t.includes("hemorrag") || t.includes("menstrua")) {
-    pushQ("Quantificar sangramento e avaliar instabilidade (tontura, síncope, palidez, taquicardia).");
-    pushQ("Perguntar possibilidade de gestação e dor pélvica/abdominal associada.");
+    push("Quantificar sangramento e avaliar instabilidade (tontura, síncope, palidez, taquicardia).");
+    push("Perguntar possibilidade de gestação e dor pélvica/abdominal associada.");
   }
 
-  return {
-    tipo_consulta,
-    tipo_code,
-    contexto,
-    hipotese,
-    sugestoes: q,
-    procedimentos_base,
-    procedimentos_adicionais
-  };
+  return { contexto, tipo_consulta, procedimentos_base: base_procedimentos, hipotese, sugestoes: q };
 }
-
 
 function isRedFlagQuestion(question) {
   const q = String(question || "").toLowerCase();
@@ -1326,12 +1315,16 @@ app.post("/api/guia-tempo-real", async (req, res) => {
     const evento = String(body.evento || "").trim() || "stream";
 
     if (estado === "aguardando_motivo") {
-      return res.json({ contexto: "", hipotese_principal: "", confianca: 0, perguntas: [] });
+      tipo_consulta = detectConsultType(legacyTrans || "");
+      procedimentos_base = baseProceduresForType(tipo_consulta);
+      return res.json({ contexto: "", tipo_consulta, procedimentos_base, hipotese_principal: "", confianca: 0, perguntas: [] });
     }
 
     const transcricao = normalizeText(body.transcricao || legacyTrans || "", 12000);
     if (!transcricao || transcricao.length < 20) {
-      return res.json({ contexto: "", hipotese_principal: "", confianca: 0, perguntas: [] });
+      tipo_consulta = detectConsultType(transcricao || "");
+      procedimentos_base = baseProceduresForType(tipo_consulta);
+      return res.json({ contexto: "", tipo_consulta, procedimentos_base, hipotese_principal: "", confianca: 0, perguntas: [] });
     }
 
     const perguntaFeita = String(body.pergunta_feita || "").trim();
@@ -1347,10 +1340,8 @@ app.post("/api/guia-tempo-real", async (req, res) => {
     let hipotese = "";
     let confianca = 0;
     let sugestoes = [];
-    let tipoConsulta = "";
-    let procedimentosBase = [];
-    let procedimentosAdicionais = [];
-
+    let tipo_consulta = "Consulta geral";
+    let procedimentos_base = baseProceduresForType(tipo_consulta);
 
     if (process.env.OPENAI_API_KEY) {
       const prompt = `
@@ -1366,13 +1357,12 @@ Regras:
 
 Retorne JSON estrito no formato:
 {
-  "tipo_consulta": "Pré-natal|Puerpério|Puericultura|Hiperdia|Planejamento familiar|Atendimento geral",
   "contexto": "texto curto",
   "hipotese_principal": "texto curto",
   "confianca": 0,
-  "perguntas_sugeridas": ["...", "...", "..."],
+  "tipo_consulta": "Pré-natal|Puerpério|Puericultura|Hiperdia|Planejamento familiar|Consulta geral",
   "procedimentos_base": ["..."],
-  "procedimentos_adicionais": ["..."]
+  "perguntas": ["...", "...", "..."]
 }
 
 Dados atuais:
@@ -1382,7 +1372,6 @@ Dados atuais:
 - Confiança atual: ${confiancaAtual}
 - Pergunta feita (se houver): ${perguntaFeita || "nenhuma"}
 - Perguntas pendentes: ${pendentes.length ? pendentes.join(" | ") : "nenhuma"}
-- Tipo de consulta atual (se já identificado): ${String(body.tipo_consulta_atual || "").trim() || "não informado"}
 
 Última fala (trecho recente, pode estar vazio): ${ultimaFala || "não informado"}
 
@@ -1390,30 +1379,25 @@ Transcrição:
 <<<${transcricao}>>>
 `;
       const data = await callOpenAIJson(prompt);
-
-      const detLocal = detectConsultType(transcricao, body.tipo_consulta_atual || "");
-      tipoConsulta = typeof data?.tipo_consulta === "string" && data.tipo_consulta.trim() ? data.tipo_consulta.trim() : detLocal.label;
-
-      contexto = typeof data?.contexto === "string" ? data.contexto.trim() : (tipoConsulta || "");
+      contexto = typeof data?.contexto === "string" ? data.contexto.trim() : "";
       hipotese = typeof data?.hipotese_principal === "string" ? data.hipotese_principal.trim() : "";
       confianca = clampNumber(data?.confianca, 0, 95);
-
-      sugestoes = Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : [];
-
-      const pb = Array.isArray(data?.procedimentos_base) ? data.procedimentos_base : [];
-      procedimentosBase = pb.map(x => String(x || "").trim()).filter(Boolean);
-      if (!procedimentosBase.length) procedimentosBase = proceduresBaseByType(detLocal.code);
-
-      const pa = Array.isArray(data?.procedimentos_adicionais) ? data.procedimentos_adicionais : [];
-      procedimentosAdicionais = pa.map(x => String(x || "").trim()).filter(Boolean).slice(0, 10);
-} else {
-      const h = heuristicQuestions(transcricao, body.tipo_consulta_atual || "");
-      tipoConsulta = h.tipo_consulta || "";
-      contexto = h.contexto || tipoConsulta || "";
+      sugestoes = Array.isArray(data?.perguntas) ? data.perguntas : (Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : []);
+      const tipo_modelo = typeof data?.tipo_consulta === "string" ? data.tipo_consulta.trim() : "";
+      const proc_modelo = Array.isArray(data?.procedimentos_base) ? data.procedimentos_base : null;
+      if (tipo_modelo) {
+        tipo_consulta = tipo_modelo;
+      }
+      if (proc_modelo && proc_modelo.length) {
+        procedimentos_base = normalizeStringArray(proc_modelo, 10, 240);
+      } else {
+        procedimentos_base = baseProceduresForType(tipo_consulta);
+      }
+    } else {
+      const h = heuristicQuestions(transcricao);
+      contexto = h.contexto || "";
       hipotese = h.hipotese || "";
       sugestoes = h.sugestoes || [];
-      procedimentosBase = Array.isArray(h.procedimentos_base) ? h.procedimentos_base : [];
-      procedimentosAdicionais = Array.isArray(h.procedimentos_adicionais) ? h.procedimentos_adicionais : [];
 
       const bonusEvento = (evento === "resposta") ? 12 : (evento === "inicial") ? 8 : 0;
       const bonusLen = Math.min(15, Math.floor(transcricao.length / 300));
@@ -1448,14 +1432,12 @@ Transcrição:
     }
 
     return res.json({
-      tipo_consulta: tipoConsulta || "",
       contexto,
+      tipo_consulta,
+      procedimentos_base,
       hipotese_principal: hipotese,
       confianca,
-      perguntas: next.slice(0, 3),
-      itens: next.slice(0, 3),
-      procedimentos_base: Array.isArray(procedimentosBase) ? procedimentosBase : [],
-      procedimentos_adicionais: Array.isArray(procedimentosAdicionais) ? procedimentosAdicionais : []
+      perguntas: next.slice(0, 3)
     });
   } catch (e) {
     console.error(e);
