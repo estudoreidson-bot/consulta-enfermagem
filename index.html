@@ -95,6 +95,30 @@
       line-height: 1.35;
       color: #1f2937;
     }
+
+    .live-guidance-section-title {
+      margin-top: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .live-guidance-proc {
+      background: #ffffff;
+      border-radius: 10px;
+      border: 1px solid #e9e9e9;
+      padding: 8px;
+      font-size: 13px;
+      line-height: 1.35;
+      color: #111827;
+    }
+    .live-guidance-empty-item {
+      font-size: 12px;
+      color: #666;
+      background: #ffffff;
+      border-radius: 10px;
+      border: 1px dashed #cbd5e1;
+      padding: 10px;
+    }
     .live-guidance-empty {
       font-size: 12px;
       color: #666;
@@ -1197,6 +1221,10 @@
     let guidanceEnabled = false;
     let guidanceStage = "aguardando_motivo"; // "aguardando_motivo" | "perguntas"
     let guidancePending = []; // array de strings
+    let guidanceConsultType = ""; // string
+    let guidanceProceduresBase = []; // array de strings (fixo por tipo de consulta)
+    let guidanceProceduresExtra = []; // array de strings (pode variar conforme queixa)
+
     let guidanceContextLabel = "";
     let guidanceHypothesis = "";
     let guidanceConfidence = 0; // 0..95
@@ -1758,7 +1786,11 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       }
 
       const ctx = (guidanceContextLabel || "").trim();
-      liveGuidanceContext.textContent = ctx ? ("Atendimento: " + ctx) : "";
+      const tipoTxt = (guidanceConsultType || "").trim();
+      const parts = [];
+      if (ctx) parts.push("Atendimento: " + ctx);
+      if (tipoTxt) parts.push("Tipo de consulta: " + tipoTxt);
+      liveGuidanceContext.textContent = parts.length ? parts.join(" | ") : "";
 
       if (guidanceStage === "aguardando_motivo") {
         liveGuidanceStatus.textContent = "Aguardando o motivo da consulta. Após o paciente informar o motivo, as perguntas essenciais serão sugeridas.";
@@ -1803,23 +1835,57 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         liveGuidanceStatus.textContent = hypoTxt || "Perguntas essenciais sugeridas. Faça uma das perguntas e aguarde a resposta do paciente.";
       }
 
-      if (!guidancePending || !guidancePending.length) {
-        liveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma pergunta essencial no momento.</div>";
-        return;
-      }
+      
+      const baseProcs = Array.isArray(guidanceProceduresBase) ? guidanceProceduresBase : [];
+      const extraProcs = Array.isArray(guidanceProceduresExtra) ? guidanceProceduresExtra : [];
 
       liveGuidanceList.innerHTML = "";
-      guidancePending.slice(0, 3).forEach((q, idx) => {
-        const safeQ = escapeHtml(String(q || ""));
-        const askedMark = (guidanceAskedQuestion && guidanceAskedQuestion.toLowerCase() === String(q || "").toLowerCase())
-          ? " (pergunta feita)"
-          : "";
+
+      const makeTitle = (txt) => {
+        const t = document.createElement("div");
+        t.className = "live-guidance-section-title";
+        t.textContent = txt;
+        return t;
+      };
+
+      const makeItem = (txt, prefix, cls) => {
         const el = document.createElement("div");
-        el.className = "live-guidance-item";
-        el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${safeQ}${askedMark}</div>`;
-        liveGuidanceList.appendChild(el);
-      });
-    }
+        el.className = cls || "live-guidance-item";
+        const safe = escapeHtml(String(txt || ""));
+        const pfx = prefix ? (escapeHtml(String(prefix)) + " ") : "";
+        el.innerHTML = `<div class="live-guidance-item-text">${pfx}${safe}</div>`;
+        return el;
+      };
+
+      // Perguntas (máximo 3)
+      liveGuidanceList.appendChild(makeTitle("Perguntas essenciais (máximo 3)"));
+
+      if (!guidancePending || !guidancePending.length) {
+        liveGuidanceList.appendChild(makeItem("Nenhuma pergunta essencial no momento.", "", "live-guidance-empty-item"));
+      } else {
+        guidancePending.slice(0, 3).forEach((q, idx) => {
+          const askedMark = (guidanceAskedQuestion && guidanceAskedQuestion.toLowerCase() === String(q || "").toLowerCase())
+            ? " (pergunta feita)"
+            : "";
+          liveGuidanceList.appendChild(makeItem(String(q || "") + askedMark, (idx + 1) + ".", "live-guidance-item"));
+        });
+      }
+
+      // Procedimentos (baseados no tipo de consulta) - não devem ficar mudando a toda hora
+      if (baseProcs.length) {
+        liveGuidanceList.appendChild(makeTitle("Procedimentos do tipo de consulta"));
+        baseProcs.forEach((p) => {
+          liveGuidanceList.appendChild(makeItem(p, "-", "live-guidance-proc"));
+        });
+      }
+
+      // Procedimentos adicionais conforme queixa (pode variar)
+      if (extraProcs.length) {
+        liveGuidanceList.appendChild(makeTitle("Procedimentos adicionais conforme queixa"));
+        extraProcs.forEach((p) => {
+          liveGuidanceList.appendChild(makeItem(p, "-", "live-guidance-proc"));
+        });
+      }
 
     function getCombinedTranscript() {
       const combined = ((finalTranscript || "") + " " + (interimTranscript || "")).trim();
@@ -1846,6 +1912,9 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       guidanceEnabled = true;
       guidanceStage = "aguardando_motivo";
       guidancePending = [];
+      guidanceConsultType = "";
+      guidanceProceduresBase = [];
+      guidanceProceduresExtra = [];
       guidanceContextLabel = "";
       guidanceHypothesis = "";
       guidanceConfidence = 0;
@@ -1888,7 +1957,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       const t = String(text || "").toLowerCase();
       if (!t) return false;
       const kw = [
-        "motivo", "queixa", "dor", "febre", "tosse", "falta de ar", "dispne", "diarre", "vômit",
+        "motivo", "queixa", "pré-natal", "prenatal", "gestante", "pós-parto", "pos parto", "resguardo", "puerp", "puerper", "puericultura", "criança", "crianca", "bebê", "bebe", "vacina", "hiperdia", "planejamento familiar", "anticoncepc", "diu", "dor", "febre", "tosse", "falta de ar", "dispne", "diarre", "vômit",
         "náuse", "enjoo", "garganta", "cefale", "tont", "desmai", "urina", "ardor",
         "corrimento", "sangr", "pressão", "hipertens", "glic", "diabetes", "infec",
         "ferida", "queda", "trauma", "alerg", "coceira", "mancha"
@@ -2065,6 +2134,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         evento: evento || "stream",
         pergunta_feita: guidanceAskedQuestion || "",
         perguntas_pendentes: Array.isArray(guidancePending) ? guidancePending.slice(0, 3) : [],
+        tipo_consulta_atual: (guidanceConsultType || ""),
         confianca_atual: typeof guidanceConfidence === "number" ? guidanceConfidence : 0,
         hipotese_atual: guidanceHypothesis || "",
         ultima_fala: typeof ultima_fala === "string" ? ultima_fala.slice(0, 800) : ""
@@ -2091,6 +2161,26 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         }
 
         const data = await resp.json();
+
+        const prevTipo = (guidanceConsultType || "").trim();
+        const tipo = String(
+          data.tipo_consulta || data.tipo_consulta_identificada || data.tipo || ""
+        ).trim();
+
+        if (tipo && tipo !== prevTipo) {
+          guidanceConsultType = tipo;
+
+          const pb = Array.isArray(data.procedimentos_base) ? data.procedimentos_base : [];
+          const pbNorm = pb.map(x => String(x || "").trim()).filter(Boolean);
+          if (pbNorm.length) guidanceProceduresBase = pbNorm;
+
+        } else if (tipo && !prevTipo) {
+          guidanceConsultType = tipo;
+        }
+
+        const pe = Array.isArray(data.procedimentos_adicionais) ? data.procedimentos_adicionais : [];
+        guidanceProceduresExtra = pe.map(x => String(x || "").trim()).filter(Boolean).slice(0, 10);
+
         guidanceContextLabel = data.contexto || guidanceContextLabel || "";
         guidanceHypothesis = data.hipotese_principal || guidanceHypothesis || "";
         if (typeof data.confianca === "number") guidanceConfidence = data.confianca;
