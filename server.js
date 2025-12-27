@@ -1055,12 +1055,96 @@ function heuristicQuestions(transcricao) {
   const t = String(transcricao || "").toLowerCase();
   const { contexto, hipotese } = guessContextAndHypothesis(t);
 
+  // Identificação simples do tipo de consulta de enfermagem na APS
+  const tipo_consulta = (() => {
+    const s = t;
+    const has = (k) => s.includes(k);
+
+    // Pré-natal
+    if (
+      has("pré-natal") || has("pre-natal") || has("pre natal") ||
+      has("gestante") || has("gravida") || has("grávida") || has("dum") ||
+      has("idade gestacional") || has("trimestre")
+    ) return "pre-natal";
+
+    // Puerpério
+    if (
+      has("puerp") || has("pós-parto") || has("pos-parto") || has("pos parto") ||
+      has("parto") || has("ces") || has("loqui") || has("amament") || has("mama")
+    ) return "puerperio";
+
+    // Puericultura
+    if (
+      has("pueric") || has("caderneta") || has("vacina") ||
+      has("criança") || has("crianca") || has("beb") || has("lactente")
+    ) return "puericultura";
+
+    // Planejamento familiar
+    if (
+      has("planej") || has("contrace") || has("anticoncepc") || has("diu") || has("implante") ||
+      has("pílula") || has("pilula") || has("inje") || has("camis") || has("laque") || has("vasect")
+    ) return "planejamento familiar";
+
+    // Hiperdia
+    if (
+      has("hiperdia") || has("hipert") || has("has") || has("press") ||
+      has("diab") || has("glic") || has("metform") || has("insulin") || has("hba1c")
+    ) return "hiperdia";
+
+    return "";
+  })();
+
+  const procedimentos = [];
+  const pushProc = (s) => {
+    const x = String(s || "").trim();
+    if (!x) return;
+    if (!procedimentos.some(a => a.toLowerCase() === x.toLowerCase())) procedimentos.push(x);
+  };
+
   const q = [];
   const push = (s) => {
     const x = String(s || "").trim();
     if (!x) return;
     if (!q.some(a => a.toLowerCase() === x.toLowerCase())) q.push(x);
   };
+
+  // Perguntas/procedimentos direcionados conforme tipo (quando detectável)
+  if (tipo_consulta === "pre-natal") {
+    push("Perguntar DUM, regularidade menstrual e calcular/confirmar idade gestacional conforme rotina do serviço.");
+    push("Perguntar sinais de alarme: sangramento, perda de líquido, dor abdominal importante, cefaleia intensa, visão turva, febre.");
+    push("Revisar comorbidades/medicações e histórico obstétrico (complicações em gestações anteriores).");
+    pushProc("Aferir pressão arterial e peso; registrar e avaliar edema.");
+    pushProc("Checar cartão pré-natal: exames já realizados, vacinação e suplementação prescrita.");
+    pushProc("Quando aplicável, medir altura uterina e auscultar BCF conforme idade gestacional e prática do serviço.");
+  } else if (tipo_consulta === "puerperio") {
+    push("Perguntar quantos dias pós-parto e como foi o parto (normal/cesárea) e intercorrências.");
+    push("Perguntar sangramento/loquiação (quantidade/odor), febre, dor pélvica e sinais de infecção.");
+    push("Perguntar amamentação: pega, fissuras, dor mamária, ingurgitamento, produção de leite e queixas do bebê.");
+    pushProc("Aferir sinais vitais e avaliar sinais de alarme (febre, taquicardia, mal-estar importante).");
+    pushProc("Avaliar mamas e orientar manejo da amamentação conforme necessidade.");
+    pushProc("Avaliar períneo/ferida operatória (se aplicável) e orientar cuidados locais.");
+  } else if (tipo_consulta === "puericultura") {
+    push("Perguntar alimentação por faixa etária (aleitamento, introdução alimentar, aceitação) e eliminações.");
+    push("Perguntar sono, desenvolvimento (marcos motores/linguagem) e intercorrências desde a última consulta.");
+    push("Checar vacinas (caderneta) e dúvidas/principal preocupação da família.");
+    pushProc("Realizar antropometria: peso, estatura/comprimento e perímetro cefálico (quando indicado) e registrar na curva.");
+    pushProc("Triar sinais de gravidade: prostração, desconforto respiratório, sinais de desidratação, febre persistente.");
+    pushProc("Orientar alimentação, prevenção de acidentes e sinais de alarme, com retorno programado.");
+  } else if (tipo_consulta === "planejamento familiar") {
+    push("Perguntar objetivo do paciente (evitar/adiar/planejar gestação) e preferências do método.");
+    push("Perguntar DUM, padrão menstrual, sangramentos anormais e possibilidade de gestação atual.");
+    push("Investigar contraindicações e riscos: HAS, trombose, enxaqueca com aura, tabagismo, lactação/pós-parto recente, câncer de mama.");
+    pushProc("Aferir pressão arterial e peso/IMC (essencial antes de método combinado).");
+    pushProc("Quando houver dúvida, orientar/solicitar teste de gravidez conforme protocolo.");
+    pushProc("Aconselhar dupla proteção e prevenção de IST; orientar sinais de alarme e retorno.");
+  } else if (tipo_consulta === "hiperdia") {
+    push("Perguntar adesão ao tratamento (horários, esquecimento, efeitos adversos) e acesso a medicamentos.");
+    push("Perguntar valores recentes de pressão/glicemia e sintomas de hipo/hiperglicemia ou PA elevada.");
+    push("Investigar sintomas/complicações: dor torácica, dispneia, edema, feridas nos pés, perda de sensibilidade, visão turva.");
+    pushProc("Aferir pressão arterial, peso e, se aplicável, circunferência abdominal.");
+    pushProc("Glicemia capilar quando indicado e registrar contexto (jejum/pós-prandial).");
+    pushProc("Avaliar pés (DM): inspeção e orientação de autocuidado; triagem de sinais de gravidade.");
+  }
 
   push("Confirmar início e evolução do quadro (quando começou e como piorou/melhorou).");
   push("Aferir sinais vitais e saturação; verificar sinais de alarme relevantes ao quadro.");
@@ -1116,12 +1200,61 @@ function heuristicQuestions(transcricao) {
     push("Perguntar possibilidade de gestação e dor pélvica/abdominal associada.");
   }
 
-  return { contexto, hipotese, sugestoes: q };
+  return {
+    contexto,
+    hipotese,
+    sugestoes: q,
+    procedimentos,
+    tipo_consulta
+  };
 }
 
 function isRedFlagQuestion(question) {
   const q = String(question || "").toLowerCase();
   return q.includes("sinais de alarme") || q.includes("gravidade") || q.includes("instabilidade") || q.includes("spo2") || q.includes("rigidez de nuca");
+}
+
+function normalizeConsultTypeHint(input) {
+  const raw = String(input || "").trim().toLowerCase();
+  if (!raw) return "";
+
+  const map = {
+    prenatal: "pre-natal",
+    "pré-natal": "pre-natal",
+    "pre natal": "pre-natal",
+    "pre-natal": "pre-natal",
+    puerperio: "puerperio",
+    "puerpério": "puerperio",
+    "pos-parto": "puerperio",
+    "pós-parto": "puerperio",
+    puericultura: "puericultura",
+    planejamento: "planejamento familiar",
+    "planejamento familiar": "planejamento familiar",
+    hiperdia: "hiperdia",
+    "hiper dia": "hiperdia"
+  };
+
+  if (map[raw]) return map[raw];
+
+  // Tenta inferir por presença de palavras-chave no hint.
+  if (raw.includes("gest") || raw.includes("grav") || raw.includes("dum") || raw.includes("trimestre")) return "pre-natal";
+  if (raw.includes("puer") || raw.includes("pos") || raw.includes("pós") || raw.includes("parto") || raw.includes("loqui")) return "puerperio";
+  if (raw.includes("crianc") || raw.includes("beb") || raw.includes("vac") || raw.includes("pueric")) return "puericultura";
+  if (raw.includes("dium") || raw.includes("diu") || raw.includes("contrace") || raw.includes("anticoncepc") || raw.includes("laque") || raw.includes("vasect")) return "planejamento familiar";
+  if (raw.includes("press") || raw.includes("has") || raw.includes("hipert") || raw.includes("diab") || raw.includes("glic")) return "hiperdia";
+
+  return "";
+}
+
+function normalizePrenatalTrimesterHint(input) {
+  const raw = String(input || "").trim();
+  if (!raw) return "";
+  if (raw === "1" || raw === "2" || raw === "3") return raw;
+  const lower = raw.toLowerCase();
+  if (lower.includes("1")) return "1";
+  if (lower.includes("2")) return "2";
+  if (lower.includes("3")) return "3";
+  return "";
 }
 
 app.post("/api/guia-tempo-real", async (req, res) => {
@@ -1159,29 +1292,47 @@ app.post("/api/guia-tempo-real", async (req, res) => {
     const hipoteseAtual = String(body.hipotese_atual || "").trim();
     const ultimaFala = normalizeText(body.ultima_fala || "", 800);
 
+    const tipoConsultaHint = normalizeConsultTypeHint(body.tipo_consulta_hint || body.tipo_consulta || "");
+    const prenatalTriHint = normalizePrenatalTrimesterHint(body.prenatal_trimestre_hint || body.trimestre_prenatal || "");
+
     let contexto = "";
     let hipotese = "";
     let confianca = 0;
     let sugestoes = [];
+    let procedimentos = [];
+    let tipoConsulta = "";
 
     if (process.env.OPENAI_API_KEY) {
       const prompt = `
-Você está auxiliando um enfermeiro durante uma consulta.
-Objetivo: sugerir no máximo 3 perguntas essenciais por vez para chegar a um diagnóstico provável com eficiência.
+Você está auxiliando um enfermeiro da Atenção Primária à Saúde (APS) durante uma consulta.
+
+Antes de sugerir perguntas, identifique qual é o tipo de consulta de enfermagem mais provável entre estes 5 (ou "indefinido" se não der para afirmar):
+1) Puerpério (pós-parto)
+2) Pré-natal
+3) Puericultura
+4) Planejamento familiar
+5) Hiperdia (HAS e/ou DM)
+
+Objetivo: sugerir no máximo 3 perguntas essenciais por vez (apenas perguntas que o enfermeiro fará ao paciente) e, separadamente, até 4 procedimentos/checagens essenciais (itens operacionais que podem ser realizados/confirmados na consulta) para melhorar o atendimento.
 
 Regras:
 - Nunca gere mais de 3 perguntas.
+- Nunca gere mais de 4 procedimentos/checagens.
 - Se houver perguntas pendentes úteis, você pode mantê-las.
 - Se uma pergunta ficou sem sentido após a resposta do paciente, substitua.
 - Use linguagem objetiva e prática.
 - Retorne também uma hipótese principal (curta) e um nível de confiança (0 a 95; nunca 100).
+- Se o tipo de consulta for pré-natal e houver indício do trimestre (1/2/3), explicite isso no contexto.
+- Foque em enfermagem: não dê diagnóstico médico definitivo nem prescrição médica.
 
 Retorne JSON estrito no formato:
 {
+  "tipo_consulta": "puerperio | pre-natal | puericultura | planejamento familiar | hiperdia | indefinido",
   "contexto": "texto curto",
   "hipotese_principal": "texto curto",
   "confianca": 0,
-  "perguntas_sugeridas": ["...", "...", "..."]
+  "perguntas_sugeridas": ["...", "...", "..."],
+  "procedimentos_sugeridos": ["...", "...", "...", "..."]
 }
 
 Dados atuais:
@@ -1192,26 +1343,58 @@ Dados atuais:
 - Pergunta feita (se houver): ${perguntaFeita || "nenhuma"}
 - Perguntas pendentes: ${pendentes.length ? pendentes.join(" | ") : "nenhuma"}
 
+Sugestão da interface (se houver, use como pista, mas pode contradizer se a transcrição indicar claramente outro tipo):
+- Tipo de consulta sugerido: ${tipoConsultaHint || "não informado"}
+- Trimestre pré-natal sugerido (1/2/3): ${prenatalTriHint || "não informado"}
+
 Última fala (trecho recente, pode estar vazio): ${ultimaFala || "não informado"}
 
 Transcrição:
 <<<${transcricao}>>>
 `;
       const data = await callOpenAIJson(prompt);
+      tipoConsulta = typeof data?.tipo_consulta === "string" ? data.tipo_consulta.trim() : "";
       contexto = typeof data?.contexto === "string" ? data.contexto.trim() : "";
       hipotese = typeof data?.hipotese_principal === "string" ? data.hipotese_principal.trim() : "";
       confianca = clampNumber(data?.confianca, 0, 95);
       sugestoes = Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : [];
+      procedimentos = Array.isArray(data?.procedimentos_sugeridos) ? data.procedimentos_sugeridos : [];
     } else {
       const h = heuristicQuestions(transcricao);
       contexto = h.contexto || "";
       hipotese = h.hipotese || "";
       sugestoes = h.sugestoes || [];
+      procedimentos = h.procedimentos || [];
+      tipoConsulta = h.tipo_consulta || "";
 
       const bonusEvento = (evento === "resposta") ? 12 : (evento === "inicial") ? 8 : 0;
       const bonusLen = Math.min(15, Math.floor(transcricao.length / 300));
       const base = (confiancaAtual > 0 ? confiancaAtual : 25);
       confianca = clampNumber(base + bonusEvento + bonusLen, 10, 95);
+    }
+
+    // Normaliza tipo de consulta e contexto
+    const tipoLower = String(tipoConsulta || "").toLowerCase().trim();
+    const tipoNorm = (
+      tipoLower.includes("puer") && tipoLower.includes("cult") ? "puericultura" :
+      tipoLower.includes("puer") ? "puerperio" :
+      tipoLower.includes("pre") || tipoLower.includes("pré") ? "pre-natal" :
+      tipoLower.includes("planej") ? "planejamento familiar" :
+      tipoLower.includes("hiper") ? "hiperdia" :
+      tipoLower.includes("indef") ? "indefinido" :
+      ""
+    );
+
+    // Se o modelo não informou, usa hint (quando houver)
+    const finalTipo = tipoNorm || tipoConsultaHint || "";
+
+    // Se contexto vier vazio, cria um contexto curto baseado no tipo
+    if (!contexto) {
+      if (finalTipo) {
+        contexto = finalTipo === "pre-natal" && prenatalTriHint
+          ? `Pré-natal (${prenatalTriHint}º trimestre)`
+          : (finalTipo.charAt(0).toUpperCase() + finalTipo.slice(1));
+      }
     }
 
     // Atualiza pendentes: remove a pergunta feita
@@ -1242,9 +1425,11 @@ Transcrição:
 
     return res.json({
       contexto,
+      tipo_consulta: finalTipo || "",
       hipotese_principal: hipotese,
       confianca,
-      perguntas: next.slice(0, 3)
+      perguntas: next.slice(0, 3),
+      procedimentos: normalizeArrayOfStrings(procedimentos, 4, 220)
     });
   } catch (e) {
     console.error(e);

@@ -923,6 +923,7 @@
         <p class="consult-type-title">Guias de consulta</p>
         <div class="consult-type-buttons">
           <button class="consult-type-btn" type="button" data-consult="prenatal">Consulta pré-natal por trimestre</button>
+          <button class="consult-type-btn" type="button" data-consult="puerperio">Consulta puerpério (pós-parto)</button>
           <button class="consult-type-btn" type="button" data-consult="puericultura">Consulta puericultura</button>
           <button class="consult-type-btn" type="button" data-consult="planejamento">Consulta planejamento familiar</button>
           <button class="consult-type-btn" type="button" data-consult="hiperdia">Consulta hiperdia</button>
@@ -1197,9 +1198,15 @@
     let guidanceEnabled = false;
     let guidanceStage = "aguardando_motivo"; // "aguardando_motivo" | "perguntas"
     let guidancePending = []; // array de strings
+    let guidanceProcedures = []; // array de strings (não interfere no controle por turnos)
     let guidanceContextLabel = "";
     let guidanceHypothesis = "";
     let guidanceConfidence = 0; // 0..95
+
+    // Dicas opcionais (seleção manual) para ajudar o guia a reconhecer o tipo de consulta
+    // Valores esperados: "pre-natal" | "puerperio" | "puericultura" | "planejamento familiar" | "hiperdia"
+    let consultTypeHint = "";
+    let prenatalTrimesterHint = ""; // "1" | "2" | "3"
 
     let guidanceInFlight = false;
     let guidanceAskedQuestion = "";
@@ -1803,22 +1810,50 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         liveGuidanceStatus.textContent = hypoTxt || "Perguntas essenciais sugeridas. Faça uma das perguntas e aguarde a resposta do paciente.";
       }
 
-      if (!guidancePending || !guidancePending.length) {
-        liveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma pergunta essencial no momento.</div>";
+      const hasQuestions = Array.isArray(guidancePending) && guidancePending.length;
+      const hasProcedures = Array.isArray(guidanceProcedures) && guidanceProcedures.length;
+
+      if (!hasQuestions && !hasProcedures) {
+        liveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma sugestão no momento.</div>";
         return;
       }
 
       liveGuidanceList.innerHTML = "";
-      guidancePending.slice(0, 3).forEach((q, idx) => {
-        const safeQ = escapeHtml(String(q || ""));
-        const askedMark = (guidanceAskedQuestion && guidanceAskedQuestion.toLowerCase() === String(q || "").toLowerCase())
-          ? " (pergunta feita)"
-          : "";
-        const el = document.createElement("div");
-        el.className = "live-guidance-item";
-        el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${safeQ}${askedMark}</div>`;
-        liveGuidanceList.appendChild(el);
-      });
+
+      if (hasQuestions) {
+        const title = document.createElement("div");
+        title.style.fontWeight = "700";
+        title.style.margin = "8px 0 6px 0";
+        title.textContent = "Perguntas essenciais";
+        liveGuidanceList.appendChild(title);
+
+        guidancePending.slice(0, 3).forEach((q, idx) => {
+          const safeQ = escapeHtml(String(q || ""));
+          const askedMark = (guidanceAskedQuestion && guidanceAskedQuestion.toLowerCase() === String(q || "").toLowerCase())
+            ? " (pergunta feita)"
+            : "";
+          const el = document.createElement("div");
+          el.className = "live-guidance-item";
+          el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${safeQ}${askedMark}</div>`;
+          liveGuidanceList.appendChild(el);
+        });
+      }
+
+      if (hasProcedures) {
+        const title = document.createElement("div");
+        title.style.fontWeight = "700";
+        title.style.margin = hasQuestions ? "12px 0 6px 0" : "8px 0 6px 0";
+        title.textContent = "Procedimentos e checagens";
+        liveGuidanceList.appendChild(title);
+
+        guidanceProcedures.slice(0, 4).forEach((p, idx) => {
+          const safeP = escapeHtml(String(p || ""));
+          const el = document.createElement("div");
+          el.className = "live-guidance-item";
+          el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${safeP}</div>`;
+          liveGuidanceList.appendChild(el);
+        });
+      }
     }
 
     function getCombinedTranscript() {
@@ -1846,6 +1881,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       guidanceEnabled = true;
       guidanceStage = "aguardando_motivo";
       guidancePending = [];
+      guidanceProcedures = [];
       guidanceContextLabel = "";
       guidanceHypothesis = "";
       guidanceConfidence = 0;
@@ -1877,6 +1913,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     function stopGuidanceLoop() {
       guidanceEnabled = false;
       guidanceInFlight = false;
+      guidanceProcedures = [];
       guidanceTurnState = "aguardando_pergunta";
       guidanceAskedQuestion = "";
       guidanceSilenceTimer && clearTimeout(guidanceSilenceTimer);
@@ -1891,7 +1928,10 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         "motivo", "queixa", "dor", "febre", "tosse", "falta de ar", "dispne", "diarre", "vômit",
         "náuse", "enjoo", "garganta", "cefale", "tont", "desmai", "urina", "ardor",
         "corrimento", "sangr", "pressão", "hipertens", "glic", "diabetes", "infec",
-        "ferida", "queda", "trauma", "alerg", "coceira", "mancha"
+        "ferida", "queda", "trauma", "alerg", "coceira", "mancha",
+        "gestante", "gravida", "grávida", "pré-natal", "pre-natal", "pre natal",
+        "puerp", "pós-parto", "pos parto", "amament", "puericultura", "vacina", "caderneta",
+        "planejamento", "contrace", "anticoncepc", "diu", "hiperdia"
       ];
       return kw.some(k => t.includes(k));
     }
@@ -1904,7 +1944,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       if (!combined || combined.length < 120) return;
 
       // Evita iniciar antes do paciente realmente falar algo clínico
-      if (!force && !hasLikelyChiefComplaint(combined)) return;
+      if (!force && !consultTypeHint && !hasLikelyChiefComplaint(combined)) return;
 
       guidanceStage = "perguntas";
       guidanceTurnState = "aguardando_pergunta";
@@ -2063,6 +2103,8 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         transcricao: combined,
         estado: guidanceStage,
         evento: evento || "stream",
+        tipo_consulta_hint: consultTypeHint || "",
+        prenatal_trimestre_hint: prenatalTrimesterHint || "",
         pergunta_feita: guidanceAskedQuestion || "",
         perguntas_pendentes: Array.isArray(guidancePending) ? guidancePending.slice(0, 3) : [],
         confianca_atual: typeof guidanceConfidence === "number" ? guidanceConfidence : 0,
@@ -2091,14 +2133,22 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         }
 
         const data = await resp.json();
-        guidanceContextLabel = data.contexto || guidanceContextLabel || "";
+        const tipo = String(data.tipo_consulta || "").trim();
+        const ctx = String(data.contexto || "").trim();
+        guidanceContextLabel = (ctx || tipo || guidanceContextLabel || "").trim();
         guidanceHypothesis = data.hipotese_principal || guidanceHypothesis || "";
         if (typeof data.confianca === "number") guidanceConfidence = data.confianca;
+
+        const procs = Array.isArray(data.procedimentos) ? data.procedimentos : [];
+        guidanceProcedures = procs.map(x => String(x || "").trim()).filter(Boolean).slice(0, 4);
 
         const itens = Array.isArray(data.perguntas) ? data.perguntas : (Array.isArray(data.itens) ? data.itens : []);
         const normalized = itens.map(x => String(x || "").trim()).filter(Boolean);
 
         guidancePending = normalized.slice(0, 3);
+
+        const procs = Array.isArray(data.procedimentos) ? data.procedimentos : [];
+        guidanceProcedures = procs.map(x => String(x || "").trim()).filter(Boolean).slice(0, 4);
 
         // Após atualizar, volta a aguardar a próxima pergunta do enfermeiro
         if (evento === "resposta") {
@@ -3651,6 +3701,36 @@ function initSpeech() {
     let selectedPrenatalTrimester = "1";
 
     const guideData = {
+      puerperio: {
+        title: "Consulta de puerpério (pós-parto)",
+        subtitle: "Sequência sugerida para orientar perguntas e procedimentos iniciais no puerpério.",
+        sections: [
+          {
+            title: "Perguntas essenciais",
+            items: [
+              "Identificação e tempo pós-parto: quantos dias após o parto, tipo de parto (normal/cesárea) e intercorrências na maternidade.",
+              "Sangramento/loquiação: quantidade, cor, odor, presença de coágulos; dor pélvica; febre ou calafrios.",
+              "Ferida/períneo: dor local, secreção, abertura de pontos, dificuldade para sentar/andar, disúria.",
+              "Amamentação: pega, frequência, fissuras, dor mamária, ingurgitamento, sinais de mastite; dúvidas sobre ordenha e armazenamento.",
+              "Bebê: ganho de peso percebido, diurese/evacuações, icterícia, dificuldade para mamar (se a consulta envolver binômio).",
+              "Saúde mental: humor, ansiedade, choro frequente, irritabilidade, sono, vínculo; rastrear sinais de depressão pós-parto e risco.",
+              "Planejamento reprodutivo e sexualidade: método contraceptivo desejado, retorno da menstruação, retomada da atividade sexual, dor.",
+              "Sinais de alarme: sangramento intenso, febre, dor forte, mal-estar importante, falta de ar, dor torácica, cefaleia intensa/visão turva (avaliar urgência)."
+            ]
+          },
+          {
+            title: "Procedimentos e exame físico",
+            items: [
+              "Aferir sinais vitais: especialmente temperatura e pressão arterial; avaliar sinais de instabilidade.",
+              "Avaliar involução uterina e sensibilidade abdominal conforme prática do serviço; observar dor e sangramento.",
+              "Avaliar mamas e orientar manejo da amamentação conforme necessidade (pega, fissuras, ingurgitamento).",
+              "Inspecionar ferida operatória/períneo quando indicado e com consentimento; orientar cuidados locais e sinais de infecção.",
+              "Orientar autocuidado: hidratação, alimentação, repouso possível, sinais de alarme, retorno e rede de referência."
+            ]
+          }
+        ]
+      },
+
       puericultura: {
         title: "Consulta de puericultura",
         subtitle: "Sequência sugerida para orientar perguntas e procedimentos iniciais.",
@@ -3839,6 +3919,28 @@ function initSpeech() {
 
     function openGuideFor(type) {
       selectedConsultType = type;
+
+      // Atualiza dicas para o módulo de perguntas/procedimentos em tempo real
+      const t = String(type || "").trim();
+      if (t === "prenatal") {
+        consultTypeHint = "pre-natal";
+        prenatalTrimesterHint = String(selectedPrenatalTrimester || "").trim() || prenatalTrimesterHint || "";
+      } else if (t === "puerperio") {
+        consultTypeHint = "puerperio";
+        prenatalTrimesterHint = "";
+      } else if (t === "puericultura") {
+        consultTypeHint = "puericultura";
+        prenatalTrimesterHint = "";
+      } else if (t === "planejamento") {
+        consultTypeHint = "planejamento familiar";
+        prenatalTrimesterHint = "";
+      } else if (t === "hiperdia") {
+        consultTypeHint = "hiperdia";
+        prenatalTrimesterHint = "";
+      } else {
+        consultTypeHint = "";
+        prenatalTrimesterHint = "";
+      }
       consultTypeButtons.forEach(btn => {
         btn.classList.toggle("active", btn.dataset.consult === type);
       });
@@ -3870,6 +3972,7 @@ function initSpeech() {
 
     function setPrenatalTrimester(tri) {
       selectedPrenatalTrimester = String(tri || "1");
+      prenatalTrimesterHint = selectedPrenatalTrimester;
       trimesterButtons.forEach(b => {
         b.classList.toggle("active", b.dataset.tri === selectedPrenatalTrimester);
       });
@@ -3890,6 +3993,8 @@ function initSpeech() {
       consultGuideDrawer?.classList.add("hidden");
       consultTypeButtons.forEach(btn => btn.classList.remove("active"));
       selectedConsultType = null;
+      consultTypeHint = "";
+      prenatalTrimesterHint = "";
     }
 
     if (consultTypeButtons.length) {
