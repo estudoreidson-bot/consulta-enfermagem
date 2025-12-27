@@ -888,6 +888,432 @@ Formato de saída: JSON estrito:
 
 
 
+
+
+// ======================================================================
+// ROTA 4.6 – EXTRAÇÃO DE MEDICAMENTOS CITADOS (TEXTO) (NOVA)
+// ======================================================================
+
+function normalizeMedicationNameServer(s) {
+  const t = (typeof s === "string" ? s : "").trim();
+  if (!t) return "";
+  return t.replace(/\s+/g, " ").replace(/[;,.]+$/g, "").trim();
+}
+
+function uniqueMedicationListServer(arr, maxItems = 60) {
+  const a = Array.isArray(arr) ? arr : [];
+  const out = [];
+  const seen = new Set();
+  for (const v of a) {
+    const n = normalizeMedicationNameServer(v);
+    if (!n) continue;
+    const key = n.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(n);
+    if (out.length >= maxItems) break;
+  }
+  return out;
+}
+
+async function extrairMedicamentosPorTexto(contexto) {
+  const c = String(contexto || "").trim();
+  if (!c) return [];
+
+  const safe = normalizeText(c, 25000);
+
+  const prompt = `
+Você é um enfermeiro humano.
+Tarefa: extrair SOMENTE nomes de medicamentos citados no texto (medicamentos prescritos, medicamentos em uso contínuo, fitoterápicos/suplementos e vacinas se mencionadas como medicamento).
+Regras:
+- Não invente. Extraia apenas o que está explicitamente escrito.
+- Não inclua doenças, sintomas, diagnósticos, exames, procedimentos, alimentos, ou "soro", "oxigênio" etc.
+- Se houver dose/concentração junto do nome, mantenha apenas o NOME do medicamento (ex.: "dipirona 500 mg" -> "dipirona").
+- Use preferencialmente o nome genérico quando for claramente identificado; se não, mantenha o nome comercial mencionado.
+- Retorne no máximo 60 itens.
+Formato de saída: JSON estrito:
+{ "medicamentos": ["..."] }
+
+Texto:
+\"\"\"${safe}\"\"\"
+`;
+  const data = await callOpenAIJson(prompt);
+  return uniqueMedicationListServer(data?.medicamentos, 60);
+}
+
+app.post("/api/extrair-medicamentos", async (req, res) => {
+  try {
+    const { contexto } = req.body || {};
+    const meds = await extrairMedicamentosPorTexto(contexto || "");
+    return res.json({ medicamentos: meds });
+  } catch (e) {
+    console.error(e);
+    return res.json({ medicamentos: [] });
+  }
+});
+
+
+// ======================================================================
+// ROTA 4.7 – EXTRAÇÃO DE MEDICAMENTOS POR IMAGEM (NOVA)
+// ======================================================================
+
+async function extrairMedicamentosPorImagem(imagemDataUrl) {
+  const safeImage = normalizeImageDataUrl(imagemDataUrl, 4_000_000);
+  if (!safeImage) return [];
+
+  const prompt = `
+Você é um enfermeiro humano.
+Tarefa: olhar a foto e listar SOMENTE os NOMES dos medicamentos que estiverem legíveis.
+Regras:
+- Não invente: se estiver ilegível, ignore.
+- Não inclua dose/posologia; extraia apenas o nome.
+- Retorne no máximo 60 itens.
+Formato de saída: JSON estrito:
+{ "medicamentos": ["..."] }
+`;
+  const data = await callOpenAIVisionJson(prompt, safeImage);
+  return uniqueMedicationListServer(data?.medicamentos, 60);
+}
+
+
+// ======================================================================
+// ROTA 4.8 – USO NA GRAVIDEZ (NOVA)
+// ======================================================================
+
+async function avaliarUsoGravidez(medicamentos, contexto) {
+  const meds = uniqueMedicationListServer(medicamentos, 60);
+  if (!meds.length) return { texto: "", medicamentos: [] };
+
+  const safeContexto = normalizeText(contexto || "", 25000);
+
+  const prompt = `
+Você é um enfermeiro humano auxiliando a equipe na checagem de SEGURANÇA MEDICAMENTOSA PARA GESTAÇÃO.
+A partir da lista de medicamentos, informe para CADA medicamento:
+- Categoria de risco na gestação no formato A/B/C/D/X quando houver referência clássica; se não houver base suficiente, usar "não informado".
+- Orientação prática e prudente (por exemplo: "pode usar", "evitar", "usar com cautela e supervisão médica", "contraindicado", "avaliar risco-benefício").
+- Principais riscos ou pontos de atenção (teratogenicidade, toxicidade fetal, restrição de crescimento, fechamento do ducto, sangramento, etc) quando aplicável.
+Regras obrigatórias:
+- Não invente categoria ou risco. Se não souber, escreva "não informado".
+- Não prescreva e não mude conduta médica. Apenas sinalize segurança e necessidade de confirmação.
+- Sem emojis e sem símbolos gráficos.
+Formato de saída: JSON estrito:
+{
+  "itens": [
+    {
+      "medicamento": "string",
+      "categoria_gestacao": "A|B|C|D|X|não informado",
+      "orientacao": "string",
+      "pontos_atencao": "string",
+      "observacoes": "string"
+    }
+  ],
+  "alerta_geral": "string"
+}
+
+Medicamentos:
+${meds.map((m) => "- " + m).join("\n")}
+
+Contexto adicional (pode estar vazio):
+\"\"\"${safeContexto}\"\"\"
+`;
+  const data = await callOpenAIJson(prompt);
+
+  const itens = Array.isArray(data?.itens) ? data.itens : [];
+  const alerta = typeof data?.alerta_geral === "string" ? data.alerta_geral.trim() : "";
+
+  const lines = [];
+  lines.push("Uso na gravidez (checagem de segurança):");
+  lines.push("Medicamentos considerados: " + meds.join(", "));
+  lines.push("");
+
+  let i = 1;
+  for (const it of itens.slice(0, 60)) {
+    const nome = normalizeMedicationNameServer(it?.medicamento || "") || "não informado";
+    const cat = normalizeMedicationNameServer(it?.categoria_gestacao || "") || "não informado";
+    const ori = normalizeText(it?.orientacao || "", 400) || "não informado";
+    const pts = normalizeText(it?.pontos_atencao || "", 450) || "não informado";
+    const obs = normalizeText(it?.observacoes || "", 450) || "";
+
+    lines.push(`${i}) ${nome}`);
+    lines.push(`Categoria na gestação: ${cat}`);
+    lines.push(`Orientação: ${ori}`);
+    lines.push(`Pontos de atenção: ${pts}`);
+    if (obs) lines.push(`Observações: ${obs}`);
+    lines.push("");
+    i += 1;
+  }
+
+  if (alerta) {
+    lines.push("Alerta geral:");
+    lines.push(alerta);
+  } else {
+    lines.push("Alerta geral:");
+    lines.push("Confirmar em protocolo/bula e com o prescritor quando houver dúvida, principalmente no primeiro trimestre, em comorbidades, e quando houver polifarmácia.");
+  }
+
+  return { texto: lines.join("\n").trim(), medicamentos: meds };
+}
+
+app.post("/api/uso-gravidez", async (req, res) => {
+  try {
+    const { medicamentos, contexto } = req.body || {};
+    const meds = uniqueMedicationListServer(medicamentos, 60);
+    if (!meds.length && contexto) {
+      const fromText = await extrairMedicamentosPorTexto(contexto);
+      const out = await avaliarUsoGravidez(fromText, contexto);
+      return res.json(out);
+    }
+    const out = await avaliarUsoGravidez(meds, contexto || "");
+    return res.json(out);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao avaliar uso na gravidez." });
+  }
+});
+
+app.post("/api/uso-gravidez-imagem", async (req, res) => {
+  try {
+    const imagemDataUrl = getImageDataUrlFromBody(req.body);
+    const meds = await extrairMedicamentosPorImagem(imagemDataUrl);
+    if (!meds.length) return res.json({ texto: "Nenhum medicamento legível foi identificado na imagem.", medicamentos: [] });
+    const out = await avaliarUsoGravidez(meds, "");
+    return res.json(out);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao avaliar uso na gravidez por imagem." });
+  }
+});
+
+
+// ======================================================================
+// ROTA 4.9 – USO NA LACTAÇÃO (NOVA)
+// ======================================================================
+
+async function avaliarUsoLactacao(medicamentos, contexto) {
+  const meds = uniqueMedicationListServer(medicamentos, 60);
+  if (!meds.length) return { texto: "", medicamentos: [] };
+
+  const safeContexto = normalizeText(contexto || "", 25000);
+
+  const prompt = `
+Você é um enfermeiro humano auxiliando a equipe na checagem de SEGURANÇA MEDICAMENTOSA PARA LACTAÇÃO.
+A partir da lista de medicamentos, informe para CADA medicamento:
+- Classificação de risco na lactação quando disponível (por exemplo: Hale L1-L5). Se não houver base suficiente, usar "não informado".
+- Orientação prática e prudente (por exemplo: compatível, usar com cautela, evitar, contraindicado), incluindo sugestão de conduta segura (monitorar lactente, ajustar horário, observar sedação, etc) quando aplicável.
+- Principais riscos para o lactente e para a lactação (sedação, irritabilidade, diarreia, supressão da lactação, etc) quando aplicável.
+Regras obrigatórias:
+- Não invente classificação ou risco. Se não souber, escreva "não informado".
+- Não prescreva e não mude conduta médica. Apenas sinalize segurança e necessidade de confirmação.
+- Sem emojis e sem símbolos gráficos.
+Formato de saída: JSON estrito:
+{
+  "itens": [
+    {
+      "medicamento": "string",
+      "classificacao_lactacao": "string",
+      "orientacao": "string",
+      "riscos_lactente": "string",
+      "observacoes": "string"
+    }
+  ],
+  "alerta_geral": "string"
+}
+
+Medicamentos:
+${meds.map((m) => "- " + m).join("\n")}
+
+Contexto adicional (pode estar vazio):
+\"\"\"${safeContexto}\"\"\"
+`;
+  const data = await callOpenAIJson(prompt);
+
+  const itens = Array.isArray(data?.itens) ? data.itens : [];
+  const alerta = typeof data?.alerta_geral === "string" ? data.alerta_geral.trim() : "";
+
+  const lines = [];
+  lines.push("Uso na lactação (checagem de segurança):");
+  lines.push("Medicamentos considerados: " + meds.join(", "));
+  lines.push("");
+
+  let i = 1;
+  for (const it of itens.slice(0, 60)) {
+    const nome = normalizeMedicationNameServer(it?.medicamento || "") || "não informado";
+    const cls = normalizeText(it?.classificacao_lactacao || "", 60) || "não informado";
+    const ori = normalizeText(it?.orientacao || "", 420) || "não informado";
+    const ris = normalizeText(it?.riscos_lactente || "", 450) || "não informado";
+    const obs = normalizeText(it?.observacoes || "", 450) || "";
+
+    lines.push(`${i}) ${nome}`);
+    lines.push(`Classificação na lactação: ${cls}`);
+    lines.push(`Orientação: ${ori}`);
+    lines.push(`Riscos para o lactente: ${ris}`);
+    if (obs) lines.push(`Observações: ${obs}`);
+    lines.push("");
+    i += 1;
+  }
+
+  if (alerta) {
+    lines.push("Alerta geral:");
+    lines.push(alerta);
+  } else {
+    lines.push("Alerta geral:");
+    lines.push("Confirmar em protocolo/bula e com o prescritor quando houver dúvida, especialmente em prematuros, recém-nascidos e quando houver uso de múltiplos medicamentos.");
+  }
+
+  return { texto: lines.join("\n").trim(), medicamentos: meds };
+}
+
+app.post("/api/uso-lactacao", async (req, res) => {
+  try {
+    const { medicamentos, contexto } = req.body || {};
+    const meds = uniqueMedicationListServer(medicamentos, 60);
+    if (!meds.length && contexto) {
+      const fromText = await extrairMedicamentosPorTexto(contexto);
+      const out = await avaliarUsoLactacao(fromText, contexto);
+      return res.json(out);
+    }
+    const out = await avaliarUsoLactacao(meds, contexto || "");
+    return res.json(out);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao avaliar uso na lactação." });
+  }
+});
+
+app.post("/api/uso-lactacao-imagem", async (req, res) => {
+  try {
+    const imagemDataUrl = getImageDataUrlFromBody(req.body);
+    const meds = await extrairMedicamentosPorImagem(imagemDataUrl);
+    if (!meds.length) return res.json({ texto: "Nenhum medicamento legível foi identificado na imagem.", medicamentos: [] });
+    const out = await avaliarUsoLactacao(meds, "");
+    return res.json(out);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao avaliar uso na lactação por imagem." });
+  }
+});
+
+
+// ======================================================================
+// ROTA 4.10 – INTERAÇÕES MEDICAMENTOSAS (NOVA)
+// ======================================================================
+
+async function avaliarInteracoes(medicamentos, contexto) {
+  const meds = uniqueMedicationListServer(medicamentos, 60);
+  if (meds.length < 2) return { texto: "", medicamentos: meds };
+
+  const safeContexto = normalizeText(contexto || "", 25000);
+
+  const prompt = `
+Você é um enfermeiro humano auxiliando a equipe na checagem de INTERAÇÕES MEDICAMENTOSAS clinicamente relevantes.
+A partir da lista de medicamentos, avalie interações potenciais e apresente somente o que for relevante.
+Para cada interação relevante, informe:
+- Par de medicamentos (A + B)
+- Gravidade: Contraindicada, Alta, Moderada, Baixa, ou "não informado" se não houver base suficiente
+- Descrição breve do risco
+- Conduta prática (evitar associação, monitorar, ajustar horários, observar sinais, solicitar avaliação médica, etc)
+
+Regras obrigatórias:
+- Não invente interações. Se não houver base, use "não informado".
+- Não prescreva e não mude conduta médica. Apenas sinalize segurança e necessidade de confirmação.
+- Sem emojis e sem símbolos gráficos.
+Formato de saída: JSON estrito:
+{
+  "interacoes": [
+    {
+      "par": "string",
+      "gravidade": "string",
+      "descricao": "string",
+      "conduta": "string"
+    }
+  ],
+  "observacoes_gerais": "string"
+}
+
+Medicamentos:
+${meds.map((m) => "- " + m).join("\n")}
+
+Contexto adicional (pode estar vazio):
+\"\"\"${safeContexto}\"\"\"
+`;
+  const data = await callOpenAIJson(prompt);
+
+  const interacoes = Array.isArray(data?.interacoes) ? data.interacoes : [];
+  const obs = typeof data?.observacoes_gerais === "string" ? data.observacoes_gerais.trim() : "";
+
+  const lines = [];
+  lines.push("Interações medicamentosas (checagem de segurança):");
+  lines.push("Medicamentos considerados: " + meds.join(", "));
+  lines.push("");
+
+  if (!interacoes.length) {
+    lines.push("Não foi possível confirmar interações relevantes a partir dos dados informados.");
+  } else {
+    let i = 1;
+    for (const it of interacoes.slice(0, 80)) {
+      const par = normalizeText(it?.par || "", 120) || "não informado";
+      const gra = normalizeText(it?.gravidade || "", 40) || "não informado";
+      const des = normalizeText(it?.descricao || "", 520) || "não informado";
+      const con = normalizeText(it?.conduta || "", 520) || "não informado";
+
+      lines.push(`${i}) ${par}`);
+      lines.push(`Gravidade: ${gra}`);
+      lines.push(`Risco: ${des}`);
+      lines.push(`Conduta: ${con}`);
+      lines.push("");
+      i += 1;
+    }
+  }
+
+  if (obs) {
+    lines.push("Observações gerais:");
+    lines.push(obs);
+  } else {
+    lines.push("Observações gerais:");
+    lines.push("Confirmar em protocolo/bula e com o prescritor quando houver polifarmácia, comorbidades, idosos, insuficiência renal/hepática, ou quando houver sintomas após iniciar a associação.");
+  }
+
+  return { texto: lines.join("\n").trim(), medicamentos: meds };
+}
+
+app.post("/api/interacoes", async (req, res) => {
+  try {
+    const { medicamentos, contexto } = req.body || {};
+    const meds = uniqueMedicationListServer(medicamentos, 60);
+    if (meds.length < 2 && contexto) {
+      const fromText = await extrairMedicamentosPorTexto(contexto);
+      const out = await avaliarInteracoes(fromText, contexto);
+      return res.json(out);
+    }
+    const out = await avaliarInteracoes(meds, contexto || "");
+    return res.json(out);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao avaliar interações medicamentosas." });
+  }
+});
+
+app.post("/api/interacoes-imagem", async (req, res) => {
+  try {
+    const imagemDataUrl = getImageDataUrlFromBody(req.body);
+    const meds = await extrairMedicamentosPorImagem(imagemDataUrl);
+    if (meds.length < 2) {
+      return res.json({
+        texto: meds.length
+          ? "Apenas um medicamento legível foi identificado na imagem. Interações exigem pelo menos dois medicamentos."
+          : "Nenhum medicamento legível foi identificado na imagem.",
+        medicamentos: meds
+      });
+    }
+    const out = await avaliarInteracoes(meds, "");
+    return res.json(out);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao avaliar interações por imagem." });
+  }
+});
+
+
 // ======================================================================
 // ROTA 5 – DÚVIDAS MÉDICAS (NOVA)
 // ======================================================================
