@@ -923,7 +923,6 @@
         <p class="consult-type-title">Guias de consulta</p>
         <div class="consult-type-buttons">
           <button class="consult-type-btn" type="button" data-consult="prenatal">Consulta pré-natal por trimestre</button>
-          <button class="consult-type-btn" type="button" data-consult="puerperio">Consulta puerpério (pós-parto)</button>
           <button class="consult-type-btn" type="button" data-consult="puericultura">Consulta puericultura</button>
           <button class="consult-type-btn" type="button" data-consult="planejamento">Consulta planejamento familiar</button>
           <button class="consult-type-btn" type="button" data-consult="hiperdia">Consulta hiperdia</button>
@@ -1198,15 +1197,12 @@
     let guidanceEnabled = false;
     let guidanceStage = "aguardando_motivo"; // "aguardando_motivo" | "perguntas"
     let guidancePending = []; // array de strings
-    let guidanceProcedures = []; // array de strings (não interfere no controle por turnos)
+    let guidanceProcedures = []; // array de strings (procedimentos/checagens)
+    let consultTypeHint = ""; // \"pre-natal\" | \"puerperio\" | \"puericultura\" | \"planejamento familiar\" | \"hiperdia\"
+    let prenatalTrimesterHint = ""; // \"1\" | \"2\" | \"3\"
     let guidanceContextLabel = "";
     let guidanceHypothesis = "";
     let guidanceConfidence = 0; // 0..95
-
-    // Dicas opcionais (seleção manual) para ajudar o guia a reconhecer o tipo de consulta
-    // Valores esperados: "pre-natal" | "puerperio" | "puericultura" | "planejamento familiar" | "hiperdia"
-    let consultTypeHint = "";
-    let prenatalTrimesterHint = ""; // "1" | "2" | "3"
 
     let guidanceInFlight = false;
     let guidanceAskedQuestion = "";
@@ -1218,7 +1214,7 @@
     let guidanceChunkStartLen = 0;
     let guidanceSilenceTimer = null;
     let guidanceLastChunkTs = 0;
-const recordBtn = document.getElementById("recordBtn");
+    const recordBtn = document.getElementById("recordBtn");
     const pauseBtn = document.getElementById("pauseBtn");
     const timerEl = document.getElementById("timer");
     const micStatus = document.getElementById("micStatus");
@@ -1755,106 +1751,104 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     // Perguntas e procedimentos essenciais em tempo real (FLUXO CONTROLADO)
     // ============================
     function renderLiveGuidance() {
-      if (!liveGuidance || !liveGuidanceList || !liveGuidanceStatus || !liveGuidanceContext) return;
+  if (!liveGuidance || !liveGuidanceList || !liveGuidanceStatus || !liveGuidanceContext) return;
 
-      if (!isRecording) {
-        liveGuidanceContext.textContent = "";
-        liveGuidanceStatus.textContent = "Inicie o atendimento para receber perguntas e procedimentos necessários em tempo real.";
-        liveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma sugestão por enquanto.</div>";
-        return;
-      }
+  if (!isRecording) {
+    liveGuidanceContext.textContent = "";
+    liveGuidanceStatus.textContent = "Inicie o atendimento para receber perguntas e procedimentos necessários em tempo real.";
+    liveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma sugestão por enquanto.</div>";
+    return;
+  }
 
-      const ctx = (guidanceContextLabel || "").trim();
-      liveGuidanceContext.textContent = ctx ? ("Atendimento: " + ctx) : "";
+  const ctx = (guidanceContextLabel || "").trim();
+  liveGuidanceContext.textContent = ctx ? ("Atendimento: " + ctx) : "";
 
-      if (guidanceStage === "aguardando_motivo") {
-        liveGuidanceStatus.textContent = "Aguardando o motivo da consulta. Após o paciente informar o motivo, as perguntas essenciais serão sugeridas.";
-        liveGuidanceList.innerHTML = `
-          <div class="live-guidance-empty">
-            Oriente: acolha e pergunte o motivo da consulta. Após a resposta do paciente, as perguntas essenciais serão sugeridas automaticamente.
-            <div style="margin-top:10px;">
-              <button id="forceStartGuidanceBtn" class="mini-red-btn" style="background:#b00020;">Motivo já foi informado</button>
-            </div>
-          </div>
-        `;
-        const btn = document.getElementById("forceStartGuidanceBtn");
-        if (btn) {
-          btn.onclick = () => {
-            if (guidanceStage !== "aguardando_motivo") return;
-            guidanceStage = "perguntas";
-            // reinicia detecção de turnos a partir do ponto atual
-            guidanceTurnState = "aguardando_pergunta";
-            guidanceAskedQuestion = "";
-            guidanceAskedAtLen = getCombinedTranscript().length;
-            guidanceAskedAtTs = Date.now();
-            guidanceChunkStartLen = getCombinedTranscript().length;
-            requestGuidanceFromBackend({ evento: "inicial" });
-          };
-        }
-        return;
-      }
-
-      // estágio perguntas (controle por turnos: pergunta -> resposta -> atualizar)
-      const confTxt = (typeof guidanceConfidence === "number" && guidanceConfidence > 0)
-        ? ("Nível de confiança da hipótese principal: " + Math.round(guidanceConfidence) + "% (não chega a 100%).")
-        : "";
-
-      const hypo = (guidanceHypothesis || "").trim();
-      const hypoTxt = hypo ? ("Hipótese principal: " + hypo + ". " + confTxt) : confTxt;
-
-      if (guidanceTurnState === "aguardando_resposta") {
-        liveGuidanceStatus.textContent = "Pergunta em andamento. Aguardando resposta do paciente para atualizar as próximas perguntas...";
-      } else if (guidanceInFlight) {
-        liveGuidanceStatus.textContent = "Atualizando perguntas essenciais...";
-      } else {
-        liveGuidanceStatus.textContent = hypoTxt || "Perguntas essenciais sugeridas. Faça uma das perguntas e aguarde a resposta do paciente.";
-      }
-
-      const hasQuestions = Array.isArray(guidancePending) && guidancePending.length;
-      const hasProcedures = Array.isArray(guidanceProcedures) && guidanceProcedures.length;
-
-      if (!hasQuestions && !hasProcedures) {
-        liveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma sugestão no momento.</div>";
-        return;
-      }
-
-      liveGuidanceList.innerHTML = "";
-
-      if (hasQuestions) {
-        const title = document.createElement("div");
-        title.style.fontWeight = "700";
-        title.style.margin = "8px 0 6px 0";
-        title.textContent = "Perguntas essenciais";
-        liveGuidanceList.appendChild(title);
-
-        guidancePending.slice(0, 3).forEach((q, idx) => {
-          const safeQ = escapeHtml(String(q || ""));
-          const askedMark = (guidanceAskedQuestion && guidanceAskedQuestion.toLowerCase() === String(q || "").toLowerCase())
-            ? " (pergunta feita)"
-            : "";
-          const el = document.createElement("div");
-          el.className = "live-guidance-item";
-          el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${safeQ}${askedMark}</div>`;
-          liveGuidanceList.appendChild(el);
-        });
-      }
-
-      if (hasProcedures) {
-        const title = document.createElement("div");
-        title.style.fontWeight = "700";
-        title.style.margin = hasQuestions ? "12px 0 6px 0" : "8px 0 6px 0";
-        title.textContent = "Procedimentos e checagens";
-        liveGuidanceList.appendChild(title);
-
-        guidanceProcedures.slice(0, 4).forEach((p, idx) => {
-          const safeP = escapeHtml(String(p || ""));
-          const el = document.createElement("div");
-          el.className = "live-guidance-item";
-          el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${safeP}</div>`;
-          liveGuidanceList.appendChild(el);
-        });
-      }
+  if (guidanceStage === "aguardando_motivo") {
+    liveGuidanceStatus.textContent = "Aguardando o motivo da consulta. Após o paciente informar o motivo, as perguntas e procedimentos essenciais serão sugeridos.";
+    liveGuidanceList.innerHTML = `
+      <div class="live-guidance-empty">
+        Oriente: acolha e pergunte o motivo da consulta. Após a resposta do paciente, as perguntas e procedimentos essenciais serão sugeridos automaticamente.
+        <div style="margin-top:10px;">
+          <button id="forceStartGuidanceBtn" class="mini-red-btn" style="background:#b00020;">Motivo já foi informado</button>
+        </div>
+      </div>
+    `;
+    const btn = document.getElementById("forceStartGuidanceBtn");
+    if (btn) {
+      btn.onclick = () => {
+        if (guidanceStage !== "aguardando_motivo") return;
+        guidanceStage = "perguntas";
+        guidanceTurnState = "aguardando_pergunta";
+        guidanceAskedQuestion = "";
+        guidanceAskedAtLen = getCombinedTranscript().length;
+        guidanceAskedAtTs = Date.now();
+        guidanceChunkStartLen = getCombinedTranscript().length;
+        requestGuidanceFromBackend({ evento: "inicial" });
+      };
     }
+    return;
+  }
+
+  const confTxt = (typeof guidanceConfidence === "number" && guidanceConfidence > 0)
+    ? ("Nível de confiança da hipótese principal: " + Math.round(guidanceConfidence) + "% (não chega a 100%).")
+    : "";
+
+  const hypo = (guidanceHypothesis || "").trim();
+  const hypoTxt = hypo ? ("Hipótese principal: " + hypo + ". " + confTxt) : confTxt;
+
+  if (guidanceTurnState === "aguardando_resposta") {
+    liveGuidanceStatus.textContent = "Pergunta em andamento. Aguardando resposta do paciente para atualizar as próximas perguntas...";
+  } else if (guidanceInFlight) {
+    liveGuidanceStatus.textContent = "Atualizando perguntas e procedimentos essenciais...";
+  } else {
+    liveGuidanceStatus.textContent = hypoTxt || "Perguntas e procedimentos essenciais sugeridos. Faça uma pergunta e aguarde a resposta do paciente.";
+  }
+
+  const qs = Array.isArray(guidancePending) ? guidancePending.filter(Boolean).slice(0, 3) : [];
+  const ps = Array.isArray(guidanceProcedures) ? guidanceProcedures.filter(Boolean).slice(0, 4) : [];
+
+  if (!qs.length && !ps.length) {
+    liveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma sugestão no momento.</div>";
+    return;
+  }
+
+  liveGuidanceList.innerHTML = "";
+
+  const addSectionTitle = (text) => {
+    const h = document.createElement("div");
+    h.style.fontSize = "12px";
+    h.style.fontWeight = "bold";
+    h.style.color = "#0c5460";
+    h.style.margin = "6px 0 2px 0";
+    h.textContent = text;
+    liveGuidanceList.appendChild(h);
+  };
+
+  if (qs.length) {
+    addSectionTitle("Perguntas essenciais");
+    qs.forEach((q, idx) => {
+      const safeQ = escapeHtml(String(q || ""));
+      const askedMark = (guidanceAskedQuestion && guidanceAskedQuestion.toLowerCase() === String(q || "").toLowerCase())
+        ? " (pergunta feita)"
+        : "";
+      const el = document.createElement("div");
+      el.className = "live-guidance-item";
+      el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${safeQ}${askedMark}</div>`;
+      liveGuidanceList.appendChild(el);
+    });
+  }
+
+  if (ps.length) {
+    addSectionTitle("Procedimentos e checagens");
+    ps.forEach((p, idx) => {
+      const safeP = escapeHtml(String(p || ""));
+      const el = document.createElement("div");
+      el.className = "live-guidance-item";
+      el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${safeP}</div>`;
+      liveGuidanceList.appendChild(el);
+    });
+  }
+}
 
     function getCombinedTranscript() {
       const combined = ((finalTranscript || "") + " " + (interimTranscript || "")).trim();
@@ -1913,7 +1907,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     function stopGuidanceLoop() {
       guidanceEnabled = false;
       guidanceInFlight = false;
-      guidanceProcedures = [];
       guidanceTurnState = "aguardando_pergunta";
       guidanceAskedQuestion = "";
       guidanceSilenceTimer && clearTimeout(guidanceSilenceTimer);
@@ -1928,10 +1921,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         "motivo", "queixa", "dor", "febre", "tosse", "falta de ar", "dispne", "diarre", "vômit",
         "náuse", "enjoo", "garganta", "cefale", "tont", "desmai", "urina", "ardor",
         "corrimento", "sangr", "pressão", "hipertens", "glic", "diabetes", "infec",
-        "ferida", "queda", "trauma", "alerg", "coceira", "mancha",
-        "gestante", "gravida", "grávida", "pré-natal", "pre-natal", "pre natal",
-        "puerp", "pós-parto", "pos parto", "amament", "puericultura", "vacina", "caderneta",
-        "planejamento", "contrace", "anticoncepc", "diu", "hiperdia"
+        "ferida", "queda", "trauma", "alerg", "coceira", "mancha"
       ];
       return kw.some(k => t.includes(k));
     }
@@ -1944,7 +1934,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       if (!combined || combined.length < 120) return;
 
       // Evita iniciar antes do paciente realmente falar algo clínico
-      if (!force && !consultTypeHint && !hasLikelyChiefComplaint(combined)) return;
+      if (!force && !hasLikelyChiefComplaint(combined)) return;
 
       guidanceStage = "perguntas";
       guidanceTurnState = "aguardando_pergunta";
@@ -2141,14 +2131,10 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
         const procs = Array.isArray(data.procedimentos) ? data.procedimentos : [];
         guidanceProcedures = procs.map(x => String(x || "").trim()).filter(Boolean).slice(0, 4);
-
-        const itens = Array.isArray(data.perguntas) ? data.perguntas : (Array.isArray(data.itens) ? data.itens : []);
+const itens = Array.isArray(data.perguntas) ? data.perguntas : (Array.isArray(data.itens) ? data.itens : []);
         const normalized = itens.map(x => String(x || "").trim()).filter(Boolean);
 
         guidancePending = normalized.slice(0, 3);
-
-        const procs = Array.isArray(data.procedimentos) ? data.procedimentos : [];
-        guidanceProcedures = procs.map(x => String(x || "").trim()).filter(Boolean).slice(0, 4);
 
         // Após atualizar, volta a aguardar a próxima pergunta do enfermeiro
         if (evento === "resposta") {
@@ -3701,36 +3687,6 @@ function initSpeech() {
     let selectedPrenatalTrimester = "1";
 
     const guideData = {
-      puerperio: {
-        title: "Consulta de puerpério (pós-parto)",
-        subtitle: "Sequência sugerida para orientar perguntas e procedimentos iniciais no puerpério.",
-        sections: [
-          {
-            title: "Perguntas essenciais",
-            items: [
-              "Identificação e tempo pós-parto: quantos dias após o parto, tipo de parto (normal/cesárea) e intercorrências na maternidade.",
-              "Sangramento/loquiação: quantidade, cor, odor, presença de coágulos; dor pélvica; febre ou calafrios.",
-              "Ferida/períneo: dor local, secreção, abertura de pontos, dificuldade para sentar/andar, disúria.",
-              "Amamentação: pega, frequência, fissuras, dor mamária, ingurgitamento, sinais de mastite; dúvidas sobre ordenha e armazenamento.",
-              "Bebê: ganho de peso percebido, diurese/evacuações, icterícia, dificuldade para mamar (se a consulta envolver binômio).",
-              "Saúde mental: humor, ansiedade, choro frequente, irritabilidade, sono, vínculo; rastrear sinais de depressão pós-parto e risco.",
-              "Planejamento reprodutivo e sexualidade: método contraceptivo desejado, retorno da menstruação, retomada da atividade sexual, dor.",
-              "Sinais de alarme: sangramento intenso, febre, dor forte, mal-estar importante, falta de ar, dor torácica, cefaleia intensa/visão turva (avaliar urgência)."
-            ]
-          },
-          {
-            title: "Procedimentos e exame físico",
-            items: [
-              "Aferir sinais vitais: especialmente temperatura e pressão arterial; avaliar sinais de instabilidade.",
-              "Avaliar involução uterina e sensibilidade abdominal conforme prática do serviço; observar dor e sangramento.",
-              "Avaliar mamas e orientar manejo da amamentação conforme necessidade (pega, fissuras, ingurgitamento).",
-              "Inspecionar ferida operatória/períneo quando indicado e com consentimento; orientar cuidados locais e sinais de infecção.",
-              "Orientar autocuidado: hidratação, alimentação, repouso possível, sinais de alarme, retorno e rede de referência."
-            ]
-          }
-        ]
-      },
-
       puericultura: {
         title: "Consulta de puericultura",
         subtitle: "Sequência sugerida para orientar perguntas e procedimentos iniciais.",
@@ -3919,28 +3875,27 @@ function initSpeech() {
 
     function openGuideFor(type) {
       selectedConsultType = type;
-
-      // Atualiza dicas para o módulo de perguntas/procedimentos em tempo real
-      const t = String(type || "").trim();
-      if (t === "prenatal") {
+      // Dica opcional para o guia em tempo real reconhecer o tipo de consulta
+      if (type === "prenatal") {
         consultTypeHint = "pre-natal";
-        prenatalTrimesterHint = String(selectedPrenatalTrimester || "").trim() || prenatalTrimesterHint || "";
-      } else if (t === "puerperio") {
+        prenatalTrimesterHint = String(selectedPrenatalTrimester || "1");
+      } else if (type === "puerperio") {
         consultTypeHint = "puerperio";
         prenatalTrimesterHint = "";
-      } else if (t === "puericultura") {
+      } else if (type === "puericultura") {
         consultTypeHint = "puericultura";
         prenatalTrimesterHint = "";
-      } else if (t === "planejamento") {
+      } else if (type === "planejamento") {
         consultTypeHint = "planejamento familiar";
         prenatalTrimesterHint = "";
-      } else if (t === "hiperdia") {
+      } else if (type === "hiperdia") {
         consultTypeHint = "hiperdia";
         prenatalTrimesterHint = "";
       } else {
         consultTypeHint = "";
         prenatalTrimesterHint = "";
       }
+
       consultTypeButtons.forEach(btn => {
         btn.classList.toggle("active", btn.dataset.consult === type);
       });
@@ -3972,7 +3927,9 @@ function initSpeech() {
 
     function setPrenatalTrimester(tri) {
       selectedPrenatalTrimester = String(tri || "1");
+      consultTypeHint = "pre-natal";
       prenatalTrimesterHint = selectedPrenatalTrimester;
+
       trimesterButtons.forEach(b => {
         b.classList.toggle("active", b.dataset.tri === selectedPrenatalTrimester);
       });
@@ -4013,15 +3970,14 @@ function initSpeech() {
       closeConsultGuideBtn.addEventListener("click", closeGuide);
     }
 
-
-    medicalDoubtInput.addEventListener("keydown", (e) => {
+    if (medicalDoubtInput) medicalDoubtInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
         submitMedicalDoubt();
       }
     });
 
-    reportRecordBtn.addEventListener("click", () => {
+    if (reportRecordBtn) reportRecordBtn.addEventListener("click", () => {
       if (!reportIsRecording) {
         startReportRecording();
       } else {
