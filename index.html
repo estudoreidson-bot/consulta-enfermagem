@@ -81,23 +81,6 @@
       margin: 0 0 8px 0;
       min-height: 16px;
     }
-    
-    .live-guidance-split {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-      margin-top: 6px;
-    }
-    @media (min-width: 760px) {
-      .live-guidance-split { grid-template-columns: 1fr 1fr; }
-    }
-    .live-guidance-subtitle {
-      font-weight: 700;
-      margin: 4px 0 6px 0;
-      font-size: 13px;
-      color: #0f2a4a;
-    }
-
     .live-guidance-list {
       display: flex;
       flex-direction: column;
@@ -1216,9 +1199,7 @@
     let guidancePending = []; // array de strings
     let guidanceContextLabel = "";
     let guidanceHypothesis = "";
-    let guidanceConfidence = 0;
-    let guidanceConsultType = "";
-    let guidanceBaseProcedures = []; // 0..95
+    let guidanceConfidence = 0; // 0..95
 
     let guidanceInFlight = false;
     let guidanceAskedQuestion = "";
@@ -1777,9 +1758,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       }
 
       const ctx = (guidanceContextLabel || "").trim();
-      const tipo = (guidanceConsultType || "").trim();
-      const header = [ctx || "", tipo ? ("Tipo: " + tipo) : ""].filter(Boolean).join(" | ");
-      liveGuidanceContext.textContent = header ? ("Atendimento: " + header) : "";
+      liveGuidanceContext.textContent = ctx ? ("Atendimento: " + ctx) : "";
 
       if (guidanceStage === "aguardando_motivo") {
         liveGuidanceStatus.textContent = "Aguardando o motivo da consulta. Após o paciente informar o motivo, as perguntas essenciais serão sugeridas.";
@@ -1912,8 +1891,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         "motivo", "queixa", "dor", "febre", "tosse", "falta de ar", "dispne", "diarre", "vômit",
         "náuse", "enjoo", "garganta", "cefale", "tont", "desmai", "urina", "ardor",
         "corrimento", "sangr", "pressão", "hipertens", "glic", "diabetes", "infec",
-        "ferida", "queda", "trauma", "alerg", "coceira", "mancha",
-        "pré-natal", "pre natal", "prenatal", "gestante", "gravidez", "puerpério", "puerperio", "pós-parto", "pos parto", "resguardo", "puericultura", "bebê", "bebe", "criança", "crianca", "vacina", "caderneta", "hiperdia", "hipertenso", "has", "diabético", "diabetico", "dm", "planejamento familiar", "anticoncepc", "diu", "implante", "laqueadura", "vasectomia"
+        "ferida", "queda", "trauma", "alerg", "coceira", "mancha"
       ];
       return kw.some(k => t.includes(k));
     }
@@ -2113,23 +2091,9 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         }
 
         const data = await resp.json();
-        const prevType = guidanceConsultType;
         guidanceContextLabel = data.contexto || guidanceContextLabel || "";
         guidanceHypothesis = data.hipotese_principal || guidanceHypothesis || "";
         if (typeof data.confianca === "number") guidanceConfidence = data.confianca;
-        const newType = (typeof data.tipo_consulta === "string" ? data.tipo_consulta.trim() : "");
-        if (newType) guidanceConsultType = newType;
-        if (Array.isArray(data.procedimentos_base)) {
-          const base = data.procedimentos_base.map(x => String(x||"").trim()).filter(Boolean);
-          if (base.length) {
-            if (!guidanceBaseProcedures.length || (newType && newType !== prevType)) {
-              guidanceBaseProcedures = base;
-            } else {
-              // mantém estável, mas permite atualizar caso backend refine sem trocar tipo
-              guidanceBaseProcedures = base;
-            }
-          }
-        }
 
         const itens = Array.isArray(data.perguntas) ? data.perguntas : (Array.isArray(data.itens) ? data.itens : []);
         const normalized = itens.map(x => String(x || "").trim()).filter(Boolean);
