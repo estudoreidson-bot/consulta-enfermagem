@@ -950,47 +950,167 @@ app.post("/api/duvidas-enfermagem", async (req, res) => {
 
 app.post("/api/gerar-relatorio", async (req, res) => {
   try {
-    const { transcricao } = req.body || {};
+    const { transcricao, tipo_documento } = req.body || {};
 
     if (!transcricao || !String(transcricao).trim()) {
-      return res.json({ relatorio: "" });
+      return res.json({
+        documento: "",
+        tipo_documento: "",
+        finalidade: "",
+        campos_pendentes: []
+      });
     }
 
     const safeTranscricao = normalizeText(transcricao, 25000);
+    const tipoSelecionado = (typeof tipo_documento === "string" && tipo_documento.trim())
+      ? tipo_documento.trim()
+      : null;
+
+    const tiposPermitidos = [
+      "Declaração de comparecimento",
+      "Declaração de permanência",
+      "Declaração para acompanhante",
+      "Declaração de recebimento de orientações",
+      "Declaração de recusa de procedimento/conduta",
+      "Termo de consentimento informado (procedimento de enfermagem)",
+      "Termo de ciência e responsabilidade (orientações e riscos)",
+      "Comunicado para escola",
+      "Relatório para escola (necessidades específicas)",
+      "Comunicado ao Conselho Tutelar",
+      "Relatório para Conselho Tutelar (proteção à criança/adolescente)",
+      "Relatório de curativo seriado",
+      "Registro de procedimento de curativo",
+      "Registro de retirada de pontos/suturas",
+      "Registro de procedimento de vacinação",
+      "Registro de evento adverso pós-vacinação (EAPV)",
+      "Registro de procedimento de administração de medicamentos",
+      "Registro de administração de medicamento controlado (registro interno)",
+      "Registro de coleta de exames",
+      "Registro de nebulização/oxigenoterapia",
+      "Registro de sondagem vesical",
+      "Registro de troca de sonda/traqueostomia/gastrostomia",
+      "Registro de visita domiciliar",
+      "Relatório de visita domiciliar",
+      "Relatório de adesão e educação em saúde (HAS/DM)",
+      "Relatório de acompanhamento de hipertensão (HAS)",
+      "Relatório de acompanhamento de diabetes (DM)",
+      "Relatório de acompanhamento de asma/DPOC",
+      "Relatório de acompanhamento de saúde da criança (puericultura)",
+      "Relatório de acompanhamento de pré-natal (enfermagem)",
+      "Relatório de puerpério (enfermagem)",
+      "Relatório para assistência social (vulnerabilidade e insumos)",
+      "Solicitação de insumos (fraldas, curativos, suplementos)",
+      "Solicitação de fraldas (infantil/geriátrica)",
+      "Solicitação de materiais para ostomia",
+      "Solicitação de dieta enteral/suplementação",
+      "Solicitação de oxigenoterapia domiciliar",
+      "Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)",
+      "Solicitação de transporte sanitário",
+      "Solicitação de avaliação médica",
+      "Encaminhamento para Médico (demanda espontânea)",
+      "Encaminhamento para sala de vacina",
+      "Encaminhamento para curativos/ambulatório de feridas",
+      "Encaminhamento para CAPS / saúde mental",
+      "Relatório para CAPS / saúde mental (enfermagem)",
+      "Encaminhamento para Serviço Social",
+      "Encaminhamento para Psicologia",
+      "Encaminhamento para Nutrição",
+      "Encaminhamento para Fisioterapia",
+      "Encaminhamento para Fonoaudiologia",
+      "Encaminhamento para Odontologia",
+      "Encaminhamento para especialista / rede",
+      "Encaminhamento para urgência/emergência",
+      "Relatório de evolução de enfermagem",
+      "Relatório de intercorrência/ocorrência",
+      "Ata de reunião",
+      "Registro de reunião de equipe (ATA breve)",
+      "Comunicado interno da equipe",
+      "Outros"
+    ];
+
+    const tiposTexto = tiposPermitidos.map(t => `- ${t}`).join("\n");
 
     const prompt = `
-Você é um enfermeiro humano redigindo um relatório/declaração de enfermagem com base na transcrição do atendimento.
+Você é um enfermeiro humano redigindo documentação administrativa e assistencial de enfermagem a partir da transcrição (português do Brasil).
+O texto final será colado no S.U.I.S., portanto deve estar pronto para colar: texto simples, sem emojis e sem símbolos gráficos.
 
-Objetivo:
-- Identificar a FINALIDADE do relatório a partir da própria transcrição (por exemplo: INSS, CAPS/saúde mental, escola, trabalho, advogado, assistência social, aquisição de insumos, etc).
-- Produzir um RELATÓRIO DE ENFERMAGEM compatível com a finalidade identificada, pronto para impressão.
+Tarefa:
+1) Identificar qual é o TIPO DE DOCUMENTO solicitado e a FINALIDADE (destino/uso) com base na transcrição.
+2) Produzir o DOCUMENTO completo, padronizado e formal, no tipo adequado, sem inventar dados.
+3) Listar campos pendentes (o que faltou informar) para que o profissional possa completar.
 
-Regras:
-- Português do Brasil.
-- Sem emojis e sem símbolos gráficos.
-- Não invente dados. Se faltar informação, use "não informado" ou "não foi referido".
-- Não faça diagnóstico médico definitivo. Descreva achados e condutas de enfermagem.
-- Texto claro, objetivo e formal.
+Se o campo "tipo_documento" vier informado no request, você deve usar EXATAMENTE esse tipo como título e estrutura, mesmo que a transcrição sugira outro.
+Se não vier informado, escolha o tipo mais adequado dentre os tipos permitidos. Se não for possível, use "Outros".
 
-Formato do relatório:
-- Cabeçalho: "RELATÓRIO DE ENFERMAGEM"
-- Campo "Finalidade:" com a finalidade identificada (se não estiver explícita, "não informado").
-- Corpo em parágrafos curtos: identificação (se dita), histórico/queixa, achados objetivos mencionados, condutas/orientações, e considerações pertinentes à finalidade.
-- Data: "Data: ____/____/____" (deixe em branco).
+Tipos permitidos (escolha exatamente um, sem variações):
+${tiposTexto}
 
-Formato de saída: JSON estrito:
-{ "relatorio": "..." }
+Regras obrigatórias:
+- Não invente dados. Se faltar informação, use "não informado" ou deixe um campo em branco com sublinhado (ex.: "CPF: __________").
+- Não faça diagnóstico médico definitivo. Descreva achados objetivos, queixa referida e condutas/orientações de enfermagem.
+- Use linguagem clara, objetiva e formal.
+- Evite abreviações sem definição.
+- Não use listas com bullets. Se precisar numerar, use "1.", "2.", cada item em uma nova linha.
+
+Estrutura (usar conforme o tipo):
+- Primeira linha: TÍTULO EM CAIXA ALTA (igual ao tipo escolhido).
+- Bloco de identificação (campos em linhas separadas):
+  Unidade/Serviço: __________
+  Município/UF: __________
+  Paciente: __________
+  CPF: __________
+  Cartão SUS (CNS): __________
+  Data de nascimento/Idade: __________
+  Endereço: __________
+  Telefone: __________
+- Campo "Finalidade/Destino:" (se não estiver explícito, "não informado").
+- Corpo do documento em parágrafos curtos, conforme o tipo:
+  - Declarações: motivo do atendimento e data/horário (se ausentes, deixar "____/____/____" e "____:____"), e observações pertinentes.
+  - Relatório de curativo seriado: diagnóstico de enfermagem/descrição da ferida (sem diagnóstico médico), local, aspecto, medidas (apenas se citadas), materiais utilizados, conduta e plano; incluir um quadro em texto para evolução seriada se a transcrição não trouxer todas as datas/medidas.
+  - Relatórios de adesão/educação: medidas aferidas (se citadas), adesão, barreiras, orientações fornecidas, metas pactuadas e retorno.
+  - Relatórios para escola/assistência social: limitações funcionais e necessidades, evidências mencionadas, recomendações e insumos necessários (somente os citados).
+  - Saúde mental (CAPS): acolhimento, adesão, acompanhamento, sinais de alerta e encaminhamentos/fluxo acordado.
+  - Encaminhamentos: serviço de destino, motivo do encaminhamento, resumo objetivo do caso, classificação de risco/sinais de alerta e orientações.
+  - Solicitações: item solicitado, justificativa técnica e quantidade/periodicidade (se citadas).
+  - Ata de reunião: data, pauta, participantes (se citados), deliberações, responsabilidades e prazos (se citados).
+  - Registro de procedimento: data/hora (se ausentes, campo em branco), indicação, técnica resumida, materiais, tolerância, intercorrências, orientações e registro de comunicação ao paciente.
+- Rodapé:
+  Data: ____/____/____
+  Profissional de Enfermagem: __________________________
+  COREN: __________________________
+  Assinatura/Carimbo: __________________________
+
+Saída: JSON estrito, sem texto fora do JSON:
+{
+  "tipo_documento": "...",
+  "finalidade": "...",
+  "campos_pendentes": ["..."],
+  "documento": "..."
+}
+
+Campo "tipo_documento" informado no request (pode ser nulo):
+${tipoSelecionado ? JSON.stringify(tipoSelecionado) : "null"}
 
 Transcrição:
 """${safeTranscricao}"""
 `;
 
     const data = await callOpenAIJson(prompt);
-    const relatorio = typeof data?.relatorio === "string" ? data.relatorio.trim() : "";
-    return res.json({ relatorio });
+
+    const tipo = (typeof data?.tipo_documento === "string" ? data.tipo_documento.trim() : "") || (tipoSelecionado || "");
+    const finalidade = typeof data?.finalidade === "string" ? data.finalidade.trim() : "";
+    const camposPendentes = normalizeArrayOfStrings(data?.campos_pendentes, 40, 140);
+    const documento = typeof data?.documento === "string" ? data.documento.trim() : "";
+
+    return res.json({
+      tipo_documento: tipo,
+      finalidade,
+      campos_pendentes: camposPendentes,
+      documento
+    });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar relatório." });
+    return res.status(500).json({ error: "Falha interna ao gerar documento." });
   }
 });
 

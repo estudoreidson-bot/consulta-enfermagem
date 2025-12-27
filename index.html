@@ -926,6 +926,7 @@
           <button class="consult-type-btn" type="button" data-consult="puericultura">Consulta puericultura</button>
           <button class="consult-type-btn" type="button" data-consult="planejamento">Consulta planejamento familiar</button>
           <button class="consult-type-btn" type="button" data-consult="hiperdia">Consulta hiperdia</button>
+          <button class="consult-type-btn" type="button" data-consult="puerperio">Consulta de puerpério</button>
         </div>
 
         <div id="consultGuideDrawer" class="consult-guide-drawer hidden">
@@ -1127,17 +1128,97 @@
       <div id="medicalDoubtAnswer" class="answer-box"></div>
     </div>
 
-        <div id="patientReportCard" class="module-card">
-      <h2>Relatórios de Enfermagem</h2>
-      <p class="mini-status" style="margin-top: 0;">Grave o conteúdo do relatório em voz alta. Pergunte ao paciente qual a finalidade do relatório e peça que ele diga claramente durante a gravação (por exemplo: INSS, CAPS/saúde mental, escola, trabalho, advogado, assistência social, aquisição de insumos). Ao encerrar, a própria gravação será usada para identificar a finalidade e gerar automaticamente o relatório de enfermagem adequado.</p>
+                <div id="patientReportCard" class="module-card">
+      <h2>Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado de comparecimento ou permanência / ATA reunião / Registros de procedimentos</h2>
+      <p class="mini-status" style="margin-top: 0;">
+        Grave em voz alta o conteúdo do documento. Diga claramente qual documento deseja produzir (por exemplo: declaração de comparecimento, relatório de curativo seriado, encaminhamento para CAPS, solicitação de insumos, comunicado para escola, ata de reunião). Ao encerrar, a gravação será usada para identificar o tipo de documento e gerar um texto padronizado pronto para colar no S.U.I.S.
+      </p>
 
       <div class="inline-input-row">
-        <button id="reportRecordBtn" class="small-record-btn start">Gravar relatório</button>
+        <label for="reportDocTypeSelect" style="font-size: 13px; color: #111827; font-weight: 600;">Tipo de documento:</label>
+        <select id="reportDocTypeSelect" class="text-input" style="min-width: 260px; max-width: 100%;">          <option value="auto" selected>Auto (identificar pela gravação)</option>
+          <option value="Declaração de comparecimento">Declaração de comparecimento</option>
+          <option value="Declaração de permanência">Declaração de permanência</option>
+          <option value="Declaração para acompanhante">Declaração para acompanhante</option>
+          <option value="Declaração de recebimento de orientações">Declaração de recebimento de orientações</option>
+          <option value="Declaração de recusa de procedimento/conduta">Declaração de recusa de procedimento/conduta</option>
+          <option value="Termo de consentimento informado (procedimento de enfermagem)">Termo de consentimento informado (procedimento de enfermagem)</option>
+          <option value="Termo de ciência e responsabilidade (orientações e riscos)">Termo de ciência e responsabilidade (orientações e riscos)</option>
+          <option value="Comunicado para escola">Comunicado para escola</option>
+          <option value="Relatório para escola (necessidades específicas)">Relatório para escola (necessidades específicas)</option>
+          <option value="Comunicado ao Conselho Tutelar">Comunicado ao Conselho Tutelar</option>
+          <option value="Relatório para Conselho Tutelar (proteção à criança/adolescente)">Relatório para Conselho Tutelar (proteção à criança/adolescente)</option>
+          <option value="Relatório de curativo seriado">Relatório de curativo seriado</option>
+          <option value="Registro de procedimento de curativo">Registro de procedimento de curativo</option>
+          <option value="Registro de retirada de pontos/suturas">Registro de retirada de pontos/suturas</option>
+          <option value="Registro de procedimento de vacinação">Registro de procedimento de vacinação</option>
+          <option value="Registro de evento adverso pós-vacinação (EAPV)">Registro de evento adverso pós-vacinação (EAPV)</option>
+          <option value="Registro de procedimento de administração de medicamentos">Registro de procedimento de administração de medicamentos</option>
+          <option value="Registro de administração de medicamento controlado (registro interno)">Registro de administração de medicamento controlado (registro interno)</option>
+          <option value="Registro de coleta de exames">Registro de coleta de exames</option>
+          <option value="Registro de nebulização/oxigenoterapia">Registro de nebulização/oxigenoterapia</option>
+          <option value="Registro de sondagem vesical">Registro de sondagem vesical</option>
+          <option value="Registro de troca de sonda/traqueostomia/gastrostomia">Registro de troca de sonda/traqueostomia/gastrostomia</option>
+          <option value="Registro de visita domiciliar">Registro de visita domiciliar</option>
+          <option value="Relatório de visita domiciliar">Relatório de visita domiciliar</option>
+          <option value="Relatório de adesão e educação em saúde (HAS/DM)">Relatório de adesão e educação em saúde (HAS/DM)</option>
+          <option value="Relatório de acompanhamento de hipertensão (HAS)">Relatório de acompanhamento de hipertensão (HAS)</option>
+          <option value="Relatório de acompanhamento de diabetes (DM)">Relatório de acompanhamento de diabetes (DM)</option>
+          <option value="Relatório de acompanhamento de asma/DPOC">Relatório de acompanhamento de asma/DPOC</option>
+          <option value="Relatório de acompanhamento de saúde da criança (puericultura)">Relatório de acompanhamento de saúde da criança (puericultura)</option>
+          <option value="Relatório de acompanhamento de pré-natal (enfermagem)">Relatório de acompanhamento de pré-natal (enfermagem)</option>
+          <option value="Relatório de puerpério (enfermagem)">Relatório de puerpério (enfermagem)</option>
+          <option value="Relatório para assistência social (vulnerabilidade e insumos)">Relatório para assistência social (vulnerabilidade e insumos)</option>
+          <option value="Solicitação de insumos (fraldas, curativos, suplementos)">Solicitação de insumos (fraldas, curativos, suplementos)</option>
+          <option value="Solicitação de fraldas (infantil/geriátrica)">Solicitação de fraldas (infantil/geriátrica)</option>
+          <option value="Solicitação de materiais para ostomia">Solicitação de materiais para ostomia</option>
+          <option value="Solicitação de dieta enteral/suplementação">Solicitação de dieta enteral/suplementação</option>
+          <option value="Solicitação de oxigenoterapia domiciliar">Solicitação de oxigenoterapia domiciliar</option>
+          <option value="Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)">Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)</option>
+          <option value="Solicitação de transporte sanitário">Solicitação de transporte sanitário</option>
+          <option value="Solicitação de avaliação médica">Solicitação de avaliação médica</option>
+          <option value="Encaminhamento para Médico (demanda espontânea)">Encaminhamento para Médico (demanda espontânea)</option>
+          <option value="Encaminhamento para sala de vacina">Encaminhamento para sala de vacina</option>
+          <option value="Encaminhamento para curativos/ambulatório de feridas">Encaminhamento para curativos/ambulatório de feridas</option>
+          <option value="Encaminhamento para CAPS / saúde mental">Encaminhamento para CAPS / saúde mental</option>
+          <option value="Relatório para CAPS / saúde mental (enfermagem)">Relatório para CAPS / saúde mental (enfermagem)</option>
+          <option value="Encaminhamento para Serviço Social">Encaminhamento para Serviço Social</option>
+          <option value="Encaminhamento para Psicologia">Encaminhamento para Psicologia</option>
+          <option value="Encaminhamento para Nutrição">Encaminhamento para Nutrição</option>
+          <option value="Encaminhamento para Fisioterapia">Encaminhamento para Fisioterapia</option>
+          <option value="Encaminhamento para Fonoaudiologia">Encaminhamento para Fonoaudiologia</option>
+          <option value="Encaminhamento para Odontologia">Encaminhamento para Odontologia</option>
+          <option value="Encaminhamento para especialista / rede">Encaminhamento para especialista / rede</option>
+          <option value="Encaminhamento para urgência/emergência">Encaminhamento para urgência/emergência</option>
+          <option value="Relatório de evolução de enfermagem">Relatório de evolução de enfermagem</option>
+          <option value="Relatório de intercorrência/ocorrência">Relatório de intercorrência/ocorrência</option>
+          <option value="Ata de reunião">Ata de reunião</option>
+          <option value="Registro de reunião de equipe (ATA breve)">Registro de reunião de equipe (ATA breve)</option>
+          <option value="Comunicado interno da equipe">Comunicado interno da equipe</option>
+          <option value="Outros">Outros</option>
+</select>
+      </div>
+
+      <div class="inline-input-row">
+        <button id="reportRecordBtn" class="small-record-btn start">Gravar documento</button>
+        <button id="copyReportBtn" class="btn-copy" type="button">Copiar documento</button>
+        <button id="printReportBtn" class="btn-print" type="button">Imprimir documento</button>
       </div>
 
       <div id="reportStatus" class="mini-status"></div>
 
-      <textarea id="reportOutput" class="prescription-textarea" placeholder="O relatório gerado aparecerá aqui." style="margin-top: 12px;"></textarea>
+      <div class="inline-input-row" style="margin-top: 6px;">
+        <div style="flex: 1; min-width: 240px;">
+          <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Tipo identificado</div>
+          <div id="reportDocTypeDetected" class="answer-box" style="min-height: 44px;"></div>
+        </div>
+        <div style="flex: 1; min-width: 240px;">
+          <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Campos pendentes</div>
+          <div id="reportMissingFields" class="answer-box" style="min-height: 44px;"></div>
+        </div>
+      </div>
+
+      <textarea id="reportOutput" class="prescription-textarea" placeholder="O documento gerado aparecerá aqui." style="margin-top: 12px;"></textarea>
     </div>
 
   </div>
@@ -1587,7 +1668,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         const prescricao = data.prescricao || "";
 
         updateSoapFromString(soap);
-        prescriptionOutput.value = prescricao;
+        prescriptionOutput.value = normalizeNumberedParagraphs(prescricao);
         printBtn.style.display = prescricao ? "inline-block" : "none";
 
         micStatus.innerText = "Atualização concluída.";
@@ -1721,7 +1802,11 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     const reportRecordBtn = document.getElementById("reportRecordBtn");
     const reportStatus = document.getElementById("reportStatus");
     const reportOutput = document.getElementById("reportOutput");
-
+    const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
+    const reportDocTypeDetected = document.getElementById("reportDocTypeDetected");
+    const reportMissingFields = document.getElementById("reportMissingFields");
+    const copyReportBtn = document.getElementById("copyReportBtn");
+    const printReportBtn = document.getElementById("printReportBtn");
 
     let reportRecognition = null;
     let reportIsRecording = false;
@@ -1742,6 +1827,17 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
     }
+
+    function normalizeNumberedParagraphs(text) {
+      let t = String(text || "");
+      t = t.replace(/\r/g, "");
+      // Garante que cada item numerado comece em uma nova linha (melhora leitura no S.U.I.S.)
+      t = t.replace(/([^\n])\s+(\d+)\s*([\.)])\s+/g, "$1\n$2$3 ");
+      t = t.replace(/([^\n])\s+(\d+)\s*[-–—]\s+/g, "$1\n$2 - ");
+      t = t.replace(/\n{3,}/g, "\n\n");
+      return t.trim();
+    }
+
 
     // ============================
     // ============================
@@ -3100,7 +3196,7 @@ function initSpeech() {
         const resp = await fetch(BACKEND_URL + "/api/prescricao-hospitalar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao })
+          body: JSON.stringify({ transcricao, tipo_documento: (reportDocTypeSelect && reportDocTypeSelect.value && reportDocTypeSelect.value !== "auto") ? reportDocTypeSelect.value : null })
         });
 
         if (!resp.ok) {
@@ -3263,6 +3359,8 @@ function initSpeech() {
       reportStatus.textContent = "";
       reportOutput.value = "";
       reportFinalTranscript = "";
+      if (reportDocTypeDetected) reportDocTypeDetected.textContent = "";
+      if (reportMissingFields) reportMissingFields.textContent = "";
 
       if (!reportRecognition) {
         reportRecognition = initReportSpeech();
@@ -3274,7 +3372,7 @@ function initSpeech() {
 
       reportRecordBtn.className = "small-record-btn recording";
       reportRecordBtn.innerText = "Encerrar gravação";
-      reportStatus.textContent = "Gravando relatório...";
+      reportStatus.textContent = "Gravando documento...";
       reportStatus.classList.remove("loading-dot");
       reportStatus.classList.add("loading-dot");
 
@@ -3302,7 +3400,7 @@ function initSpeech() {
       stopReportStatusTimer();
 
       reportRecordBtn.className = "small-record-btn start";
-      reportRecordBtn.innerText = "Gravar relatório";
+      reportRecordBtn.innerText = "Gravar documento";
 
       const transcricao = reportFinalTranscript.trim();
       if (!transcricao) {
@@ -3311,7 +3409,7 @@ function initSpeech() {
         return;
       }
 
-      reportStatus.textContent = "Gerando relatório clínico...";
+      reportStatus.textContent = "Gerando documento...";
       reportStatus.classList.add("loading-dot");
 
       try {
@@ -3330,10 +3428,16 @@ function initSpeech() {
         }
 
         const data = await resp.json();
-        const relatorio = data.relatorio || "";
-        reportOutput.value = relatorio;
+        const documento = (data && (data.documento || data.relatorio)) ? String(data.documento || data.relatorio) : "";
+        const tipoIdentificado = (data && data.tipo_documento) ? String(data.tipo_documento) : "";
+        const pendentes = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : (Array.isArray(data?.campos_faltantes) ? data.campos_faltantes : []);
 
-        reportStatus.textContent = relatorio ? "Relatório gerado." : "Não foi possível gerar o relatório.";
+        if (reportDocTypeDetected) reportDocTypeDetected.textContent = tipoIdentificado ? tipoIdentificado : "não informado";
+        if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "Nenhum";
+
+        reportOutput.value = normalizeNumberedParagraphs(documento);
+
+        reportStatus.textContent = documento ? "Documento gerado." : "Não foi possível gerar o documento.";
         reportStatus.classList.remove("loading-dot");
       } catch (err) {
         console.error("Erro ao gerar relatório:", err);
@@ -3740,6 +3844,41 @@ function initSpeech() {
         ]
       },
 
+
+      puerperio: {
+        title: "Consulta de puerpério",
+        subtitle: "Avalie recuperação materna, amamentação, sinais de infecção e saúde mental no pós-parto.",
+        sections: [
+          {
+            title: "Perguntas essenciais",
+            items: [
+              "Data do parto e tipo de parto (vaginal/cesárea) e intercorrências no parto e pós-parto imediato.",
+              "Sangramento (lóquios): quantidade, cor e odor; presença de coágulos; piora súbita do sangramento; tontura ou fraqueza.",
+              "Dor: intensidade e localização (períneo, incisão cirúrgica, abdome, mamas); necessidade e adesão a analgésicos prescritos.",
+              "Febre ou calafrios; mal-estar; disúria; corrimento vaginal com odor fétido.",
+              "Amamentação: pega e posição, dor/fissuras, ingurgitamento, mastite (dor localizada, rubor, febre), frequência das mamadas, dificuldades para ordenhar/armazenar.",
+              "Eliminações: diurese e evacuação (constipação), dor ao evacuar, hemorroidas.",
+              "Sono e suporte familiar; alimentação e hidratação; retorno às atividades e rede de apoio.",
+              "Saúde mental: humor, ansiedade, irritabilidade, choro frequente, anedonia; ideias de autoagressão; percepção de vínculo com o bebê.",
+              "Planejamento reprodutivo: desejo contraceptivo, método em uso, dúvidas; retorno da atividade sexual e orientações de prevenção de IST.",
+              "Vacinas e consultas de seguimento; exames ou orientações dadas na alta."
+            ]
+          },
+          {
+            title: "Procedimentos e exame físico",
+            items: [
+              "Aferir sinais vitais; avaliar palidez, hidratação e sinais de gravidade.",
+              "Avaliar útero e involução uterina quando aplicável (dor importante, sensibilidade, subinvolução suspeita).",
+              "Avaliar ferida operatória (cesárea) ou períneo/episiotomia quando indicado: hiperemia, secreção, deiscência, dor desproporcional.",
+              "Avaliar mamas: ingurgitamento, fissuras, áreas de rubor/calor/dor; orientar ordenha, pega correta e manejo de fissuras.",
+              "Orientar sinais de alarme e encaminhar/acionar serviço de urgência quando: sangramento intenso, febre, odor fétido importante, dor intensa, sinais de trombose (dor/inchaço em perna), dispneia ou dor torácica.",
+              "Reforçar cuidados gerais: higiene perineal, hidratação, alimentação, repouso possível, retorno programado e quando procurar a unidade.",
+              "Registrar orientações e, se necessário, encaminhar para avaliação médica, serviço social ou saúde mental conforme achados."
+            ]
+          }
+        ]
+      },
+
       prenatal: {
         title: "Consulta pré-natal",
         subtitle: "Escolha o trimestre para ver perguntas e procedimentos em ordem.",
@@ -3923,7 +4062,27 @@ function initSpeech() {
         stopReportRecordingAndGenerate();
       }
     });
-  </script>
+  
+    if (copyReportBtn) {
+      copyReportBtn.addEventListener("click", () => {
+        const text = (reportOutput && reportOutput.value) ? reportOutput.value.trim() : "";
+        if (!text) {
+          reportStatus.textContent = "Não há conteúdo para copiar.";
+          return;
+        }
+        copyToClipboard(text);
+        reportStatus.textContent = "Documento copiado.";
+      });
+    }
+
+    if (printReportBtn) {
+      printReportBtn.addEventListener("click", () => {
+        const text = (reportOutput && reportOutput.value) ? reportOutput.value.trim() : "";
+        openPrintWindow("Documento de enfermagem", text);
+      });
+    }
+
+</script>
 
   <div class="whatsapp-fab-label">Entrar em contato</div>
   <a
