@@ -103,6 +103,25 @@
       border: 1px dashed #c8d8f5;
       padding: 8px;
     }
+    .live-guidance-item-text {
+      margin-bottom: 6px;
+    }
+    .live-guidance-item-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+    .mini-red-btn {
+      border: none;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: #fff;
+      cursor: pointer;
+    }
+    .mini-red-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
     #recordBtn {
       width: 180px;
       height: 180px;
@@ -1155,12 +1174,7 @@
 
 
   <script>
-    const DEFAULT_BACKEND_URL = "https://consulta-enfermagem-1.onrender.com";
-  const BACKEND_URL = (window.location && window.location.hostname && (
-    window.location.hostname.includes("netlify") ||
-    window.location.hostname.includes("reimed") ||
-    window.location.hostname.includes("queimadas")
-  )) ? "" : DEFAULT_BACKEND_URL; // usa /api (Netlify redirect) ou mesma origem no Render
+    const BACKEND_URL = "https://consulta-enfermagem-1.onrender.com"; // usa /api (Netlify redirect) ou mesma origem no Render
 
     let recognition;
     let isRecording = false;
@@ -1174,17 +1188,30 @@
     let currentSoapRaw = "";
 
     // ============================
-    // MÓDULO: Perguntas e procedimentos essenciais em tempo real (NOVO)
+    // ============================
+    // MÓDULO: Perguntas e procedimentos essenciais em tempo real (FLUXO CONTROLADO)
     // ============================
     let interimTranscript = "";
-    let guidanceInFlight = false;
-    let guidanceLastSentAt = 0;
-    let guidanceLastSentHash = "";
-    let guidanceContextLabel = "";
-    let guidanceItems = [];
-    let guidanceLoopTimer = null;
 
-    const recordBtn = document.getElementById("recordBtn");
+    // Fluxo: aguarda motivo -> gera até 3 perguntas -> enfermeiro marca pergunta feita -> aguarda resposta -> atualiza
+    let guidanceEnabled = false;
+    let guidanceStage = "aguardando_motivo"; // "aguardando_motivo" | "perguntas"
+    let guidancePending = []; // array de strings
+    let guidanceContextLabel = "";
+    let guidanceHypothesis = "";
+    let guidanceConfidence = 0; // 0..95
+
+    let guidanceInFlight = false;
+    let guidanceAskedQuestion = "";
+    let guidanceAskedAtLen = 0;
+    let guidanceAskedAtTs = 0;
+    let guidanceAnswerDebounce = null;
+    let guidanceLastPayloadHash = "";
+    let guidanceTurnState = "aguardando_pergunta"; // "aguardando_pergunta" | "aguardando_resposta"
+    let guidanceChunkStartLen = 0;
+    let guidanceSilenceTimer = null;
+    let guidanceLastChunkTs = 0;
+const recordBtn = document.getElementById("recordBtn");
     const pauseBtn = document.getElementById("pauseBtn");
     const timerEl = document.getElementById("timer");
     const micStatus = document.getElementById("micStatus");
@@ -1717,7 +1744,8 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     }
 
     // ============================
-    // Perguntas e procedimentos essenciais em tempo real (UI + chamadas backend)
+    // ============================
+    // Perguntas e procedimentos essenciais em tempo real (FLUXO CONTROLADO)
     // ============================
     function renderLiveGuidance() {
       if (!liveGuidance || !liveGuidanceList || !liveGuidanceStatus || !liveGuidanceContext) return;
@@ -1732,132 +1760,371 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       const ctx = (guidanceContextLabel || "").trim();
       liveGuidanceContext.textContent = ctx ? ("Atendimento: " + ctx) : "";
 
-      if (guidanceItems && guidanceItems.length) {
-        liveGuidanceStatus.textContent = "Sugestões essenciais em tempo real (as já respondidas desaparecem automaticamente).";
-        liveGuidanceList.innerHTML = "";
-        guidanceItems.forEach((txt) => {
-          const div = document.createElement("div");
-          div.className = "live-guidance-item";
-          div.textContent = String(txt || "").trim();
-          liveGuidanceList.appendChild(div);
-        });
+      if (guidanceStage === "aguardando_motivo") {
+        liveGuidanceStatus.textContent = "Aguardando o motivo da consulta. Após o paciente informar o motivo, as perguntas essenciais serão sugeridas.";
+        liveGuidanceList.innerHTML = `
+          <div class="live-guidance-empty">
+            Oriente: acolha e pergunte o motivo da consulta. Após a resposta do paciente, as perguntas essenciais serão sugeridas automaticamente.
+            <div style="margin-top:10px;">
+              <button id="forceStartGuidanceBtn" class="mini-red-btn" style="background:#b00020;">Motivo já foi informado</button>
+            </div>
+          </div>
+        `;
+        const btn = document.getElementById("forceStartGuidanceBtn");
+        if (btn) {
+          btn.onclick = () => {
+            if (guidanceStage !== "aguardando_motivo") return;
+            guidanceStage = "perguntas";
+            // reinicia detecção de turnos a partir do ponto atual
+            guidanceTurnState = "aguardando_pergunta";
+            guidanceAskedQuestion = "";
+            guidanceAskedAtLen = getCombinedTranscript().length;
+            guidanceAskedAtTs = Date.now();
+            guidanceChunkStartLen = getCombinedTranscript().length;
+            requestGuidanceFromBackend({ evento: "inicial" });
+          };
+        }
         return;
       }
 
-      liveGuidanceStatus.textContent = "Nenhuma pergunta/procedimento adicional necessário no momento.";
-      liveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Siga a conversa normalmente. Novas sugestões podem aparecer conforme surgirem lacunas.</div>";
-    }
+      // estágio perguntas (controle por turnos: pergunta -> resposta -> atualizar)
+      const confTxt = (typeof guidanceConfidence === "number" && guidanceConfidence > 0)
+        ? ("Nível de confiança da hipótese principal: " + Math.round(guidanceConfidence) + "% (não chega a 100%).")
+        : "";
 
-    function resetLiveGuidanceState() {
-      interimTranscript = "";
-      guidanceInFlight = false;
-      guidanceLastSentAt = 0;
-      guidanceLastSentHash = "";
-      guidanceContextLabel = "";
-      guidanceItems = [];
-      if (guidanceLoopTimer) {
-        clearInterval(guidanceLoopTimer);
-        guidanceLoopTimer = null;
+      const hypo = (guidanceHypothesis || "").trim();
+      const hypoTxt = hypo ? ("Hipótese principal: " + hypo + ". " + confTxt) : confTxt;
+
+      if (guidanceTurnState === "aguardando_resposta") {
+        liveGuidanceStatus.textContent = "Pergunta em andamento. Aguardando resposta do paciente para atualizar as próximas perguntas...";
+      } else if (guidanceInFlight) {
+        liveGuidanceStatus.textContent = "Atualizando perguntas essenciais...";
+      } else {
+        liveGuidanceStatus.textContent = hypoTxt || "Perguntas essenciais sugeridas. Faça uma das perguntas e aguarde a resposta do paciente.";
       }
-      renderLiveGuidance();
+
+      if (!guidancePending || !guidancePending.length) {
+        liveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma pergunta essencial no momento.</div>";
+        return;
+      }
+
+      liveGuidanceList.innerHTML = "";
+      guidancePending.slice(0, 3).forEach((q, idx) => {
+        const safeQ = escapeHtml(String(q || ""));
+        const askedMark = (guidanceAskedQuestion && guidanceAskedQuestion.toLowerCase() === String(q || "").toLowerCase())
+          ? " (pergunta feita)"
+          : "";
+        const el = document.createElement("div");
+        el.className = "live-guidance-item";
+        el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${safeQ}${askedMark}</div>`;
+        liveGuidanceList.appendChild(el);
+      });
     }
 
-    function getPartialTranscriptForGuidance() {
+    function getCombinedTranscript() {
       const combined = ((finalTranscript || "") + " " + (interimTranscript || "")).trim();
       if (!combined) return "";
-      // Mantém só a parte final para reduzir custo e latência
-      const MAX = 6000;
+      const MAX = 8000;
       return combined.length > MAX ? combined.slice(combined.length - MAX) : combined;
     }
 
-    function hashForGuidance(text) {
-      const t = String(text || "").toLowerCase();
-      if (!t) return "";
-      // Hash simples baseado no final do texto (suficiente para evitar chamadas repetidas)
-      const tail = t.slice(-700);
-      return String(t.length) + "::" + tail;
+    function hashForGuidancePayload(obj) {
+      try {
+        const raw = JSON.stringify(obj || {});
+        let h = 0;
+        for (let i = 0; i < raw.length; i++) {
+          h = ((h << 5) - h) + raw.charCodeAt(i);
+          h |= 0;
+        }
+        return String(h);
+      } catch {
+        return String(Date.now());
+      }
     }
 
-    async function requestLiveGuidanceUpdate(force) {
-      if (!isRecording || isPaused) return;
+    function resetLiveGuidanceState() {
+      guidanceEnabled = true;
+      guidanceStage = "aguardando_motivo";
+      guidancePending = [];
+      guidanceContextLabel = "";
+      guidanceHypothesis = "";
+      guidanceConfidence = 0;
+
+      guidanceInFlight = false;
+
+      guidanceTurnState = "aguardando_pergunta";
+      guidanceAskedQuestion = "";
+      guidanceAskedAtLen = 0;
+      guidanceAskedAtTs = 0;
+
+      guidanceChunkStartLen = 0;
+      guidanceSilenceTimer && clearTimeout(guidanceSilenceTimer);
+      guidanceSilenceTimer = null;
+
+      guidanceLastPayloadHash = "";
+      guidanceLastChunkTs = 0;
+
+      renderLiveGuidance();
+    }
+
+    function startGuidanceLoop() {
+      // Sem polling: só reage a eventos (inicial após motivo e após cada resposta)
+      guidanceEnabled = true;
+      renderLiveGuidance();
+      maybeStartInitialGuidance(false);
+    }
+
+    function stopGuidanceLoop() {
+      guidanceEnabled = false;
+      guidanceInFlight = false;
+      guidanceTurnState = "aguardando_pergunta";
+      guidanceAskedQuestion = "";
+      guidanceSilenceTimer && clearTimeout(guidanceSilenceTimer);
+      guidanceSilenceTimer = null;
+      renderLiveGuidance();
+    }
+
+    function hasLikelyChiefComplaint(text) {
+      const t = String(text || "").toLowerCase();
+      if (!t) return false;
+      const kw = [
+        "motivo", "queixa", "dor", "febre", "tosse", "falta de ar", "dispne", "diarre", "vômit",
+        "náuse", "enjoo", "garganta", "cefale", "tont", "desmai", "urina", "ardor",
+        "corrimento", "sangr", "pressão", "hipertens", "glic", "diabetes", "infec",
+        "ferida", "queda", "trauma", "alerg", "coceira", "mancha"
+      ];
+      return kw.some(k => t.includes(k));
+    }
+
+    function maybeStartInitialGuidance(force) {
+      if (!guidanceEnabled || !isRecording || isPaused) return;
+      if (guidanceStage !== "aguardando_motivo") return;
+
+      const combined = getCombinedTranscript();
+      if (!combined || combined.length < 120) return;
+
+      // Evita iniciar antes do paciente realmente falar algo clínico
+      if (!force && !hasLikelyChiefComplaint(combined)) return;
+
+      guidanceStage = "perguntas";
+      guidanceTurnState = "aguardando_pergunta";
+      guidanceAskedQuestion = "";
+      guidanceAskedAtLen = combined.length;
+      guidanceAskedAtTs = Date.now();
+      guidanceChunkStartLen = combined.length;
+
+      requestGuidanceFromBackend({ evento: "inicial" });
+    }
+
+    function onTranscriptUpdateForGuidance() {
+      if (!guidanceEnabled || !isRecording || isPaused) return;
+
+      // 1) Detecta automaticamente o momento de iniciar (após motivo)
+      if (guidanceStage === "aguardando_motivo") {
+        maybeStartInitialGuidance(false);
+        return;
+      }
+
+      // 2) A partir daqui: está em "perguntas". Controla por turnos usando silêncio.
+      scheduleGuidanceSilenceFinalize();
+    }
+
+    function scheduleGuidanceSilenceFinalize() {
+      if (!guidanceEnabled || !isRecording || isPaused) return;
+
+      if (guidanceSilenceTimer) clearTimeout(guidanceSilenceTimer);
+      guidanceSilenceTimer = setTimeout(() => {
+        finalizeGuidanceChunk();
+      }, 1400);
+    }
+
+    function finalizeGuidanceChunk() {
+      if (!guidanceEnabled || !isRecording || isPaused) return;
+
+      const combined = getCombinedTranscript();
+      if (!combined) return;
+
+      if (guidanceChunkStartLen <= 0) {
+        guidanceChunkStartLen = combined.length;
+        return;
+      }
+
+      // Captura apenas o que foi acrescentado desde o último “silêncio”
+      const chunk = combined.slice(guidanceChunkStartLen).trim();
+      guidanceChunkStartLen = combined.length;
+
+      if (!chunk || chunk.length < 10) return;
+
+      // Evita processar chunks colados em sequência que são só repetição do reconhecimento
+      const now = Date.now();
+      if (guidanceLastChunkTs && (now - guidanceLastChunkTs) < 900) return;
+      guidanceLastChunkTs = now;
+
+      handleGuidanceUtteranceChunk(chunk);
+    }
+
+    function stripAccents(s) {
+      return String(s || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function tokenizePt(s) {
+      const t = stripAccents(String(s || "").toLowerCase())
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (!t) return [];
+
+      const stop = new Set([
+        "a","o","os","as","um","uma","uns","umas","de","do","da","dos","das","no","na","nos","nas",
+        "em","para","por","com","sem","e","ou","que","qual","quais","quando","como","onde","porque",
+        "ao","aos","à","às","se","já","não","sim","me","te","lhe","eles","elas","você","vocês",
+        "eu","tu","ele","ela","nós","vos","isso","isto","aquilo","essa","esse","este","esta",
+        "tem","tá","está","foi","era","são","ser","ter","há"
+      ]);
+
+      return t.split(" ").filter(w => w && w.length > 2 && !stop.has(w));
+    }
+
+    function jaccardSimilarity(aTokens, bTokens) {
+      const A = new Set(aTokens || []);
+      const B = new Set(bTokens || []);
+      if (!A.size || !B.size) return 0;
+      let inter = 0;
+      for (const w of A) if (B.has(w)) inter++;
+      const union = A.size + B.size - inter;
+      return union ? (inter / union) : 0;
+    }
+
+    function matchQuestionFromUtterance(utterance, questions) {
+      const qs = Array.isArray(questions) ? questions : [];
+      if (!qs.length) return "";
+      const uTok = tokenizePt(utterance);
+      if (!uTok.length) return "";
+
+      let bestQ = "";
+      let bestScore = 0;
+
+      for (const q of qs.slice(0, 3)) {
+        const score = jaccardSimilarity(uTok, tokenizePt(q));
+        if (score > bestScore) {
+          bestScore = score;
+          bestQ = q;
+        }
+      }
+
+      // Se a similaridade for baixa, não “chuta” qual foi, para não apagar/alterar errado.
+      if (bestScore < 0.18) return "";
+      return String(bestQ || "").trim();
+    }
+
+    function handleGuidanceUtteranceChunk(chunkText) {
+      if (!chunkText) return;
+      if (!guidancePending || !guidancePending.length) return;
       if (guidanceInFlight) return;
 
-      const partial = getPartialTranscriptForGuidance();
-      if (!partial || partial.length < 50) {
-        guidanceContextLabel = "";
-        guidanceItems = [];
+      // Turno 1: o enfermeiro faz uma pergunta (a partir das 3 sugeridas)
+      if (guidanceTurnState === "aguardando_pergunta") {
+        const matched = matchQuestionFromUtterance(chunkText, guidancePending);
+
+        guidanceAskedQuestion = matched ? matched : "";
+        guidanceAskedAtTs = Date.now();
+        guidanceAskedAtLen = getCombinedTranscript().length;
+
+        guidanceTurnState = "aguardando_resposta";
         renderLiveGuidance();
         return;
       }
 
-      const now = Date.now();
-      const h = hashForGuidance(partial);
+      // Turno 2: o paciente responde -> atualiza as perguntas
+      if (guidanceTurnState === "aguardando_resposta") {
+        const dt = Date.now() - (guidanceAskedAtTs || 0);
+        if (dt < 900) return; // evita disparo imediato
 
-      // Evita spam de chamadas
-      if (!force) {
-        if (now - guidanceLastSentAt < 3500) return;
-        if (h === guidanceLastSentHash && now - guidanceLastSentAt < 15000) return;
+        // Atualiza com base no diálogo novo
+        requestGuidanceFromBackend({ evento: "resposta", ultima_fala: chunkText });
+        return;
       }
+    }
+
+    async function requestGuidanceFromBackend({ evento, ultima_fala }) {
+      if (guidanceInFlight) return;
+      if (!guidanceEnabled || !isRecording || isPaused) return;
+
+      const combined = getCombinedTranscript();
+      if (!combined || combined.length < 50) {
+        renderLiveGuidance();
+        return;
+      }
+
+      const payload = {
+        transcricao: combined,
+        estado: guidanceStage,
+        evento: evento || "stream",
+        pergunta_feita: guidanceAskedQuestion || "",
+        perguntas_pendentes: Array.isArray(guidancePending) ? guidancePending.slice(0, 3) : [],
+        confianca_atual: typeof guidanceConfidence === "number" ? guidanceConfidence : 0,
+        hipotese_atual: guidanceHypothesis || "",
+        ultima_fala: typeof ultima_fala === "string" ? ultima_fala.slice(0, 800) : ""
+      };
+
+      const h = hashForGuidancePayload(payload);
+      if (h === guidanceLastPayloadHash && evento !== "inicial" && evento !== "resposta") return;
+      guidanceLastPayloadHash = h;
 
       guidanceInFlight = true;
-      guidanceLastSentAt = now;
-      guidanceLastSentHash = h;
-
-      if (liveGuidanceStatus) {
-        liveGuidanceStatus.textContent = "Identificando o atendimento e gerando perguntas/procedimentos essenciais...";
-        liveGuidanceStatus.classList.add("loading-dot");
-      }
+      renderLiveGuidance();
 
       try {
         const resp = await fetch(BACKEND_URL + "/api/guia-tempo-real", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            transcricao: partial,
-            itens_atuais: Array.isArray(guidanceItems) ? guidanceItems : []
-          })
+          body: JSON.stringify(payload)
         });
 
         if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
+          const txt = await resp.text();
           console.error("Erro HTTP do backend (guia em tempo real):", resp.status, txt);
           return;
         }
 
-        const data = await resp.json().catch(() => ({}));
-        const ctx = (typeof data?.contexto === "string") ? data.contexto.trim() : "";
-        const itens = Array.isArray(data?.itens) ? data.itens : [];
+        const data = await resp.json();
+        guidanceContextLabel = data.contexto || guidanceContextLabel || "";
+        guidanceHypothesis = data.hipotese_principal || guidanceHypothesis || "";
+        if (typeof data.confianca === "number") guidanceConfidence = data.confianca;
 
-        guidanceContextLabel = ctx;
-        guidanceItems = itens.map(x => String(x || "").trim()).filter(Boolean).slice(0, 5);
-      } catch (e) {
-        console.error("Erro ao atualizar guia em tempo real:", e);
+        const itens = Array.isArray(data.perguntas) ? data.perguntas : (Array.isArray(data.itens) ? data.itens : []);
+        const normalized = itens.map(x => String(x || "").trim()).filter(Boolean);
+
+        guidancePending = normalized.slice(0, 3);
+
+        // Após atualizar, volta a aguardar a próxima pergunta do enfermeiro
+        if (evento === "resposta") {
+          guidanceTurnState = "aguardando_pergunta";
+          guidanceAskedQuestion = "";
+          guidanceAskedAtLen = combined.length;
+          guidanceAskedAtTs = Date.now();
+          guidanceChunkStartLen = combined.length;
+        }
+
+        // Após gerar as perguntas iniciais, aguarda a primeira pergunta do enfermeiro
+        if (evento === "inicial") {
+          guidanceTurnState = "aguardando_pergunta";
+          guidanceAskedQuestion = "";
+          guidanceAskedAtLen = combined.length;
+          guidanceAskedAtTs = Date.now();
+          guidanceChunkStartLen = combined.length;
+        }
+      } catch (err) {
+        console.error("Falha ao buscar guia em tempo real:", err);
       } finally {
         guidanceInFlight = false;
-        if (liveGuidanceStatus) liveGuidanceStatus.classList.remove("loading-dot");
         renderLiveGuidance();
       }
     }
-
-    function startGuidanceLoop() {
-      if (guidanceLoopTimer) clearInterval(guidanceLoopTimer);
-      guidanceLoopTimer = setInterval(() => {
-        requestLiveGuidanceUpdate(false);
-      }, 4000);
-
-      // Primeira tentativa logo no início
-      requestLiveGuidanceUpdate(true);
-    }
-
-    function stopGuidanceLoop() {
-      if (guidanceLoopTimer) {
-        clearInterval(guidanceLoopTimer);
-        guidanceLoopTimer = null;
-      }
-      if (liveGuidanceStatus) liveGuidanceStatus.classList.remove("loading-dot");
-    }
-
-    function initSpeech() {
+function initSpeech() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) {
         micStatus.innerText =
@@ -1881,8 +2148,8 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         }
 
         interimTranscript = interim.trim();
-        // Atualiza perguntas/procedimentos em tempo real sem atrapalhar a gravação
-        requestLiveGuidanceUpdate(false);
+        // Atualiza o fluxo de perguntas/procedimentos (somente quando necessário)
+        onTranscriptUpdateForGuidance();
       };
 
       recognition.onerror = (event) => {

@@ -178,121 +178,6 @@ function getKnownPresentationsMaxDose(medicamentoOriginal) {
 // ROTA 1 – GERAR SOAP E PRESCRIÇÃO A PARTIR DA TRANSCRIÇÃO (EXISTENTE)
 // ======================================================================
 
-
-
-// Healthcheck simples (útil para testar no navegador)
-app.get("/api/health", (req, res) => {
-  res.json({
-    ok: true,
-    has_openai_key: Boolean(process.env.OPENAI_API_KEY),
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Perguntas e procedimentos essenciais em tempo real (baseado na transcrição parcial)
-app.post("/api/guia-tempo-real", async (req, res) => {
-  try {
-    const { transcricao, itens_atuais } = req.body || {};
-    const partial = normalizeText(transcricao || "", 12000);
-    const atuais = Array.isArray(itens_atuais)
-      ? itens_atuais.map(x => String(x || "").trim()).filter(Boolean).slice(0, 10)
-      : [];
-
-    if (!partial || partial.length < 20) {
-      return res.json({ contexto: "", itens: [] });
-    }
-
-    // Fallback sem chave: heurística simples para não deixar o módulo "mudo" em teste
-    if (!process.env.OPENAI_API_KEY) {
-      const itens = [];
-      const p = partial.toLowerCase();
-
-      const push = (s) => {
-        if (!s) return;
-        if (itens.length >= 5) return;
-        const t = String(s).trim();
-        if (!t) return;
-        const key = t.toLowerCase();
-        const ja = itens.some(x => x.toLowerCase() === key) || atuais.some(x => x.toLowerCase() === key);
-        if (!ja) itens.push(t);
-      };
-
-      if (p.includes("febre") || p.includes("calafrio")) {
-        push("Perguntar início da febre, pico, padrão e uso de antitérmicos, com resposta.");
-        push("Perguntar sinais de alarme: prostração importante, rigidez de nuca, dispneia, dor torácica, confusão.");
-      }
-      if (p.includes("dor no peito") || p.includes("torác") || p.includes("opress")) {
-        push("Caracterizar dor torácica: início, duração, irradiação, fatores de melhora/piora e sintomas associados.");
-        push("Aferir sinais vitais e saturação; considerar ECG conforme disponibilidade e gravidade.");
-      }
-      if (p.includes("falta de ar") || p.includes("dispne") || p.includes("chiado")) {
-        push("Perguntar intensidade da dispneia, gatilhos, sibilância, história de asma/DPOC e resposta a broncodilatador.");
-        push("Aferir SpO2 e sinais de esforço respiratório; avaliar necessidade de encaminhamento.");
-      }
-      if (p.includes("dor abdominal") || p.includes("vômit") || p.includes("diarre")) {
-        push("Perguntar sinais de desidratação, diurese, vômitos persistentes e sangue nas fezes.");
-      }
-      if (p.includes("grávida") || p.includes("gestante") || p.includes("gravidez") || p.includes("amament")) {
-        push("Confirmar gestação/lactação: DUM, idade gestacional, comorbidades e uso de medicamentos.");
-      }
-
-      const contexto =
-        (p.includes("grávida") || p.includes("gestante") || p.includes("gravidez"))
-          ? "Cenário: possível gestação; revisar segurança medicamentosa e sinais de alarme."
-          : "Cenário: queixa em avaliação; complementar anamnese dirigida e avaliar sinais vitais.";
-
-      return res.json({ contexto, itens });
-    }
-
-    const safe = normalizeText(partial, 12000);
-    const safeAtuais = atuais.map(x => normalizeText(x, 300)).slice(0, 10);
-
-    const prompt = `
-Você é um enfermeiro humano em uma consulta de atenção primária. Com base em uma transcrição parcial do atendimento,
-gere sugestões em tempo real do que perguntar e do que checar/examinar para aumentar segurança e qualidade do cuidado.
-
-Objetivo:
-- Ajudar o profissional a não esquecer perguntas importantes e procedimentos essenciais (sinais vitais, sinais de alarme, triagem).
-- Ser prático e aplicável no contexto da UBS.
-
-Regras:
-- Sem emojis e sem símbolos gráficos.
-- Não invente dados do paciente.
-- Evite repetir itens que já estão na lista atual.
-- No máximo 5 itens.
-- Itens devem ser ações objetivas (perguntas ou verificações/procedimentos).
-
-Formato de saída: JSON estrito:
-{
-  "contexto": "Uma linha curta descrevendo o cenário provável (sem fechar diagnóstico).",
-  "itens": ["...", "..."]
-}
-
-Itens já existentes (evitar repetição):
-${JSON.stringify(safeAtuais)}
-
-Transcrição parcial:
-${safe}
-`;
-
-    const data = await callOpenAIJson(prompt);
-
-    const contexto = (typeof data?.contexto === "string") ? data.contexto.trim() : "";
-    const itensRaw = Array.isArray(data?.itens) ? data.itens : [];
-
-    const itens = itensRaw
-      .map(x => String(x || "").trim())
-      .filter(Boolean)
-      .filter(x => !safeAtuais.some(a => a.toLowerCase() === x.toLowerCase()))
-      .slice(0, 5);
-
-    return res.json({ contexto, itens });
-  } catch (err) {
-    console.error("Erro /api/guia-tempo-real:", err);
-    return res.status(500).json({ contexto: "", itens: [] });
-  }
-});
-
 app.post("/api/gerar-soap", async (req, res) => {
   try {
     const { transcricao } = req.body || {};
@@ -1110,6 +995,262 @@ Transcrição:
 });
 
 
+
+
+
+
+// ======================================================================
+// SAÚDE DO BACKEND (TESTE RÁPIDO)
+// ======================================================================
+app.get("/api/health", (req, res) => {
+  return res.json({
+    ok: true,
+    has_openai_key: Boolean(process.env.OPENAI_API_KEY),
+    time: new Date().toISOString()
+  });
+});
+
+// ======================================================================
+// PERGUNTAS E PROCEDIMENTOS ESSENCIAIS (FLUXO CONTROLADO)
+// - Mantém no máximo 3 perguntas por vez.
+// - Atualiza somente após "pergunta feita" + nova resposta do paciente.
+// ======================================================================
+function clampNumber(n, min, max) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return min;
+  return Math.min(max, Math.max(min, x));
+}
+
+function guessContextAndHypothesis(t) {
+  const s = String(t || "").toLowerCase();
+
+  if (s.includes("dor no peito") || s.includes("torác") || s.includes("opress")) {
+    return { contexto: "Dor torácica", hipotese: "Síndrome coronariana aguda vs. causas não cardíacas" };
+  }
+  if (s.includes("falta de ar") || s.includes("dispne") || s.includes("chiado")) {
+    return { contexto: "Dispneia", hipotese: "Crise asmática/DPOC vs. causas infecciosas ou cardíacas" };
+  }
+  if (s.includes("dor abdominal") || s.includes("barriga") || s.includes("abdome")) {
+    return { contexto: "Dor abdominal", hipotese: "Gastroenterite/infecção urinária vs. abdome agudo" };
+  }
+  if (s.includes("dor de garganta") || s.includes("garganta") || s.includes("amígdala")) {
+    return { contexto: "Odinofagia", hipotese: "Faringoamigdalite viral vs. bacteriana" };
+  }
+  if (s.includes("diarre") || s.includes("vômit") || s.includes("vomit") || s.includes("náuse") || s.includes("enjoo")) {
+    return { contexto: "Gastrointestinal", hipotese: "Gastroenterite" };
+  }
+  if ((s.includes("urina") || s.includes("xixi") || s.includes("disúria") || s.includes("ardor")) && (s.includes("dor") || s.includes("frequên") || s.includes("urgên") || s.includes("febre"))) {
+    return { contexto: "Sintomas urinários", hipotese: "Infecção urinária" };
+  }
+  if (s.includes("cefale") || s.includes("dor de cabeça") || s.includes("enxaqu")) {
+    return { contexto: "Cefaleia", hipotese: "Cefaleia primária vs. sinais de alarme" };
+  }
+  if (s.includes("corrimento") || s.includes("prurido") || s.includes("coceira")) {
+    return { contexto: "Queixa ginecológica", hipotese: "Vulvovaginite/cervicite" };
+  }
+  return { contexto: "Atendimento geral", hipotese: "" };
+}
+
+function heuristicQuestions(transcricao) {
+  const t = String(transcricao || "").toLowerCase();
+  const { contexto, hipotese } = guessContextAndHypothesis(t);
+
+  const q = [];
+  const push = (s) => {
+    const x = String(s || "").trim();
+    if (!x) return;
+    if (!q.some(a => a.toLowerCase() === x.toLowerCase())) q.push(x);
+  };
+
+  push("Confirmar início e evolução do quadro (quando começou e como piorou/melhorou).");
+  push("Aferir sinais vitais e saturação; verificar sinais de alarme relevantes ao quadro.");
+
+  if (t.includes("febre") || t.includes("calafrio")) {
+    push("Perguntar pico da febre, padrão (contínua/intermitente) e uso/resposta a antitérmicos.");
+    push("Perguntar sinais de gravidade: prostração importante, confusão, rigidez de nuca, dispneia, dor torácica.");
+  }
+
+  if (t.includes("dor de garganta") || t.includes("garganta") || t.includes("amígdala")) {
+    push("Perguntar presença de tosse, coriza, rouquidão e contato com casos semelhantes.");
+    push("Verificar exsudato/hiperemia amigdalar, linfonodos cervicais dolorosos e febre (critérios clínicos).");
+  }
+
+  if (t.includes("tosse") || t.includes("coriza") || t.includes("catarro")) {
+    push("Caracterizar tosse (seca/produtiva), dispneia, dor pleurítica e duração do quadro.");
+    push("Checar sinais de alarme respiratório e comorbidades (asma/DPOC, cardiopatia, imunossupressão).");
+  }
+
+  if (t.includes("dor no peito") || t.includes("torác") || t.includes("opress")) {
+    push("Caracterizar dor torácica: início, duração, irradiação, fatores de melhora/piora e sintomas associados.");
+    push("Investigar dispneia, sudorese, náuseas, síncope e fatores de risco cardiovasculares.");
+  }
+
+  if (t.includes("falta de ar") || t.includes("dispne") || t.includes("chiado")) {
+    push("Perguntar intensidade/limitação funcional, gatilhos, sibilância e resposta a broncodilatador.");
+    push("Investigar sinais de gravidade: fala entrecortada, uso de musculatura acessória, cianose, SpO2 baixa.");
+  }
+
+  if (t.includes("dor abdominal") || t.includes("abdome") || t.includes("barriga")) {
+    push("Caracterizar dor abdominal (localização, irradiação, intensidade, relação com alimentação/evacuação).");
+    push("Perguntar náuseas/vômitos, diarreia, febre, e sinais de desidratação.");
+    push("Perguntar sintomas urinários e, se aplicável, possibilidade de gestação.");
+  }
+
+  if (t.includes("diarre") || t.includes("vômit") || t.includes("vomit") || t.includes("náuse") || t.includes("enjoo")) {
+    push("Perguntar número de episódios, sangue/muco nas fezes e tolerância a líquidos.");
+    push("Avaliar risco de desidratação (diurese, sede intensa, sonolência) e sinais de alarme.");
+  }
+
+  if ((t.includes("urina") || t.includes("xixi") || t.includes("disúria") || t.includes("ardor")) && (t.includes("dor") || t.includes("frequên") || t.includes("urgên") || t.includes("febre"))) {
+    push("Perguntar disúria, urgência, polaciúria, dor lombar e febre; investigar gestação quando aplicável.");
+    push("Se possível, realizar EAS/urocultura conforme protocolo/local.");
+  }
+
+  if (t.includes("cefale") || t.includes("dor de cabeça")) {
+    push("Caracterizar cefaleia (início súbito vs. progressivo, intensidade, padrão, sintomas associados).");
+    push("Investigar sinais de alarme: déficit focal, rigidez de nuca, febre, pior cefaleia da vida, vômitos em jato.");
+  }
+
+  if (t.includes("sangr") || t.includes("hemorrag") || t.includes("menstrua")) {
+    push("Quantificar sangramento e avaliar instabilidade (tontura, síncope, palidez, taquicardia).");
+    push("Perguntar possibilidade de gestação e dor pélvica/abdominal associada.");
+  }
+
+  return { contexto, hipotese, sugestoes: q };
+}
+
+function isRedFlagQuestion(question) {
+  const q = String(question || "").toLowerCase();
+  return q.includes("sinais de alarme") || q.includes("gravidade") || q.includes("instabilidade") || q.includes("spo2") || q.includes("rigidez de nuca");
+}
+
+app.post("/api/guia-tempo-real", async (req, res) => {
+  try {
+    const body = req.body || {};
+
+    // Compatibilidade com versão antiga: { transcricao, itens_atuais }
+    const legacyTrans = normalizeText(body.transcricao || "", 12000);
+    const legacyItens = Array.isArray(body.itens_atuais)
+      ? body.itens_atuais.map(x => String(x || "").trim()).filter(Boolean).slice(0, 3)
+      : [];
+
+    if (!body.estado && legacyItens.length) {
+      return res.json({ contexto: "", itens: legacyItens });
+    }
+
+    const estado = String(body.estado || "").trim() || "perguntas";
+    const evento = String(body.evento || "").trim() || "stream";
+
+    if (estado === "aguardando_motivo") {
+      return res.json({ contexto: "", hipotese_principal: "", confianca: 0, perguntas: [] });
+    }
+
+    const transcricao = normalizeText(body.transcricao || legacyTrans || "", 12000);
+    if (!transcricao || transcricao.length < 20) {
+      return res.json({ contexto: "", hipotese_principal: "", confianca: 0, perguntas: [] });
+    }
+
+    const perguntaFeita = String(body.pergunta_feita || "").trim();
+    const pendentes = Array.isArray(body.perguntas_pendentes)
+      ? body.perguntas_pendentes.map(x => String(x || "").trim()).filter(Boolean).slice(0, 3)
+      : [];
+
+    const confiancaAtual = clampNumber(body.confianca_atual, 0, 95);
+    const hipoteseAtual = String(body.hipotese_atual || "").trim();
+    const ultimaFala = normalizeText(body.ultima_fala || "", 800);
+
+    let contexto = "";
+    let hipotese = "";
+    let confianca = 0;
+    let sugestoes = [];
+
+    if (process.env.OPENAI_API_KEY) {
+      const prompt = `
+Você está auxiliando um enfermeiro durante uma consulta.
+Objetivo: sugerir no máximo 3 perguntas essenciais por vez para chegar a um diagnóstico provável com eficiência.
+
+Regras:
+- Nunca gere mais de 3 perguntas.
+- Se houver perguntas pendentes úteis, você pode mantê-las.
+- Se uma pergunta ficou sem sentido após a resposta do paciente, substitua.
+- Use linguagem objetiva e prática.
+- Retorne também uma hipótese principal (curta) e um nível de confiança (0 a 95; nunca 100).
+
+Retorne JSON estrito no formato:
+{
+  "contexto": "texto curto",
+  "hipotese_principal": "texto curto",
+  "confianca": 0,
+  "perguntas_sugeridas": ["...", "...", "..."]
+}
+
+Dados atuais:
+- Estado: ${estado}
+- Evento: ${evento}
+- Hipótese atual: ${hipoteseAtual || "não informado"}
+- Confiança atual: ${confiancaAtual}
+- Pergunta feita (se houver): ${perguntaFeita || "nenhuma"}
+- Perguntas pendentes: ${pendentes.length ? pendentes.join(" | ") : "nenhuma"}
+
+Última fala (trecho recente, pode estar vazio): ${ultimaFala || "não informado"}
+
+Transcrição:
+<<<${transcricao}>>>
+`;
+      const data = await callOpenAIJson(prompt);
+      contexto = typeof data?.contexto === "string" ? data.contexto.trim() : "";
+      hipotese = typeof data?.hipotese_principal === "string" ? data.hipotese_principal.trim() : "";
+      confianca = clampNumber(data?.confianca, 0, 95);
+      sugestoes = Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : [];
+    } else {
+      const h = heuristicQuestions(transcricao);
+      contexto = h.contexto || "";
+      hipotese = h.hipotese || "";
+      sugestoes = h.sugestoes || [];
+
+      const bonusEvento = (evento === "resposta") ? 12 : (evento === "inicial") ? 8 : 0;
+      const bonusLen = Math.min(15, Math.floor(transcricao.length / 300));
+      const base = (confiancaAtual > 0 ? confiancaAtual : 25);
+      confianca = clampNumber(base + bonusEvento + bonusLen, 10, 95);
+    }
+
+    // Atualiza pendentes: remove a pergunta feita
+    let pend = pendentes.slice();
+    if (perguntaFeita) {
+      pend = pend.filter(x => x.toLowerCase() !== perguntaFeita.toLowerCase());
+    }
+
+    const sugNorm = (Array.isArray(sugestoes) ? sugestoes : []).map(x => String(x || "").trim()).filter(Boolean);
+    const sugLower = sugNorm.map(x => x.toLowerCase());
+
+    const kept = pend.filter(x => sugLower.includes(x.toLowerCase()) || isRedFlagQuestion(x));
+
+    const next = [];
+    kept.forEach(x => { if (next.length < 3) next.push(x); });
+
+    for (const s of sugNorm) {
+      if (next.length >= 3) break;
+      const exists = next.some(x => x.toLowerCase() === s.toLowerCase());
+      if (!exists) next.push(s);
+    }
+
+    for (const old of pend) {
+      if (next.length >= 3) break;
+      const exists = next.some(x => x.toLowerCase() === String(old || "").toLowerCase());
+      if (!exists) next.push(String(old || "").trim());
+    }
+
+    return res.json({
+      contexto,
+      hipotese_principal: hipotese,
+      confianca,
+      perguntas: next.slice(0, 3)
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna no guia em tempo real." });
+  }
+});
 
 
 // ======================================================================
