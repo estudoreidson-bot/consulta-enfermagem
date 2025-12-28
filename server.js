@@ -12,8 +12,12 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
+// Servir o index.html apenas na rota raiz (útil para testes locais)
+app.get("/", (req, res) => {
+  return res.sendFile(path.join(__dirname, "index.html"));
+});
+
 // Servir o index.html (útil para testes locais)
-app.use(express.static(path.join(__dirname)));
 
 // Cliente OpenAI usando a variável de ambiente do Render
 const openai = new OpenAI({
@@ -122,6 +126,555 @@ function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
   }
   return out;
 }
+
+// ======================================================================
+// AUTENTICAÇÃO E CONTROLE ADMINISTRATIVO (ENFERMAGEM)
+// - Usuários (enfermeiros) com login/senha, status ativo, último acesso e último "ping"
+// - Controle de mensalidade por mês (YYYY-MM) e histórico imutável de pagamentos
+// ======================================================================
+const fs = require("fs");
+const crypto = require("crypto");
+
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
+const DB_PATH = path.join(DATA_DIR, "enfermagem_users_db.json");
+
+function ensureDataDir() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch (e) {
+    console.error("Falha ao criar DATA_DIR:", e);
+  }
+}
+
+function safeReadJson(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    const raw = fs.readFileSync(filePath, "utf-8");
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error("Falha ao ler JSON:", e);
+    return null;
+  }
+}
+
+function safeWriteJsonAtomic(filePath, obj) {
+  try {
+    ensureDataDir();
+    const tmp = filePath + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify(obj, null, 2), "utf-8");
+    fs.renameSync(tmp, filePath);
+    return true;
+  } catch (e) {
+    console.error("Falha ao escrever JSON:", e);
+    return false;
+  }
+}
+
+function getMonthKey(dateObj) {
+  const d = dateObj instanceof Date ? dateObj : new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+let db = safeReadJson(DB_PATH) || { users: [], audit: [] };
+
+function persistDb() {
+  safeWriteJsonAtomic(DB_PATH, db);
+}
+
+function newId(prefix) {
+  const rnd = crypto.randomBytes(8).toString("hex");
+  return `${prefix}_${Date.now().toString(36)}_${rnd}`;
+}
+
+function pbkdf2Hash(password, saltB64) {
+  const salt = saltB64 ? Buffer.from(saltB64, "base64") : crypto.randomBytes(16);
+  const iterations = 120000;
+  const dk = crypto.pbkdf2Sync(String(password || ""), salt, iterations, 32, "sha256");
+  return `pbkdf2$${iterations}$${salt.toString("base64")}$${dk.toString("base64")}`;
+}
+
+function verifyPassword(password, stored) {
+  try {
+    const parts = String(stored || "").split("$");
+    if (parts.length !== 4) return false;
+    const algo = parts[0];
+    if (algo !== "pbkdf2") return false;
+    const iterations = parseInt(parts[1], 10);
+    const salt = Buffer.from(parts[2], "base64");
+    const expected = Buffer.from(parts[3], "base64");
+    const dk = crypto.pbkdf2Sync(String(password || ""), salt, iterations, expected.length, "sha256");
+    return crypto.timingSafeEqual(dk, expected);
+  } catch (_) {
+    return false;
+  }
+}
+
+function sanitizeLogin(s) {
+  const t = String(s || "").trim();
+  return t.replace(/[^\w\.\-@]/g, "").slice(0, 64);
+}
+
+function sanitizeText(s, maxLen) {
+  return String(s || "").trim().slice(0, maxLen);
+}
+
+function findUserByLogin(login) {
+  const l = sanitizeLogin(login).toLowerCase();
+  return db.users.find(u => String(u.login || "").toLowerCase() === l) || null;
+}
+
+function findUserById(id) {
+  const i = String(id || "");
+  return db.users.find(u => u.id === i) || null;
+}
+
+function isUserPaidForMonth(user, monthKey) {
+  const mk = String(monthKey || "").trim();
+  const months = Array.isArray(user?.paid_months) ? user.paid_months : [];
+  return months.includes(mk);
+}
+
+function computeOnline(user) {
+  const lastSeen = user?.last_seen ? new Date(user.last_seen) : null;
+  if (!lastSeen || !Number.isFinite(lastSeen.getTime())) return false;
+  const diffMs = Date.now() - lastSeen.getTime();
+  return diffMs >= 0 && diffMs <= (2 * 60 * 1000); // 2 minutos
+}
+
+function addAudit(adminLogin, action, targetUser, details) {
+  const entry = {
+    ts: new Date().toISOString(),
+    admin_login: String(adminLogin || "admin"),
+    action: String(action || ""),
+    target_user_id: targetUser?.id || "",
+    target_login: targetUser?.login || "",
+    details: sanitizeText(details || "", 800)
+  };
+  db.audit.unshift(entry);
+  // manter tamanho controlado
+  if (db.audit.length > 2000) db.audit = db.audit.slice(0, 2000);
+  persistDb();
+}
+
+const sessions = new Map(); // token -> { role, user_id, created_at }
+
+function createSession(role, userId) {
+  const token = crypto.randomBytes(32).toString("hex");
+  sessions.set(token, {
+    role: String(role || ""),
+    user_id: String(userId || ""),
+    created_at: new Date().toISOString()
+  });
+  return token;
+}
+
+function getSessionFromReq(req) {
+  const auth = String(req.headers.authorization || "").trim();
+  if (auth.toLowerCase().startsWith("bearer ")) {
+    const token = auth.slice(7).trim();
+    return token ? { token, session: sessions.get(token) || null } : { token: "", session: null };
+  }
+  const token2 = String(req.headers["x-auth-token"] || "").trim();
+  return token2 ? { token: token2, session: sessions.get(token2) || null } : { token: "", session: null };
+}
+
+function requireAuth(req, res, next) {
+  const { token, session } = getSessionFromReq(req);
+  if (!token || !session) {
+    return res.status(401).json({ error: "Não autenticado." });
+  }
+  req.auth = { token, role: session.role, user_id: session.user_id };
+  return next();
+}
+
+function requireAdmin(req, res, next) {
+  if (!req.auth || req.auth.role !== "admin") {
+    return res.status(403).json({ error: "Acesso restrito ao administrador." });
+  }
+  return next();
+}
+
+function requireNurseOrAdmin(req, res, next) {
+  if (!req.auth) return res.status(401).json({ error: "Não autenticado." });
+  if (req.auth.role !== "nurse" && req.auth.role !== "admin") {
+    return res.status(403).json({ error: "Acesso negado." });
+  }
+  return next();
+}
+
+function enforcePaidForProtectedRoutes(req, res, next) {
+  // Admin sempre passa
+  if (req.auth?.role === "admin") return next();
+
+  const user = findUserById(req.auth?.user_id);
+  if (!user) return res.status(401).json({ error: "Sessão inválida." });
+  if (!user.ativo || user.deleted_at) return res.status(403).json({ error: "Usuário desativado." });
+
+  // Rotas que não exigem pagamento (para login e status)
+  const freePaths = new Set([
+    "/auth/me",
+    "/ping",
+    "/health"
+  ]);
+
+  if (freePaths.has(req.path)) return next();
+
+  const monthKey = getMonthKey(new Date());
+  const paid = isUserPaidForMonth(user, monthKey);
+  if (!paid) {
+    return res.status(402).send("Mensalidade em atraso. Contate o administrador.");
+  }
+  return next();
+}
+
+// Admin credentials via env, com senha temporária se não configurada
+const ADMIN_LOGIN = sanitizeLogin(process.env.ADMIN_LOGIN || "admin") || "admin";
+let ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "").trim();
+if (!ADMIN_PASSWORD) {
+  ADMIN_PASSWORD = crypto.randomBytes(9).toString("base64url");
+  console.log("ADMIN_PASSWORD não definido. Senha temporária do admin:", ADMIN_PASSWORD);
+}
+
+// Middleware global para /api (exceto /api/auth/login e /api/health)
+app.use("/api", (req, res, next) => {
+  const path = req.path || "";
+  // Rotas públicas
+  if (path === "/auth/login" || path === "/health") return next();
+
+  // Sessão obrigatória
+  return requireAuth(req, res, () => {
+    // Atualizar last_seen do enfermeiro em qualquer requisição autenticada
+    if (req.auth.role === "nurse") {
+      const user = findUserById(req.auth.user_id);
+      if (user) {
+        user.last_seen = new Date().toISOString();
+        user.updated_at = new Date().toISOString();
+        persistDb();
+      }
+    }
+    // Se /admin, exige admin
+    if (path.startsWith("/admin")) {
+      return requireAdmin(req, res, next);
+    }
+    // demais: nurse ou admin
+    return requireNurseOrAdmin(req, res, () => enforcePaidForProtectedRoutes(req, res, next));
+  });
+});
+
+// ============================
+// Rotas de autenticação
+// ============================
+app.post("/api/auth/login", (req, res) => {
+  try {
+    const role = String(req.body?.role || "nurse").trim().toLowerCase();
+    const login = sanitizeLogin(req.body?.login || "");
+    const senha = String(req.body?.senha || "");
+
+    if (!login || !senha) {
+      return res.status(400).json({ error: "Login e senha são obrigatórios." });
+    }
+
+    if (role === "admin") {
+      if (login.toLowerCase() !== ADMIN_LOGIN.toLowerCase() || senha !== ADMIN_PASSWORD) {
+        return res.status(401).json({ error: "Credenciais inválidas." });
+      }
+      const token = createSession("admin", "admin");
+      return res.json({ token, role: "admin", user: { login: ADMIN_LOGIN } });
+    }
+
+    const user = findUserByLogin(login);
+    if (!user || user.deleted_at) return res.status(401).json({ error: "Credenciais inválidas." });
+    if (!user.ativo) return res.status(403).json({ error: "Usuário desativado." });
+
+    // lockout simples
+    user.failed_logins = user.failed_logins || 0;
+    if (user.locked_until && new Date(user.locked_until).getTime() > Date.now()) {
+      return res.status(403).json({ error: "Usuário bloqueado temporariamente por tentativas inválidas." });
+    }
+
+    const ok = verifyPassword(senha, user.password_hash);
+    if (!ok) {
+      user.failed_logins += 1;
+      user.updated_at = new Date().toISOString();
+      if (user.failed_logins >= 10) {
+        user.locked_until = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+      }
+      persistDb();
+      return res.status(401).json({ error: "Credenciais inválidas." });
+    }
+
+    user.failed_logins = 0;
+    user.locked_until = "";
+    user.last_login = new Date().toISOString();
+    user.last_seen = user.last_login;
+    user.updated_at = new Date().toISOString();
+    persistDb();
+
+    const token = createSession("nurse", user.id);
+    const paid = isUserPaidForMonth(user, getMonthKey(new Date()));
+    return res.json({
+      token,
+      role: "nurse",
+      user: {
+        id: user.id,
+        login: user.login,
+        nome_completo: user.nome_completo
+      },
+      paid_current_month: paid
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao autenticar." });
+  }
+});
+
+app.post("/api/auth/logout", (req, res) => {
+  try {
+    const { token } = getSessionFromReq(req);
+    if (token) sessions.delete(token);
+    return res.json({ ok: true });
+  } catch (_) {
+    return res.json({ ok: true });
+  }
+});
+
+app.get("/api/auth/me", (req, res) => {
+  try {
+    const role = req.auth?.role || "";
+    if (role === "admin") {
+      return res.json({ ok: true, role: "admin", user: { login: ADMIN_LOGIN } });
+    }
+    const user = findUserById(req.auth?.user_id);
+    if (!user) return res.status(401).json({ ok: false, error: "Sessão inválida." });
+    const paid = isUserPaidForMonth(user, getMonthKey(new Date()));
+    return res.json({
+      ok: true,
+      role: "nurse",
+      user: { id: user.id, login: user.login, nome_completo: user.nome_completo },
+      paid_current_month: paid
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok: false, error: "Falha interna." });
+  }
+});
+
+app.post("/api/ping", (req, res) => {
+  try {
+    if (req.auth?.role === "admin") {
+      return res.json({ ok: true, server_time: new Date().toISOString(), paid_current_month: true });
+    }
+    const user = findUserById(req.auth?.user_id);
+    if (!user) return res.status(401).json({ ok: false, error: "Sessão inválida." });
+
+    user.last_seen = new Date().toISOString();
+    user.updated_at = new Date().toISOString();
+    persistDb();
+
+    const paid = isUserPaidForMonth(user, getMonthKey(new Date()));
+    return res.json({ ok: true, server_time: new Date().toISOString(), paid_current_month: paid });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok: false, error: "Falha interna." });
+  }
+});
+
+// ============================
+// Rotas administrativas
+// ============================
+app.get("/api/admin/users", (req, res) => {
+  try {
+    const monthKey = getMonthKey(new Date());
+    const users = db.users
+      .filter(u => !u.deleted_at)
+      .map(u => ({
+        id: u.id,
+        login: u.login,
+        nome_completo: u.nome_completo,
+        data_nascimento: u.data_nascimento,
+        telefone: u.telefone,
+        ativo: Boolean(u.ativo),
+        last_login: u.last_login || "",
+        last_seen: u.last_seen || "",
+        is_online: computeOnline(u),
+        paid_current_month: isUserPaidForMonth(u, monthKey)
+      }));
+    return res.json({ ok: true, server_time: new Date().toISOString(), month: monthKey, users });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao listar usuários." });
+  }
+});
+
+app.post("/api/admin/create-user", (req, res) => {
+  try {
+    const nome_completo = sanitizeText(req.body?.nome_completo, 120);
+    const data_nascimento = sanitizeText(req.body?.data_nascimento, 16);
+    const telefone = sanitizeText(req.body?.telefone, 30);
+    const login = sanitizeLogin(req.body?.login);
+    const senha = String(req.body?.senha || "");
+
+    if (!nome_completo || !data_nascimento || !telefone || !login || !senha) {
+      return res.status(400).json({ error: "Campos obrigatórios: nome completo, data de nascimento, telefone, login, senha." });
+    }
+
+    if (findUserByLogin(login)) {
+      return res.status(409).json({ error: "Login já cadastrado." });
+    }
+
+    const user = {
+      id: newId("nurse"),
+      role: "nurse",
+      login,
+      nome_completo,
+      data_nascimento,
+      telefone,
+      password_hash: pbkdf2Hash(senha),
+      ativo: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      last_login: "",
+      last_seen: "",
+      paid_months: [],
+      payments: [],
+      failed_logins: 0,
+      locked_until: "",
+      deleted_at: ""
+    };
+
+    db.users.push(user);
+    persistDb();
+    addAudit(req.auth?.role === "admin" ? ADMIN_LOGIN : "admin", "create_user", user, "Usuário criado.");
+    return res.json({ ok: true, user_id: user.id });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao criar usuário." });
+  }
+});
+
+app.post("/api/admin/toggle-active", (req, res) => {
+  try {
+    const user = findUserById(req.body?.user_id);
+    if (!user || user.deleted_at) return res.status(404).json({ error: "Usuário não encontrado." });
+
+    user.ativo = !user.ativo;
+    user.updated_at = new Date().toISOString();
+    persistDb();
+    addAudit(ADMIN_LOGIN, "toggle_active", user, user.ativo ? "Ativado." : "Desativado.");
+    return res.json({ ok: true, ativo: user.ativo });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao atualizar status." });
+  }
+});
+
+app.post("/api/admin/delete-user", (req, res) => {
+  try {
+    const user = findUserById(req.body?.user_id);
+    if (!user || user.deleted_at) return res.status(404).json({ error: "Usuário não encontrado." });
+
+    // Exclusão lógica para preservar histórico
+    user.ativo = false;
+    user.deleted_at = new Date().toISOString();
+    user.updated_at = new Date().toISOString();
+    persistDb();
+    addAudit(ADMIN_LOGIN, "delete_user", user, "Exclusão lógica (histórico preservado).");
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao excluir usuário." });
+  }
+});
+
+app.post("/api/admin/reset-password", (req, res) => {
+  try {
+    const user = findUserById(req.body?.user_id);
+    if (!user || user.deleted_at) return res.status(404).json({ error: "Usuário não encontrado." });
+
+    let newPwd = String(req.body?.new_password || "").trim();
+    let generated = "";
+    if (!newPwd) {
+      newPwd = crypto.randomBytes(8).toString("base64url");
+      generated = newPwd;
+    }
+
+    user.password_hash = pbkdf2Hash(newPwd);
+    user.updated_at = new Date().toISOString();
+    persistDb();
+
+    // invalidar sessões do usuário
+    for (const [tok, sess] of sessions.entries()) {
+      if (sess.role === "nurse" && sess.user_id === user.id) sessions.delete(tok);
+    }
+
+    addAudit(ADMIN_LOGIN, "reset_password", user, "Senha redefinida.");
+    return res.json({ ok: true, generated_password: generated });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao redefinir senha." });
+  }
+});
+
+app.post("/api/admin/mark-paid", (req, res) => {
+  try {
+    const user = findUserById(req.body?.user_id);
+    const month = sanitizeText(req.body?.month, 7);
+    if (!user || user.deleted_at) return res.status(404).json({ error: "Usuário não encontrado." });
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: "Mês inválido. Use YYYY-MM." });
+
+    user.paid_months = Array.isArray(user.paid_months) ? user.paid_months : [];
+    user.payments = Array.isArray(user.payments) ? user.payments : [];
+
+    const already = user.paid_months.includes(month);
+    if (!already) {
+      user.paid_months.push(month);
+    }
+
+    // Histórico imutável: apenas adiciona (não edita nem remove)
+    if (!already) {
+      user.payments.unshift({
+        id: newId("pay"),
+        month,
+        paid_at: new Date().toISOString(),
+        paid_by: ADMIN_LOGIN
+      });
+    }
+
+    user.updated_at = new Date().toISOString();
+    persistDb();
+    addAudit(ADMIN_LOGIN, "mark_paid", user, `Pagamento registrado para ${month}.`);
+    return res.json({ ok: true, month, already_paid: already });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao registrar pagamento." });
+  }
+});
+
+app.get("/api/admin/payments/:userId", (req, res) => {
+  try {
+    const user = findUserById(req.params.userId);
+    if (!user || user.deleted_at) return res.status(404).json({ error: "Usuário não encontrado." });
+    const payments = Array.isArray(user.payments) ? user.payments : [];
+    return res.json({ ok: true, payments });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao obter pagamentos." });
+  }
+});
+
+app.get("/api/admin/audit", (req, res) => {
+  try {
+    const audit = Array.isArray(db.audit) ? db.audit.slice(0, 200) : [];
+    return res.json({ ok: true, audit });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao obter auditoria." });
+  }
+});
+
 
 // ======================================================================
 // BASE INTERNA (CURADA) – APRESENTAÇÕES E DOSAGEM MÁXIMA

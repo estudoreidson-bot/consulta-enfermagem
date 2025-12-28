@@ -911,11 +911,224 @@
       .whatsapp-fab-label { display: none; }
     }
 
+  
+    .topbar {
+      width: 100%;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      background: #ffffff;
+      padding: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .topbar-line {
+      font-size: 13px;
+      color: #111827;
+      line-height: 1.35;
+    }
+    .topbar-label {
+      font-weight: 700;
+      color: #0c5460;
+    }
+    .topbar-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .topbar-actions button {
+      padding: 8px 14px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .danger-btn {
+      background: #dc3545 !important;
+      border-color: #dc3545 !important;
+      color: #fff !important;
+    }
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .admin-table th, .admin-table td {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 10px 8px;
+      vertical-align: top;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .admin-table th {
+      background: #f9fafb;
+      color: #111827;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .admin-table td .mini-btn {
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 6px;
+      margin-bottom: 6px;
+      display: inline-block;
+    }
+    .status-chip {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 12px;
+      color: #fff;
+      border: none;
+      cursor: default;
+    }
+    .status-green { background: #28a745; }
+    .status-red { background: #dc3545; }
+    .status-gray { background: #6c757d; }
+    .month-input {
+      padding: 6px 8px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      font-size: 12px;
+      margin-right: 6px;
+    }
+
   </style>
 </head>
 <body>
-  <div class="page">
+
+  <div id="authOverlay" class="modal-overlay">
+    <div class="modal">
+      <h3>Acesso</h3>
+      <p>Informe login e senha para continuar.</p>
+
+      <div class="inline-input-row" style="margin-top: 0;">
+        <select id="authRoleSelect" class="text-input" style="min-width: 160px; flex: 0 0 160px;">
+          <option value="nurse">Enfermeiro</option>
+          <option value="admin">Administrador</option>
+        </select>
+        <input id="authLoginInput" class="text-input" type="text" placeholder="Login" autocomplete="username" />
+        <input id="authPasswordInput" class="text-input" type="password" placeholder="Senha" autocomplete="current-password" />
+      </div>
+
+      <div class="modal-actions" style="margin-top: 12px;">
+        <button id="authSubmitBtn" class="primary" type="button">Entrar</button>
+      </div>
+
+      <div id="authError" class="error" style="text-align:left; margin-top: 10px;"></div>
+    </div>
+  </div>
+
+  <div class="page hidden" id="adminPage">
+    <h1>Painel do Administrador</h1>
+
+    <div id="adminTopBar" class="topbar">
+      <div>
+        <div class="topbar-line"><span class="topbar-label">Usuário:</span> <span id="adminUserLabel">-</span></div>
+        <div class="topbar-line"><span class="topbar-label">Servidor:</span> <span id="adminServerTimeLabel">-</span></div>
+      </div>
+      <div class="topbar-actions">
+        <button id="adminRefreshBtn" type="button">Atualizar</button>
+        <button id="adminLogoutBtn" type="button" class="danger-btn">Sair</button>
+      </div>
+    </div>
+
+    <div class="module-card">
+      <h2>Cadastrar enfermeiro</h2>
+      <div class="inline-input-row">
+        <input id="admFullName" class="text-input" type="text" placeholder="Nome completo" autocomplete="off" />
+        <input id="admDob" class="text-input" type="date" placeholder="Data de nascimento" />
+        <input id="admPhone" class="text-input" type="tel" placeholder="Telefone" autocomplete="off" />
+      </div>
+      <div class="inline-input-row">
+        <input id="admLogin" class="text-input" type="text" placeholder="Login" autocomplete="off" />
+        <input id="admPassword" class="text-input" type="password" placeholder="Senha" autocomplete="new-password" />
+        <button id="admCreateUserBtn" type="button">Cadastrar</button>
+      </div>
+      <div id="admCreateStatus" class="mini-status"></div>
+    </div>
+
+    <div class="module-card">
+      <div class="section-header-row">
+        <h2>Usuários</h2>
+        <input id="admSearch" class="text-input" type="text" placeholder="Buscar por nome/login/telefone" style="max-width: 360px;" />
+      </div>
+
+      <div style="overflow:auto; margin-top: 10px;">
+        <table class="admin-table" id="admUsersTable">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Login</th>
+              <th>Telefone</th>
+              <th>Nascimento</th>
+              <th>Ativo</th>
+              <th>Online</th>
+              <th>Mensalidade (mês atual)</th>
+              <th>Último login</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="admUsersBody"></tbody>
+        </table>
+      </div>
+
+      <div id="admUsersStatus" class="mini-status" style="margin-top: 8px;"></div>
+    </div>
+
+    <div class="module-card">
+      <h2>Auditoria</h2>
+      <p class="mini-status" style="margin-top: 0;">Registros internos de ações administrativas (não editável).</p>
+      <div style="overflow:auto; max-height: 260px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fafafa; padding: 10px;">
+        <div id="admAuditLog" style="font-size: 13px; white-space: pre-wrap;"></div>
+      </div>
+    </div>
+
+    <div id="paymentHistoryOverlay" class="modal-overlay hidden">
+      <div class="modal" style="max-width: 560px;">
+        <h3>Histórico de pagamento</h3>
+        <p id="paymentHistorySubtitle"></p>
+        <div style="border: 1px solid #e5e7eb; border-radius: 10px; background: #fafafa; padding: 10px; max-height: 320px; overflow:auto;">
+          <div id="paymentHistoryList" style="font-size: 13px; white-space: pre-wrap;"></div>
+        </div>
+        <div class="modal-actions" style="margin-top: 12px;">
+          <button id="closePaymentHistoryBtn" type="button">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page hidden" id="nursePage">
+
     <h1>Atendimento de Enfermagem</h1>
+
+    <div id="nurseTopBar" class="topbar hidden" style="margin-top: 6px;">
+      <div>
+        <div class="topbar-line"><span class="topbar-label">Usuário:</span> <span id="nurseUserLabel">-</span></div>
+        <div class="topbar-line"><span class="topbar-label">Mensalidade:</span> <span id="nursePaymentLabel">-</span></div>
+      </div>
+      <div class="topbar-actions">
+        <button id="openAdminBtn" type="button" class="hidden">Admin</button>
+        <button id="nurseLogoutBtn" type="button" class="danger-btn">Sair</button>
+      </div>
+    </div>
+
 
     <div class="center-card">
 
@@ -926,7 +1139,7 @@
           <button class="consult-type-btn" type="button" data-consult="puericultura">Consulta puericultura</button>
           <button class="consult-type-btn" type="button" data-consult="planejamento">Consulta planejamento familiar</button>
           <button class="consult-type-btn" type="button" data-consult="hiperdia">Consulta hiperdia</button>
-          <button class="consult-type-btn" type="button" data-consult="puerperio">Consulta de puerpério</button>
+          <button class="consult-type-btn" type="button" data-consult="puerperio">Consulta puerpério</button>
         </div>
 
         <div id="consultGuideDrawer" class="consult-guide-drawer hidden">
@@ -1223,6 +1436,8 @@
 
   </div>
 
+  <div id="nurseOverlays" class="hidden">
+
   <div id="recommendationsPanel" class="recommendations-panel">
     <div class="recommendations-header">
       <h3>Perguntas essenciais para anamnese</h3>
@@ -1253,9 +1468,598 @@
     </div>
   </div>
 
+  </div>
+
 
   <script>
     const BACKEND_URL = "https://consulta-enfermagem-1.onrender.com"; // usa /api (Netlify redirect) ou mesma origem no Render
+
+    const AUTH_STORAGE_KEY = "qeimadas_enfermagem_auth_v1";
+    let authState = { token: "", role: "", user: null };
+
+    function nowIso() {
+      return new Date().toISOString();
+    }
+
+    function getCurrentMonthKey() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      return `${y}-${m}`;
+    }
+
+    function saveAuth() {
+      try {
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authState));
+      } catch (_) {}
+    }
+
+    function loadAuth() {
+      try {
+        const raw = localStorage.getItem(AUTH_STORAGE_KEY) || "";
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.token === "string") return parsed;
+        return null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function clearAuth() {
+      authState = { token: "", role: "", user: null };
+      try {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+      } catch (_) {}
+    }
+
+    function setAuth(token, role, user) {
+      authState = { token: String(token || ""), role: String(role || ""), user: user || null };
+      saveAuth();
+    }
+
+    async function apiFetch(path, options) {
+      const opts = options || {};
+      const headers = Object.assign({}, opts.headers || {});
+      if (authState.token) {
+        headers["Authorization"] = "Bearer " + authState.token;
+      }
+      if (!headers["Content-Type"] && opts.method && String(opts.method).toUpperCase() !== "GET") {
+        headers["Content-Type"] = "application/json";
+      }
+
+      const resp = await fetch(BACKEND_URL + path, Object.assign({}, opts, { headers }));
+
+      if (resp.status === 401) {
+        await safeLogoutLocal();
+        throw new Error("Sessão expirada. Faça login novamente.");
+      }
+
+      if (resp.status === 402) {
+        // mensalidade em atraso
+        const txt = await resp.text().catch(() => "");
+        const msg = txt && txt.length < 300 ? txt : "Mensalidade em atraso. Contate o administrador.";
+        throw new Error(msg);
+      }
+
+      return resp;
+    }
+
+    const authOverlay = document.getElementById("authOverlay");
+    const authRoleSelect = document.getElementById("authRoleSelect");
+    const authLoginInput = document.getElementById("authLoginInput");
+    const authPasswordInput = document.getElementById("authPasswordInput");
+    const authSubmitBtn = document.getElementById("authSubmitBtn");
+    const authError = document.getElementById("authError");
+
+    const nursePage = document.getElementById("nursePage");
+    const nurseOverlays = document.getElementById("nurseOverlays");
+    const nurseTopBar = document.getElementById("nurseTopBar");
+    const nurseUserLabel = document.getElementById("nurseUserLabel");
+    const nursePaymentLabel = document.getElementById("nursePaymentLabel");
+    const nurseLogoutBtn = document.getElementById("nurseLogoutBtn");
+    const openAdminBtn = document.getElementById("openAdminBtn");
+
+    const whatsappFab = document.querySelector(".whatsapp-fab");
+    const whatsappFabLabel = document.querySelector(".whatsapp-fab-label");
+
+    const adminPage = document.getElementById("adminPage");
+    const adminUserLabel = document.getElementById("adminUserLabel");
+    const adminServerTimeLabel = document.getElementById("adminServerTimeLabel");
+    const adminLogoutBtn = document.getElementById("adminLogoutBtn");
+    const adminRefreshBtn = document.getElementById("adminRefreshBtn");
+
+    async function safeLogoutLocal() {
+      clearAuth();
+      showAuthOverlay();
+      showNurseUI(false);
+      showAdminUI(false);
+    }
+
+    function showAuthOverlay() {
+      authError.textContent = "";
+      authPasswordInput.value = "";
+      authOverlay.classList.remove("hidden");
+    }
+
+    function hideAuthOverlay() {
+      authOverlay.classList.add("hidden");
+    }
+
+    function showNurseUI(show) {
+      if (show) {
+        nursePage.classList.remove("hidden");
+        nurseOverlays?.classList.remove("hidden");
+        nurseTopBar?.classList.remove("hidden");
+        if (whatsappFab) whatsappFab.style.display = "";
+        if (whatsappFabLabel) whatsappFabLabel.style.display = "";
+      } else {
+        nursePage.classList.add("hidden");
+        nurseOverlays?.classList.add("hidden");
+        nurseTopBar?.classList.add("hidden");
+        if (whatsappFab) whatsappFab.style.display = "none";
+        if (whatsappFabLabel) whatsappFabLabel.style.display = "none";
+      }
+    }
+
+    function showAdminUI(show) {
+      if (show) {
+        adminPage.classList.remove("hidden");
+      } else {
+        adminPage.classList.add("hidden");
+      }
+    }
+
+    async function login(role, login, senha) {
+      const payload = { role, login, senha };
+      const resp = await apiFetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        const msg = data && data.error ? data.error : "Falha ao autenticar.";
+        throw new Error(msg);
+      }
+
+      const data = await resp.json();
+      if (!data || !data.token) throw new Error("Resposta inválida do servidor.");
+      setAuth(data.token, data.role, data.user || null);
+      return data;
+    }
+
+    async function fetchMe() {
+      const resp = await apiFetch("/api/auth/me", { method: "GET" });
+      const data = await resp.json().catch(() => ({}));
+      return data;
+    }
+
+    let nurseHeartbeatTimer = null;
+
+    async function startNurseHeartbeat() {
+      if (nurseHeartbeatTimer) clearInterval(nurseHeartbeatTimer);
+      nurseHeartbeatTimer = setInterval(async () => {
+        try {
+          const resp = await apiFetch("/api/ping", { method: "POST" });
+          const data = await resp.json().catch(() => ({}));
+          if (nursePaymentLabel && data && typeof data.paid_current_month === "boolean") {
+            nursePaymentLabel.textContent = data.paid_current_month ? "Em dia" : "Em atraso";
+          }
+        } catch (_) {}
+      }, 30000);
+    }
+
+    async function doLogout() {
+      try {
+        await apiFetch("/api/auth/logout", { method: "POST" });
+      } catch (_) {}
+      await safeLogoutLocal();
+    }
+
+    function formatNumberedPlan(text) {
+      const raw = String(text || "").trim();
+      if (!raw) return "";
+      // normaliza quebras e garante que cada item numerado comece em nova linha
+      let s = raw.replace(/\r\n/g, "\n");
+      // Insere \n antes de números que aparecem "colados" no texto.
+      s = s.replace(/([^\n])\s*(\d{1,3})\s*[\.\)]\s+/g, "$1\n$2. ");
+      // Normaliza itens já numerados
+      s = s.replace(/^\s*(\d{1,3})\s*\)\s*/gm, "$1. ");
+      // Remove múltiplas linhas vazias excessivas
+      s = s.replace(/\n{3,}/g, "\n\n");
+      return s.trim();
+    }
+
+    function escapeText(s) {
+      return String(s || "").replace(/[&<>"]/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;"
+      }[ch]));
+    }
+
+    function formatDateTimeLocal(iso) {
+      if (!iso) return "-";
+      try {
+        const d = new Date(iso);
+        if (!Number.isFinite(d.getTime())) return "-";
+        return d.toLocaleString("pt-BR");
+      } catch (_) {
+        return "-";
+      }
+    }
+
+    function toMonthValue(monthKey) {
+      // monthKey: YYYY-MM
+      return String(monthKey || "");
+    }
+
+    // ============================
+    // ADMIN: handlers
+    // ============================
+    const admFullName = document.getElementById("admFullName");
+    const admDob = document.getElementById("admDob");
+    const admPhone = document.getElementById("admPhone");
+    const admLogin = document.getElementById("admLogin");
+    const admPassword = document.getElementById("admPassword");
+    const admCreateUserBtn = document.getElementById("admCreateUserBtn");
+    const admCreateStatus = document.getElementById("admCreateStatus");
+    const admSearch = document.getElementById("admSearch");
+    const admUsersBody = document.getElementById("admUsersBody");
+    const admUsersStatus = document.getElementById("admUsersStatus");
+    const admAuditLog = document.getElementById("admAuditLog");
+
+    const paymentHistoryOverlay = document.getElementById("paymentHistoryOverlay");
+    const paymentHistorySubtitle = document.getElementById("paymentHistorySubtitle");
+    const paymentHistoryList = document.getElementById("paymentHistoryList");
+    const closePaymentHistoryBtn = document.getElementById("closePaymentHistoryBtn");
+
+    let adminUsersCache = [];
+    let adminAuditCache = [];
+
+    function openPaymentHistoryModal(user, payments) {
+      paymentHistorySubtitle.textContent = `${user.nome_completo || "-"} (${user.login || "-"})`;
+      const lines = [];
+      const list = Array.isArray(payments) ? payments : [];
+      if (!list.length) {
+        lines.push("Nenhum pagamento registrado.");
+      } else {
+        for (const p of list) {
+          lines.push(`Mês: ${p.month || "-"} | Pago em: ${formatDateTimeLocal(p.paid_at)} | Registrado por: ${p.paid_by || "-"}`);
+        }
+      }
+      paymentHistoryList.textContent = lines.join("\n");
+      paymentHistoryOverlay.classList.remove("hidden");
+    }
+
+    function closePaymentHistoryModal() {
+      paymentHistoryOverlay.classList.add("hidden");
+      paymentHistoryList.textContent = "";
+      paymentHistorySubtitle.textContent = "";
+    }
+
+    if (closePaymentHistoryBtn) closePaymentHistoryBtn.addEventListener("click", closePaymentHistoryModal);
+
+    function renderUsersTable() {
+      if (!admUsersBody) return;
+      const q = String(admSearch?.value || "").trim().toLowerCase();
+      const list = (adminUsersCache || []).filter(u => {
+        if (!q) return true;
+        const s = `${u.nome_completo || ""} ${u.login || ""} ${u.telefone || ""}`.toLowerCase();
+        return s.includes(q);
+      });
+
+      const monthKey = getCurrentMonthKey();
+      const rows = [];
+      for (const u of list) {
+        const onlineChip = u.is_online ? '<span class="status-chip status-green">Online</span>' : '<span class="status-chip status-gray">Offline</span>';
+        const activeTxt = u.ativo ? "Sim" : "Não";
+        const paidChip = u.paid_current_month ? '<span class="status-chip status-green">Em dia</span>' : '<span class="status-chip status-red">Em atraso</span>';
+
+        const monthInputId = `month_${u.id}`;
+        const row = `
+          <tr>
+            <td>${escapeText(u.nome_completo)}</td>
+            <td>${escapeText(u.login)}</td>
+            <td>${escapeText(u.telefone)}</td>
+            <td>${escapeText(u.data_nascimento)}</td>
+            <td>${escapeText(activeTxt)}</td>
+            <td>${onlineChip}</td>
+            <td>${paidChip}</td>
+            <td>${escapeText(formatDateTimeLocal(u.last_login))}</td>
+            <td style="white-space: normal;">
+              <input id="${monthInputId}" class="month-input" type="month" value="${escapeText(toMonthValue(monthKey))}" />
+              <button class="mini-btn" data-action="paid" data-id="${escapeText(u.id)}" data-month-input="${monthInputId}">Marcar pago</button>
+              <button class="mini-btn" data-action="history" data-id="${escapeText(u.id)}">Histórico</button>
+              <button class="mini-btn" data-action="reset" data-id="${escapeText(u.id)}">Reset senha</button>
+              <button class="mini-btn" data-action="toggle" data-id="${escapeText(u.id)}">${u.ativo ? "Desativar" : "Ativar"}</button>
+              <button class="mini-btn danger-btn" data-action="delete" data-id="${escapeText(u.id)}">Excluir</button>
+            </td>
+          </tr>
+        `;
+        rows.push(row);
+      }
+
+      admUsersBody.innerHTML = rows.join("");
+
+      // bind actions (delegation)
+      admUsersBody.querySelectorAll("button[data-action]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const action = btn.getAttribute("data-action");
+          const id = btn.getAttribute("data-id");
+          if (!id) return;
+
+          if (action === "paid") {
+            const inputId = btn.getAttribute("data-month-input");
+            const monthEl = inputId ? document.getElementById(inputId) : null;
+            const monthVal = monthEl ? String(monthEl.value || "").trim() : "";
+            if (!monthVal) {
+              admUsersStatus.textContent = "Selecione o mês para registrar o pagamento.";
+              return;
+            }
+            admUsersStatus.textContent = "Registrando pagamento...";
+            try {
+              const resp = await apiFetch("/api/admin/mark-paid", {
+                method: "POST",
+                body: JSON.stringify({ user_id: id, month: monthVal })
+              });
+              const data = await resp.json().catch(() => ({}));
+              admUsersStatus.textContent = data && data.ok ? "Pagamento registrado." : "Pagamento atualizado.";
+              await refreshAdminData();
+            } catch (e) {
+              admUsersStatus.textContent = String(e && e.message ? e.message : "Falha ao registrar pagamento.");
+            }
+          }
+
+          if (action === "history") {
+            admUsersStatus.textContent = "Carregando histórico...";
+            try {
+              const resp = await apiFetch(`/api/admin/payments/${encodeURIComponent(id)}`, { method: "GET" });
+              const data = await resp.json().catch(() => ({}));
+              const user = adminUsersCache.find(x => x.id === id) || {};
+              openPaymentHistoryModal(user, data.payments || []);
+              admUsersStatus.textContent = "";
+            } catch (e) {
+              admUsersStatus.textContent = "Falha ao carregar histórico de pagamento.";
+            }
+          }
+
+          if (action === "reset") {
+            const newPwd = prompt("Defina a nova senha (ou deixe em branco para gerar automaticamente):") || "";
+            admUsersStatus.textContent = "Atualizando senha...";
+            try {
+              const resp = await apiFetch("/api/admin/reset-password", {
+                method: "POST",
+                body: JSON.stringify({ user_id: id, new_password: newPwd })
+              });
+              const data = await resp.json().catch(() => ({}));
+              if (data && data.generated_password) {
+                alert("Senha gerada: " + data.generated_password);
+              }
+              admUsersStatus.textContent = "Senha atualizada.";
+              await refreshAdminData();
+            } catch (e) {
+              admUsersStatus.textContent = "Falha ao resetar senha.";
+            }
+          }
+
+          if (action === "toggle") {
+            admUsersStatus.textContent = "Atualizando status...";
+            try {
+              await apiFetch("/api/admin/toggle-active", {
+                method: "POST",
+                body: JSON.stringify({ user_id: id })
+              });
+              admUsersStatus.textContent = "Status atualizado.";
+              await refreshAdminData();
+            } catch (e) {
+              admUsersStatus.textContent = "Falha ao atualizar status.";
+            }
+          }
+
+          if (action === "delete") {
+            const ok = confirm("Confirma excluir este usuário? O histórico será preservado para auditoria.");
+            if (!ok) return;
+            admUsersStatus.textContent = "Excluindo...";
+            try {
+              await apiFetch("/api/admin/delete-user", {
+                method: "POST",
+                body: JSON.stringify({ user_id: id })
+              });
+              admUsersStatus.textContent = "Usuário excluído (desativado).";
+              await refreshAdminData();
+            } catch (e) {
+              admUsersStatus.textContent = "Falha ao excluir usuário.";
+            }
+          }
+        });
+      });
+    }
+
+    function renderAudit() {
+      if (!admAuditLog) return;
+      const lines = [];
+      const list = Array.isArray(adminAuditCache) ? adminAuditCache : [];
+      if (!list.length) {
+        admAuditLog.textContent = "Nenhuma ação registrada.";
+        return;
+      }
+      for (const a of list) {
+        lines.push(`${formatDateTimeLocal(a.ts)} | ${a.admin_login || "-"} | ${a.action || "-"} | ${a.target_login || a.target_user_id || "-"} | ${a.details || ""}`.trim());
+      }
+      admAuditLog.textContent = lines.join("\n");
+    }
+
+    async function refreshAdminData() {
+      if (authState.role !== "admin") return;
+      try {
+        const resp = await apiFetch("/api/admin/users", { method: "GET" });
+        const data = await resp.json().catch(() => ({}));
+        adminUsersCache = Array.isArray(data.users) ? data.users : [];
+        adminServerTimeLabel.textContent = data.server_time ? formatDateTimeLocal(data.server_time) : "-";
+        renderUsersTable();
+      } catch (e) {
+        admUsersStatus.textContent = String(e && e.message ? e.message : "Falha ao carregar usuários.");
+      }
+
+      try {
+        const resp = await apiFetch("/api/admin/audit", { method: "GET" });
+        const data = await resp.json().catch(() => ({}));
+        adminAuditCache = Array.isArray(data.audit) ? data.audit : [];
+        renderAudit();
+      } catch (_) {}
+    }
+
+    if (adminRefreshBtn) adminRefreshBtn.addEventListener("click", refreshAdminData);
+    if (adminLogoutBtn) adminLogoutBtn.addEventListener("click", doLogout);
+
+    if (admSearch) admSearch.addEventListener("input", renderUsersTable);
+
+    if (admCreateUserBtn) {
+      admCreateUserBtn.addEventListener("click", async () => {
+        admCreateStatus.textContent = "";
+        const payload = {
+          nome_completo: String(admFullName.value || "").trim(),
+          data_nascimento: String(admDob.value || "").trim(),
+          telefone: String(admPhone.value || "").trim(),
+          login: String(admLogin.value || "").trim(),
+          senha: String(admPassword.value || "").trim()
+        };
+
+        if (!payload.nome_completo || !payload.data_nascimento || !payload.telefone || !payload.login || !payload.senha) {
+          admCreateStatus.textContent = "Preencha todos os campos.";
+          return;
+        }
+
+        admCreateStatus.textContent = "Cadastrando...";
+        try {
+          const resp = await apiFetch("/api/admin/create-user", {
+            method: "POST",
+            body: JSON.stringify(payload)
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            admCreateStatus.textContent = data && data.error ? data.error : "Falha ao cadastrar.";
+            return;
+          }
+          admCreateStatus.textContent = "Usuário cadastrado.";
+          admFullName.value = "";
+          admDob.value = "";
+          admPhone.value = "";
+          admLogin.value = "";
+          admPassword.value = "";
+          await refreshAdminData();
+        } catch (e) {
+          admCreateStatus.textContent = "Falha ao cadastrar usuário.";
+        }
+      });
+    }
+
+    // ============================
+    // NURSE: top bar + logout
+    // ============================
+    if (nurseLogoutBtn) nurseLogoutBtn.addEventListener("click", doLogout);
+
+    if (openAdminBtn) {
+      openAdminBtn.addEventListener("click", () => {
+        if (authState.role === "admin") {
+          showAdminUI(true);
+          showNurseUI(false);
+          hideAuthOverlay();
+          refreshAdminData();
+        }
+      });
+    }
+
+    if (authSubmitBtn) {
+      authSubmitBtn.addEventListener("click", async () => {
+        authError.textContent = "";
+        const role = authRoleSelect.value || "nurse";
+        const loginVal = String(authLoginInput.value || "").trim();
+        const pwdVal = String(authPasswordInput.value || "").trim();
+        if (!loginVal || !pwdVal) {
+          authError.textContent = "Informe login e senha.";
+          return;
+        }
+        try {
+          await login(role, loginVal, pwdVal);
+          const me = await fetchMe();
+          if (!me || !me.ok) throw new Error("Falha ao validar sessão.");
+          hideAuthOverlay();
+
+          if (me.role === "admin") {
+            showAdminUI(true);
+            showNurseUI(false);
+            adminUserLabel.textContent = (me.user && me.user.login) ? me.user.login : "admin";
+            await refreshAdminData();
+          } else {
+            showAdminUI(false);
+            showNurseUI(true);
+            nurseUserLabel.textContent = (me.user && me.user.nome_completo) ? me.user.nome_completo : (me.user && me.user.login) ? me.user.login : "Usuário";
+            if (nursePaymentLabel && typeof me.paid_current_month === "boolean") {
+              nursePaymentLabel.textContent = me.paid_current_month ? "Em dia" : "Em atraso";
+            }
+            nurseTopBar.classList.remove("hidden");
+            await startNurseHeartbeat();
+          }
+        } catch (e) {
+          authError.textContent = String(e && e.message ? e.message : "Falha ao autenticar.");
+          clearAuth();
+        }
+      });
+
+      authPasswordInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") authSubmitBtn.click();
+      });
+      authLoginInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") authSubmitBtn.click();
+      });
+    }
+
+    async function bootstrapAuth() {
+      showNurseUI(false);
+      showAdminUI(false);
+
+      const saved = loadAuth();
+      if (!saved || !saved.token) {
+        showAuthOverlay();
+        return;
+      }
+
+      setAuth(saved.token, saved.role || "", saved.user || null);
+
+      try {
+        const me = await fetchMe();
+        if (!me || !me.ok) {
+          throw new Error("Sessão inválida.");
+        }
+        hideAuthOverlay();
+
+        if (me.role === "admin") {
+          showAdminUI(true);
+          showNurseUI(false);
+          adminUserLabel.textContent = (me.user && me.user.login) ? me.user.login : "admin";
+          await refreshAdminData();
+        } else {
+          showAdminUI(false);
+          showNurseUI(true);
+          nurseUserLabel.textContent = (me.user && me.user.nome_completo) ? me.user.nome_completo : (me.user && me.user.login) ? me.user.login : "Usuário";
+          if (nursePaymentLabel && typeof me.paid_current_month === "boolean") {
+            nursePaymentLabel.textContent = me.paid_current_month ? "Em dia" : "Em atraso";
+          }
+          nurseTopBar.classList.remove("hidden");
+          await startNurseHeartbeat();
+        }
+      } catch (_) {
+        await safeLogoutLocal();
+      }
+    }
+
+    bootstrapAuth();
+
 
     let recognition;
     let isRecording = false;
@@ -1597,7 +2401,7 @@ const recordBtn = document.getElementById("recordBtn");
       riskTriageStatus.classList.add("loading-dot");
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/classificacao-risco", {
+        const resp = await apiFetch("/api/classificacao-risco", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contexto })
@@ -1648,7 +2452,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       micStatus.classList.add("loading-dot");
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
+        const resp = await apiFetch("/api/gerar-soap", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao: t })
@@ -1755,7 +2559,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       patientInfoStatus.classList.add("loading-dot");
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/extrair-dados-paciente", {
+        const resp = await apiFetch("/api/extrair-dados-paciente", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao: transcricaoCurta })
@@ -2174,7 +2978,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       renderLiveGuidance();
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/guia-tempo-real", {
+        const resp = await apiFetch("/api/guia-tempo-real", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
@@ -2341,7 +3145,7 @@ function initSpeech() {
       baseTranscript = transcricaoParaGeracao;
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
+        const resp = await apiFetch("/api/gerar-soap", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao: transcricaoParaGeracao })
@@ -2363,7 +3167,7 @@ function initSpeech() {
 
         updateSoapFromString(soap);
 
-        prescriptionOutput.value = prescricao;
+        prescriptionOutput.value = formatNumberedPlan(prescricao);
         printBtn.style.display = prescricao ? "inline-block" : "none";
 
         micStatus.innerText = "Consulta encerrada. SOAP e prescrição gerados.";
@@ -2462,7 +3266,7 @@ function initSpeech() {
       interactionsStatus.classList.add("loading-dot");
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/interacoes-medicamentosas", {
+        const resp = await apiFetch("/api/interacoes-medicamentosas", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contexto })
@@ -2533,7 +3337,7 @@ function initSpeech() {
       presentationsMaxDoseStatus.classList.add("loading-dot");
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/apresentacoes-dosagem-maxima", {
+        const resp = await apiFetch("/api/apresentacoes-dosagem-maxima", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contexto })
@@ -2704,7 +3508,7 @@ function initSpeech() {
       const transcricaoBase = (baseTranscript || finalTranscript || "").trim();
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/atualizar-soap-perguntas", {
+        const resp = await apiFetch("/api/atualizar-soap-perguntas", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -2731,7 +3535,7 @@ function initSpeech() {
           updateSoapFromString(soap);
         }
         if (prescricao) {
-          prescriptionOutput.value = prescricao;
+          prescriptionOutput.value = formatNumberedPlan(prescricao);
           printBtn.style.display = "inline-block";
         }
 
@@ -2793,7 +3597,7 @@ function initSpeech() {
 
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/recomendacoes-anamnese", {
+        const resp = await apiFetch("/api/recomendacoes-anamnese", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -3002,7 +3806,7 @@ function initSpeech() {
       presentationsMaxDoseStatus.textContent = "Analisando imagem da lesão.";
       presentationsMaxDoseBox.textContent = "Processando.";
       try {
-        const resp = await fetch(BACKEND_URL + "/api/analisar-lesao-imagem", {
+        const resp = await apiFetch("/api/analisar-lesao-imagem", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image_data_url: dataUrl })
@@ -3023,7 +3827,7 @@ function initSpeech() {
       interactionsStatus.textContent = "Analisando prescrição.";
       interactionsBox.textContent = "Processando.";
       try {
-        const resp = await fetch(BACKEND_URL + "/api/analisar-prescricao-imagem", {
+        const resp = await apiFetch("/api/analisar-prescricao-imagem", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image_data_url: dataUrl })
@@ -3193,7 +3997,7 @@ function initSpeech() {
       hospitalPrescriptionStatus.classList.add("loading-dot");
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/prescricao-hospitalar", {
+        const resp = await apiFetch("/api/prescricao-hospitalar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao, tipo_documento: (reportDocTypeSelect && reportDocTypeSelect.value && reportDocTypeSelect.value !== "auto") ? reportDocTypeSelect.value : null })
@@ -3255,7 +4059,7 @@ function initSpeech() {
       classificationsStatus.classList.add("loading-dot");
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/classificar-gestacao-lactacao", {
+        const resp = await apiFetch("/api/classificar-gestacao-lactacao", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contexto })
@@ -3413,7 +4217,7 @@ function initSpeech() {
       reportStatus.classList.add("loading-dot");
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
+        const resp = await apiFetch("/api/gerar-relatorio", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao })
@@ -3455,7 +4259,7 @@ function initSpeech() {
       medicalDoubtAnswer.textContent = "";
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/duvidas-enfermagem", {
+        const resp = await apiFetch("/api/duvidas-enfermagem", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ duvida: q })
@@ -3874,6 +4678,20 @@ function initSpeech() {
               "Orientar sinais de alarme e encaminhar/acionar serviço de urgência quando: sangramento intenso, febre, odor fétido importante, dor intensa, sinais de trombose (dor/inchaço em perna), dispneia ou dor torácica.",
               "Reforçar cuidados gerais: higiene perineal, hidratação, alimentação, repouso possível, retorno programado e quando procurar a unidade.",
               "Registrar orientações e, se necessário, encaminhar para avaliação médica, serviço social ou saúde mental conforme achados."
+            ]
+          }
+        ]
+      },
+          {
+            title: "Procedimentos e exame físico",
+            items: [
+              "Aferir sinais vitais (pressão arterial, frequência cardíaca, temperatura) e avaliar sinais de gravidade.",
+              "Avaliar involução uterina e sensibilidade abdominal quando aplicável; orientar procurar avaliação médica se dor intensa, útero muito doloroso, febre ou secreção fétida.",
+              "Inspeção de mamas: ingurgitamento, fissuras, sinais de mastite (dor localizada, calor, rubor, febre) e orientar manejo inicial e quando encaminhar.",
+              "Avaliar ferida operatória ou períneo: hiperemia, secreção, abertura de pontos, dor desproporcional; orientar higiene e sinais de infecção.",
+              "Avaliar edema, cefaleia intensa, escotomas, dor epigástrica e dispneia como sinais de alerta (especialmente em puérperas com história de hipertensão).",
+              "Educação em saúde: amamentação (pega/posição, livre demanda), autocuidado, hidratação, alimentação, repouso e retorno.",
+              "Sinais de alarme e encaminhamento: febre, lóquios com mau cheiro, sangramento intenso ou com coágulos, dor forte, falta de ar, dor torácica, cefaleia intensa/visão turva, tristeza intensa ou ideação suicida/autoagressão."
             ]
           }
         ]
