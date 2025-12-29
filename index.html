@@ -1140,6 +1140,7 @@
         <div>
           <h1 style="margin: 10px 0 4px 0;">Painel do Administrador</h1>
           <div id="adminSubtitle" style="font-size: 12px; color: #555;"></div>
+          <div id="adminLocalBackupInfo" style="font-size: 12px; color: #555; margin-top: 2px;"></div>
         </div>
         <div class="admin-row">
           <button id="adminRefreshBtn" class="admin-btn secondary" type="button">Atualizar</button>
@@ -1648,6 +1649,55 @@
     const TOKEN_KEY = "ae_token_v1";
     const nativeFetch = window.fetch.bind(window);
 
+    // Backup local automático (para não perder clientes em redeploy/atualizações do backend)
+    const LOCAL_BACKUP_KEY = "ae_local_backup_v1";
+    const LOCAL_BACKUP_AT_KEY = "ae_local_backup_at_v1";
+    let RECOVERY_TRIED = false;
+    let RECOVERY_RUNNING = false;
+
+    function setLocalBackupText(txt) {
+      try {
+        localStorage.setItem(LOCAL_BACKUP_KEY, txt || "");
+        localStorage.setItem(LOCAL_BACKUP_AT_KEY, new Date().toISOString());
+      } catch {}
+    }
+    function getLocalBackupText() {
+      try { return localStorage.getItem(LOCAL_BACKUP_KEY) || ""; } catch { return ""; }
+    }
+    function getLocalBackupPayload() {
+      const txt = getLocalBackupText();
+      if (!txt) return null;
+      try { return JSON.parse(txt); } catch { return null; }
+    }
+    function updateAdminLocalBackupBadge() {
+      const el = document.getElementById("adminLocalBackupInfo");
+      if (!el) return;
+      let at = "";
+      try { at = localStorage.getItem(LOCAL_BACKUP_AT_KEY) || ""; } catch {}
+      if (!at) {
+        el.textContent = "Backup local: não disponível";
+        return;
+      }
+      try {
+        el.textContent = "Backup local: " + new Date(at).toLocaleString("pt-BR");
+      } catch {
+        el.textContent = "Backup local: disponível";
+      }
+    }
+    async function refreshLocalBackupFromServer() {
+      try {
+        const t = getToken();
+        if (!t) return;
+        const resp = await fetch(BACKEND_URL + "/api/admin/backup/export", { method: "GET" });
+        if (!resp.ok) return;
+        const txt = await resp.text();
+        if (!txt || txt.trim().length < 2) return;
+        if (!txt.trim().startsWith("{")) return;
+        setLocalBackupText(txt);
+        updateAdminLocalBackupBadge();
+      } catch {}
+    }
+
     function getToken() {
       try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; }
     }
@@ -1761,6 +1811,8 @@
           showAdmin();
           startHeartbeat();
           await adminLoadAll();
+          updateAdminLocalBackupBadge();
+          await refreshLocalBackupFromServer();
         } else if (me && me.role === "nurse") {
           showNurse();
           startHeartbeat();
@@ -4648,6 +4700,41 @@ function initSpeech() {
       return data;
     }
 
+    async function autoRecoverIfEmpty() {
+      try {
+        if (RECOVERY_RUNNING) return;
+        if (RECOVERY_TRIED) return;
+        const payload = getLocalBackupPayload();
+        const hasUsers = payload && Array.isArray(payload.users) && payload.users.length > 0;
+        if (!hasUsers) return;
+        if (!Array.isArray(ADMIN_CACHE_USERS) || ADMIN_CACHE_USERS.length !== 0) return;
+
+        RECOVERY_RUNNING = true;
+        RECOVERY_TRIED = true;
+
+        const st = document.getElementById("adminStatus");
+        if (st) st.textContent = "Recuperando usuários a partir do backup local...";
+
+        // Cria backup manual no servidor (se houver)
+        try { await adminFetchJson("/api/admin/backup/create", { method: "POST" }); } catch {}
+
+        await adminFetchJson("/api/admin/backup/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        await adminLoadAll();
+        if (st) st.textContent = "Recuperação concluída a partir do backup local.";
+      } catch (e) {
+        const st = document.getElementById("adminStatus");
+        if (st) st.textContent = "Falha ao recuperar do backup local: " + String(e?.message || e || "");
+      } finally {
+        RECOVERY_RUNNING = false;
+        updateAdminLocalBackupBadge();
+      }
+    }
+
     async function adminLoadAll() {
       try {
         const [users, audit] = await Promise.all([
@@ -4662,6 +4749,11 @@ function initSpeech() {
         if (sub) sub.textContent = `Usuários cadastrados: ${ADMIN_CACHE_USERS.length}`;
         const st = document.getElementById("adminStatus");
         if (st) st.textContent = "";
+        updateAdminLocalBackupBadge();
+        // Atualiza backup local com a versão do servidor (quando houver dados)
+        if (ADMIN_CACHE_USERS.length > 0) { await refreshLocalBackupFromServer(); }
+        // Se o servidor vier vazio (ex.: redeploy), tenta restaurar automaticamente do backup local
+        await autoRecoverIfEmpty();
       } catch (e) {
         const st = document.getElementById("adminStatus");
         if (st) st.textContent = String(e.message || e);
@@ -4749,6 +4841,7 @@ function initSpeech() {
               body: JSON.stringify({ month, amount, method, notes })
             });
             await adminLoadAll();
+            await refreshLocalBackupFromServer();
           } catch (e) {
             const st = document.getElementById("adminStatus");
             if (st) st.textContent = String(e.message || e);
@@ -4798,6 +4891,7 @@ function initSpeech() {
               body: JSON.stringify({ active: !active })
             });
             await adminLoadAll();
+            await refreshLocalBackupFromServer();
           } catch (e) {
             const st = document.getElementById("adminStatus");
             if (st) st.textContent = String(e.message || e);
@@ -4818,6 +4912,7 @@ function initSpeech() {
               body: JSON.stringify({ password: newPass })
             });
             await adminLoadAll();
+            await refreshLocalBackupFromServer();
           } catch (e) {
             const st = document.getElementById("adminStatus");
             if (st) st.textContent = String(e.message || e);
@@ -4833,6 +4928,7 @@ function initSpeech() {
           try {
             await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}`, { method: "DELETE" });
             await adminLoadAll();
+            await refreshLocalBackupFromServer();
           } catch (e) {
             const st = document.getElementById("adminStatus");
             if (st) st.textContent = String(e.message || e);
@@ -4933,6 +5029,7 @@ function initSpeech() {
 
         closeEditUserModal();
         await adminLoadAll();
+            await refreshLocalBackupFromServer();
       } catch (e) {
         alert(String(e?.message || e || "Falha ao editar usuário."));
       }
@@ -4968,6 +5065,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
+        try { await refreshLocalBackupFromServer(); } catch {}
       } catch (e) {
         alert(String(e?.message || e || "Falha ao baixar backup."));
       }
@@ -5001,6 +5099,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
         ev.target.value = "";
         await adminLoadAll();
+        await refreshLocalBackupFromServer();
         alert("Backup importado/mesclado com sucesso.");
       } catch (e) {
         alert(String(e?.message || e || "Falha ao restaurar backup."));
@@ -5033,6 +5132,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
           if (el) el.value = "";
         });
         await adminLoadAll();
+            await refreshLocalBackupFromServer();
       } catch (e) {
         if (st) st.textContent = String(e.message || e);
       }

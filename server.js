@@ -133,7 +133,7 @@ function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
 // AUTENTICAÇÃO + BASE LOCAL (usuários, pagamentos e auditoria)
 // ======================================================================
 
-const DATA_DIR = path.join(__dirname, "data");
+const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, "data");
 const DB_PATH = path.join(DATA_DIR, "enfermagem_users_db.json");
 
 function ensureDataDir() {
@@ -144,6 +144,10 @@ const LEGACY_DB_PATHS = [
   path.join(DATA_DIR, "enfermagem_db.json"),
   path.join(DATA_DIR, "enfermagem_users_db_old.json"),
   path.join(DATA_DIR, "enfermagem_users_db_v1.json"),
+  path.join(DATA_DIR, "enfermagem_users.json"),
+  path.join(DATA_DIR, "db.json"),
+  path.join(DATA_DIR, "database.json"),
+  path.join(__dirname, "enfermagem_users_db.json"),
 ];
 
 const BACKUP_DIR = path.join(DATA_DIR, "backups");
