@@ -155,6 +155,10 @@ function sha256(s) {
   return crypto.createHash("sha256").update(String(s)).digest("hex");
 }
 
+function onlyDigits(v) {
+  return String(v || "").replace(/\D+/g, "");
+}
+
 function makeId(prefix) {
   return `${prefix}_${crypto.randomBytes(10).toString("hex")}`;
 }
@@ -188,8 +192,10 @@ const SESSIONS = new Map(); // token -> { role, userId, createdAt, lastSeenAt }
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12; // 12h
 
 // Credenciais fixas do administrador (como solicitado), com possibilidade de override por variáveis
-const ADMIN_LOGIN = process.env.ADMIN_LOGIN || "027-315-125-80";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "39-96-93";
+const ADMIN_LOGIN = "027-315-125-80";
+const ADMIN_PASSWORD = "39-96-93";
+const ADMIN_LOGIN_N = onlyDigits(ADMIN_LOGIN);
+const ADMIN_PASSWORD_N = onlyDigits(ADMIN_PASSWORD);
 
 function audit(action, target, details) {
   try {
@@ -234,8 +240,13 @@ function cleanupSessions() {
 setInterval(cleanupSessions, 1000 * 60 * 10).unref?.();
 
 function findUserByLogin(login) {
-  const l = String(login || "").trim().toLowerCase();
-  return DB.users.find(u => String(u.login || "").toLowerCase() === l) || null;
+  const raw = String(login || "").trim();
+  const l = raw.toLowerCase();
+  const direct = DB.users.find(u => String(u.login || "").trim().toLowerCase() === l) || null;
+  if (direct) return direct;
+  const ln = onlyDigits(raw);
+  if (!ln) return null;
+  return DB.users.find(u => onlyDigits(String(u.login || "").trim()) === ln) || null;
 }
 
 function isUserPaidThisMonth(userId) {
@@ -298,8 +309,10 @@ app.post("/api/auth/login", (req, res) => {
     const senha = String(req.body?.senha || "").trim();
     if (!login || !senha) return res.status(400).json({ error: "Login e senha são obrigatórios." });
 
-    // Admin
-    if (login === ADMIN_LOGIN && senha === ADMIN_PASSWORD) {
+    // Admin (aceita com ou sem pontuação)
+    const loginN = onlyDigits(login);
+    const senhaN = onlyDigits(senha);
+    if ((login === ADMIN_LOGIN && senha === ADMIN_PASSWORD) || (loginN && senhaN && loginN === ADMIN_LOGIN_N && senhaN === ADMIN_PASSWORD_N)) {
       const token = createSession("admin", "admin");
       audit("admin_login", "admin", "Login do administrador");
       return res.json({ token, role: "admin" });
