@@ -351,7 +351,7 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
   const u = req.auth.user;
   return res.json({
     role: "nurse",
-    user: { id: u.id, fullName: u.fullName, login: u.login, phone: u.phone, isPaidThisMonth: isUserPaidThisMonth(u.id) }
+    user: { id: u.id, fullName: u.fullName, login: u.login, phone: u.phone, isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id) }
   });
 });
 
@@ -389,7 +389,7 @@ app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
       lastLoginAt: u.lastLoginAt || "",
       lastSeenAt: u.lastSeenAt || "",
       isOnline: isUserOnline(u),
-      isPaidThisMonth: isUserPaidThisMonth(u.id)
+      isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id)
     }))
     .sort((a,b) => (a.fullName||"").localeCompare(b.fullName||""));
   return res.json({ users });

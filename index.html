@@ -1732,7 +1732,7 @@
 
     function updateNurseBar(me) {
       const name = me.fullName || me.login || "-";
-      const paid = !!me.paidCurrentMonth;
+      const paid = (me && (me.isPaidThisMonth !== undefined ? !!me.isPaidThisMonth : !!me.paidCurrentMonth));
       const month = me.currentMonth || "";
       const lbl = document.getElementById("nurseUserLabel");
       const pay = document.getElementById("nursePaymentLabel");
@@ -4686,7 +4686,7 @@ function initSpeech() {
         tdOnline.appendChild(pillOn);
 
         const tdPay = document.createElement("td");
-        const paid = !!u.paidCurrentMonth;
+        const paid = (u && (u.isPaidThisMonth !== undefined ? !!u.isPaidThisMonth : !!u.paidCurrentMonth));
         const pillPay = document.createElement("button");
         pillPay.type = "button";
         pillPay.className = "pill " + (paid ? "green" : "red");
