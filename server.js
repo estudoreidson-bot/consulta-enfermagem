@@ -3,6 +3,8 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const path = require("path");
+const fs = require("fs");
+const crypto = require("crypto");
 const OpenAI = require("openai");
 
 const app = express();
@@ -12,12 +14,8 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Servir o index.html apenas na rota raiz (útil para testes locais)
-app.get("/", (req, res) => {
-  return res.sendFile(path.join(__dirname, "index.html"));
-});
-
 // Servir o index.html (útil para testes locais)
+app.use(express.static(path.join(__dirname)));
 
 // Cliente OpenAI usando a variável de ambiente do Render
 const openai = new OpenAI({
@@ -128,555 +126,6 @@ function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
 }
 
 // ======================================================================
-// AUTENTICAÇÃO E CONTROLE ADMINISTRATIVO (ENFERMAGEM)
-// - Usuários (enfermeiros) com login/senha, status ativo, último acesso e último "ping"
-// - Controle de mensalidade por mês (YYYY-MM) e histórico imutável de pagamentos
-// ======================================================================
-const fs = require("fs");
-const crypto = require("crypto");
-
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
-const DB_PATH = path.join(DATA_DIR, "enfermagem_users_db.json");
-
-function ensureDataDir() {
-  try {
-    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  } catch (e) {
-    console.error("Falha ao criar DATA_DIR:", e);
-  }
-}
-
-function safeReadJson(filePath) {
-  try {
-    if (!fs.existsSync(filePath)) return null;
-    const raw = fs.readFileSync(filePath, "utf-8");
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (e) {
-    console.error("Falha ao ler JSON:", e);
-    return null;
-  }
-}
-
-function safeWriteJsonAtomic(filePath, obj) {
-  try {
-    ensureDataDir();
-    const tmp = filePath + ".tmp";
-    fs.writeFileSync(tmp, JSON.stringify(obj, null, 2), "utf-8");
-    fs.renameSync(tmp, filePath);
-    return true;
-  } catch (e) {
-    console.error("Falha ao escrever JSON:", e);
-    return false;
-  }
-}
-
-function getMonthKey(dateObj) {
-  const d = dateObj instanceof Date ? dateObj : new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
-}
-
-let db = safeReadJson(DB_PATH) || { users: [], audit: [] };
-
-function persistDb() {
-  safeWriteJsonAtomic(DB_PATH, db);
-}
-
-function newId(prefix) {
-  const rnd = crypto.randomBytes(8).toString("hex");
-  return `${prefix}_${Date.now().toString(36)}_${rnd}`;
-}
-
-function pbkdf2Hash(password, saltB64) {
-  const salt = saltB64 ? Buffer.from(saltB64, "base64") : crypto.randomBytes(16);
-  const iterations = 120000;
-  const dk = crypto.pbkdf2Sync(String(password || ""), salt, iterations, 32, "sha256");
-  return `pbkdf2$${iterations}$${salt.toString("base64")}$${dk.toString("base64")}`;
-}
-
-function verifyPassword(password, stored) {
-  try {
-    const parts = String(stored || "").split("$");
-    if (parts.length !== 4) return false;
-    const algo = parts[0];
-    if (algo !== "pbkdf2") return false;
-    const iterations = parseInt(parts[1], 10);
-    const salt = Buffer.from(parts[2], "base64");
-    const expected = Buffer.from(parts[3], "base64");
-    const dk = crypto.pbkdf2Sync(String(password || ""), salt, iterations, expected.length, "sha256");
-    return crypto.timingSafeEqual(dk, expected);
-  } catch (_) {
-    return false;
-  }
-}
-
-function sanitizeLogin(s) {
-  const t = String(s || "").trim();
-  return t.replace(/[^\w\.\-@]/g, "").slice(0, 64);
-}
-
-function sanitizeText(s, maxLen) {
-  return String(s || "").trim().slice(0, maxLen);
-}
-
-function findUserByLogin(login) {
-  const l = sanitizeLogin(login).toLowerCase();
-  return db.users.find(u => String(u.login || "").toLowerCase() === l) || null;
-}
-
-function findUserById(id) {
-  const i = String(id || "");
-  return db.users.find(u => u.id === i) || null;
-}
-
-function isUserPaidForMonth(user, monthKey) {
-  const mk = String(monthKey || "").trim();
-  const months = Array.isArray(user?.paid_months) ? user.paid_months : [];
-  return months.includes(mk);
-}
-
-function computeOnline(user) {
-  const lastSeen = user?.last_seen ? new Date(user.last_seen) : null;
-  if (!lastSeen || !Number.isFinite(lastSeen.getTime())) return false;
-  const diffMs = Date.now() - lastSeen.getTime();
-  return diffMs >= 0 && diffMs <= (2 * 60 * 1000); // 2 minutos
-}
-
-function addAudit(adminLogin, action, targetUser, details) {
-  const entry = {
-    ts: new Date().toISOString(),
-    admin_login: String(adminLogin || "admin"),
-    action: String(action || ""),
-    target_user_id: targetUser?.id || "",
-    target_login: targetUser?.login || "",
-    details: sanitizeText(details || "", 800)
-  };
-  db.audit.unshift(entry);
-  // manter tamanho controlado
-  if (db.audit.length > 2000) db.audit = db.audit.slice(0, 2000);
-  persistDb();
-}
-
-const sessions = new Map(); // token -> { role, user_id, created_at }
-
-function createSession(role, userId) {
-  const token = crypto.randomBytes(32).toString("hex");
-  sessions.set(token, {
-    role: String(role || ""),
-    user_id: String(userId || ""),
-    created_at: new Date().toISOString()
-  });
-  return token;
-}
-
-function getSessionFromReq(req) {
-  const auth = String(req.headers.authorization || "").trim();
-  if (auth.toLowerCase().startsWith("bearer ")) {
-    const token = auth.slice(7).trim();
-    return token ? { token, session: sessions.get(token) || null } : { token: "", session: null };
-  }
-  const token2 = String(req.headers["x-auth-token"] || "").trim();
-  return token2 ? { token: token2, session: sessions.get(token2) || null } : { token: "", session: null };
-}
-
-function requireAuth(req, res, next) {
-  const { token, session } = getSessionFromReq(req);
-  if (!token || !session) {
-    return res.status(401).json({ error: "Não autenticado." });
-  }
-  req.auth = { token, role: session.role, user_id: session.user_id };
-  return next();
-}
-
-function requireAdmin(req, res, next) {
-  if (!req.auth || req.auth.role !== "admin") {
-    return res.status(403).json({ error: "Acesso restrito ao administrador." });
-  }
-  return next();
-}
-
-function requireNurseOrAdmin(req, res, next) {
-  if (!req.auth) return res.status(401).json({ error: "Não autenticado." });
-  if (req.auth.role !== "nurse" && req.auth.role !== "admin") {
-    return res.status(403).json({ error: "Acesso negado." });
-  }
-  return next();
-}
-
-function enforcePaidForProtectedRoutes(req, res, next) {
-  // Admin sempre passa
-  if (req.auth?.role === "admin") return next();
-
-  const user = findUserById(req.auth?.user_id);
-  if (!user) return res.status(401).json({ error: "Sessão inválida." });
-  if (!user.ativo || user.deleted_at) return res.status(403).json({ error: "Usuário desativado." });
-
-  // Rotas que não exigem pagamento (para login e status)
-  const freePaths = new Set([
-    "/auth/me",
-    "/ping",
-    "/health"
-  ]);
-
-  if (freePaths.has(req.path)) return next();
-
-  const monthKey = getMonthKey(new Date());
-  const paid = isUserPaidForMonth(user, monthKey);
-  if (!paid) {
-    return res.status(402).send("Mensalidade em atraso. Contate o administrador.");
-  }
-  return next();
-}
-
-// Admin credentials via env, com senha temporária se não configurada
-const ADMIN_LOGIN = sanitizeLogin(process.env.ADMIN_LOGIN || "admin") || "admin";
-let ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "").trim();
-if (!ADMIN_PASSWORD) {
-  ADMIN_PASSWORD = crypto.randomBytes(9).toString("base64url");
-  console.log("ADMIN_PASSWORD não definido. Senha temporária do admin:", ADMIN_PASSWORD);
-}
-
-// Middleware global para /api (exceto /api/auth/login e /api/health)
-app.use("/api", (req, res, next) => {
-  const path = req.path || "";
-  // Rotas públicas
-  if (path === "/auth/login" || path === "/health") return next();
-
-  // Sessão obrigatória
-  return requireAuth(req, res, () => {
-    // Atualizar last_seen do enfermeiro em qualquer requisição autenticada
-    if (req.auth.role === "nurse") {
-      const user = findUserById(req.auth.user_id);
-      if (user) {
-        user.last_seen = new Date().toISOString();
-        user.updated_at = new Date().toISOString();
-        persistDb();
-      }
-    }
-    // Se /admin, exige admin
-    if (path.startsWith("/admin")) {
-      return requireAdmin(req, res, next);
-    }
-    // demais: nurse ou admin
-    return requireNurseOrAdmin(req, res, () => enforcePaidForProtectedRoutes(req, res, next));
-  });
-});
-
-// ============================
-// Rotas de autenticação
-// ============================
-app.post("/api/auth/login", (req, res) => {
-  try {
-    const role = String(req.body?.role || "nurse").trim().toLowerCase();
-    const login = sanitizeLogin(req.body?.login || "");
-    const senha = String(req.body?.senha || "");
-
-    if (!login || !senha) {
-      return res.status(400).json({ error: "Login e senha são obrigatórios." });
-    }
-
-    if (role === "admin") {
-      if (login.toLowerCase() !== ADMIN_LOGIN.toLowerCase() || senha !== ADMIN_PASSWORD) {
-        return res.status(401).json({ error: "Credenciais inválidas." });
-      }
-      const token = createSession("admin", "admin");
-      return res.json({ token, role: "admin", user: { login: ADMIN_LOGIN } });
-    }
-
-    const user = findUserByLogin(login);
-    if (!user || user.deleted_at) return res.status(401).json({ error: "Credenciais inválidas." });
-    if (!user.ativo) return res.status(403).json({ error: "Usuário desativado." });
-
-    // lockout simples
-    user.failed_logins = user.failed_logins || 0;
-    if (user.locked_until && new Date(user.locked_until).getTime() > Date.now()) {
-      return res.status(403).json({ error: "Usuário bloqueado temporariamente por tentativas inválidas." });
-    }
-
-    const ok = verifyPassword(senha, user.password_hash);
-    if (!ok) {
-      user.failed_logins += 1;
-      user.updated_at = new Date().toISOString();
-      if (user.failed_logins >= 10) {
-        user.locked_until = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-      }
-      persistDb();
-      return res.status(401).json({ error: "Credenciais inválidas." });
-    }
-
-    user.failed_logins = 0;
-    user.locked_until = "";
-    user.last_login = new Date().toISOString();
-    user.last_seen = user.last_login;
-    user.updated_at = new Date().toISOString();
-    persistDb();
-
-    const token = createSession("nurse", user.id);
-    const paid = isUserPaidForMonth(user, getMonthKey(new Date()));
-    return res.json({
-      token,
-      role: "nurse",
-      user: {
-        id: user.id,
-        login: user.login,
-        nome_completo: user.nome_completo
-      },
-      paid_current_month: paid
-    });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha interna ao autenticar." });
-  }
-});
-
-app.post("/api/auth/logout", (req, res) => {
-  try {
-    const { token } = getSessionFromReq(req);
-    if (token) sessions.delete(token);
-    return res.json({ ok: true });
-  } catch (_) {
-    return res.json({ ok: true });
-  }
-});
-
-app.get("/api/auth/me", (req, res) => {
-  try {
-    const role = req.auth?.role || "";
-    if (role === "admin") {
-      return res.json({ ok: true, role: "admin", user: { login: ADMIN_LOGIN } });
-    }
-    const user = findUserById(req.auth?.user_id);
-    if (!user) return res.status(401).json({ ok: false, error: "Sessão inválida." });
-    const paid = isUserPaidForMonth(user, getMonthKey(new Date()));
-    return res.json({
-      ok: true,
-      role: "nurse",
-      user: { id: user.id, login: user.login, nome_completo: user.nome_completo },
-      paid_current_month: paid
-    });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ ok: false, error: "Falha interna." });
-  }
-});
-
-app.post("/api/ping", (req, res) => {
-  try {
-    if (req.auth?.role === "admin") {
-      return res.json({ ok: true, server_time: new Date().toISOString(), paid_current_month: true });
-    }
-    const user = findUserById(req.auth?.user_id);
-    if (!user) return res.status(401).json({ ok: false, error: "Sessão inválida." });
-
-    user.last_seen = new Date().toISOString();
-    user.updated_at = new Date().toISOString();
-    persistDb();
-
-    const paid = isUserPaidForMonth(user, getMonthKey(new Date()));
-    return res.json({ ok: true, server_time: new Date().toISOString(), paid_current_month: paid });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ ok: false, error: "Falha interna." });
-  }
-});
-
-// ============================
-// Rotas administrativas
-// ============================
-app.get("/api/admin/users", (req, res) => {
-  try {
-    const monthKey = getMonthKey(new Date());
-    const users = db.users
-      .filter(u => !u.deleted_at)
-      .map(u => ({
-        id: u.id,
-        login: u.login,
-        nome_completo: u.nome_completo,
-        data_nascimento: u.data_nascimento,
-        telefone: u.telefone,
-        ativo: Boolean(u.ativo),
-        last_login: u.last_login || "",
-        last_seen: u.last_seen || "",
-        is_online: computeOnline(u),
-        paid_current_month: isUserPaidForMonth(u, monthKey)
-      }));
-    return res.json({ ok: true, server_time: new Date().toISOString(), month: monthKey, users });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha ao listar usuários." });
-  }
-});
-
-app.post("/api/admin/create-user", (req, res) => {
-  try {
-    const nome_completo = sanitizeText(req.body?.nome_completo, 120);
-    const data_nascimento = sanitizeText(req.body?.data_nascimento, 16);
-    const telefone = sanitizeText(req.body?.telefone, 30);
-    const login = sanitizeLogin(req.body?.login);
-    const senha = String(req.body?.senha || "");
-
-    if (!nome_completo || !data_nascimento || !telefone || !login || !senha) {
-      return res.status(400).json({ error: "Campos obrigatórios: nome completo, data de nascimento, telefone, login, senha." });
-    }
-
-    if (findUserByLogin(login)) {
-      return res.status(409).json({ error: "Login já cadastrado." });
-    }
-
-    const user = {
-      id: newId("nurse"),
-      role: "nurse",
-      login,
-      nome_completo,
-      data_nascimento,
-      telefone,
-      password_hash: pbkdf2Hash(senha),
-      ativo: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      last_login: "",
-      last_seen: "",
-      paid_months: [],
-      payments: [],
-      failed_logins: 0,
-      locked_until: "",
-      deleted_at: ""
-    };
-
-    db.users.push(user);
-    persistDb();
-    addAudit(req.auth?.role === "admin" ? ADMIN_LOGIN : "admin", "create_user", user, "Usuário criado.");
-    return res.json({ ok: true, user_id: user.id });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha ao criar usuário." });
-  }
-});
-
-app.post("/api/admin/toggle-active", (req, res) => {
-  try {
-    const user = findUserById(req.body?.user_id);
-    if (!user || user.deleted_at) return res.status(404).json({ error: "Usuário não encontrado." });
-
-    user.ativo = !user.ativo;
-    user.updated_at = new Date().toISOString();
-    persistDb();
-    addAudit(ADMIN_LOGIN, "toggle_active", user, user.ativo ? "Ativado." : "Desativado.");
-    return res.json({ ok: true, ativo: user.ativo });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha ao atualizar status." });
-  }
-});
-
-app.post("/api/admin/delete-user", (req, res) => {
-  try {
-    const user = findUserById(req.body?.user_id);
-    if (!user || user.deleted_at) return res.status(404).json({ error: "Usuário não encontrado." });
-
-    // Exclusão lógica para preservar histórico
-    user.ativo = false;
-    user.deleted_at = new Date().toISOString();
-    user.updated_at = new Date().toISOString();
-    persistDb();
-    addAudit(ADMIN_LOGIN, "delete_user", user, "Exclusão lógica (histórico preservado).");
-    return res.json({ ok: true });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha ao excluir usuário." });
-  }
-});
-
-app.post("/api/admin/reset-password", (req, res) => {
-  try {
-    const user = findUserById(req.body?.user_id);
-    if (!user || user.deleted_at) return res.status(404).json({ error: "Usuário não encontrado." });
-
-    let newPwd = String(req.body?.new_password || "").trim();
-    let generated = "";
-    if (!newPwd) {
-      newPwd = crypto.randomBytes(8).toString("base64url");
-      generated = newPwd;
-    }
-
-    user.password_hash = pbkdf2Hash(newPwd);
-    user.updated_at = new Date().toISOString();
-    persistDb();
-
-    // invalidar sessões do usuário
-    for (const [tok, sess] of sessions.entries()) {
-      if (sess.role === "nurse" && sess.user_id === user.id) sessions.delete(tok);
-    }
-
-    addAudit(ADMIN_LOGIN, "reset_password", user, "Senha redefinida.");
-    return res.json({ ok: true, generated_password: generated });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha ao redefinir senha." });
-  }
-});
-
-app.post("/api/admin/mark-paid", (req, res) => {
-  try {
-    const user = findUserById(req.body?.user_id);
-    const month = sanitizeText(req.body?.month, 7);
-    if (!user || user.deleted_at) return res.status(404).json({ error: "Usuário não encontrado." });
-    if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: "Mês inválido. Use YYYY-MM." });
-
-    user.paid_months = Array.isArray(user.paid_months) ? user.paid_months : [];
-    user.payments = Array.isArray(user.payments) ? user.payments : [];
-
-    const already = user.paid_months.includes(month);
-    if (!already) {
-      user.paid_months.push(month);
-    }
-
-    // Histórico imutável: apenas adiciona (não edita nem remove)
-    if (!already) {
-      user.payments.unshift({
-        id: newId("pay"),
-        month,
-        paid_at: new Date().toISOString(),
-        paid_by: ADMIN_LOGIN
-      });
-    }
-
-    user.updated_at = new Date().toISOString();
-    persistDb();
-    addAudit(ADMIN_LOGIN, "mark_paid", user, `Pagamento registrado para ${month}.`);
-    return res.json({ ok: true, month, already_paid: already });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha ao registrar pagamento." });
-  }
-});
-
-app.get("/api/admin/payments/:userId", (req, res) => {
-  try {
-    const user = findUserById(req.params.userId);
-    if (!user || user.deleted_at) return res.status(404).json({ error: "Usuário não encontrado." });
-    const payments = Array.isArray(user.payments) ? user.payments : [];
-    return res.json({ ok: true, payments });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha ao obter pagamentos." });
-  }
-});
-
-app.get("/api/admin/audit", (req, res) => {
-  try {
-    const audit = Array.isArray(db.audit) ? db.audit.slice(0, 200) : [];
-    return res.json({ ok: true, audit });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha ao obter auditoria." });
-  }
-});
-
-
-// ======================================================================
 // BASE INTERNA (CURADA) – APRESENTAÇÕES E DOSAGEM MÁXIMA
 // Observação: esta base existe apenas para melhorar consistência quando o
 // modelo não retornar dados completos. Não é exibida ao usuário.
@@ -725,6 +174,485 @@ function getKnownPresentationsMaxDose(medicamentoOriginal) {
 
   return null;
 }
+
+// ======================================================================
+// AUTENTICAÇÃO E PAINEL ADMIN (ENFERMAGEM) – LOGIN ÚNICO (SEM SELEÇÃO DE PERFIL)
+// ======================================================================
+
+// Credenciais fixas do administrador (podem ser sobrescritas por variáveis de ambiente)
+const ADMIN_LOGIN = process.env.ADMIN_LOGIN || "027-315-125-80";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "39-96-93";
+
+// Persistência simples em JSON (append-only para pagamentos e auditoria via API)
+const DATA_DIR = path.join(__dirname, "data");
+const DB_PATH = path.join(DATA_DIR, "enfermagem_users_db.json");
+
+function ensureDataStore() {
+  try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (_) {}
+  if (!fs.existsSync(DB_PATH)) {
+    const initial = { users: [], payments: [], audit: [] };
+    fs.writeFileSync(DB_PATH, JSON.stringify(initial, null, 2), "utf-8");
+  }
+}
+
+function loadDb() {
+  ensureDataStore();
+  try {
+    const raw = fs.readFileSync(DB_PATH, "utf-8");
+    const parsed = JSON.parse(raw || "{}");
+    if (!parsed.users) parsed.users = [];
+    if (!parsed.payments) parsed.payments = [];
+    if (!parsed.audit) parsed.audit = [];
+    return parsed;
+  } catch (e) {
+    const fallback = { users: [], payments: [], audit: [] };
+    try { fs.writeFileSync(DB_PATH, JSON.stringify(fallback, null, 2), "utf-8"); } catch (_) {}
+    return fallback;
+  }
+}
+
+function saveDb(db) {
+  ensureDataStore();
+  const tmp = DB_PATH + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(db, null, 2), "utf-8");
+  fs.renameSync(tmp, DB_PATH);
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function monthKeyFromDate(d) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${yyyy}-${mm}`;
+}
+
+function currentMonthKey() {
+  return monthKeyFromDate(new Date());
+}
+
+function randomId() {
+  return crypto.randomBytes(16).toString("hex");
+}
+
+function normalizeLogin(v) {
+  return String(v || "").trim();
+}
+
+function normalizePassword(v) {
+  return String(v || "");
+}
+
+function hashPassword(password, salt) {
+  const s = salt || crypto.randomBytes(16).toString("hex");
+  const h = crypto.scryptSync(String(password || ""), s, 64).toString("hex");
+  return { salt: s, hash: h };
+}
+
+function verifyPassword(password, salt, expectedHash) {
+  if (!salt || !expectedHash) return false;
+  const h = crypto.scryptSync(String(password || ""), salt, 64).toString("hex");
+  return crypto.timingSafeEqual(Buffer.from(h, "hex"), Buffer.from(expectedHash, "hex"));
+}
+
+// Sessões em memória (se reiniciar, precisa logar novamente)
+const sessions = new Map();
+// token -> { role: "admin"|"nurse", userId: string|null, login: string, issuedAt: string, expiresAt: number }
+
+function createSession(role, userId, login) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const issuedAt = Date.now();
+  const expiresAt = issuedAt + (7 * 24 * 60 * 60 * 1000); // 7 dias
+  sessions.set(token, { role, userId, login, issuedAt: new Date(issuedAt).toISOString(), expiresAt });
+  return token;
+}
+
+function getSessionFromReq(req) {
+  const auth = req.headers.authorization || "";
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  if (!m) return null;
+  const token = m[1].trim();
+  const s = sessions.get(token);
+  if (!s) return null;
+  if (Date.now() > s.expiresAt) {
+    sessions.delete(token);
+    return null;
+  }
+  return { token, session: s };
+}
+
+function isOnline(lastSeenAtIso) {
+  if (!lastSeenAtIso) return false;
+  const t = Date.parse(lastSeenAtIso);
+  if (!Number.isFinite(t)) return false;
+  return (Date.now() - t) <= (5 * 60 * 1000); // 5 minutos
+}
+
+function isPaidForMonth(db, userId, monthKey) {
+  const mk = monthKey || currentMonthKey();
+  return db.payments.some(p => p && p.userId === userId && p.month === mk);
+}
+
+function audit(db, adminLogin, action, targetUserId, details) {
+  db.audit.push({
+    id: randomId(),
+    at: nowIso(),
+    adminLogin: String(adminLogin || ""),
+    action: String(action || ""),
+    targetUserId: targetUserId || null,
+    details: details || null
+  });
+}
+
+// Rotas públicas de autenticação
+app.post("/api/auth/login", (req, res) => {
+  try {
+    const login = normalizeLogin(req.body && req.body.login);
+    const password = normalizePassword(req.body && req.body.password);
+
+    if (!login || !password) {
+      return res.status(400).json({ error: "Login e senha são obrigatórios." });
+    }
+
+    // Admin (credenciais fixas)
+    if (login === ADMIN_LOGIN && password === ADMIN_PASSWORD) {
+      const token = createSession("admin", null, login);
+      return res.json({ token, role: "admin", user: { id: null, fullName: "Administrador", login } });
+    }
+
+    const db = loadDb();
+    const user = db.users.find(u => u && !u.deletedAt && u.login === login);
+    if (!user) {
+      return res.status(401).json({ error: "Credenciais inválidas." });
+    }
+    if (user.active === false) {
+      return res.status(403).json({ error: "Usuário desativado." });
+    }
+    if (!verifyPassword(password, user.salt, user.passwordHash)) {
+      return res.status(401).json({ error: "Credenciais inválidas." });
+    }
+
+    user.lastLoginAt = nowIso();
+    user.lastSeenAt = nowIso();
+    user.updatedAt = nowIso();
+    saveDb(db);
+
+    const token = createSession("nurse", user.id, login);
+    const paidCurrentMonth = isPaidForMonth(db, user.id, currentMonthKey());
+
+    return res.json({
+      token,
+      role: "nurse",
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        dob: user.dob,
+        phone: user.phone,
+        login: user.login,
+        active: user.active !== false,
+        paidCurrentMonth,
+        lastLoginAt: user.lastLoginAt,
+        lastSeenAt: user.lastSeenAt
+      }
+    });
+  } catch (e) {
+    console.error("Erro em /api/auth/login:", e);
+    return res.status(500).json({ error: "Erro interno." });
+  }
+});
+
+app.get("/api/auth/me", (req, res) => {
+  const s = getSessionFromReq(req);
+  if (!s) return res.status(401).json({ error: "Não autenticado." });
+
+  if (s.session.role === "admin") {
+    return res.json({ role: "admin", user: { id: null, fullName: "Administrador", login: s.session.login } });
+  }
+
+  const db = loadDb();
+  const user = db.users.find(u => u && u.id === s.session.userId && !u.deletedAt);
+  if (!user) return res.status(401).json({ error: "Sessão inválida." });
+
+  user.lastSeenAt = nowIso();
+  saveDb(db);
+
+  return res.json({
+    role: "nurse",
+    user: {
+      id: user.id,
+      fullName: user.fullName,
+      dob: user.dob,
+      phone: user.phone,
+      login: user.login,
+      active: user.active !== false,
+      paidCurrentMonth: isPaidForMonth(db, user.id, currentMonthKey()),
+      lastLoginAt: user.lastLoginAt || null,
+      lastSeenAt: user.lastSeenAt || null
+    }
+  });
+});
+
+app.post("/api/auth/logout", (req, res) => {
+  const s = getSessionFromReq(req);
+  if (s) sessions.delete(s.token);
+  return res.json({ ok: true });
+});
+
+app.post("/api/auth/heartbeat", (req, res) => {
+  const s = getSessionFromReq(req);
+  if (!s) return res.status(401).json({ error: "Não autenticado." });
+
+  if (s.session.role === "nurse") {
+    const db = loadDb();
+    const user = db.users.find(u => u && u.id === s.session.userId && !u.deletedAt);
+    if (user) {
+      user.lastSeenAt = nowIso();
+      user.updatedAt = nowIso();
+      saveDb(db);
+    }
+  }
+
+  return res.json({ ok: true });
+});
+
+// Gate: protege todo /api/* (exceto /api/auth/* e /api/health)
+function apiAuthGate(req, res, next) {
+  if (req.path.startsWith("/auth/")) return next();
+  if (req.path === "/health") return next();
+
+  const s = getSessionFromReq(req);
+  if (!s) return res.status(401).json({ error: "Não autenticado." });
+
+  req._session = s.session;
+
+  // Admin-only
+  if (req.path.startsWith("/admin/")) {
+    if (s.session.role !== "admin") return res.status(403).json({ error: "Acesso restrito ao administrador." });
+    return next();
+  }
+
+  // Nurse-only
+  if (s.session.role !== "nurse") return res.status(403).json({ error: "Acesso restrito." });
+
+  // Bloqueio por mensalidade (somente para rotas operacionais)
+  const operational = !req.path.startsWith("/auth/") && !req.path.startsWith("/admin/");
+  if (operational) {
+    const db = loadDb();
+    const paid = isPaidForMonth(db, s.session.userId, currentMonthKey());
+    if (!paid) return res.status(402).json({ error: "Mensalidade em atraso. Acesso operacional bloqueado." });
+  }
+
+  return next();
+}
+
+app.use("/api", apiAuthGate);
+
+// Painel Admin: CRUD de enfermeiros + pagamentos (append-only) + auditoria
+app.get("/api/admin/stats", (req, res) => {
+  const db = loadDb();
+  const users = db.users.filter(u => u && !u.deletedAt);
+  const active = users.filter(u => u.active !== false);
+  const month = currentMonthKey();
+  const paid = active.filter(u => isPaidForMonth(db, u.id, month));
+  const online = active.filter(u => isOnline(u.lastSeenAt));
+  return res.json({
+    totals: {
+      users: users.length,
+      active: active.length,
+      online: online.length,
+      paidCurrentMonth: paid.length,
+      unpaidCurrentMonth: active.length - paid.length
+    },
+    month
+  });
+});
+
+app.get("/api/admin/users", (req, res) => {
+  const db = loadDb();
+  const q = String((req.query && req.query.q) || "").trim().toLowerCase();
+  const month = currentMonthKey();
+  let users = db.users.filter(u => u && !u.deletedAt);
+
+  if (q) {
+    users = users.filter(u =>
+      String(u.fullName || "").toLowerCase().includes(q) ||
+      String(u.login || "").toLowerCase().includes(q) ||
+      String(u.phone || "").toLowerCase().includes(q)
+    );
+  }
+
+  const out = users.map(u => ({
+    id: u.id,
+    fullName: u.fullName,
+    dob: u.dob,
+    phone: u.phone,
+    login: u.login,
+    active: u.active !== false,
+    createdAt: u.createdAt || null,
+    updatedAt: u.updatedAt || null,
+    lastLoginAt: u.lastLoginAt || null,
+    lastSeenAt: u.lastSeenAt || null,
+    online: isOnline(u.lastSeenAt),
+    paidCurrentMonth: isPaidForMonth(db, u.id, month)
+  }));
+
+  return res.json({ month, users: out });
+});
+
+app.post("/api/admin/users", (req, res) => {
+  try {
+    const db = loadDb();
+    const fullName = String(req.body && req.body.fullName || "").trim();
+    const dob = String(req.body && req.body.dob || "").trim(); // DD/MM/AAAA ou AAAA-MM-DD
+    const phone = String(req.body && req.body.phone || "").trim();
+    const login = normalizeLogin(req.body && req.body.login);
+    const password = normalizePassword(req.body && req.body.password);
+
+    if (!fullName || !dob || !phone || !login || !password) {
+      return res.status(400).json({ error: "Campos obrigatórios: nome completo, data de nascimento, telefone, login e senha." });
+    }
+
+    if (db.users.some(u => u && !u.deletedAt && u.login === login)) {
+      return res.status(409).json({ error: "Login já existe." });
+    }
+
+    const id = randomId();
+    const { salt, hash } = hashPassword(password);
+    const user = {
+      id,
+      fullName,
+      dob,
+      phone,
+      login,
+      salt,
+      passwordHash: hash,
+      active: true,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+      lastLoginAt: null,
+      lastSeenAt: null,
+      deletedAt: null
+    };
+
+    db.users.push(user);
+    audit(db, req._session.login, "CREATE_USER", id, { fullName, dob, phone, login });
+    saveDb(db);
+
+    return res.json({ ok: true, user: { id, fullName, dob, phone, login, active: true } });
+  } catch (e) {
+    console.error("Erro em /api/admin/users (POST):", e);
+    return res.status(500).json({ error: "Erro interno." });
+  }
+});
+
+app.patch("/api/admin/users/:id", (req, res) => {
+  try {
+    const db = loadDb();
+    const id = String(req.params.id || "").trim();
+    const user = db.users.find(u => u && u.id === id && !u.deletedAt);
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado." });
+
+    const patch = {};
+    if (typeof req.body.active === "boolean") patch.active = req.body.active;
+    if (typeof req.body.fullName === "string" && req.body.fullName.trim()) patch.fullName = req.body.fullName.trim();
+    if (typeof req.body.dob === "string" && req.body.dob.trim()) patch.dob = req.body.dob.trim();
+    if (typeof req.body.phone === "string" && req.body.phone.trim()) patch.phone = req.body.phone.trim();
+
+    if (typeof req.body.password === "string" && req.body.password) {
+      const { salt, hash } = hashPassword(req.body.password);
+      patch.salt = salt;
+      patch.passwordHash = hash;
+    }
+
+    Object.assign(user, patch);
+    user.updatedAt = nowIso();
+    audit(db, req._session.login, "UPDATE_USER", id, patch);
+    saveDb(db);
+
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error("Erro em /api/admin/users/:id (PATCH):", e);
+    return res.status(500).json({ error: "Erro interno." });
+  }
+});
+
+app.delete("/api/admin/users/:id", (req, res) => {
+  try {
+    const db = loadDb();
+    const id = String(req.params.id || "").trim();
+    const user = db.users.find(u => u && u.id === id && !u.deletedAt);
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado." });
+
+    user.active = false;
+    user.deletedAt = nowIso();
+    user.updatedAt = nowIso();
+    audit(db, req._session.login, "DELETE_USER", id, { login: user.login });
+
+    saveDb(db);
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error("Erro em /api/admin/users/:id (DELETE):", e);
+    return res.status(500).json({ error: "Erro interno." });
+  }
+});
+
+app.get("/api/admin/users/:id/payments", (req, res) => {
+  const db = loadDb();
+  const id = String(req.params.id || "").trim();
+  const user = db.users.find(u => u && u.id === id && !u.deletedAt);
+  if (!user) return res.status(404).json({ error: "Usuário não encontrado." });
+
+  const payments = db.payments
+    .filter(p => p && p.userId === id)
+    .sort((a, b) => String(b.paidAt || "").localeCompare(String(a.paidAt || "")));
+
+  return res.json({ user: { id: user.id, fullName: user.fullName, login: user.login }, payments });
+});
+
+app.post("/api/admin/users/:id/pay", (req, res) => {
+  try {
+    const db = loadDb();
+    const id = String(req.params.id || "").trim();
+    const user = db.users.find(u => u && u.id === id && !u.deletedAt);
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado." });
+
+    const month = String((req.body && req.body.month) || currentMonthKey()).trim();
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return res.status(400).json({ error: "Mês inválido. Use AAAA-MM." });
+    }
+
+    if (db.payments.some(p => p && p.userId === id && p.month === month)) {
+      return res.status(409).json({ error: "Este mês já consta como pago." });
+    }
+
+    const rec = {
+      id: randomId(),
+      userId: id,
+      month,
+      paidAt: nowIso(),
+      amount: (req.body && req.body.amount != null) ? String(req.body.amount) : null,
+      method: (req.body && req.body.method) ? String(req.body.method) : null,
+      note: (req.body && req.body.note) ? String(req.body.note) : null,
+      adminLogin: req._session.login
+    };
+
+    db.payments.push(rec);
+    audit(db, req._session.login, "MARK_PAID", id, { month, amount: rec.amount, method: rec.method, note: rec.note });
+    saveDb(db);
+
+    return res.json({ ok: true, payment: rec });
+  } catch (e) {
+    console.error("Erro em /api/admin/users/:id/pay:", e);
+    return res.status(500).json({ error: "Erro interno." });
+  }
+});
+
+app.get("/api/admin/audit", (req, res) => {
+  const db = loadDb();
+  const auditLog = (db.audit || []).slice().sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
+  return res.json({ audit: auditLog });
+});
 
 
 // ======================================================================
@@ -1503,167 +1431,47 @@ app.post("/api/duvidas-enfermagem", async (req, res) => {
 
 app.post("/api/gerar-relatorio", async (req, res) => {
   try {
-    const { transcricao, tipo_documento } = req.body || {};
+    const { transcricao } = req.body || {};
 
     if (!transcricao || !String(transcricao).trim()) {
-      return res.json({
-        documento: "",
-        tipo_documento: "",
-        finalidade: "",
-        campos_pendentes: []
-      });
+      return res.json({ relatorio: "" });
     }
 
     const safeTranscricao = normalizeText(transcricao, 25000);
-    const tipoSelecionado = (typeof tipo_documento === "string" && tipo_documento.trim())
-      ? tipo_documento.trim()
-      : null;
-
-    const tiposPermitidos = [
-      "Declaração de comparecimento",
-      "Declaração de permanência",
-      "Declaração para acompanhante",
-      "Declaração de recebimento de orientações",
-      "Declaração de recusa de procedimento/conduta",
-      "Termo de consentimento informado (procedimento de enfermagem)",
-      "Termo de ciência e responsabilidade (orientações e riscos)",
-      "Comunicado para escola",
-      "Relatório para escola (necessidades específicas)",
-      "Comunicado ao Conselho Tutelar",
-      "Relatório para Conselho Tutelar (proteção à criança/adolescente)",
-      "Relatório de curativo seriado",
-      "Registro de procedimento de curativo",
-      "Registro de retirada de pontos/suturas",
-      "Registro de procedimento de vacinação",
-      "Registro de evento adverso pós-vacinação (EAPV)",
-      "Registro de procedimento de administração de medicamentos",
-      "Registro de administração de medicamento controlado (registro interno)",
-      "Registro de coleta de exames",
-      "Registro de nebulização/oxigenoterapia",
-      "Registro de sondagem vesical",
-      "Registro de troca de sonda/traqueostomia/gastrostomia",
-      "Registro de visita domiciliar",
-      "Relatório de visita domiciliar",
-      "Relatório de adesão e educação em saúde (HAS/DM)",
-      "Relatório de acompanhamento de hipertensão (HAS)",
-      "Relatório de acompanhamento de diabetes (DM)",
-      "Relatório de acompanhamento de asma/DPOC",
-      "Relatório de acompanhamento de saúde da criança (puericultura)",
-      "Relatório de acompanhamento de pré-natal (enfermagem)",
-      "Relatório de puerpério (enfermagem)",
-      "Relatório para assistência social (vulnerabilidade e insumos)",
-      "Solicitação de insumos (fraldas, curativos, suplementos)",
-      "Solicitação de fraldas (infantil/geriátrica)",
-      "Solicitação de materiais para ostomia",
-      "Solicitação de dieta enteral/suplementação",
-      "Solicitação de oxigenoterapia domiciliar",
-      "Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)",
-      "Solicitação de transporte sanitário",
-      "Solicitação de avaliação médica",
-      "Encaminhamento para Médico (demanda espontânea)",
-      "Encaminhamento para sala de vacina",
-      "Encaminhamento para curativos/ambulatório de feridas",
-      "Encaminhamento para CAPS / saúde mental",
-      "Relatório para CAPS / saúde mental (enfermagem)",
-      "Encaminhamento para Serviço Social",
-      "Encaminhamento para Psicologia",
-      "Encaminhamento para Nutrição",
-      "Encaminhamento para Fisioterapia",
-      "Encaminhamento para Fonoaudiologia",
-      "Encaminhamento para Odontologia",
-      "Encaminhamento para especialista / rede",
-      "Encaminhamento para urgência/emergência",
-      "Relatório de evolução de enfermagem",
-      "Relatório de intercorrência/ocorrência",
-      "Ata de reunião",
-      "Registro de reunião de equipe (ATA breve)",
-      "Comunicado interno da equipe",
-      "Outros"
-    ];
-
-    const tiposTexto = tiposPermitidos.map(t => `- ${t}`).join("\n");
 
     const prompt = `
-Você é um enfermeiro humano redigindo documentação administrativa e assistencial de enfermagem a partir da transcrição (português do Brasil).
-O texto final será colado no S.U.I.S., portanto deve estar pronto para colar: texto simples, sem emojis e sem símbolos gráficos.
+Você é um enfermeiro humano redigindo um relatório/declaração de enfermagem com base na transcrição do atendimento.
 
-Tarefa:
-1) Identificar qual é o TIPO DE DOCUMENTO solicitado e a FINALIDADE (destino/uso) com base na transcrição.
-2) Produzir o DOCUMENTO completo, padronizado e formal, no tipo adequado, sem inventar dados.
-3) Listar campos pendentes (o que faltou informar) para que o profissional possa completar.
+Objetivo:
+- Identificar a FINALIDADE do relatório a partir da própria transcrição (por exemplo: INSS, CAPS/saúde mental, escola, trabalho, advogado, assistência social, aquisição de insumos, etc).
+- Produzir um RELATÓRIO DE ENFERMAGEM compatível com a finalidade identificada, pronto para impressão.
 
-Se o campo "tipo_documento" vier informado no request, você deve usar EXATAMENTE esse tipo como título e estrutura, mesmo que a transcrição sugira outro.
-Se não vier informado, escolha o tipo mais adequado dentre os tipos permitidos. Se não for possível, use "Outros".
+Regras:
+- Português do Brasil.
+- Sem emojis e sem símbolos gráficos.
+- Não invente dados. Se faltar informação, use "não informado" ou "não foi referido".
+- Não faça diagnóstico médico definitivo. Descreva achados e condutas de enfermagem.
+- Texto claro, objetivo e formal.
 
-Tipos permitidos (escolha exatamente um, sem variações):
-${tiposTexto}
+Formato do relatório:
+- Cabeçalho: "RELATÓRIO DE ENFERMAGEM"
+- Campo "Finalidade:" com a finalidade identificada (se não estiver explícita, "não informado").
+- Corpo em parágrafos curtos: identificação (se dita), histórico/queixa, achados objetivos mencionados, condutas/orientações, e considerações pertinentes à finalidade.
+- Data: "Data: ____/____/____" (deixe em branco).
 
-Regras obrigatórias:
-- Não invente dados. Se faltar informação, use "não informado" ou deixe um campo em branco com sublinhado (ex.: "CPF: __________").
-- Não faça diagnóstico médico definitivo. Descreva achados objetivos, queixa referida e condutas/orientações de enfermagem.
-- Use linguagem clara, objetiva e formal.
-- Evite abreviações sem definição.
-- Não use listas com bullets. Se precisar numerar, use "1.", "2.", cada item em uma nova linha.
-
-Estrutura (usar conforme o tipo):
-- Primeira linha: TÍTULO EM CAIXA ALTA (igual ao tipo escolhido).
-- Bloco de identificação (campos em linhas separadas):
-  Unidade/Serviço: __________
-  Município/UF: __________
-  Paciente: __________
-  CPF: __________
-  Cartão SUS (CNS): __________
-  Data de nascimento/Idade: __________
-  Endereço: __________
-  Telefone: __________
-- Campo "Finalidade/Destino:" (se não estiver explícito, "não informado").
-- Corpo do documento em parágrafos curtos, conforme o tipo:
-  - Declarações: motivo do atendimento e data/horário (se ausentes, deixar "____/____/____" e "____:____"), e observações pertinentes.
-  - Relatório de curativo seriado: diagnóstico de enfermagem/descrição da ferida (sem diagnóstico médico), local, aspecto, medidas (apenas se citadas), materiais utilizados, conduta e plano; incluir um quadro em texto para evolução seriada se a transcrição não trouxer todas as datas/medidas.
-  - Relatórios de adesão/educação: medidas aferidas (se citadas), adesão, barreiras, orientações fornecidas, metas pactuadas e retorno.
-  - Relatórios para escola/assistência social: limitações funcionais e necessidades, evidências mencionadas, recomendações e insumos necessários (somente os citados).
-  - Saúde mental (CAPS): acolhimento, adesão, acompanhamento, sinais de alerta e encaminhamentos/fluxo acordado.
-  - Encaminhamentos: serviço de destino, motivo do encaminhamento, resumo objetivo do caso, classificação de risco/sinais de alerta e orientações.
-  - Solicitações: item solicitado, justificativa técnica e quantidade/periodicidade (se citadas).
-  - Ata de reunião: data, pauta, participantes (se citados), deliberações, responsabilidades e prazos (se citados).
-  - Registro de procedimento: data/hora (se ausentes, campo em branco), indicação, técnica resumida, materiais, tolerância, intercorrências, orientações e registro de comunicação ao paciente.
-- Rodapé:
-  Data: ____/____/____
-  Profissional de Enfermagem: __________________________
-  COREN: __________________________
-  Assinatura/Carimbo: __________________________
-
-Saída: JSON estrito, sem texto fora do JSON:
-{
-  "tipo_documento": "...",
-  "finalidade": "...",
-  "campos_pendentes": ["..."],
-  "documento": "..."
-}
-
-Campo "tipo_documento" informado no request (pode ser nulo):
-${tipoSelecionado ? JSON.stringify(tipoSelecionado) : "null"}
+Formato de saída: JSON estrito:
+{ "relatorio": "..." }
 
 Transcrição:
 """${safeTranscricao}"""
 `;
 
     const data = await callOpenAIJson(prompt);
-
-    const tipo = (typeof data?.tipo_documento === "string" ? data.tipo_documento.trim() : "") || (tipoSelecionado || "");
-    const finalidade = typeof data?.finalidade === "string" ? data.finalidade.trim() : "";
-    const camposPendentes = normalizeArrayOfStrings(data?.campos_pendentes, 40, 140);
-    const documento = typeof data?.documento === "string" ? data.documento.trim() : "";
-
-    return res.json({
-      tipo_documento: tipo,
-      finalidade,
-      campos_pendentes: camposPendentes,
-      documento
-    });
+    const relatorio = typeof data?.relatorio === "string" ? data.relatorio.trim() : "";
+    return res.json({ relatorio });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar documento." });
+    return res.status(500).json({ error: "Falha interna ao gerar relatório." });
   }
 });
 

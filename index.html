@@ -912,220 +912,408 @@
     }
 
   
-    .topbar {
-      width: 100%;
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      background: #ffffff;
-      padding: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      display: flex;
-      justify-content: space-between;
+    /* =========================
+       Autenticação + Admin
+       ========================= */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(245,245,245,0.98);
+      display: none;
       align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
+      justify-content: center;
+      z-index: 99999;
+      padding: 16px;
     }
-    .topbar-line {
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      padding: 18px;
+      border: 1px solid #e7e7e7;
+    }
+    .login-card h2 {
+      margin: 0 0 10px 0;
+      font-size: 18px;
+      color: #1f2937;
+    }
+    .login-field {
+      margin-top: 10px;
+    }
+    .login-field label {
+      display: block;
+      font-size: 12px;
+      color: #374151;
+      margin-bottom: 4px;
+    }
+    .login-field input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+    }
+    .login-actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .login-btn {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      background: #111827;
+      color: #fff;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .login-error {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #b91c1c;
+      min-height: 18px;
+    }
+    .login-contact {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #374151;
+      display: flex;
+      justify-content: center;
+    }
+    .login-contact a {
+      text-decoration: none;
+      font-weight: bold;
+      color: #075e54;
+    }
+
+    .user-bar {
+      margin: 12px auto 0 auto;
+      max-width: 980px;
+      width: 100%;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e7e7e7;
+      border-radius: 12px;
+      padding: 10px 12px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    }
+    .user-bar .user-meta {
       font-size: 13px;
       color: #111827;
       line-height: 1.35;
     }
-    .topbar-label {
-      font-weight: 700;
-      color: #0c5460;
+    .user-bar .user-meta .muted {
+      color: #6b7280;
+      font-size: 12px;
     }
-    .topbar-actions {
+    .user-bar .user-actions {
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+      gap: 10px;
       align-items: center;
     }
-    .topbar-actions button {
-      padding: 8px 14px;
-      border-radius: 12px;
+    .btn-logout {
+      padding: 8px 10px;
+      border-radius: 10px;
       border: 1px solid #d1d5db;
-      background: #f9fafb;
+      background: #fff;
       cursor: pointer;
-      font-weight: 700;
-      font-size: 13px;
+      font-weight: bold;
     }
-    .danger-btn {
-      background: #dc3545 !important;
-      border-color: #dc3545 !important;
-      color: #fff !important;
+    .pill {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: bold;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .pill-green { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+    .pill-red { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+
+    .admin-page {
+      display: none;
+      padding: 16px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .admin-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .admin-header h1 {
+      margin: 0;
+      font-size: 20px;
+      color: #111827;
+    }
+    .admin-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 980px) {
+      .admin-grid { grid-template-columns: 420px 1fr; }
+    }
+    .admin-card {
+      background: #fff;
+      border: 1px solid #e7e7e7;
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    }
+    .admin-card h3 {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+      color: #111827;
+    }
+    .admin-form-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .admin-form-row input, .admin-form-row select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+    }
+    .admin-btn {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      background: #111827;
+      color: #fff;
+      width: 100%;
+    }
+    .admin-btn-secondary {
+      background: #fff;
+      color: #111827;
+      border: 1px solid #d1d5db;
     }
     .admin-table {
       width: 100%;
       border-collapse: collapse;
       font-size: 13px;
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      overflow: hidden;
     }
     .admin-table th, .admin-table td {
       border-bottom: 1px solid #e5e7eb;
-      padding: 10px 8px;
+      padding: 8px 6px;
       vertical-align: top;
       text-align: left;
-      white-space: nowrap;
     }
     .admin-table th {
-      background: #f9fafb;
-      color: #111827;
-      font-weight: 700;
       font-size: 12px;
+      color: #6b7280;
+      font-weight: bold;
     }
-    .admin-table td .mini-btn {
+    .pay-btn {
       padding: 6px 10px;
       border-radius: 10px;
-      border: 1px solid #d1d5db;
-      background: #ffffff;
+      border: 1px solid transparent;
+      font-weight: bold;
       cursor: pointer;
       font-size: 12px;
-      font-weight: 700;
-      margin-right: 6px;
-      margin-bottom: 6px;
-      display: inline-block;
     }
-    .status-chip {
-      display: inline-block;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-weight: 800;
+    .pay-green { background: #10b981; color: #fff; }
+    .pay-red { background: #ef4444; color: #fff; }
+    .mini-link {
+      cursor: pointer;
+      color: #111827;
+      text-decoration: underline;
+      font-weight: bold;
       font-size: 12px;
-      color: #fff;
-      border: none;
-      cursor: default;
     }
-    .status-green { background: #28a745; }
-    .status-red { background: #dc3545; }
-    .status-gray { background: #6c757d; }
-    .month-input {
-      padding: 6px 8px;
+    .admin-muted {
+      color: #6b7280;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+    .admin-top-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin: 10px 0 12px 0;
+      flex-wrap: wrap;
+    }
+    .admin-top-controls input {
+      padding: 9px 10px;
       border-radius: 10px;
       border: 1px solid #d1d5db;
-      font-size: 12px;
-      margin-right: 6px;
+      min-width: 240px;
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100000;
+      padding: 16px;
+    }
+    .modal-card {
+      width: 100%;
+      max-width: 620px;
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid #e7e7e7;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+      padding: 14px;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .modal-header h3 {
+      margin: 0;
+      font-size: 16px;
+      color: #111827;
+    }
+    .modal-close {
+      border: 1px solid #d1d5db;
+      background: #fff;
+      border-radius: 10px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-weight: bold;
     }
 
   </style>
 </head>
 <body>
 
-  <div id="authOverlay" class="modal-overlay">
-    <div class="modal">
-      <h3>Acesso</h3>
-      <p>Informe login e senha para continuar.</p>
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+      <h2>Acesso</h2>
 
-      <div class="inline-input-row" style="margin-top: 0;">
-        <select id="authRoleSelect" class="text-input" style="min-width: 160px; flex: 0 0 160px;">
-          <option value="nurse">Enfermeiro</option>
-          <option value="admin">Administrador</option>
-        </select>
-        <input id="authLoginInput" class="text-input" type="text" placeholder="Login" autocomplete="username" />
-        <input id="authPasswordInput" class="text-input" type="password" placeholder="Senha" autocomplete="current-password" />
+      <div class="login-field">
+        <label for="loginInput">Login</label>
+        <input id="loginInput" type="text" autocomplete="username" placeholder="Digite seu login" />
       </div>
 
-      <div class="modal-actions" style="margin-top: 12px;">
-        <button id="authSubmitBtn" class="primary" type="button">Entrar</button>
+      <div class="login-field">
+        <label for="passwordInput">Senha</label>
+        <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Digite sua senha" />
       </div>
 
-      <div id="authError" class="error" style="text-align:left; margin-top: 10px;"></div>
+      <div class="login-actions">
+        <button id="loginBtn" class="login-btn" type="button">Entrar</button>
+      </div>
+
+      <div id="loginError" class="login-error"></div>
+
+      <div class="login-contact">
+        <a href="https://wa.me/5575981457012?text=Ol%C3%A1%21%20Gostaria%20de%20reportar%20um%20erro%2C%20tirar%20uma%20d%C3%BAvida%20ou%20enviar%20uma%20sugest%C3%A3o." target="_blank" rel="noopener">Entrar em contato</a>
+      </div>
     </div>
   </div>
 
-  <div class="page hidden" id="adminPage">
-    <h1>Painel do Administrador</h1>
-
-    <div id="adminTopBar" class="topbar">
-      <div>
-        <div class="topbar-line"><span class="topbar-label">Usuário:</span> <span id="adminUserLabel">-</span></div>
-        <div class="topbar-line"><span class="topbar-label">Servidor:</span> <span id="adminServerTimeLabel">-</span></div>
-      </div>
-      <div class="topbar-actions">
-        <button id="adminRefreshBtn" type="button">Atualizar</button>
-        <button id="adminLogoutBtn" type="button" class="danger-btn">Sair</button>
-      </div>
+  <div id="adminPage" class="admin-page">
+    <div class="admin-header">
+      <h1>Painel do Administrador</h1>
+      <button id="adminLogoutBtn" class="btn-logout" type="button">Sair</button>
     </div>
 
-    <div class="module-card">
-      <h2>Cadastrar enfermeiro</h2>
-      <div class="inline-input-row">
-        <input id="admFullName" class="text-input" type="text" placeholder="Nome completo" autocomplete="off" />
-        <input id="admDob" class="text-input" type="date" placeholder="Data de nascimento" />
-        <input id="admPhone" class="text-input" type="tel" placeholder="Telefone" autocomplete="off" />
-      </div>
-      <div class="inline-input-row">
-        <input id="admLogin" class="text-input" type="text" placeholder="Login" autocomplete="off" />
-        <input id="admPassword" class="text-input" type="password" placeholder="Senha" autocomplete="new-password" />
-        <button id="admCreateUserBtn" type="button">Cadastrar</button>
-      </div>
-      <div id="admCreateStatus" class="mini-status"></div>
-    </div>
+    <div id="adminStats" class="admin-card" style="margin-bottom: 12px;"></div>
 
-    <div class="module-card">
-      <div class="section-header-row">
-        <h2>Usuários</h2>
-        <input id="admSearch" class="text-input" type="text" placeholder="Buscar por nome/login/telefone" style="max-width: 360px;" />
-      </div>
+    <div class="admin-grid">
+      <div class="admin-card">
+        <h3>Cadastrar enfermeiro</h3>
 
-      <div style="overflow:auto; margin-top: 10px;">
-        <table class="admin-table" id="admUsersTable">
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Login</th>
-              <th>Telefone</th>
-              <th>Nascimento</th>
-              <th>Ativo</th>
-              <th>Online</th>
-              <th>Mensalidade (mês atual)</th>
-              <th>Último login</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="admUsersBody"></tbody>
-        </table>
-      </div>
-
-      <div id="admUsersStatus" class="mini-status" style="margin-top: 8px;"></div>
-    </div>
-
-    <div class="module-card">
-      <h2>Auditoria</h2>
-      <p class="mini-status" style="margin-top: 0;">Registros internos de ações administrativas (não editável).</p>
-      <div style="overflow:auto; max-height: 260px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fafafa; padding: 10px;">
-        <div id="admAuditLog" style="font-size: 13px; white-space: pre-wrap;"></div>
-      </div>
-    </div>
-
-    <div id="paymentHistoryOverlay" class="modal-overlay hidden">
-      <div class="modal" style="max-width: 560px;">
-        <h3>Histórico de pagamento</h3>
-        <p id="paymentHistorySubtitle"></p>
-        <div style="border: 1px solid #e5e7eb; border-radius: 10px; background: #fafafa; padding: 10px; max-height: 320px; overflow:auto;">
-          <div id="paymentHistoryList" style="font-size: 13px; white-space: pre-wrap;"></div>
+        <div class="admin-form-row">
+          <input id="newFullName" type="text" placeholder="Nome completo" />
+          <input id="newDob" type="text" placeholder="Data de nascimento (DD/MM/AAAA ou AAAA-MM-DD)" />
+          <input id="newPhone" type="text" placeholder="Telefone" />
+          <input id="newLogin" type="text" placeholder="Login" />
+          <input id="newPassword" type="text" placeholder="Senha" />
         </div>
-        <div class="modal-actions" style="margin-top: 12px;">
-          <button id="closePaymentHistoryBtn" type="button">Fechar</button>
+
+        <button id="createUserBtn" class="admin-btn" type="button">Criar usuário</button>
+        <div id="createUserMsg" class="admin-muted"></div>
+
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:14px 0;" />
+
+        <h3>Auditoria</h3>
+        <button id="refreshAuditBtn" class="admin-btn admin-btn-secondary" type="button">Atualizar auditoria</button>
+        <div id="auditBox" class="admin-muted" style="margin-top:10px; max-height: 260px; overflow:auto;"></div>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-top-controls">
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <input id="userSearch" type="text" placeholder="Buscar por nome, login ou telefone" />
+            <button id="refreshUsersBtn" class="admin-btn admin-btn-secondary" type="button" style="width:auto;">Atualizar</button>
+          </div>
+          <div class="admin-muted" id="adminMonthLabel"></div>
+        </div>
+
+        <div style="overflow:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Enfermeiro</th>
+                <th>Online</th>
+                <th>Mensalidade</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="usersTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="admin-muted" style="margin-top:10px;">
+          Histórico de pagamento é permanente: o sistema não oferece edição/exclusão via painel.
         </div>
       </div>
     </div>
   </div>
 
-  <div class="page hidden" id="nursePage">
+  <div id="paymentModal" class="modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="paymentModalTitle">Pagamentos</h3>
+        <button id="paymentModalClose" class="modal-close" type="button">Fechar</button>
+      </div>
 
+      <div id="paymentModalBody"></div>
+    </div>
+  </div>
+
+  <div id="appPage" class="page" style="display:none;">
     <h1>Atendimento de Enfermagem</h1>
 
-    <div id="nurseTopBar" class="topbar hidden" style="margin-top: 6px;">
-      <div>
-        <div class="topbar-line"><span class="topbar-label">Usuário:</span> <span id="nurseUserLabel">-</span></div>
-        <div class="topbar-line"><span class="topbar-label">Mensalidade:</span> <span id="nursePaymentLabel">-</span></div>
+    <div id="userBar" class="user-bar">
+      <div class="user-meta">
+        <div id="userBarName"></div>
+        <div class="muted" id="userBarStatus"></div>
       </div>
-      <div class="topbar-actions">
-        <button id="openAdminBtn" type="button" class="hidden">Admin</button>
-        <button id="nurseLogoutBtn" type="button" class="danger-btn">Sair</button>
+      <div class="user-actions">
+        <span id="paidPill" class="pill pill-red" style="display:none;">Mensalidade em atraso</span>
+        <button id="logoutBtn" class="btn-logout" type="button">Sair</button>
       </div>
     </div>
 
@@ -1139,7 +1327,6 @@
           <button class="consult-type-btn" type="button" data-consult="puericultura">Consulta puericultura</button>
           <button class="consult-type-btn" type="button" data-consult="planejamento">Consulta planejamento familiar</button>
           <button class="consult-type-btn" type="button" data-consult="hiperdia">Consulta hiperdia</button>
-          <button class="consult-type-btn" type="button" data-consult="puerperio">Consulta puerpério</button>
         </div>
 
         <div id="consultGuideDrawer" class="consult-guide-drawer hidden">
@@ -1341,102 +1528,20 @@
       <div id="medicalDoubtAnswer" class="answer-box"></div>
     </div>
 
-                <div id="patientReportCard" class="module-card">
-      <h2>Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado de comparecimento ou permanência / ATA reunião / Registros de procedimentos</h2>
-      <p class="mini-status" style="margin-top: 0;">
-        Grave em voz alta o conteúdo do documento. Diga claramente qual documento deseja produzir (por exemplo: declaração de comparecimento, relatório de curativo seriado, encaminhamento para CAPS, solicitação de insumos, comunicado para escola, ata de reunião). Ao encerrar, a gravação será usada para identificar o tipo de documento e gerar um texto padronizado pronto para colar no S.U.I.S.
-      </p>
+        <div id="patientReportCard" class="module-card">
+      <h2>Relatórios de Enfermagem</h2>
+      <p class="mini-status" style="margin-top: 0;">Grave o conteúdo do relatório em voz alta. Pergunte ao paciente qual a finalidade do relatório e peça que ele diga claramente durante a gravação (por exemplo: INSS, CAPS/saúde mental, escola, trabalho, advogado, assistência social, aquisição de insumos). Ao encerrar, a própria gravação será usada para identificar a finalidade e gerar automaticamente o relatório de enfermagem adequado.</p>
 
       <div class="inline-input-row">
-        <label for="reportDocTypeSelect" style="font-size: 13px; color: #111827; font-weight: 600;">Tipo de documento:</label>
-        <select id="reportDocTypeSelect" class="text-input" style="min-width: 260px; max-width: 100%;">          <option value="auto" selected>Auto (identificar pela gravação)</option>
-          <option value="Declaração de comparecimento">Declaração de comparecimento</option>
-          <option value="Declaração de permanência">Declaração de permanência</option>
-          <option value="Declaração para acompanhante">Declaração para acompanhante</option>
-          <option value="Declaração de recebimento de orientações">Declaração de recebimento de orientações</option>
-          <option value="Declaração de recusa de procedimento/conduta">Declaração de recusa de procedimento/conduta</option>
-          <option value="Termo de consentimento informado (procedimento de enfermagem)">Termo de consentimento informado (procedimento de enfermagem)</option>
-          <option value="Termo de ciência e responsabilidade (orientações e riscos)">Termo de ciência e responsabilidade (orientações e riscos)</option>
-          <option value="Comunicado para escola">Comunicado para escola</option>
-          <option value="Relatório para escola (necessidades específicas)">Relatório para escola (necessidades específicas)</option>
-          <option value="Comunicado ao Conselho Tutelar">Comunicado ao Conselho Tutelar</option>
-          <option value="Relatório para Conselho Tutelar (proteção à criança/adolescente)">Relatório para Conselho Tutelar (proteção à criança/adolescente)</option>
-          <option value="Relatório de curativo seriado">Relatório de curativo seriado</option>
-          <option value="Registro de procedimento de curativo">Registro de procedimento de curativo</option>
-          <option value="Registro de retirada de pontos/suturas">Registro de retirada de pontos/suturas</option>
-          <option value="Registro de procedimento de vacinação">Registro de procedimento de vacinação</option>
-          <option value="Registro de evento adverso pós-vacinação (EAPV)">Registro de evento adverso pós-vacinação (EAPV)</option>
-          <option value="Registro de procedimento de administração de medicamentos">Registro de procedimento de administração de medicamentos</option>
-          <option value="Registro de administração de medicamento controlado (registro interno)">Registro de administração de medicamento controlado (registro interno)</option>
-          <option value="Registro de coleta de exames">Registro de coleta de exames</option>
-          <option value="Registro de nebulização/oxigenoterapia">Registro de nebulização/oxigenoterapia</option>
-          <option value="Registro de sondagem vesical">Registro de sondagem vesical</option>
-          <option value="Registro de troca de sonda/traqueostomia/gastrostomia">Registro de troca de sonda/traqueostomia/gastrostomia</option>
-          <option value="Registro de visita domiciliar">Registro de visita domiciliar</option>
-          <option value="Relatório de visita domiciliar">Relatório de visita domiciliar</option>
-          <option value="Relatório de adesão e educação em saúde (HAS/DM)">Relatório de adesão e educação em saúde (HAS/DM)</option>
-          <option value="Relatório de acompanhamento de hipertensão (HAS)">Relatório de acompanhamento de hipertensão (HAS)</option>
-          <option value="Relatório de acompanhamento de diabetes (DM)">Relatório de acompanhamento de diabetes (DM)</option>
-          <option value="Relatório de acompanhamento de asma/DPOC">Relatório de acompanhamento de asma/DPOC</option>
-          <option value="Relatório de acompanhamento de saúde da criança (puericultura)">Relatório de acompanhamento de saúde da criança (puericultura)</option>
-          <option value="Relatório de acompanhamento de pré-natal (enfermagem)">Relatório de acompanhamento de pré-natal (enfermagem)</option>
-          <option value="Relatório de puerpério (enfermagem)">Relatório de puerpério (enfermagem)</option>
-          <option value="Relatório para assistência social (vulnerabilidade e insumos)">Relatório para assistência social (vulnerabilidade e insumos)</option>
-          <option value="Solicitação de insumos (fraldas, curativos, suplementos)">Solicitação de insumos (fraldas, curativos, suplementos)</option>
-          <option value="Solicitação de fraldas (infantil/geriátrica)">Solicitação de fraldas (infantil/geriátrica)</option>
-          <option value="Solicitação de materiais para ostomia">Solicitação de materiais para ostomia</option>
-          <option value="Solicitação de dieta enteral/suplementação">Solicitação de dieta enteral/suplementação</option>
-          <option value="Solicitação de oxigenoterapia domiciliar">Solicitação de oxigenoterapia domiciliar</option>
-          <option value="Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)">Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)</option>
-          <option value="Solicitação de transporte sanitário">Solicitação de transporte sanitário</option>
-          <option value="Solicitação de avaliação médica">Solicitação de avaliação médica</option>
-          <option value="Encaminhamento para Médico (demanda espontânea)">Encaminhamento para Médico (demanda espontânea)</option>
-          <option value="Encaminhamento para sala de vacina">Encaminhamento para sala de vacina</option>
-          <option value="Encaminhamento para curativos/ambulatório de feridas">Encaminhamento para curativos/ambulatório de feridas</option>
-          <option value="Encaminhamento para CAPS / saúde mental">Encaminhamento para CAPS / saúde mental</option>
-          <option value="Relatório para CAPS / saúde mental (enfermagem)">Relatório para CAPS / saúde mental (enfermagem)</option>
-          <option value="Encaminhamento para Serviço Social">Encaminhamento para Serviço Social</option>
-          <option value="Encaminhamento para Psicologia">Encaminhamento para Psicologia</option>
-          <option value="Encaminhamento para Nutrição">Encaminhamento para Nutrição</option>
-          <option value="Encaminhamento para Fisioterapia">Encaminhamento para Fisioterapia</option>
-          <option value="Encaminhamento para Fonoaudiologia">Encaminhamento para Fonoaudiologia</option>
-          <option value="Encaminhamento para Odontologia">Encaminhamento para Odontologia</option>
-          <option value="Encaminhamento para especialista / rede">Encaminhamento para especialista / rede</option>
-          <option value="Encaminhamento para urgência/emergência">Encaminhamento para urgência/emergência</option>
-          <option value="Relatório de evolução de enfermagem">Relatório de evolução de enfermagem</option>
-          <option value="Relatório de intercorrência/ocorrência">Relatório de intercorrência/ocorrência</option>
-          <option value="Ata de reunião">Ata de reunião</option>
-          <option value="Registro de reunião de equipe (ATA breve)">Registro de reunião de equipe (ATA breve)</option>
-          <option value="Comunicado interno da equipe">Comunicado interno da equipe</option>
-          <option value="Outros">Outros</option>
-</select>
-      </div>
-
-      <div class="inline-input-row">
-        <button id="reportRecordBtn" class="small-record-btn start">Gravar documento</button>
-        <button id="copyReportBtn" class="btn-copy" type="button">Copiar documento</button>
-        <button id="printReportBtn" class="btn-print" type="button">Imprimir documento</button>
+        <button id="reportRecordBtn" class="small-record-btn start">Gravar relatório</button>
       </div>
 
       <div id="reportStatus" class="mini-status"></div>
 
-      <div class="inline-input-row" style="margin-top: 6px;">
-        <div style="flex: 1; min-width: 240px;">
-          <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Tipo identificado</div>
-          <div id="reportDocTypeDetected" class="answer-box" style="min-height: 44px;"></div>
-        </div>
-        <div style="flex: 1; min-width: 240px;">
-          <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Campos pendentes</div>
-          <div id="reportMissingFields" class="answer-box" style="min-height: 44px;"></div>
-        </div>
-      </div>
-
-      <textarea id="reportOutput" class="prescription-textarea" placeholder="O documento gerado aparecerá aqui." style="margin-top: 12px;"></textarea>
+      <textarea id="reportOutput" class="prescription-textarea" placeholder="O relatório gerado aparecerá aqui." style="margin-top: 12px;"></textarea>
     </div>
 
   </div>
-
-  <div id="nurseOverlays" class="hidden">
 
   <div id="recommendationsPanel" class="recommendations-panel">
     <div class="recommendations-header">
@@ -1468,598 +1573,9 @@
     </div>
   </div>
 
-  </div>
-
 
   <script>
     const BACKEND_URL = "https://consulta-enfermagem-1.onrender.com"; // usa /api (Netlify redirect) ou mesma origem no Render
-
-    const AUTH_STORAGE_KEY = "qeimadas_enfermagem_auth_v1";
-    let authState = { token: "", role: "", user: null };
-
-    function nowIso() {
-      return new Date().toISOString();
-    }
-
-    function getCurrentMonthKey() {
-      const d = new Date();
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      return `${y}-${m}`;
-    }
-
-    function saveAuth() {
-      try {
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authState));
-      } catch (_) {}
-    }
-
-    function loadAuth() {
-      try {
-        const raw = localStorage.getItem(AUTH_STORAGE_KEY) || "";
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed.token === "string") return parsed;
-        return null;
-      } catch (_) {
-        return null;
-      }
-    }
-
-    function clearAuth() {
-      authState = { token: "", role: "", user: null };
-      try {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-      } catch (_) {}
-    }
-
-    function setAuth(token, role, user) {
-      authState = { token: String(token || ""), role: String(role || ""), user: user || null };
-      saveAuth();
-    }
-
-    async function apiFetch(path, options) {
-      const opts = options || {};
-      const headers = Object.assign({}, opts.headers || {});
-      if (authState.token) {
-        headers["Authorization"] = "Bearer " + authState.token;
-      }
-      if (!headers["Content-Type"] && opts.method && String(opts.method).toUpperCase() !== "GET") {
-        headers["Content-Type"] = "application/json";
-      }
-
-      const resp = await fetch(BACKEND_URL + path, Object.assign({}, opts, { headers }));
-
-      if (resp.status === 401) {
-        await safeLogoutLocal();
-        throw new Error("Sessão expirada. Faça login novamente.");
-      }
-
-      if (resp.status === 402) {
-        // mensalidade em atraso
-        const txt = await resp.text().catch(() => "");
-        const msg = txt && txt.length < 300 ? txt : "Mensalidade em atraso. Contate o administrador.";
-        throw new Error(msg);
-      }
-
-      return resp;
-    }
-
-    const authOverlay = document.getElementById("authOverlay");
-    const authRoleSelect = document.getElementById("authRoleSelect");
-    const authLoginInput = document.getElementById("authLoginInput");
-    const authPasswordInput = document.getElementById("authPasswordInput");
-    const authSubmitBtn = document.getElementById("authSubmitBtn");
-    const authError = document.getElementById("authError");
-
-    const nursePage = document.getElementById("nursePage");
-    const nurseOverlays = document.getElementById("nurseOverlays");
-    const nurseTopBar = document.getElementById("nurseTopBar");
-    const nurseUserLabel = document.getElementById("nurseUserLabel");
-    const nursePaymentLabel = document.getElementById("nursePaymentLabel");
-    const nurseLogoutBtn = document.getElementById("nurseLogoutBtn");
-    const openAdminBtn = document.getElementById("openAdminBtn");
-
-    const whatsappFab = document.querySelector(".whatsapp-fab");
-    const whatsappFabLabel = document.querySelector(".whatsapp-fab-label");
-
-    const adminPage = document.getElementById("adminPage");
-    const adminUserLabel = document.getElementById("adminUserLabel");
-    const adminServerTimeLabel = document.getElementById("adminServerTimeLabel");
-    const adminLogoutBtn = document.getElementById("adminLogoutBtn");
-    const adminRefreshBtn = document.getElementById("adminRefreshBtn");
-
-    async function safeLogoutLocal() {
-      clearAuth();
-      showAuthOverlay();
-      showNurseUI(false);
-      showAdminUI(false);
-    }
-
-    function showAuthOverlay() {
-      authError.textContent = "";
-      authPasswordInput.value = "";
-      authOverlay.classList.remove("hidden");
-    }
-
-    function hideAuthOverlay() {
-      authOverlay.classList.add("hidden");
-    }
-
-    function showNurseUI(show) {
-      if (show) {
-        nursePage.classList.remove("hidden");
-        nurseOverlays?.classList.remove("hidden");
-        nurseTopBar?.classList.remove("hidden");
-        if (whatsappFab) whatsappFab.style.display = "";
-        if (whatsappFabLabel) whatsappFabLabel.style.display = "";
-      } else {
-        nursePage.classList.add("hidden");
-        nurseOverlays?.classList.add("hidden");
-        nurseTopBar?.classList.add("hidden");
-        if (whatsappFab) whatsappFab.style.display = "none";
-        if (whatsappFabLabel) whatsappFabLabel.style.display = "none";
-      }
-    }
-
-    function showAdminUI(show) {
-      if (show) {
-        adminPage.classList.remove("hidden");
-      } else {
-        adminPage.classList.add("hidden");
-      }
-    }
-
-    async function login(role, login, senha) {
-      const payload = { role, login, senha };
-      const resp = await apiFetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}));
-        const msg = data && data.error ? data.error : "Falha ao autenticar.";
-        throw new Error(msg);
-      }
-
-      const data = await resp.json();
-      if (!data || !data.token) throw new Error("Resposta inválida do servidor.");
-      setAuth(data.token, data.role, data.user || null);
-      return data;
-    }
-
-    async function fetchMe() {
-      const resp = await apiFetch("/api/auth/me", { method: "GET" });
-      const data = await resp.json().catch(() => ({}));
-      return data;
-    }
-
-    let nurseHeartbeatTimer = null;
-
-    async function startNurseHeartbeat() {
-      if (nurseHeartbeatTimer) clearInterval(nurseHeartbeatTimer);
-      nurseHeartbeatTimer = setInterval(async () => {
-        try {
-          const resp = await apiFetch("/api/ping", { method: "POST" });
-          const data = await resp.json().catch(() => ({}));
-          if (nursePaymentLabel && data && typeof data.paid_current_month === "boolean") {
-            nursePaymentLabel.textContent = data.paid_current_month ? "Em dia" : "Em atraso";
-          }
-        } catch (_) {}
-      }, 30000);
-    }
-
-    async function doLogout() {
-      try {
-        await apiFetch("/api/auth/logout", { method: "POST" });
-      } catch (_) {}
-      await safeLogoutLocal();
-    }
-
-    function formatNumberedPlan(text) {
-      const raw = String(text || "").trim();
-      if (!raw) return "";
-      // normaliza quebras e garante que cada item numerado comece em nova linha
-      let s = raw.replace(/\r\n/g, "\n");
-      // Insere \n antes de números que aparecem "colados" no texto.
-      s = s.replace(/([^\n])\s*(\d{1,3})\s*[\.\)]\s+/g, "$1\n$2. ");
-      // Normaliza itens já numerados
-      s = s.replace(/^\s*(\d{1,3})\s*\)\s*/gm, "$1. ");
-      // Remove múltiplas linhas vazias excessivas
-      s = s.replace(/\n{3,}/g, "\n\n");
-      return s.trim();
-    }
-
-    function escapeText(s) {
-      return String(s || "").replace(/[&<>"]/g, (ch) => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        "\"": "&quot;"
-      }[ch]));
-    }
-
-    function formatDateTimeLocal(iso) {
-      if (!iso) return "-";
-      try {
-        const d = new Date(iso);
-        if (!Number.isFinite(d.getTime())) return "-";
-        return d.toLocaleString("pt-BR");
-      } catch (_) {
-        return "-";
-      }
-    }
-
-    function toMonthValue(monthKey) {
-      // monthKey: YYYY-MM
-      return String(monthKey || "");
-    }
-
-    // ============================
-    // ADMIN: handlers
-    // ============================
-    const admFullName = document.getElementById("admFullName");
-    const admDob = document.getElementById("admDob");
-    const admPhone = document.getElementById("admPhone");
-    const admLogin = document.getElementById("admLogin");
-    const admPassword = document.getElementById("admPassword");
-    const admCreateUserBtn = document.getElementById("admCreateUserBtn");
-    const admCreateStatus = document.getElementById("admCreateStatus");
-    const admSearch = document.getElementById("admSearch");
-    const admUsersBody = document.getElementById("admUsersBody");
-    const admUsersStatus = document.getElementById("admUsersStatus");
-    const admAuditLog = document.getElementById("admAuditLog");
-
-    const paymentHistoryOverlay = document.getElementById("paymentHistoryOverlay");
-    const paymentHistorySubtitle = document.getElementById("paymentHistorySubtitle");
-    const paymentHistoryList = document.getElementById("paymentHistoryList");
-    const closePaymentHistoryBtn = document.getElementById("closePaymentHistoryBtn");
-
-    let adminUsersCache = [];
-    let adminAuditCache = [];
-
-    function openPaymentHistoryModal(user, payments) {
-      paymentHistorySubtitle.textContent = `${user.nome_completo || "-"} (${user.login || "-"})`;
-      const lines = [];
-      const list = Array.isArray(payments) ? payments : [];
-      if (!list.length) {
-        lines.push("Nenhum pagamento registrado.");
-      } else {
-        for (const p of list) {
-          lines.push(`Mês: ${p.month || "-"} | Pago em: ${formatDateTimeLocal(p.paid_at)} | Registrado por: ${p.paid_by || "-"}`);
-        }
-      }
-      paymentHistoryList.textContent = lines.join("\n");
-      paymentHistoryOverlay.classList.remove("hidden");
-    }
-
-    function closePaymentHistoryModal() {
-      paymentHistoryOverlay.classList.add("hidden");
-      paymentHistoryList.textContent = "";
-      paymentHistorySubtitle.textContent = "";
-    }
-
-    if (closePaymentHistoryBtn) closePaymentHistoryBtn.addEventListener("click", closePaymentHistoryModal);
-
-    function renderUsersTable() {
-      if (!admUsersBody) return;
-      const q = String(admSearch?.value || "").trim().toLowerCase();
-      const list = (adminUsersCache || []).filter(u => {
-        if (!q) return true;
-        const s = `${u.nome_completo || ""} ${u.login || ""} ${u.telefone || ""}`.toLowerCase();
-        return s.includes(q);
-      });
-
-      const monthKey = getCurrentMonthKey();
-      const rows = [];
-      for (const u of list) {
-        const onlineChip = u.is_online ? '<span class="status-chip status-green">Online</span>' : '<span class="status-chip status-gray">Offline</span>';
-        const activeTxt = u.ativo ? "Sim" : "Não";
-        const paidChip = u.paid_current_month ? '<span class="status-chip status-green">Em dia</span>' : '<span class="status-chip status-red">Em atraso</span>';
-
-        const monthInputId = `month_${u.id}`;
-        const row = `
-          <tr>
-            <td>${escapeText(u.nome_completo)}</td>
-            <td>${escapeText(u.login)}</td>
-            <td>${escapeText(u.telefone)}</td>
-            <td>${escapeText(u.data_nascimento)}</td>
-            <td>${escapeText(activeTxt)}</td>
-            <td>${onlineChip}</td>
-            <td>${paidChip}</td>
-            <td>${escapeText(formatDateTimeLocal(u.last_login))}</td>
-            <td style="white-space: normal;">
-              <input id="${monthInputId}" class="month-input" type="month" value="${escapeText(toMonthValue(monthKey))}" />
-              <button class="mini-btn" data-action="paid" data-id="${escapeText(u.id)}" data-month-input="${monthInputId}">Marcar pago</button>
-              <button class="mini-btn" data-action="history" data-id="${escapeText(u.id)}">Histórico</button>
-              <button class="mini-btn" data-action="reset" data-id="${escapeText(u.id)}">Reset senha</button>
-              <button class="mini-btn" data-action="toggle" data-id="${escapeText(u.id)}">${u.ativo ? "Desativar" : "Ativar"}</button>
-              <button class="mini-btn danger-btn" data-action="delete" data-id="${escapeText(u.id)}">Excluir</button>
-            </td>
-          </tr>
-        `;
-        rows.push(row);
-      }
-
-      admUsersBody.innerHTML = rows.join("");
-
-      // bind actions (delegation)
-      admUsersBody.querySelectorAll("button[data-action]").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          const action = btn.getAttribute("data-action");
-          const id = btn.getAttribute("data-id");
-          if (!id) return;
-
-          if (action === "paid") {
-            const inputId = btn.getAttribute("data-month-input");
-            const monthEl = inputId ? document.getElementById(inputId) : null;
-            const monthVal = monthEl ? String(monthEl.value || "").trim() : "";
-            if (!monthVal) {
-              admUsersStatus.textContent = "Selecione o mês para registrar o pagamento.";
-              return;
-            }
-            admUsersStatus.textContent = "Registrando pagamento...";
-            try {
-              const resp = await apiFetch("/api/admin/mark-paid", {
-                method: "POST",
-                body: JSON.stringify({ user_id: id, month: monthVal })
-              });
-              const data = await resp.json().catch(() => ({}));
-              admUsersStatus.textContent = data && data.ok ? "Pagamento registrado." : "Pagamento atualizado.";
-              await refreshAdminData();
-            } catch (e) {
-              admUsersStatus.textContent = String(e && e.message ? e.message : "Falha ao registrar pagamento.");
-            }
-          }
-
-          if (action === "history") {
-            admUsersStatus.textContent = "Carregando histórico...";
-            try {
-              const resp = await apiFetch(`/api/admin/payments/${encodeURIComponent(id)}`, { method: "GET" });
-              const data = await resp.json().catch(() => ({}));
-              const user = adminUsersCache.find(x => x.id === id) || {};
-              openPaymentHistoryModal(user, data.payments || []);
-              admUsersStatus.textContent = "";
-            } catch (e) {
-              admUsersStatus.textContent = "Falha ao carregar histórico de pagamento.";
-            }
-          }
-
-          if (action === "reset") {
-            const newPwd = prompt("Defina a nova senha (ou deixe em branco para gerar automaticamente):") || "";
-            admUsersStatus.textContent = "Atualizando senha...";
-            try {
-              const resp = await apiFetch("/api/admin/reset-password", {
-                method: "POST",
-                body: JSON.stringify({ user_id: id, new_password: newPwd })
-              });
-              const data = await resp.json().catch(() => ({}));
-              if (data && data.generated_password) {
-                alert("Senha gerada: " + data.generated_password);
-              }
-              admUsersStatus.textContent = "Senha atualizada.";
-              await refreshAdminData();
-            } catch (e) {
-              admUsersStatus.textContent = "Falha ao resetar senha.";
-            }
-          }
-
-          if (action === "toggle") {
-            admUsersStatus.textContent = "Atualizando status...";
-            try {
-              await apiFetch("/api/admin/toggle-active", {
-                method: "POST",
-                body: JSON.stringify({ user_id: id })
-              });
-              admUsersStatus.textContent = "Status atualizado.";
-              await refreshAdminData();
-            } catch (e) {
-              admUsersStatus.textContent = "Falha ao atualizar status.";
-            }
-          }
-
-          if (action === "delete") {
-            const ok = confirm("Confirma excluir este usuário? O histórico será preservado para auditoria.");
-            if (!ok) return;
-            admUsersStatus.textContent = "Excluindo...";
-            try {
-              await apiFetch("/api/admin/delete-user", {
-                method: "POST",
-                body: JSON.stringify({ user_id: id })
-              });
-              admUsersStatus.textContent = "Usuário excluído (desativado).";
-              await refreshAdminData();
-            } catch (e) {
-              admUsersStatus.textContent = "Falha ao excluir usuário.";
-            }
-          }
-        });
-      });
-    }
-
-    function renderAudit() {
-      if (!admAuditLog) return;
-      const lines = [];
-      const list = Array.isArray(adminAuditCache) ? adminAuditCache : [];
-      if (!list.length) {
-        admAuditLog.textContent = "Nenhuma ação registrada.";
-        return;
-      }
-      for (const a of list) {
-        lines.push(`${formatDateTimeLocal(a.ts)} | ${a.admin_login || "-"} | ${a.action || "-"} | ${a.target_login || a.target_user_id || "-"} | ${a.details || ""}`.trim());
-      }
-      admAuditLog.textContent = lines.join("\n");
-    }
-
-    async function refreshAdminData() {
-      if (authState.role !== "admin") return;
-      try {
-        const resp = await apiFetch("/api/admin/users", { method: "GET" });
-        const data = await resp.json().catch(() => ({}));
-        adminUsersCache = Array.isArray(data.users) ? data.users : [];
-        adminServerTimeLabel.textContent = data.server_time ? formatDateTimeLocal(data.server_time) : "-";
-        renderUsersTable();
-      } catch (e) {
-        admUsersStatus.textContent = String(e && e.message ? e.message : "Falha ao carregar usuários.");
-      }
-
-      try {
-        const resp = await apiFetch("/api/admin/audit", { method: "GET" });
-        const data = await resp.json().catch(() => ({}));
-        adminAuditCache = Array.isArray(data.audit) ? data.audit : [];
-        renderAudit();
-      } catch (_) {}
-    }
-
-    if (adminRefreshBtn) adminRefreshBtn.addEventListener("click", refreshAdminData);
-    if (adminLogoutBtn) adminLogoutBtn.addEventListener("click", doLogout);
-
-    if (admSearch) admSearch.addEventListener("input", renderUsersTable);
-
-    if (admCreateUserBtn) {
-      admCreateUserBtn.addEventListener("click", async () => {
-        admCreateStatus.textContent = "";
-        const payload = {
-          nome_completo: String(admFullName.value || "").trim(),
-          data_nascimento: String(admDob.value || "").trim(),
-          telefone: String(admPhone.value || "").trim(),
-          login: String(admLogin.value || "").trim(),
-          senha: String(admPassword.value || "").trim()
-        };
-
-        if (!payload.nome_completo || !payload.data_nascimento || !payload.telefone || !payload.login || !payload.senha) {
-          admCreateStatus.textContent = "Preencha todos os campos.";
-          return;
-        }
-
-        admCreateStatus.textContent = "Cadastrando...";
-        try {
-          const resp = await apiFetch("/api/admin/create-user", {
-            method: "POST",
-            body: JSON.stringify(payload)
-          });
-          const data = await resp.json().catch(() => ({}));
-          if (!resp.ok) {
-            admCreateStatus.textContent = data && data.error ? data.error : "Falha ao cadastrar.";
-            return;
-          }
-          admCreateStatus.textContent = "Usuário cadastrado.";
-          admFullName.value = "";
-          admDob.value = "";
-          admPhone.value = "";
-          admLogin.value = "";
-          admPassword.value = "";
-          await refreshAdminData();
-        } catch (e) {
-          admCreateStatus.textContent = "Falha ao cadastrar usuário.";
-        }
-      });
-    }
-
-    // ============================
-    // NURSE: top bar + logout
-    // ============================
-    if (nurseLogoutBtn) nurseLogoutBtn.addEventListener("click", doLogout);
-
-    if (openAdminBtn) {
-      openAdminBtn.addEventListener("click", () => {
-        if (authState.role === "admin") {
-          showAdminUI(true);
-          showNurseUI(false);
-          hideAuthOverlay();
-          refreshAdminData();
-        }
-      });
-    }
-
-    if (authSubmitBtn) {
-      authSubmitBtn.addEventListener("click", async () => {
-        authError.textContent = "";
-        const role = authRoleSelect.value || "nurse";
-        const loginVal = String(authLoginInput.value || "").trim();
-        const pwdVal = String(authPasswordInput.value || "").trim();
-        if (!loginVal || !pwdVal) {
-          authError.textContent = "Informe login e senha.";
-          return;
-        }
-        try {
-          await login(role, loginVal, pwdVal);
-          const me = await fetchMe();
-          if (!me || !me.ok) throw new Error("Falha ao validar sessão.");
-          hideAuthOverlay();
-
-          if (me.role === "admin") {
-            showAdminUI(true);
-            showNurseUI(false);
-            adminUserLabel.textContent = (me.user && me.user.login) ? me.user.login : "admin";
-            await refreshAdminData();
-          } else {
-            showAdminUI(false);
-            showNurseUI(true);
-            nurseUserLabel.textContent = (me.user && me.user.nome_completo) ? me.user.nome_completo : (me.user && me.user.login) ? me.user.login : "Usuário";
-            if (nursePaymentLabel && typeof me.paid_current_month === "boolean") {
-              nursePaymentLabel.textContent = me.paid_current_month ? "Em dia" : "Em atraso";
-            }
-            nurseTopBar.classList.remove("hidden");
-            await startNurseHeartbeat();
-          }
-        } catch (e) {
-          authError.textContent = String(e && e.message ? e.message : "Falha ao autenticar.");
-          clearAuth();
-        }
-      });
-
-      authPasswordInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") authSubmitBtn.click();
-      });
-      authLoginInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") authSubmitBtn.click();
-      });
-    }
-
-    async function bootstrapAuth() {
-      showNurseUI(false);
-      showAdminUI(false);
-
-      const saved = loadAuth();
-      if (!saved || !saved.token) {
-        showAuthOverlay();
-        return;
-      }
-
-      setAuth(saved.token, saved.role || "", saved.user || null);
-
-      try {
-        const me = await fetchMe();
-        if (!me || !me.ok) {
-          throw new Error("Sessão inválida.");
-        }
-        hideAuthOverlay();
-
-        if (me.role === "admin") {
-          showAdminUI(true);
-          showNurseUI(false);
-          adminUserLabel.textContent = (me.user && me.user.login) ? me.user.login : "admin";
-          await refreshAdminData();
-        } else {
-          showAdminUI(false);
-          showNurseUI(true);
-          nurseUserLabel.textContent = (me.user && me.user.nome_completo) ? me.user.nome_completo : (me.user && me.user.login) ? me.user.login : "Usuário";
-          if (nursePaymentLabel && typeof me.paid_current_month === "boolean") {
-            nursePaymentLabel.textContent = me.paid_current_month ? "Em dia" : "Em atraso";
-          }
-          nurseTopBar.classList.remove("hidden");
-          await startNurseHeartbeat();
-        }
-      } catch (_) {
-        await safeLogoutLocal();
-      }
-    }
-
-    bootstrapAuth();
-
 
     let recognition;
     let isRecording = false;
@@ -2401,7 +1917,7 @@ const recordBtn = document.getElementById("recordBtn");
       riskTriageStatus.classList.add("loading-dot");
 
       try {
-        const resp = await apiFetch("/api/classificacao-risco", {
+        const resp = await fetch(BACKEND_URL + "/api/classificacao-risco", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contexto })
@@ -2452,7 +1968,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       micStatus.classList.add("loading-dot");
 
       try {
-        const resp = await apiFetch("/api/gerar-soap", {
+        const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao: t })
@@ -2472,7 +1988,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         const prescricao = data.prescricao || "";
 
         updateSoapFromString(soap);
-        prescriptionOutput.value = normalizeNumberedParagraphs(prescricao);
+        prescriptionOutput.value = prescricao;
         printBtn.style.display = prescricao ? "inline-block" : "none";
 
         micStatus.innerText = "Atualização concluída.";
@@ -2559,7 +2075,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       patientInfoStatus.classList.add("loading-dot");
 
       try {
-        const resp = await apiFetch("/api/extrair-dados-paciente", {
+        const resp = await fetch(BACKEND_URL + "/api/extrair-dados-paciente", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao: transcricaoCurta })
@@ -2606,11 +2122,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     const reportRecordBtn = document.getElementById("reportRecordBtn");
     const reportStatus = document.getElementById("reportStatus");
     const reportOutput = document.getElementById("reportOutput");
-    const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
-    const reportDocTypeDetected = document.getElementById("reportDocTypeDetected");
-    const reportMissingFields = document.getElementById("reportMissingFields");
-    const copyReportBtn = document.getElementById("copyReportBtn");
-    const printReportBtn = document.getElementById("printReportBtn");
+
 
     let reportRecognition = null;
     let reportIsRecording = false;
@@ -2631,17 +2143,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
     }
-
-    function normalizeNumberedParagraphs(text) {
-      let t = String(text || "");
-      t = t.replace(/\r/g, "");
-      // Garante que cada item numerado comece em uma nova linha (melhora leitura no S.U.I.S.)
-      t = t.replace(/([^\n])\s+(\d+)\s*([\.)])\s+/g, "$1\n$2$3 ");
-      t = t.replace(/([^\n])\s+(\d+)\s*[-–—]\s+/g, "$1\n$2 - ");
-      t = t.replace(/\n{3,}/g, "\n\n");
-      return t.trim();
-    }
-
 
     // ============================
     // ============================
@@ -2978,7 +2479,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       renderLiveGuidance();
 
       try {
-        const resp = await apiFetch("/api/guia-tempo-real", {
+        const resp = await fetch(BACKEND_URL + "/api/guia-tempo-real", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
@@ -3145,7 +2646,7 @@ function initSpeech() {
       baseTranscript = transcricaoParaGeracao;
 
       try {
-        const resp = await apiFetch("/api/gerar-soap", {
+        const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao: transcricaoParaGeracao })
@@ -3167,7 +2668,7 @@ function initSpeech() {
 
         updateSoapFromString(soap);
 
-        prescriptionOutput.value = formatNumberedPlan(prescricao);
+        prescriptionOutput.value = prescricao;
         printBtn.style.display = prescricao ? "inline-block" : "none";
 
         micStatus.innerText = "Consulta encerrada. SOAP e prescrição gerados.";
@@ -3266,7 +2767,7 @@ function initSpeech() {
       interactionsStatus.classList.add("loading-dot");
 
       try {
-        const resp = await apiFetch("/api/interacoes-medicamentosas", {
+        const resp = await fetch(BACKEND_URL + "/api/interacoes-medicamentosas", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contexto })
@@ -3337,7 +2838,7 @@ function initSpeech() {
       presentationsMaxDoseStatus.classList.add("loading-dot");
 
       try {
-        const resp = await apiFetch("/api/apresentacoes-dosagem-maxima", {
+        const resp = await fetch(BACKEND_URL + "/api/apresentacoes-dosagem-maxima", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contexto })
@@ -3508,7 +3009,7 @@ function initSpeech() {
       const transcricaoBase = (baseTranscript || finalTranscript || "").trim();
 
       try {
-        const resp = await apiFetch("/api/atualizar-soap-perguntas", {
+        const resp = await fetch(BACKEND_URL + "/api/atualizar-soap-perguntas", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -3535,7 +3036,7 @@ function initSpeech() {
           updateSoapFromString(soap);
         }
         if (prescricao) {
-          prescriptionOutput.value = formatNumberedPlan(prescricao);
+          prescriptionOutput.value = prescricao;
           printBtn.style.display = "inline-block";
         }
 
@@ -3597,7 +3098,7 @@ function initSpeech() {
 
 
       try {
-        const resp = await apiFetch("/api/recomendacoes-anamnese", {
+        const resp = await fetch(BACKEND_URL + "/api/recomendacoes-anamnese", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -3806,7 +3307,7 @@ function initSpeech() {
       presentationsMaxDoseStatus.textContent = "Analisando imagem da lesão.";
       presentationsMaxDoseBox.textContent = "Processando.";
       try {
-        const resp = await apiFetch("/api/analisar-lesao-imagem", {
+        const resp = await fetch(BACKEND_URL + "/api/analisar-lesao-imagem", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image_data_url: dataUrl })
@@ -3827,7 +3328,7 @@ function initSpeech() {
       interactionsStatus.textContent = "Analisando prescrição.";
       interactionsBox.textContent = "Processando.";
       try {
-        const resp = await apiFetch("/api/analisar-prescricao-imagem", {
+        const resp = await fetch(BACKEND_URL + "/api/analisar-prescricao-imagem", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image_data_url: dataUrl })
@@ -3871,7 +3372,105 @@ function initSpeech() {
         return;
       }
 
-      w.document.write("<html><head><title>" + escapeHtml(title) + "</title></head><body>");
+      w.document.write("<html><head><title>" + escapeHtml(title) + "</title></head><body>
+
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+      <h2>Acesso</h2>
+
+      <div class="login-field">
+        <label for="loginInput">Login</label>
+        <input id="loginInput" type="text" autocomplete="username" placeholder="Digite seu login" />
+      </div>
+
+      <div class="login-field">
+        <label for="passwordInput">Senha</label>
+        <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Digite sua senha" />
+      </div>
+
+      <div class="login-actions">
+        <button id="loginBtn" class="login-btn" type="button">Entrar</button>
+      </div>
+
+      <div id="loginError" class="login-error"></div>
+
+      <div class="login-contact">
+        <a href="https://wa.me/5575981457012?text=Ol%C3%A1%21%20Gostaria%20de%20reportar%20um%20erro%2C%20tirar%20uma%20d%C3%BAvida%20ou%20enviar%20uma%20sugest%C3%A3o." target="_blank" rel="noopener">Entrar em contato</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="adminPage" class="admin-page">
+    <div class="admin-header">
+      <h1>Painel do Administrador</h1>
+      <button id="adminLogoutBtn" class="btn-logout" type="button">Sair</button>
+    </div>
+
+    <div id="adminStats" class="admin-card" style="margin-bottom: 12px;"></div>
+
+    <div class="admin-grid">
+      <div class="admin-card">
+        <h3>Cadastrar enfermeiro</h3>
+
+        <div class="admin-form-row">
+          <input id="newFullName" type="text" placeholder="Nome completo" />
+          <input id="newDob" type="text" placeholder="Data de nascimento (DD/MM/AAAA ou AAAA-MM-DD)" />
+          <input id="newPhone" type="text" placeholder="Telefone" />
+          <input id="newLogin" type="text" placeholder="Login" />
+          <input id="newPassword" type="text" placeholder="Senha" />
+        </div>
+
+        <button id="createUserBtn" class="admin-btn" type="button">Criar usuário</button>
+        <div id="createUserMsg" class="admin-muted"></div>
+
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:14px 0;" />
+
+        <h3>Auditoria</h3>
+        <button id="refreshAuditBtn" class="admin-btn admin-btn-secondary" type="button">Atualizar auditoria</button>
+        <div id="auditBox" class="admin-muted" style="margin-top:10px; max-height: 260px; overflow:auto;"></div>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-top-controls">
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <input id="userSearch" type="text" placeholder="Buscar por nome, login ou telefone" />
+            <button id="refreshUsersBtn" class="admin-btn admin-btn-secondary" type="button" style="width:auto;">Atualizar</button>
+          </div>
+          <div class="admin-muted" id="adminMonthLabel"></div>
+        </div>
+
+        <div style="overflow:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Enfermeiro</th>
+                <th>Online</th>
+                <th>Mensalidade</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="usersTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="admin-muted" style="margin-top:10px;">
+          Histórico de pagamento é permanente: o sistema não oferece edição/exclusão via painel.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="paymentModal" class="modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="paymentModalTitle">Pagamentos</h3>
+        <button id="paymentModalClose" class="modal-close" type="button">Fechar</button>
+      </div>
+
+      <div id="paymentModalBody"></div>
+    </div>
+  </div>
+");
       w.document.write("<pre style='font-family: Arial, sans-serif; white-space: pre-wrap;'>" +
         escapeHtml(content) +
         "</pre>");
@@ -3997,10 +3596,10 @@ function initSpeech() {
       hospitalPrescriptionStatus.classList.add("loading-dot");
 
       try {
-        const resp = await apiFetch("/api/prescricao-hospitalar", {
+        const resp = await fetch(BACKEND_URL + "/api/prescricao-hospitalar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao, tipo_documento: (reportDocTypeSelect && reportDocTypeSelect.value && reportDocTypeSelect.value !== "auto") ? reportDocTypeSelect.value : null })
+          body: JSON.stringify({ transcricao })
         });
 
         if (!resp.ok) {
@@ -4059,7 +3658,7 @@ function initSpeech() {
       classificationsStatus.classList.add("loading-dot");
 
       try {
-        const resp = await apiFetch("/api/classificar-gestacao-lactacao", {
+        const resp = await fetch(BACKEND_URL + "/api/classificar-gestacao-lactacao", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contexto })
@@ -4163,8 +3762,6 @@ function initSpeech() {
       reportStatus.textContent = "";
       reportOutput.value = "";
       reportFinalTranscript = "";
-      if (reportDocTypeDetected) reportDocTypeDetected.textContent = "";
-      if (reportMissingFields) reportMissingFields.textContent = "";
 
       if (!reportRecognition) {
         reportRecognition = initReportSpeech();
@@ -4176,7 +3773,7 @@ function initSpeech() {
 
       reportRecordBtn.className = "small-record-btn recording";
       reportRecordBtn.innerText = "Encerrar gravação";
-      reportStatus.textContent = "Gravando documento...";
+      reportStatus.textContent = "Gravando relatório...";
       reportStatus.classList.remove("loading-dot");
       reportStatus.classList.add("loading-dot");
 
@@ -4204,7 +3801,7 @@ function initSpeech() {
       stopReportStatusTimer();
 
       reportRecordBtn.className = "small-record-btn start";
-      reportRecordBtn.innerText = "Gravar documento";
+      reportRecordBtn.innerText = "Gravar relatório";
 
       const transcricao = reportFinalTranscript.trim();
       if (!transcricao) {
@@ -4213,11 +3810,11 @@ function initSpeech() {
         return;
       }
 
-      reportStatus.textContent = "Gerando documento...";
+      reportStatus.textContent = "Gerando relatório clínico...";
       reportStatus.classList.add("loading-dot");
 
       try {
-        const resp = await apiFetch("/api/gerar-relatorio", {
+        const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao })
@@ -4232,16 +3829,10 @@ function initSpeech() {
         }
 
         const data = await resp.json();
-        const documento = (data && (data.documento || data.relatorio)) ? String(data.documento || data.relatorio) : "";
-        const tipoIdentificado = (data && data.tipo_documento) ? String(data.tipo_documento) : "";
-        const pendentes = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : (Array.isArray(data?.campos_faltantes) ? data.campos_faltantes : []);
+        const relatorio = data.relatorio || "";
+        reportOutput.value = relatorio;
 
-        if (reportDocTypeDetected) reportDocTypeDetected.textContent = tipoIdentificado ? tipoIdentificado : "não informado";
-        if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "Nenhum";
-
-        reportOutput.value = normalizeNumberedParagraphs(documento);
-
-        reportStatus.textContent = documento ? "Documento gerado." : "Não foi possível gerar o documento.";
+        reportStatus.textContent = relatorio ? "Relatório gerado." : "Não foi possível gerar o relatório.";
         reportStatus.classList.remove("loading-dot");
       } catch (err) {
         console.error("Erro ao gerar relatório:", err);
@@ -4259,7 +3850,7 @@ function initSpeech() {
       medicalDoubtAnswer.textContent = "";
 
       try {
-        const resp = await apiFetch("/api/duvidas-enfermagem", {
+        const resp = await fetch(BACKEND_URL + "/api/duvidas-enfermagem", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ duvida: q })
@@ -4648,55 +4239,6 @@ function initSpeech() {
         ]
       },
 
-
-      puerperio: {
-        title: "Consulta de puerpério",
-        subtitle: "Avalie recuperação materna, amamentação, sinais de infecção e saúde mental no pós-parto.",
-        sections: [
-          {
-            title: "Perguntas essenciais",
-            items: [
-              "Data do parto e tipo de parto (vaginal/cesárea) e intercorrências no parto e pós-parto imediato.",
-              "Sangramento (lóquios): quantidade, cor e odor; presença de coágulos; piora súbita do sangramento; tontura ou fraqueza.",
-              "Dor: intensidade e localização (períneo, incisão cirúrgica, abdome, mamas); necessidade e adesão a analgésicos prescritos.",
-              "Febre ou calafrios; mal-estar; disúria; corrimento vaginal com odor fétido.",
-              "Amamentação: pega e posição, dor/fissuras, ingurgitamento, mastite (dor localizada, rubor, febre), frequência das mamadas, dificuldades para ordenhar/armazenar.",
-              "Eliminações: diurese e evacuação (constipação), dor ao evacuar, hemorroidas.",
-              "Sono e suporte familiar; alimentação e hidratação; retorno às atividades e rede de apoio.",
-              "Saúde mental: humor, ansiedade, irritabilidade, choro frequente, anedonia; ideias de autoagressão; percepção de vínculo com o bebê.",
-              "Planejamento reprodutivo: desejo contraceptivo, método em uso, dúvidas; retorno da atividade sexual e orientações de prevenção de IST.",
-              "Vacinas e consultas de seguimento; exames ou orientações dadas na alta."
-            ]
-          },
-          {
-            title: "Procedimentos e exame físico",
-            items: [
-              "Aferir sinais vitais; avaliar palidez, hidratação e sinais de gravidade.",
-              "Avaliar útero e involução uterina quando aplicável (dor importante, sensibilidade, subinvolução suspeita).",
-              "Avaliar ferida operatória (cesárea) ou períneo/episiotomia quando indicado: hiperemia, secreção, deiscência, dor desproporcional.",
-              "Avaliar mamas: ingurgitamento, fissuras, áreas de rubor/calor/dor; orientar ordenha, pega correta e manejo de fissuras.",
-              "Orientar sinais de alarme e encaminhar/acionar serviço de urgência quando: sangramento intenso, febre, odor fétido importante, dor intensa, sinais de trombose (dor/inchaço em perna), dispneia ou dor torácica.",
-              "Reforçar cuidados gerais: higiene perineal, hidratação, alimentação, repouso possível, retorno programado e quando procurar a unidade.",
-              "Registrar orientações e, se necessário, encaminhar para avaliação médica, serviço social ou saúde mental conforme achados."
-            ]
-          }
-        ]
-      },
-          {
-            title: "Procedimentos e exame físico",
-            items: [
-              "Aferir sinais vitais (pressão arterial, frequência cardíaca, temperatura) e avaliar sinais de gravidade.",
-              "Avaliar involução uterina e sensibilidade abdominal quando aplicável; orientar procurar avaliação médica se dor intensa, útero muito doloroso, febre ou secreção fétida.",
-              "Inspeção de mamas: ingurgitamento, fissuras, sinais de mastite (dor localizada, calor, rubor, febre) e orientar manejo inicial e quando encaminhar.",
-              "Avaliar ferida operatória ou períneo: hiperemia, secreção, abertura de pontos, dor desproporcional; orientar higiene e sinais de infecção.",
-              "Avaliar edema, cefaleia intensa, escotomas, dor epigástrica e dispneia como sinais de alerta (especialmente em puérperas com história de hipertensão).",
-              "Educação em saúde: amamentação (pega/posição, livre demanda), autocuidado, hidratação, alimentação, repouso e retorno.",
-              "Sinais de alarme e encaminhamento: febre, lóquios com mau cheiro, sangramento intenso ou com coágulos, dor forte, falta de ar, dor torácica, cefaleia intensa/visão turva, tristeza intensa ou ideação suicida/autoagressão."
-            ]
-          }
-        ]
-      },
-
       prenatal: {
         title: "Consulta pré-natal",
         subtitle: "Escolha o trimestre para ver perguntas e procedimentos em ordem.",
@@ -4881,24 +4423,651 @@ function initSpeech() {
       }
     });
   
-    if (copyReportBtn) {
-      copyReportBtn.addEventListener("click", () => {
-        const text = (reportOutput && reportOutput.value) ? reportOutput.value.trim() : "";
-        if (!text) {
-          reportStatus.textContent = "Não há conteúdo para copiar.";
-          return;
+/* =========================
+   Autenticação (login único)
+   ========================= */
+(function () {
+  const TOKEN_KEY = "suist_enf_token_v1";
+  const ROLE_KEY = "suist_enf_role_v1";
+
+  function $(id) { return document.getElementById(id); }
+
+  const loginOverlay = $("loginOverlay");
+  const appPage = $("appPage");
+  const adminPage = $("adminPage");
+  const loginInput = $("loginInput");
+  const passwordInput = $("passwordInput");
+  const loginBtn = $("loginBtn");
+  const loginError = $("loginError");
+
+  const userBar = $("userBar");
+  const userBarName = $("userBarName");
+  const userBarStatus = $("userBarStatus");
+  const paidPill = $("paidPill");
+  const logoutBtn = $("logoutBtn");
+
+  const adminLogoutBtn = $("adminLogoutBtn");
+  const adminStats = $("adminStats");
+  const adminMonthLabel = $("adminMonthLabel");
+  const userSearch = $("userSearch");
+  const refreshUsersBtn = $("refreshUsersBtn");
+  const usersTbody = $("usersTbody");
+
+  const createUserBtn = $("createUserBtn");
+  const createUserMsg = $("createUserMsg");
+  const newFullName = $("newFullName");
+  const newDob = $("newDob");
+  const newPhone = $("newPhone");
+  const newLogin = $("newLogin");
+  const newPassword = $("newPassword");
+
+  const refreshAuditBtn = $("refreshAuditBtn");
+  const auditBox = $("auditBox");
+
+  const paymentModal = $("paymentModal");
+  const paymentModalTitle = $("paymentModalTitle");
+  const paymentModalBody = $("paymentModalBody");
+  const paymentModalClose = $("paymentModalClose");
+
+  let AUTH = {
+    token: null,
+    role: null, // "admin" | "nurse"
+    user: null
+  };
+
+  // Monkey-patch fetch: adiciona Authorization automaticamente em chamadas /api (exceto /api/auth)
+  (function patchFetch() {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async function (input, init) {
+      try {
+        const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
+        const isApi = (typeof url === "string") && url.startsWith(BACKEND_URL + "/api/");
+        const isAuth = (typeof url === "string") && url.startsWith(BACKEND_URL + "/api/auth/");
+        if (isApi && !isAuth && AUTH.token) {
+          init = init || {};
+          const headers = init.headers || {};
+          if (headers instanceof Headers) {
+            headers.set("Authorization", "Bearer " + AUTH.token);
+            init.headers = headers;
+          } else {
+            init.headers = Object.assign({}, headers, { Authorization: "Bearer " + AUTH.token });
+          }
         }
-        copyToClipboard(text);
-        reportStatus.textContent = "Documento copiado.";
-      });
+      } catch (_) {}
+
+      const resp = await originalFetch(input, init);
+
+      if (resp && (resp.status === 401 || resp.status === 403)) {
+        // Sessão inválida ou acesso negado
+        // Mantém a tela atual se for admin em ações específicas, mas na dúvida volta ao login
+        if (!String(resp.url || "").includes("/api/auth/")) {
+          doLogout(true);
+        }
+      }
+
+      if (resp && resp.status === 402) {
+        // Mensalidade em atraso
+        try {
+          const txt = await resp.clone().text();
+          console.warn("Acesso bloqueado por mensalidade:", txt);
+        } catch (_) {}
+      }
+
+      return resp;
+    };
+  })();
+
+  function setAuth(token, role, user) {
+    AUTH.token = token || null;
+    AUTH.role = role || null;
+    AUTH.user = user || null;
+    window.__AUTH_TOKEN = AUTH.token || null;
+
+    if (AUTH.token) {
+      localStorage.setItem(TOKEN_KEY, AUTH.token);
+      localStorage.setItem(ROLE_KEY, AUTH.role || "");
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(ROLE_KEY);
+    }
+  }
+
+  function showLogin() {
+    if (adminPage) adminPage.style.display = "none";
+    if (appPage) appPage.style.display = "none";
+    if (userBar) userBar.style.display = "none";
+    if (loginOverlay) loginOverlay.style.display = "flex";
+    if (loginInput) loginInput.value = "";
+    if (passwordInput) passwordInput.value = "";
+    if (loginError) loginError.textContent = "";
+  }
+
+  function showNurseApp() {
+    if (adminPage) adminPage.style.display = "none";
+    if (loginOverlay) loginOverlay.style.display = "none";
+    if (appPage) appPage.style.display = "block";
+    if (userBar) userBar.style.display = "flex";
+
+    const name = (AUTH.user && AUTH.user.fullName) ? AUTH.user.fullName : "Usuário";
+    const login = (AUTH.user && AUTH.user.login) ? AUTH.user.login : "";
+    userBarName.textContent = name;
+    userBarStatus.textContent = login ? ("Login: " + login) : "";
+
+    const paid = !!(AUTH.user && AUTH.user.paidCurrentMonth);
+    if (paid) {
+      paidPill.classList.remove("pill-red");
+      paidPill.classList.add("pill-green");
+      paidPill.textContent = "Mensalidade em dia";
+      paidPill.style.display = "inline-block";
+    } else {
+      paidPill.classList.remove("pill-green");
+      paidPill.classList.add("pill-red");
+      paidPill.textContent = "Mensalidade em atraso";
+      paidPill.style.display = "inline-block";
+    }
+  }
+
+  function showAdmin() {
+    if (appPage) appPage.style.display = "none";
+    if (userBar) userBar.style.display = "none";
+    if (loginOverlay) loginOverlay.style.display = "none";
+    if (adminPage) adminPage.style.display = "block";
+  }
+
+  async function doLogin() {
+    if (!loginInput || !passwordInput) return;
+    const login = String(loginInput.value || "").trim();
+    const password = String(passwordInput.value || "");
+
+    loginError.textContent = "";
+
+    if (!login || !password) {
+      loginError.textContent = "Informe login e senha.";
+      return;
     }
 
-    if (printReportBtn) {
-      printReportBtn.addEventListener("click", () => {
-        const text = (reportOutput && reportOutput.value) ? reportOutput.value.trim() : "";
-        openPrintWindow("Documento de enfermagem", text);
+    loginBtn.disabled = true;
+    loginBtn.textContent = "Entrando...";
+
+    try {
+      const resp = await fetch(BACKEND_URL + "/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login, password })
       });
+
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        loginError.textContent = data && data.error ? data.error : "Falha no login.";
+        return;
+      }
+
+      setAuth(data.token, data.role, data.user);
+
+      if (data.role === "admin") {
+        showAdmin();
+        await loadAdminAll();
+      } else {
+        showNurseApp();
+      }
+
+      startHeartbeat();
+    } catch (e) {
+      console.error(e);
+      loginError.textContent = "Erro de conexão.";
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.textContent = "Entrar";
     }
+  }
+
+  async function doLogout(silent) {
+    try {
+      if (AUTH.token) {
+        await fetch(BACKEND_URL + "/api/auth/logout", { method: "POST" });
+      }
+    } catch (_) {}
+    setAuth(null, null, null);
+    stopHeartbeat();
+    if (!silent) {
+      showLogin();
+    } else {
+      showLogin();
+    }
+  }
+
+  let heartbeatTimer = null;
+  function startHeartbeat() {
+    stopHeartbeat();
+    heartbeatTimer = setInterval(async () => {
+      try {
+        if (!AUTH.token) return;
+        await fetch(BACKEND_URL + "/api/auth/heartbeat", { method: "POST" });
+      } catch (_) {}
+    }, 60 * 1000);
+  }
+  function stopHeartbeat() {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+
+  async function bootstrap() {
+    // Sempre começa em login, depois tenta restaurar sessão
+    if (loginOverlay) loginOverlay.style.display = "flex";
+    if (appPage) appPage.style.display = "none";
+    if (adminPage) adminPage.style.display = "none";
+
+    const saved = localStorage.getItem(TOKEN_KEY);
+    if (!saved) {
+      showLogin();
+      return;
+    }
+
+    setAuth(saved, localStorage.getItem(ROLE_KEY) || "", null);
+
+    try {
+      const resp = await fetch(BACKEND_URL + "/api/auth/me", { method: "GET" });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        showLogin();
+        return;
+      }
+      AUTH.role = data.role;
+      AUTH.user = data.user;
+
+      if (data.role === "admin") {
+        showAdmin();
+        await loadAdminAll();
+      } else {
+        showNurseApp();
+      }
+
+      startHeartbeat();
+    } catch (e) {
+      console.error(e);
+      showLogin();
+    }
+  }
+
+  // =========================
+  // Admin UI
+  // =========================
+  function fmtDt(iso) {
+    if (!iso) return "-";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    return d.toLocaleString("pt-BR");
+  }
+
+  function escapeHtml(s) {
+    return String(s || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  async function loadStats() {
+    const resp = await fetch(BACKEND_URL + "/api/admin/stats");
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      adminStats.textContent = (data && data.error) ? data.error : "Erro ao carregar estatísticas.";
+      return;
+    }
+
+    const t = data.totals || {};
+    adminStats.innerHTML = `
+      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
+        <div>
+          <div style="font-weight:bold; font-size:14px;">Resumo (${escapeHtml(data.month || "")})</div>
+          <div class="admin-muted">
+            Total: ${t.users || 0} | Ativos: ${t.active || 0} | Online: ${t.online || 0} | Em dia: ${t.paidCurrentMonth || 0} | Em atraso: ${t.unpaidCurrentMonth || 0}
+          </div>
+        </div>
+        <button id="adminRefreshAllBtn" class="admin-btn admin-btn-secondary" type="button" style="width:auto;">Atualizar tudo</button>
+      </div>
+    `;
+
+    const btn = document.getElementById("adminRefreshAllBtn");
+    if (btn) btn.onclick = async () => { await loadAdminAll(); };
+  }
+
+  async function loadUsers() {
+    const q = String((userSearch && userSearch.value) ? userSearch.value : "").trim();
+    const url = BACKEND_URL + "/api/admin/users" + (q ? ("?q=" + encodeURIComponent(q)) : "");
+    const resp = await fetch(url);
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      usersTbody.innerHTML = `<tr><td colspan="4" style="color:#b91c1c;">${escapeHtml((data && data.error) ? data.error : "Erro ao carregar usuários.")}</td></tr>`;
+      return;
+    }
+
+    if (adminMonthLabel) adminMonthLabel.textContent = "Mês atual: " + (data.month || "");
+
+    const users = Array.isArray(data.users) ? data.users : [];
+    if (!users.length) {
+      usersTbody.innerHTML = `<tr><td colspan="4" class="admin-muted">Nenhum usuário encontrado.</td></tr>`;
+      return;
+    }
+
+    usersTbody.innerHTML = users.map(u => {
+      const online = !!u.online;
+      const paid = !!u.paidCurrentMonth;
+      const paidBtnClass = paid ? "pay-btn pay-green" : "pay-btn pay-red";
+      const paidLabel = paid ? "Em dia" : "Em atraso";
+
+      const activeLabel = (u.active ? "Ativo" : "Desativado");
+      const activePill = u.active ? `<span class="pill pill-green" style="margin-top:4px;">${activeLabel}</span>` : `<span class="pill pill-red" style="margin-top:4px;">${activeLabel}</span>`;
+
+      const onlinePill = online ? `<span class="pill pill-green">Online</span>` : `<span class="pill" style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;">Offline</span>`;
+
+      return `
+        <tr>
+          <td>
+            <div style="font-weight:bold;">${escapeHtml(u.fullName || "")}</div>
+            <div class="admin-muted">Login: ${escapeHtml(u.login || "")}</div>
+            <div class="admin-muted">Telefone: ${escapeHtml(u.phone || "")}</div>
+            <div class="admin-muted">Nascimento: ${escapeHtml(u.dob || "")}</div>
+            ${activePill}
+            <div class="admin-muted">Último acesso: ${escapeHtml(u.lastLoginAt ? fmtDt(u.lastLoginAt) : "-")}</div>
+            <div class="admin-muted">Última atividade: ${escapeHtml(u.lastSeenAt ? fmtDt(u.lastSeenAt) : "-")}</div>
+          </td>
+          <td>${onlinePill}</td>
+          <td>
+            <button class="${paidBtnClass}" data-action="pay" data-id="${escapeHtml(u.id)}">${paidLabel}</button>
+            <div style="margin-top:8px;">
+              <span class="mini-link" data-action="history" data-id="${escapeHtml(u.id)}">Ver histórico</span>
+            </div>
+          </td>
+          <td>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <button class="admin-btn admin-btn-secondary" data-action="toggle" data-id="${escapeHtml(u.id)}" style="width:auto;">
+                ${u.active ? "Desativar" : "Ativar"}
+              </button>
+              <button class="admin-btn admin-btn-secondary" data-action="resetpw" data-id="${escapeHtml(u.id)}" style="width:auto;">
+                Resetar senha
+              </button>
+              <button class="admin-btn" data-action="delete" data-id="${escapeHtml(u.id)}" style="width:auto; background:#ef4444;">
+                Excluir
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    // Attach actions
+    usersTbody.querySelectorAll("[data-action]").forEach(el => {
+      el.addEventListener("click", async () => {
+        const action = el.getAttribute("data-action");
+        const id = el.getAttribute("data-id");
+        if (!id) return;
+
+        if (action === "history") {
+          await openPaymentModal(id, false);
+        } else if (action === "pay") {
+          await openPaymentModal(id, true);
+        } else if (action === "toggle") {
+          await toggleUserActive(id);
+        } else if (action === "resetpw") {
+          await resetUserPassword(id);
+        } else if (action === "delete") {
+          await deleteUser(id);
+        }
+      });
+    });
+  }
+
+  async function createUser() {
+    createUserMsg.textContent = "";
+    const payload = {
+      fullName: String(newFullName.value || "").trim(),
+      dob: String(newDob.value || "").trim(),
+      phone: String(newPhone.value || "").trim(),
+      login: String(newLogin.value || "").trim(),
+      password: String(newPassword.value || "")
+    };
+
+    if (!payload.fullName || !payload.dob || !payload.phone || !payload.login || !payload.password) {
+      createUserMsg.textContent = "Preencha todos os campos do cadastro.";
+      return;
+    }
+
+    createUserBtn.disabled = true;
+    createUserBtn.textContent = "Criando...";
+    try {
+      const resp = await fetch(BACKEND_URL + "/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        createUserMsg.textContent = (data && data.error) ? data.error : "Erro ao criar usuário.";
+        return;
+      }
+      createUserMsg.textContent = "Usuário criado com sucesso.";
+      newFullName.value = "";
+      newDob.value = "";
+      newPhone.value = "";
+      newLogin.value = "";
+      newPassword.value = "";
+      await loadAdminAll();
+    } finally {
+      createUserBtn.disabled = false;
+      createUserBtn.textContent = "Criar usuário";
+    }
+  }
+
+  async function toggleUserActive(id) {
+    const ok = confirm("Deseja alternar o status (ativar/desativar) deste usuário?");
+    if (!ok) return;
+    // Primeiro busca lista para descobrir status atual
+    const respList = await fetch(BACKEND_URL + "/api/admin/users");
+    const dataList = await respList.json().catch(() => ({}));
+    const u = (dataList.users || []).find(x => x.id === id);
+    const nextActive = !(u && u.active);
+
+    const resp = await fetch(BACKEND_URL + "/api/admin/users/" + encodeURIComponent(id), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: nextActive })
+    });
+    await resp.json().catch(() => ({}));
+    await loadAdminAll();
+  }
+
+  async function resetUserPassword(id) {
+    const newPw = prompt("Digite a nova senha:");
+    if (!newPw) return;
+
+    const resp = await fetch(BACKEND_URL + "/api/admin/users/" + encodeURIComponent(id), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: String(newPw) })
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      alert((data && data.error) ? data.error : "Erro ao resetar senha.");
+      return;
+    }
+    alert("Senha atualizada.");
+    await loadAdminAll();
+  }
+
+  async function deleteUser(id) {
+    const ok = confirm("Excluir usuário? Isso remove o acesso, mas mantém pagamentos e auditoria.");
+    if (!ok) return;
+
+    const resp = await fetch(BACKEND_URL + "/api/admin/users/" + encodeURIComponent(id), { method: "DELETE" });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      alert((data && data.error) ? data.error : "Erro ao excluir.");
+      return;
+    }
+    await loadAdminAll();
+  }
+
+  async function openPaymentModal(userId, focusPay) {
+    paymentModal.style.display = "flex";
+    paymentModalTitle.textContent = "Pagamentos";
+
+    paymentModalBody.innerHTML = `<div class="admin-muted">Carregando...</div>`;
+
+    const resp = await fetch(BACKEND_URL + "/api/admin/users/" + encodeURIComponent(userId) + "/payments");
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      paymentModalBody.innerHTML = `<div style="color:#b91c1c;">${escapeHtml((data && data.error) ? data.error : "Erro ao carregar pagamentos.")}</div>`;
+      return;
+    }
+
+    const user = data.user || {};
+    const payments = Array.isArray(data.payments) ? data.payments : [];
+
+    const currentMonth = (adminMonthLabel && adminMonthLabel.textContent) ? "" : "";
+    const monthDefault = new Date();
+    const yyyy = monthDefault.getFullYear();
+    const mm = String(monthDefault.getMonth() + 1).padStart(2, "0");
+    const def = `${yyyy}-${mm}`;
+
+    paymentModalTitle.textContent = `Pagamentos - ${user.fullName || ""} (${user.login || ""})`;
+
+    const listHtml = payments.length
+      ? `<div style="overflow:auto; max-height: 260px;">
+           <table class="admin-table">
+             <thead><tr><th>Mês</th><th>Pago em</th><th>Admin</th><th>Obs.</th></tr></thead>
+             <tbody>
+               ${payments.map(p => `
+                 <tr>
+                   <td>${escapeHtml(p.month || "")}</td>
+                   <td>${escapeHtml(p.paidAt ? fmtDt(p.paidAt) : "-")}</td>
+                   <td>${escapeHtml(p.adminLogin || "-")}</td>
+                   <td>${escapeHtml(p.note || "")}</td>
+                 </tr>
+               `).join("")}
+             </tbody>
+           </table>
+         </div>`
+      : `<div class="admin-muted">Nenhum pagamento registrado.</div>`;
+
+    paymentModalBody.innerHTML = `
+      <div class="admin-card" style="box-shadow:none; border:1px solid #e5e7eb; border-radius:12px; margin-bottom:10px;">
+        <div style="font-weight:bold; margin-bottom:8px;">Marcar mensalidade como paga</div>
+        <div class="admin-form-row" style="margin-bottom:8px;">
+          <input id="payMonthInput" type="month" value="${escapeHtml(def)}" />
+          <input id="payNoteInput" type="text" placeholder="Observação (opcional)" />
+        </div>
+        <button id="markPaidBtn" class="admin-btn" type="button">Marcar como pago</button>
+        <div class="admin-muted" id="markPaidMsg" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="admin-card" style="box-shadow:none; border:1px solid #e5e7eb; border-radius:12px;">
+        <div style="font-weight:bold; margin-bottom:8px;">Histórico de pagamento (permanente)</div>
+        ${listHtml}
+      </div>
+    `;
+
+    const markPaidBtn = document.getElementById("markPaidBtn");
+    const payMonthInput = document.getElementById("payMonthInput");
+    const payNoteInput = document.getElementById("payNoteInput");
+    const markPaidMsg = document.getElementById("markPaidMsg");
+
+    markPaidBtn.onclick = async () => {
+      markPaidMsg.textContent = "";
+      const month = String(payMonthInput.value || "").trim();
+      const note = String(payNoteInput.value || "").trim();
+
+      if (!month) {
+        markPaidMsg.textContent = "Selecione o mês.";
+        return;
+      }
+
+      markPaidBtn.disabled = true;
+      markPaidBtn.textContent = "Salvando...";
+
+      try {
+        const resp2 = await fetch(BACKEND_URL + "/api/admin/users/" + encodeURIComponent(userId) + "/pay", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ month, note })
+        });
+        const data2 = await resp2.json().catch(() => ({}));
+        if (!resp2.ok) {
+          markPaidMsg.textContent = (data2 && data2.error) ? data2.error : "Erro ao marcar pagamento.";
+          return;
+        }
+        markPaidMsg.textContent = "Pagamento registrado.";
+        await loadAdminAll();
+        await openPaymentModal(userId, false);
+      } finally {
+        markPaidBtn.disabled = false;
+        markPaidBtn.textContent = "Marcar como pago";
+      }
+    };
+
+    if (focusPay) {
+      const el = document.getElementById("payMonthInput");
+      if (el) el.focus();
+    }
+  }
+
+  async function loadAudit() {
+    auditBox.textContent = "Carregando...";
+    const resp = await fetch(BACKEND_URL + "/api/admin/audit");
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      auditBox.textContent = (data && data.error) ? data.error : "Erro ao carregar auditoria.";
+      return;
+    }
+    const audit = Array.isArray(data.audit) ? data.audit : [];
+    const last = audit.slice(0, 40);
+    auditBox.innerHTML = last.length
+      ? last.map(a => {
+          const at = escapeHtml(a.at ? fmtDt(a.at) : "");
+          const action = escapeHtml(a.action || "");
+          const who = escapeHtml(a.adminLogin || "");
+          const target = escapeHtml(a.targetUserId || "");
+          return `<div style="padding:6px 0;border-bottom:1px solid #eee;">
+                    <div style="font-weight:bold;">${action}</div>
+                    <div class="admin-muted">${at} | ${who} | ${target}</div>
+                  </div>`;
+        }).join("")
+      : `<div class="admin-muted">Sem registros.</div>`;
+  }
+
+  async function loadAdminAll() {
+    await loadStats();
+    await loadUsers();
+    await loadAudit();
+  }
+
+  // =========================
+  // Bindings
+  // =========================
+  if (loginBtn) loginBtn.addEventListener("click", doLogin);
+  if (passwordInput) passwordInput.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+  if (logoutBtn) logoutBtn.addEventListener("click", () => doLogout(false));
+  if (adminLogoutBtn) adminLogoutBtn.addEventListener("click", () => doLogout(false));
+
+  if (refreshUsersBtn) refreshUsersBtn.addEventListener("click", loadUsers);
+  if (userSearch) userSearch.addEventListener("input", () => {
+    // debounce simples
+    if (window.__suistUserSearchTimer) clearTimeout(window.__suistUserSearchTimer);
+    window.__suistUserSearchTimer = setTimeout(loadUsers, 350);
+  });
+
+  if (createUserBtn) createUserBtn.addEventListener("click", createUser);
+  if (refreshAuditBtn) refreshAuditBtn.addEventListener("click", loadAudit);
+
+  if (paymentModalClose) paymentModalClose.addEventListener("click", () => { paymentModal.style.display = "none"; });
+  if (paymentModal) paymentModal.addEventListener("click", (e) => {
+    if (e.target === paymentModal) paymentModal.style.display = "none";
+  });
+
+  // Start
+  bootstrap();
+})();
 
 </script>
 
