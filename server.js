@@ -134,11 +134,200 @@ function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
 // ======================================================================
 
 const DATA_DIR = path.join(__dirname, "data");
-const DB_PATH = path.join(DATA_DIR, "enfermagem_db.json");
+const DB_PATH = path.join(DATA_DIR, "enfermagem_users_db.json");
 
 function ensureDataDir() {
   try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch {}
 }
+
+const LEGACY_DB_PATHS = [
+  path.join(DATA_DIR, "enfermagem_db.json"),
+  path.join(DATA_DIR, "enfermagem_users_db_old.json"),
+  path.join(DATA_DIR, "enfermagem_users_db_v1.json"),
+];
+
+const BACKUP_DIR = path.join(DATA_DIR, "backups");
+const MAX_BACKUPS = 40;
+
+function ensureBackupDir() {
+  try { fs.mkdirSync(BACKUP_DIR, { recursive: true }); } catch {}
+}
+
+// Escrita atômica (evita corromper o DB em queda/restart no meio da gravação)
+function safeWriteFileAtomic(filePath, dataStr) {
+  ensureDataDir();
+  const dir = path.dirname(filePath);
+  const tmp = path.join(dir, `.${path.basename(filePath)}.tmp-${crypto.randomBytes(6).toString("hex")}`);
+  fs.writeFileSync(tmp, dataStr, "utf-8");
+  fs.renameSync(tmp, filePath);
+}
+
+function listBackupFiles() {
+  ensureBackupDir();
+  try {
+    const files = fs.readdirSync(BACKUP_DIR)
+      .filter(f => f.toLowerCase().endsWith(".json"))
+      .map(f => ({ f, p: path.join(BACKUP_DIR, f) }))
+      .map(x => ({ ...x, t: fs.statSync(x.p).mtimeMs }))
+      .sort((a, b) => b.t - a.t);
+    return files;
+  } catch {
+    return [];
+  }
+}
+
+function rotateBackups() {
+  const files = listBackupFiles();
+  for (let i = MAX_BACKUPS; i < files.length; i++) {
+    try { fs.unlinkSync(files[i].p); } catch {}
+  }
+}
+
+function loadDbFromFile(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    const raw = fs.readFileSync(filePath, "utf-8");
+    const db = JSON.parse(raw);
+    if (!db || typeof db !== "object") return null;
+    db.users = Array.isArray(db.users) ? db.users : [];
+    db.payments = Array.isArray(db.payments) ? db.payments : [];
+    db.audit = Array.isArray(db.audit) ? db.audit : [];
+    return db;
+  } catch {
+    return null;
+  }
+}
+
+function restoreFromLatestBackup() {
+  const backups = listBackupFiles();
+  for (const b of backups) {
+    const db = loadDbFromFile(b.p);
+    if (db) return { db, path: b.p };
+  }
+  return null;
+}
+
+function tryReadDbFile(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    const raw = fs.readFileSync(filePath, "utf-8");
+    const db = JSON.parse(raw);
+    if (!db || typeof db !== "object") return null;
+    const users = Array.isArray(db.users) ? db.users : [];
+    const payments = Array.isArray(db.payments) ? db.payments : [];
+    const audit = Array.isArray(db.audit) ? db.audit : [];
+    return { users, payments, audit };
+  } catch {
+    return null;
+  }
+}
+
+function dbScore(db) {
+  if (!db) return 0;
+  return (db.users?.length || 0) * 1000000 + (db.payments?.length || 0) * 1000 + (db.audit?.length || 0);
+}
+
+function mergeDbs(a, b) {
+  const out = { users: [], payments: [], audit: [] };
+
+  const usersMap = new Map();
+  for (const u of (Array.isArray(a?.users) ? a.users : [])) {
+    if (u && u.id) usersMap.set(u.id, u);
+  }
+  for (const u of (Array.isArray(b?.users) ? b.users : [])) {
+    if (!u || !u.id) continue;
+    const prev = usersMap.get(u.id);
+    if (!prev) {
+      usersMap.set(u.id, u);
+    } else {
+      const prevLogin = Date.parse(prev.lastLoginAt || "") || 0;
+      const newLogin = Date.parse(u.lastLoginAt || "") || 0;
+      usersMap.set(u.id, newLogin > prevLogin ? { ...prev, ...u } : { ...u, ...prev });
+    }
+  }
+  out.users = Array.from(usersMap.values());
+
+  const paySeen = new Set();
+  for (const p of [...(a?.payments || []), ...(b?.payments || [])]) {
+    if (!p || !p.userId || !p.month) continue;
+    const k = `${p.userId}|${p.month}|${p.paidAt || ""}`;
+    if (paySeen.has(k)) continue;
+    paySeen.add(k);
+    out.payments.push(p);
+  }
+
+  const audSeen = new Set();
+  for (const x of [...(a?.audit || []), ...(b?.audit || [])]) {
+    if (!x) continue;
+    const k = `${x.at || ""}|${x.action || ""}|${x.target || ""}|${x.details || ""}`;
+    if (audSeen.has(k)) continue;
+    audSeen.add(k);
+    out.audit.push(x);
+  }
+
+  if (out.audit.length > 5000) out.audit = out.audit.slice(out.audit.length - 5000);
+  if (out.payments.length > 20000) out.payments = out.payments.slice(out.payments.length - 20000);
+
+  return out;
+}
+
+function backupFile(filePath, reason = "auto") {
+  try {
+    ensureDataDir();
+    ensureBackupDir();
+    if (!fs.existsSync(filePath)) return;
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const base = path.basename(filePath).replace(/\.json$/i, "");
+    const safeReason = String(reason || "auto").replace(/[^a-z0-9_-]+/gi, "-").slice(0, 40) || "auto";
+    const backupName = `${base}.backup-${stamp}-${safeReason}.json`;
+    const backupPath = path.join(BACKUP_DIR, backupName);
+    fs.copyFileSync(filePath, backupPath);
+    rotateBackups();
+  } catch {}
+}
+
+
+function migrateDbIfNeeded() {
+  ensureDataDir();
+
+  const current = tryReadDbFile(DB_PATH);
+
+  let best = null;
+  let bestPath = null;
+  for (const p of LEGACY_DB_PATHS) {
+    const db = tryReadDbFile(p);
+    if (db && dbScore(db) > dbScore(best)) {
+      best = db;
+      bestPath = p;
+    }
+  }
+
+  if (!fs.existsSync(DB_PATH)) {
+    if (best && bestPath) {
+      try { fs.copyFileSync(bestPath, DB_PATH); } catch {}
+    }
+    return;
+  }
+
+  const currUsers = current?.users?.length || 0;
+  const bestUsers = best?.users?.length || 0;
+
+  if (currUsers === 0 && bestUsers > 0 && bestPath) {
+    backupFile(DB_PATH);
+    try { fs.copyFileSync(bestPath, DB_PATH); } catch {}
+    return;
+  }
+
+  if (current && best && bestPath && bestPath !== DB_PATH) {
+    const merged = mergeDbs(current, best);
+    if (dbScore(merged) > dbScore(current)) {
+      backupFile(DB_PATH);
+      try { fs.writeFileSync(DB_PATH, JSON.stringify(merged, null, 2), "utf-8"); } catch {}
+    }
+  }
+}
+
 
 function nowIso() {
   return new Date().toISOString();
@@ -165,25 +354,82 @@ function makeId(prefix) {
 
 function loadDb() {
   ensureDataDir();
+  ensureBackupDir();
+  migrateDbIfNeeded();
+
+  // 1) Tenta carregar o DB principal
+  const primary = loadDbFromFile(DB_PATH);
+  if (primary) return primary;
+
+  // 2) Se o arquivo existe mas está corrompido, faz backup e tenta recuperar do último backup válido
+  if (fs.existsSync(DB_PATH)) {
+    try {
+      backupFile(DB_PATH, "corrupt");
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const corruptPath = DB_PATH.replace(/\.json$/i, "") + `.corrupt-${stamp}.json`;
+      try { fs.renameSync(DB_PATH, corruptPath); } catch {}
+    } catch {}
+  }
+
+  const recovered = restoreFromLatestBackup();
+  if (recovered?.db) {
+    try {
+      safeWriteFileAtomic(DB_PATH, JSON.stringify(recovered.db, null, 2));
+      return recovered.db;
+    } catch {
+      return recovered.db;
+    }
+  }
+
+  // 3) Primeira execução sem DB: cria inicial (sem riscos de apagar dados)
+  const fresh = { users: [], payments: [], audit: [] };
   try {
-    const raw = fs.readFileSync(DB_PATH, "utf-8");
-    const db = JSON.parse(raw);
-    if (!db || typeof db !== "object") throw new Error("db invalid");
-    db.users = Array.isArray(db.users) ? db.users : [];
-    db.payments = Array.isArray(db.payments) ? db.payments : [];
-    db.audit = Array.isArray(db.audit) ? db.audit : [];
-    return db;
-  } catch {
-    const db = { users: [], payments: [], audit: [] };
-    saveDb(db);
-    return db;
+    if (!fs.existsSync(DB_PATH)) {
+      safeWriteFileAtomic(DB_PATH, JSON.stringify(fresh, null, 2));
+    }
+  } catch {}
+  return fresh;
+}
+
+
+function normalizeDb(db) {
+  const out = (db && typeof db === "object") ? db : {};
+  out.users = Array.isArray(out.users) ? out.users : [];
+  out.payments = Array.isArray(out.payments) ? out.payments : [];
+  out.audit = Array.isArray(out.audit) ? out.audit : [];
+  return out;
+}
+
+// Atenção: este método NUNCA deve zerar o banco por acidente.
+// - Escreve de forma atômica
+// - Cria backup antes de gravar
+// - Bloqueia gravação "vazia" se já houver dados (proteção anti-apagão)
+function saveDb(db, reason = "auto") {
+  ensureDataDir();
+  ensureBackupDir();
+
+  const next = normalizeDb(db);
+  const currentOnDisk = tryReadDbFile(DB_PATH);
+  const currentScore = dbScore(currentOnDisk);
+  const nextScore = dbScore(next);
+
+  // Proteção: se já existe dado, não permitir gravar um DB totalmente vazio
+  if (currentScore > 0 && nextScore === 0) {
+    console.warn("[DB] Bloqueado: tentativa de salvar DB vazio (proteção anti-perda).");
+    return;
+  }
+
+  try {
+    backupFile(DB_PATH, reason);
+  } catch {}
+
+  try {
+    safeWriteFileAtomic(DB_PATH, JSON.stringify(next, null, 2));
+  } catch (e) {
+    console.error("[DB] Falha ao salvar DB:", e);
   }
 }
 
-function saveDb(db) {
-  ensureDataDir();
-  fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
-}
 
 let DB = loadDb();
 
@@ -557,6 +803,75 @@ app.get("/api/admin/audit", requireAuth, requireAdmin, (req, res) => {
   const auditList = DB.audit.slice().sort((a,b) => String(b.at||"").localeCompare(String(a.at||"")));
   return res.json({ audit: auditList });
 });
+// ======================================================================
+// BACKUP / RESTAURAÇÃO (ADMIN) – segurança contra perda de dados
+// - Exporta DB em JSON para o administrador guardar
+// - Importa/mescla backup sem apagar histórico (merge)
+// ======================================================================
+
+app.get("/api/admin/backup/list", requireAuth, requireAdmin, (req, res) => {
+  try {
+    const items = listBackupFiles().slice(0, 50).map(x => ({
+      file: x.f,
+      mtimeMs: x.t
+    }));
+    return res.json({ items });
+  } catch (e) {
+    return res.status(500).json({ error: "Falha ao listar backups." });
+  }
+});
+
+app.post("/api/admin/backup/create", requireAuth, requireAdmin, (req, res) => {
+  try {
+    backupFile(DB_PATH, "manual");
+    audit("backup_manual", "db", "Backup manual criado");
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: "Falha ao criar backup." });
+  }
+});
+
+app.get("/api/admin/backup/export", requireAuth, requireAdmin, (req, res) => {
+  try {
+    const payload = {
+      schemaVersion: 1,
+      exportedAt: nowIso(),
+      app: "Atendimento de Enfermagem",
+      db: normalizeDb(DB),
+    };
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="enfermagem-backup-${new Date().toISOString().slice(0,10)}.json"`);
+    return res.status(200).send(JSON.stringify(payload, null, 2));
+  } catch (e) {
+    return res.status(500).json({ error: "Falha ao exportar backup." });
+  }
+});
+
+app.post("/api/admin/backup/import", requireAuth, requireAdmin, (req, res) => {
+  try {
+    const body = req.body || {};
+    const incoming = body.db && typeof body.db === "object" ? body.db : body;
+    const imported = normalizeDb(incoming);
+
+    // Mescla: nunca apaga, apenas adiciona/atualiza pelo critério do mergeDbs
+    const before = { users: DB.users.length, payments: DB.payments.length, audit: DB.audit.length };
+    const merged = mergeDbs(DB, imported);
+
+    DB = merged;
+    saveDb(DB, "import");
+    audit("backup_import", "db", `Import realizado. Antes users=${before.users}, payments=${before.payments}; Depois users=${DB.users.length}, payments=${DB.payments.length}`);
+
+    return res.json({
+      ok: true,
+      before,
+      after: { users: DB.users.length, payments: DB.payments.length, audit: DB.audit.length }
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao importar backup." });
+  }
+});
+
 
 
 

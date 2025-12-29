@@ -1139,6 +1139,9 @@
         </div>
         <div class="admin-row">
           <button id="adminRefreshBtn" class="admin-btn secondary" type="button">Atualizar</button>
+          <button id="adminBackupBtn" class="admin-btn secondary" type="button">Baixar backup</button>
+          <button id="adminRestoreBtn" class="admin-btn secondary" type="button">Restaurar backup</button>
+          <input id="adminRestoreFile" type="file" accept="application/json" style="display:none" />
           <button id="adminLogoutBtn" class="admin-btn danger" type="button">Sair</button>
         </div>
       </div>
@@ -4839,6 +4842,68 @@ function initSpeech() {
     document.getElementById("adminSearch")?.addEventListener("input", renderAdminUsers);
 
     document.getElementById("adminRefreshBtn")?.addEventListener("click", adminLoadAll);
+
+    document.getElementById("adminBackupBtn")?.addEventListener("click", async () => {
+      try {
+        if (!AUTH?.token) throw new Error("Sessão inválida.");
+        const resp = await fetch("/api/admin/backup/export", {
+          method: "GET",
+          headers: { "Authorization": `Bearer ${AUTH.token}` }
+        });
+        const ct = resp.headers.get("content-type") || "";
+        if (!resp.ok) {
+          let msg = "Falha ao exportar.";
+          try { const j = ct.includes("application/json") ? await resp.json() : null; if (j?.error) msg = j.error; } catch {}
+          throw new Error(msg);
+        }
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `enfermagem-backup-${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        alert(String(e?.message || e || "Falha ao baixar backup."));
+      }
+    });
+
+    document.getElementById("adminRestoreBtn")?.addEventListener("click", async () => {
+      const input = document.getElementById("adminRestoreFile");
+      if (input) input.click();
+    });
+
+    document.getElementById("adminRestoreFile")?.addEventListener("change", async (ev) => {
+      try {
+        const file = ev.target?.files?.[0];
+        if (!file) return;
+        if (!confirm("Restaurar/mesclar este backup? Isso não apaga histórico; apenas recupera/mescla dados.")) {
+          ev.target.value = "";
+          return;
+        }
+
+        // cria um backup manual antes de restaurar
+        try { await adminFetchJson("/api/admin/backup/create", { method: "POST" }); } catch {}
+
+        const txt = await file.text();
+        const payload = JSON.parse(txt);
+
+        await adminFetchJson("/api/admin/backup/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        ev.target.value = "";
+        await adminLoadAll();
+        alert("Backup importado/mesclado com sucesso.");
+      } catch (e) {
+        alert(String(e?.message || e || "Falha ao restaurar backup."));
+      }
+    });
+
 
     document.getElementById("createUserBtn")?.addEventListener("click", async () => {
       const fullName = (document.getElementById("newFullName")?.value || "").trim();
