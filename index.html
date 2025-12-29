@@ -913,407 +913,346 @@
 
   
     /* =========================
-       Autenticação + Admin
+       AUTENTICAÇÃO E ADMIN
        ========================= */
-    .login-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(245,245,245,0.98);
-      display: none;
-      align-items: center;
+    .auth-shell {
+      min-height: 100vh;
+      width: 100%;
+      display: flex;
       justify-content: center;
-      z-index: 99999;
-      padding: 16px;
+      align-items: flex-start;
+      padding: 20px;
     }
-    .login-card {
+    .auth-card {
       width: 100%;
       max-width: 420px;
       background: #ffffff;
-      border-radius: 14px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-      padding: 18px;
-      border: 1px solid #e7e7e7;
+      border-radius: 16px;
+      padding: 26px 20px 20px 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      margin-top: 40px;
     }
-    .login-card h2 {
-      margin: 0 0 10px 0;
-      font-size: 18px;
-      color: #1f2937;
+    .auth-subtitle {
+      margin-top: 6px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #555;
     }
-    .login-field {
-      margin-top: 10px;
-    }
-    .login-field label {
+    .auth-label {
+      width: 100%;
       display: block;
-      font-size: 12px;
-      color: #374151;
-      margin-bottom: 4px;
+      margin: 10px 0 6px 0;
+      font-size: 13px;
+      color: #333;
+      font-weight: bold;
     }
-    .login-field input {
+    .auth-input {
       width: 100%;
       padding: 10px 12px;
-      border: 1px solid #d1d5db;
       border-radius: 10px;
+      border: 1px solid #ddd;
       font-size: 14px;
       outline: none;
       background: #fff;
     }
-    .login-actions {
-      margin-top: 12px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .login-btn {
+    .auth-btn {
       width: 100%;
+      margin-top: 14px;
       padding: 10px 12px;
-      border-radius: 10px;
+      border-radius: 12px;
       border: none;
       cursor: pointer;
-      background: #111827;
+      background: #0c5460;
       color: #fff;
-      font-weight: bold;
       font-size: 14px;
+      font-weight: 700;
     }
-    .login-error {
+    .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .auth-error {
       margin-top: 10px;
       font-size: 13px;
-      color: #b91c1c;
+      color: #b00020;
       min-height: 18px;
     }
-    .login-contact {
+    .auth-help {
       margin-top: 12px;
-      font-size: 13px;
-      color: #374151;
-      display: flex;
-      justify-content: center;
-    }
-    .login-contact a {
-      text-decoration: none;
-      font-weight: bold;
-      color: #075e54;
+      font-size: 12px;
+      color: #666;
     }
 
-    .user-bar {
-      margin: 12px auto 0 auto;
-      max-width: 980px;
+    .nurse-bar {
       width: 100%;
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
       background: #ffffff;
-      border: 1px solid #e7e7e7;
-      border-radius: 12px;
-      padding: 10px 12px;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
-    }
-    .user-bar .user-meta {
-      font-size: 13px;
-      color: #111827;
-      line-height: 1.35;
-    }
-    .user-bar .user-meta .muted {
-      color: #6b7280;
-      font-size: 12px;
-    }
-    .user-bar .user-actions {
+      padding: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
       display: flex;
-      gap: 10px;
+      justify-content: space-between;
       align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
     }
-    .btn-logout {
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid #d1d5db;
-      background: #fff;
+    .nurse-bar-line { font-size: 13px; color: #111827; }
+    .nurse-bar-label { color: #6b7280; font-weight: 700; margin-right: 6px; }
+    .nurse-bar-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .danger-btn {
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: none;
       cursor: pointer;
-      font-weight: bold;
+      background: #dc3545;
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
     }
     .pill {
       display: inline-block;
-      padding: 4px 8px;
+      padding: 6px 10px;
       border-radius: 999px;
       font-size: 12px;
-      font-weight: bold;
-      border: 1px solid transparent;
+      border: 1px solid #ddd;
+      background: #f2f2f2;
+      color: #555;
+      font-weight: 800;
       white-space: nowrap;
     }
-    .pill-green { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
-    .pill-red { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+    .pill.green { background: #e7f7ec; border-color: #bfe8c9; color: #145a22; }
+    .pill.red { background: #fde8ea; border-color: #f3c2c7; color: #7a1420; }
 
-    .admin-page {
-      display: none;
-      padding: 16px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .admin-header {
+    .admin-shell {
+      width: 100%;
+      padding: 20px;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 14px;
+      justify-content: center;
+      align-items: flex-start;
     }
-    .admin-header h1 {
-      margin: 0;
-      font-size: 20px;
-      color: #111827;
+    .admin-wrap {
+      width: 100%;
+      max-width: 980px;
+    }
+    .admin-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      margin-top: 14px;
+    }
+    .admin-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
     }
     .admin-grid {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
-    @media (min-width: 980px) {
-      .admin-grid { grid-template-columns: 420px 1fr; }
-    }
-    .admin-card {
-      background: #fff;
-      border: 1px solid #e7e7e7;
-      border-radius: 14px;
-      padding: 14px;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
-    }
-    .admin-card h3 {
-      margin: 0 0 10px 0;
-      font-size: 16px;
-      color: #111827;
-    }
-    .admin-form-row {
-      display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
-      margin-bottom: 10px;
     }
-    .admin-form-row input, .admin-form-row select {
+    @media (max-width: 720px) {
+      .admin-grid { grid-template-columns: 1fr; }
+    }
+    .admin-field label {
+      display: block;
+      font-size: 12px;
+      color: #555;
+      margin: 0 0 6px 0;
+      font-weight: 700;
+    }
+    .admin-field input {
       width: 100%;
       padding: 10px 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 10px;
+      border-radius: 12px;
+      border: 1px solid #ddd;
       font-size: 14px;
       outline: none;
-      background: #fff;
     }
     .admin-btn {
-      padding: 10px 12px;
-      border-radius: 10px;
+      padding: 10px 14px;
+      border-radius: 12px;
       border: none;
       cursor: pointer;
-      font-weight: bold;
-      background: #111827;
+      background: #0c5460;
       color: #fff;
-      width: 100%;
-    }
-    .admin-btn-secondary {
-      background: #fff;
-      color: #111827;
-      border: 1px solid #d1d5db;
-    }
-    .admin-table {
-      width: 100%;
-      border-collapse: collapse;
+      font-weight: 800;
       font-size: 13px;
     }
-    .admin-table th, .admin-table td {
-      border-bottom: 1px solid #e5e7eb;
-      padding: 8px 6px;
-      vertical-align: top;
-      text-align: left;
-    }
-    .admin-table th {
+    .admin-btn.secondary { background: #6c757d; }
+    .admin-btn.danger { background: #dc3545; }
+    .admin-status {
+      margin-top: 10px;
       font-size: 12px;
-      color: #6b7280;
-      font-weight: bold;
+      color: #333;
+      min-height: 18px;
+      white-space: pre-wrap;
     }
-    .pay-btn {
-      padding: 6px 10px;
-      border-radius: 10px;
-      border: 1px solid transparent;
-      font-weight: bold;
-      cursor: pointer;
-      font-size: 12px;
-    }
-    .pay-green { background: #10b981; color: #fff; }
-    .pay-red { background: #ef4444; color: #fff; }
-    .mini-link {
-      cursor: pointer;
-      color: #111827;
-      text-decoration: underline;
-      font-weight: bold;
-      font-size: 12px;
-    }
-    .admin-muted {
-      color: #6b7280;
-      font-size: 12px;
-      margin-top: 6px;
-    }
-    .admin-top-controls {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between;
-      margin: 10px 0 12px 0;
-      flex-wrap: wrap;
-    }
-    .admin-top-controls input {
-      padding: 9px 10px;
-      border-radius: 10px;
-      border: 1px solid #d1d5db;
-      min-width: 240px;
-    }
-    .modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.35);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 100000;
-      padding: 16px;
-    }
-    .modal-card {
+    .admin-table-wrap { overflow-x: auto; margin-top: 10px; }
+    table.admin-table {
       width: 100%;
-      max-width: 620px;
-      background: #fff;
-      border-radius: 14px;
-      border: 1px solid #e7e7e7;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.12);
-      padding: 14px;
+      border-collapse: collapse;
+      font-size: 12px;
     }
-    .modal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 10px;
+    table.admin-table th, table.admin-table td {
+      border-bottom: 1px solid #eee;
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
     }
-    .modal-header h3 {
-      margin: 0;
-      font-size: 16px;
-      color: #111827;
-    }
-    .modal-close {
-      border: 1px solid #d1d5db;
-      background: #fff;
-      border-radius: 10px;
-      padding: 6px 10px;
-      cursor: pointer;
-      font-weight: bold;
-    }
+    table.admin-table th { background: #f7f7f7; font-weight: 900; }
+    .admin-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .admin-actions button { padding: 8px 10px; border-radius: 10px; font-size: 12px; }
+    .modal-overlay.hidden { display: none; }
 
-  </style>
+</style>
 </head>
 <body>
 
-  <div id="loginOverlay" class="login-overlay">
-    <div class="login-card">
-      <h2>Acesso</h2>
+  <div id="loginView" class="auth-shell">
+    <div class="auth-card">
+      <h1>Atendimento de Enfermagem</h1>
+      <p class="auth-subtitle">Acesso restrito para profissionais cadastrados.</p>
 
-      <div class="login-field">
-        <label for="loginInput">Login</label>
-        <input id="loginInput" type="text" autocomplete="username" placeholder="Digite seu login" />
-      </div>
+      <label class="auth-label" for="loginField">Login</label>
+      <input id="loginField" class="auth-input" autocomplete="username" inputmode="text" />
 
-      <div class="login-field">
-        <label for="passwordInput">Senha</label>
-        <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Digite sua senha" />
-      </div>
+      <label class="auth-label" for="passwordField">Senha</label>
+      <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
 
-      <div class="login-actions">
-        <button id="loginBtn" class="login-btn" type="button">Entrar</button>
-      </div>
+      <button id="loginBtn" class="auth-btn" type="button">Entrar</button>
+      <div id="loginError" class="auth-error"></div>
 
-      <div id="loginError" class="login-error"></div>
-
-      <div class="login-contact">
-        <a href="https://wa.me/5575981457012?text=Ol%C3%A1%21%20Gostaria%20de%20reportar%20um%20erro%2C%20tirar%20uma%20d%C3%BAvida%20ou%20enviar%20uma%20sugest%C3%A3o." target="_blank" rel="noopener">Entrar em contato</a>
+      <div class="auth-help">
+        Se não conseguir acessar, use o botão “Entrar em contato”.
       </div>
     </div>
   </div>
 
-  <div id="adminPage" class="admin-page">
-    <div class="admin-header">
-      <h1>Painel do Administrador</h1>
-      <button id="adminLogoutBtn" class="btn-logout" type="button">Sair</button>
-    </div>
 
-    <div id="adminStats" class="admin-card" style="margin-bottom: 12px;"></div>
-
-    <div class="admin-grid">
-      <div class="admin-card">
-        <h3>Cadastrar enfermeiro</h3>
-
-        <div class="admin-form-row">
-          <input id="newFullName" type="text" placeholder="Nome completo" />
-          <input id="newDob" type="text" placeholder="Data de nascimento (DD/MM/AAAA ou AAAA-MM-DD)" />
-          <input id="newPhone" type="text" placeholder="Telefone" />
-          <input id="newLogin" type="text" placeholder="Login" />
-          <input id="newPassword" type="text" placeholder="Senha" />
+  <div id="adminView" class="admin-shell hidden">
+    <div class="admin-wrap">
+      <div class="admin-row" style="justify-content: space-between; align-items: flex-end;">
+        <div>
+          <h1 style="margin: 10px 0 4px 0;">Painel do Administrador</h1>
+          <div id="adminSubtitle" style="font-size: 12px; color: #555;"></div>
         </div>
-
-        <button id="createUserBtn" class="admin-btn" type="button">Criar usuário</button>
-        <div id="createUserMsg" class="admin-muted"></div>
-
-        <hr style="border:none;border-top:1px solid #e5e7eb;margin:14px 0;" />
-
-        <h3>Auditoria</h3>
-        <button id="refreshAuditBtn" class="admin-btn admin-btn-secondary" type="button">Atualizar auditoria</button>
-        <div id="auditBox" class="admin-muted" style="margin-top:10px; max-height: 260px; overflow:auto;"></div>
+        <div class="admin-row">
+          <button id="adminRefreshBtn" class="admin-btn secondary" type="button">Atualizar</button>
+          <button id="adminLogoutBtn" class="admin-btn danger" type="button">Sair</button>
+        </div>
       </div>
 
       <div class="admin-card">
-        <div class="admin-top-controls">
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <input id="userSearch" type="text" placeholder="Buscar por nome, login ou telefone" />
-            <button id="refreshUsersBtn" class="admin-btn admin-btn-secondary" type="button" style="width:auto;">Atualizar</button>
+        <h2 style="margin: 0 0 10px 0;">Cadastrar enfermeiro(a)</h2>
+        <div class="admin-grid">
+          <div class="admin-field">
+            <label for="newFullName">Nome completo</label>
+            <input id="newFullName" type="text" />
           </div>
-          <div class="admin-muted" id="adminMonthLabel"></div>
+          <div class="admin-field">
+            <label for="newDob">Data de nascimento</label>
+            <input id="newDob" type="date" />
+          </div>
+          <div class="admin-field">
+            <label for="newPhone">Telefone</label>
+            <input id="newPhone" type="tel" />
+          </div>
+          <div class="admin-field">
+            <label for="newLogin">Login</label>
+            <input id="newLogin" type="text" />
+          </div>
+          <div class="admin-field">
+            <label for="newPassword">Senha</label>
+            <input id="newPassword" type="text" />
+          </div>
+          <div class="admin-field" style="display:flex; align-items:flex-end;">
+            <button id="createUserBtn" class="admin-btn" type="button" style="width:100%;">Cadastrar</button>
+          </div>
         </div>
+        <div id="createUserStatus" class="admin-status"></div>
+      </div>
 
-        <div style="overflow:auto;">
+      <div class="admin-card">
+        <div class="admin-row" style="justify-content: space-between;">
+          <h2 style="margin: 0;">Enfermeiros cadastrados</h2>
+          <input id="adminSearch" class="auth-input" placeholder="Buscar por nome, login ou telefone" style="max-width: 360px;" />
+        </div>
+        <div class="admin-table-wrap">
           <table class="admin-table">
             <thead>
               <tr>
-                <th>Enfermeiro</th>
+                <th>Nome</th>
+                <th>Login</th>
+                <th>Telefone</th>
                 <th>Online</th>
                 <th>Mensalidade</th>
+                <th>Último login</th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody id="usersTbody"></tbody>
           </table>
         </div>
+        <div id="adminStatus" class="admin-status"></div>
+      </div>
 
-        <div class="admin-muted" style="margin-top:10px;">
-          Histórico de pagamento é permanente: o sistema não oferece edição/exclusão via painel.
+      <div class="admin-card">
+        <h2 style="margin: 0 0 10px 0;">Auditoria administrativa (somente leitura)</h2>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Ação</th>
+                <th>Alvo</th>
+                <th>Detalhes</th>
+              </tr>
+            </thead>
+            <tbody id="auditTbody"></tbody>
+          </table>
         </div>
       </div>
     </div>
   </div>
 
-  <div id="paymentModal" class="modal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 id="paymentModalTitle">Pagamentos</h3>
-        <button id="paymentModalClose" class="modal-close" type="button">Fechar</button>
+  <div id="paymentsModal" class="modal-overlay hidden">
+    <div class="modal" style="max-width: 720px;">
+      <h3 style="margin:0 0 8px 0;">Histórico de pagamentos</h3>
+      <p id="paymentsModalSubtitle" style="margin:0 0 10px 0; font-size: 12px; color: #555;"></p>
+      <div class="admin-table-wrap" style="max-height: 55vh; overflow:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Mês</th>
+              <th>Pago em</th>
+              <th>Valor</th>
+              <th>Método</th>
+              <th>Observações</th>
+            </tr>
+          </thead>
+          <tbody id="paymentsTbody"></tbody>
+        </table>
       </div>
-
-      <div id="paymentModalBody"></div>
+      <div class="admin-row" style="justify-content:flex-end; margin-top: 12px;">
+        <button id="closePaymentsBtn" class="admin-btn secondary" type="button">Fechar</button>
+      </div>
+      <div style="margin-top: 10px; font-size: 12px; color: #666;">Este histórico é permanente. Não há opção de editar ou apagar registros.</div>
     </div>
   </div>
 
-  <div id="appPage" class="page" style="display:none;">
+  <div id="nurseView" class="hidden">
+  <div class="page">
     <h1>Atendimento de Enfermagem</h1>
 
-    <div id="userBar" class="user-bar">
-      <div class="user-meta">
-        <div id="userBarName"></div>
-        <div class="muted" id="userBarStatus"></div>
+
+    <div class="nurse-bar" id="nurseBar">
+      <div>
+        <div class="nurse-bar-line"><span class="nurse-bar-label">Usuário:</span><span id="nurseUserLabel">-</span></div>
+        <div class="nurse-bar-line"><span class="nurse-bar-label">Mensalidade:</span><span id="nursePaymentLabel" class="pill">-</span></div>
       </div>
-      <div class="user-actions">
-        <span id="paidPill" class="pill pill-red" style="display:none;">Mensalidade em atraso</span>
-        <button id="logoutBtn" class="btn-logout" type="button">Sair</button>
+      <div class="nurse-bar-actions">
+        <button id="nurseLogoutBtn" type="button" class="danger-btn">Sair</button>
       </div>
     </div>
 
@@ -1327,6 +1266,7 @@
           <button class="consult-type-btn" type="button" data-consult="puericultura">Consulta puericultura</button>
           <button class="consult-type-btn" type="button" data-consult="planejamento">Consulta planejamento familiar</button>
           <button class="consult-type-btn" type="button" data-consult="hiperdia">Consulta hiperdia</button>
+          <button class="consult-type-btn" type="button" data-consult="puerperio">Consulta de puerpério</button>
         </div>
 
         <div id="consultGuideDrawer" class="consult-guide-drawer hidden">
@@ -1528,17 +1468,97 @@
       <div id="medicalDoubtAnswer" class="answer-box"></div>
     </div>
 
-        <div id="patientReportCard" class="module-card">
-      <h2>Relatórios de Enfermagem</h2>
-      <p class="mini-status" style="margin-top: 0;">Grave o conteúdo do relatório em voz alta. Pergunte ao paciente qual a finalidade do relatório e peça que ele diga claramente durante a gravação (por exemplo: INSS, CAPS/saúde mental, escola, trabalho, advogado, assistência social, aquisição de insumos). Ao encerrar, a própria gravação será usada para identificar a finalidade e gerar automaticamente o relatório de enfermagem adequado.</p>
+                <div id="patientReportCard" class="module-card">
+      <h2>Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado de comparecimento ou permanência / ATA reunião / Registros de procedimentos</h2>
+      <p class="mini-status" style="margin-top: 0;">
+        Grave em voz alta o conteúdo do documento. Diga claramente qual documento deseja produzir (por exemplo: declaração de comparecimento, relatório de curativo seriado, encaminhamento para CAPS, solicitação de insumos, comunicado para escola, ata de reunião). Ao encerrar, a gravação será usada para identificar o tipo de documento e gerar um texto padronizado pronto para colar no S.U.I.S.
+      </p>
 
       <div class="inline-input-row">
-        <button id="reportRecordBtn" class="small-record-btn start">Gravar relatório</button>
+        <label for="reportDocTypeSelect" style="font-size: 13px; color: #111827; font-weight: 600;">Tipo de documento:</label>
+        <select id="reportDocTypeSelect" class="text-input" style="min-width: 260px; max-width: 100%;">          <option value="auto" selected>Auto (identificar pela gravação)</option>
+          <option value="Declaração de comparecimento">Declaração de comparecimento</option>
+          <option value="Declaração de permanência">Declaração de permanência</option>
+          <option value="Declaração para acompanhante">Declaração para acompanhante</option>
+          <option value="Declaração de recebimento de orientações">Declaração de recebimento de orientações</option>
+          <option value="Declaração de recusa de procedimento/conduta">Declaração de recusa de procedimento/conduta</option>
+          <option value="Termo de consentimento informado (procedimento de enfermagem)">Termo de consentimento informado (procedimento de enfermagem)</option>
+          <option value="Termo de ciência e responsabilidade (orientações e riscos)">Termo de ciência e responsabilidade (orientações e riscos)</option>
+          <option value="Comunicado para escola">Comunicado para escola</option>
+          <option value="Relatório para escola (necessidades específicas)">Relatório para escola (necessidades específicas)</option>
+          <option value="Comunicado ao Conselho Tutelar">Comunicado ao Conselho Tutelar</option>
+          <option value="Relatório para Conselho Tutelar (proteção à criança/adolescente)">Relatório para Conselho Tutelar (proteção à criança/adolescente)</option>
+          <option value="Relatório de curativo seriado">Relatório de curativo seriado</option>
+          <option value="Registro de procedimento de curativo">Registro de procedimento de curativo</option>
+          <option value="Registro de retirada de pontos/suturas">Registro de retirada de pontos/suturas</option>
+          <option value="Registro de procedimento de vacinação">Registro de procedimento de vacinação</option>
+          <option value="Registro de evento adverso pós-vacinação (EAPV)">Registro de evento adverso pós-vacinação (EAPV)</option>
+          <option value="Registro de procedimento de administração de medicamentos">Registro de procedimento de administração de medicamentos</option>
+          <option value="Registro de administração de medicamento controlado (registro interno)">Registro de administração de medicamento controlado (registro interno)</option>
+          <option value="Registro de coleta de exames">Registro de coleta de exames</option>
+          <option value="Registro de nebulização/oxigenoterapia">Registro de nebulização/oxigenoterapia</option>
+          <option value="Registro de sondagem vesical">Registro de sondagem vesical</option>
+          <option value="Registro de troca de sonda/traqueostomia/gastrostomia">Registro de troca de sonda/traqueostomia/gastrostomia</option>
+          <option value="Registro de visita domiciliar">Registro de visita domiciliar</option>
+          <option value="Relatório de visita domiciliar">Relatório de visita domiciliar</option>
+          <option value="Relatório de adesão e educação em saúde (HAS/DM)">Relatório de adesão e educação em saúde (HAS/DM)</option>
+          <option value="Relatório de acompanhamento de hipertensão (HAS)">Relatório de acompanhamento de hipertensão (HAS)</option>
+          <option value="Relatório de acompanhamento de diabetes (DM)">Relatório de acompanhamento de diabetes (DM)</option>
+          <option value="Relatório de acompanhamento de asma/DPOC">Relatório de acompanhamento de asma/DPOC</option>
+          <option value="Relatório de acompanhamento de saúde da criança (puericultura)">Relatório de acompanhamento de saúde da criança (puericultura)</option>
+          <option value="Relatório de acompanhamento de pré-natal (enfermagem)">Relatório de acompanhamento de pré-natal (enfermagem)</option>
+          <option value="Relatório de puerpério (enfermagem)">Relatório de puerpério (enfermagem)</option>
+          <option value="Relatório para assistência social (vulnerabilidade e insumos)">Relatório para assistência social (vulnerabilidade e insumos)</option>
+          <option value="Solicitação de insumos (fraldas, curativos, suplementos)">Solicitação de insumos (fraldas, curativos, suplementos)</option>
+          <option value="Solicitação de fraldas (infantil/geriátrica)">Solicitação de fraldas (infantil/geriátrica)</option>
+          <option value="Solicitação de materiais para ostomia">Solicitação de materiais para ostomia</option>
+          <option value="Solicitação de dieta enteral/suplementação">Solicitação de dieta enteral/suplementação</option>
+          <option value="Solicitação de oxigenoterapia domiciliar">Solicitação de oxigenoterapia domiciliar</option>
+          <option value="Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)">Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)</option>
+          <option value="Solicitação de transporte sanitário">Solicitação de transporte sanitário</option>
+          <option value="Solicitação de avaliação médica">Solicitação de avaliação médica</option>
+          <option value="Encaminhamento para Médico (demanda espontânea)">Encaminhamento para Médico (demanda espontânea)</option>
+          <option value="Encaminhamento para sala de vacina">Encaminhamento para sala de vacina</option>
+          <option value="Encaminhamento para curativos/ambulatório de feridas">Encaminhamento para curativos/ambulatório de feridas</option>
+          <option value="Encaminhamento para CAPS / saúde mental">Encaminhamento para CAPS / saúde mental</option>
+          <option value="Relatório para CAPS / saúde mental (enfermagem)">Relatório para CAPS / saúde mental (enfermagem)</option>
+          <option value="Encaminhamento para Serviço Social">Encaminhamento para Serviço Social</option>
+          <option value="Encaminhamento para Psicologia">Encaminhamento para Psicologia</option>
+          <option value="Encaminhamento para Nutrição">Encaminhamento para Nutrição</option>
+          <option value="Encaminhamento para Fisioterapia">Encaminhamento para Fisioterapia</option>
+          <option value="Encaminhamento para Fonoaudiologia">Encaminhamento para Fonoaudiologia</option>
+          <option value="Encaminhamento para Odontologia">Encaminhamento para Odontologia</option>
+          <option value="Encaminhamento para especialista / rede">Encaminhamento para especialista / rede</option>
+          <option value="Encaminhamento para urgência/emergência">Encaminhamento para urgência/emergência</option>
+          <option value="Relatório de evolução de enfermagem">Relatório de evolução de enfermagem</option>
+          <option value="Relatório de intercorrência/ocorrência">Relatório de intercorrência/ocorrência</option>
+          <option value="Ata de reunião">Ata de reunião</option>
+          <option value="Registro de reunião de equipe (ATA breve)">Registro de reunião de equipe (ATA breve)</option>
+          <option value="Comunicado interno da equipe">Comunicado interno da equipe</option>
+          <option value="Outros">Outros</option>
+</select>
+      </div>
+
+      <div class="inline-input-row">
+        <button id="reportRecordBtn" class="small-record-btn start">Gravar documento</button>
+        <button id="copyReportBtn" class="btn-copy" type="button">Copiar documento</button>
+        <button id="printReportBtn" class="btn-print" type="button">Imprimir documento</button>
       </div>
 
       <div id="reportStatus" class="mini-status"></div>
 
-      <textarea id="reportOutput" class="prescription-textarea" placeholder="O relatório gerado aparecerá aqui." style="margin-top: 12px;"></textarea>
+      <div class="inline-input-row" style="margin-top: 6px;">
+        <div style="flex: 1; min-width: 240px;">
+          <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Tipo identificado</div>
+          <div id="reportDocTypeDetected" class="answer-box" style="min-height: 44px;"></div>
+        </div>
+        <div style="flex: 1; min-width: 240px;">
+          <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Campos pendentes</div>
+          <div id="reportMissingFields" class="answer-box" style="min-height: 44px;"></div>
+        </div>
+      </div>
+
+      <textarea id="reportOutput" class="prescription-textarea" placeholder="O documento gerado aparecerá aqui." style="margin-top: 12px;"></textarea>
     </div>
 
   </div>
@@ -1574,8 +1594,162 @@
   </div>
 
 
+  </div>
+
   <script>
     const BACKEND_URL = "https://consulta-enfermagem-1.onrender.com"; // usa /api (Netlify redirect) ou mesma origem no Render
+
+    // =========================
+    // AUTENTICAÇÃO (sem escolha de perfil)
+    // =========================
+    const TOKEN_KEY = "ae_token_v1";
+    const nativeFetch = window.fetch.bind(window);
+
+    function getToken() {
+      try { return localStorage.getItem(TOKEN_KEY) || ""; } catch { return ""; }
+    }
+    function setToken(t) {
+      try {
+        if (t) localStorage.setItem(TOKEN_KEY, t);
+        else localStorage.removeItem(TOKEN_KEY);
+      } catch {}
+    }
+
+    function showLogin() {
+      document.getElementById("loginView")?.classList.remove("hidden");
+      document.getElementById("adminView")?.classList.add("hidden");
+      document.getElementById("nurseView")?.classList.add("hidden");
+      document.getElementById("paymentsModal")?.classList.add("hidden");
+    }
+    function showAdmin() {
+      document.getElementById("loginView")?.classList.add("hidden");
+      document.getElementById("adminView")?.classList.remove("hidden");
+      document.getElementById("nurseView")?.classList.add("hidden");
+    }
+    function showNurse() {
+      document.getElementById("loginView")?.classList.add("hidden");
+      document.getElementById("adminView")?.classList.add("hidden");
+      document.getElementById("nurseView")?.classList.remove("hidden");
+    }
+
+    // Intercepta chamadas ao backend e injeta Authorization quando for /api/
+    window.fetch = async function(input, init) {
+      try {
+        const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
+        const isApi = typeof url === "string" && url.startsWith(BACKEND_URL + "/api/");
+        if (!isApi) return nativeFetch(input, init);
+
+        const headers = Object.assign({}, (init && init.headers) ? init.headers : {});
+        const token = getToken();
+        if (token) headers["Authorization"] = "Bearer " + token;
+        const resp = await nativeFetch(input, Object.assign({}, init || {}, { headers }));
+
+        if (resp && resp.status === 401) {
+          setToken("");
+          showLogin();
+        }
+        return resp;
+      } catch (e) {
+        return nativeFetch(input, init);
+      }
+    };
+
+    async function authMe() {
+      const resp = await fetch(BACKEND_URL + "/api/auth/me", { method: "GET" });
+      if (!resp.ok) throw new Error("me failed");
+      return await resp.json();
+    }
+
+    async function doLogin() {
+      const login = (document.getElementById("loginField")?.value || "").trim();
+      const senha = (document.getElementById("passwordField")?.value || "").trim();
+      const errEl = document.getElementById("loginError");
+      const btn = document.getElementById("loginBtn");
+      if (!login || !senha) {
+        if (errEl) errEl.textContent = "Informe login e senha.";
+        return;
+      }
+      if (errEl) errEl.textContent = "";
+      if (btn) btn.disabled = true;
+      try {
+        const resp = await nativeFetch(BACKEND_URL + "/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ login, senha })
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          if (errEl) errEl.textContent = data.error || "Falha no login.";
+          return;
+        }
+        setToken(data.token || "");
+        await restoreSession();
+      } catch (e) {
+        if (errEl) errEl.textContent = "Falha ao conectar no servidor.";
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function logoutAll() {
+      setToken("");
+      showLogin();
+    }
+
+    // Heartbeat para status online
+    let heartbeatTimer = null;
+    function startHeartbeat() {
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      const ping = async () => {
+        try {
+          await fetch(BACKEND_URL + "/api/auth/heartbeat", { method: "POST" });
+        } catch {}
+      };
+      ping();
+      heartbeatTimer = setInterval(ping, 30000);
+    }
+
+    async function restoreSession() {
+      const token = getToken();
+      if (!token) { showLogin(); return; }
+      try {
+        const me = await authMe();
+        if (me && me.role === "admin") {
+          showAdmin();
+          startHeartbeat();
+          await adminLoadAll();
+        } else if (me && me.role === "nurse") {
+          showNurse();
+          startHeartbeat();
+          updateNurseBar(me);
+        } else {
+          showLogin();
+        }
+      } catch (e) {
+        showLogin();
+      }
+    }
+
+    function updateNurseBar(me) {
+      const name = me.fullName || me.login || "-";
+      const paid = !!me.paidCurrentMonth;
+      const month = me.currentMonth || "";
+      const lbl = document.getElementById("nurseUserLabel");
+      const pay = document.getElementById("nursePaymentLabel");
+      if (lbl) lbl.textContent = name;
+      if (pay) {
+        pay.textContent = paid ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Em atraso" + (month ? " (" + month + ")" : ""));
+        pay.classList.remove("green","red");
+        pay.classList.add(paid ? "green" : "red");
+      }
+    }
+
+    // Eventos de login/logout
+    document.getElementById("loginBtn")?.addEventListener("click", doLogin);
+    document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    document.getElementById("nurseLogoutBtn")?.addEventListener("click", logoutAll);
+    document.getElementById("adminLogoutBtn")?.addEventListener("click", logoutAll);
+
 
     let recognition;
     let isRecording = false;
@@ -1988,7 +2162,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         const prescricao = data.prescricao || "";
 
         updateSoapFromString(soap);
-        prescriptionOutput.value = prescricao;
+        prescriptionOutput.value = normalizeNumberedParagraphs(prescricao);
         printBtn.style.display = prescricao ? "inline-block" : "none";
 
         micStatus.innerText = "Atualização concluída.";
@@ -2122,7 +2296,11 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     const reportRecordBtn = document.getElementById("reportRecordBtn");
     const reportStatus = document.getElementById("reportStatus");
     const reportOutput = document.getElementById("reportOutput");
-
+    const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
+    const reportDocTypeDetected = document.getElementById("reportDocTypeDetected");
+    const reportMissingFields = document.getElementById("reportMissingFields");
+    const copyReportBtn = document.getElementById("copyReportBtn");
+    const printReportBtn = document.getElementById("printReportBtn");
 
     let reportRecognition = null;
     let reportIsRecording = false;
@@ -2143,6 +2321,17 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
     }
+
+    function normalizeNumberedParagraphs(text) {
+      let t = String(text || "");
+      t = t.replace(/\r/g, "");
+      // Garante que cada item numerado comece em uma nova linha (melhora leitura no S.U.I.S.)
+      t = t.replace(/([^\n])\s+(\d+)\s*([\.)])\s+/g, "$1\n$2$3 ");
+      t = t.replace(/([^\n])\s+(\d+)\s*[-–—]\s+/g, "$1\n$2 - ");
+      t = t.replace(/\n{3,}/g, "\n\n");
+      return t.trim();
+    }
+
 
     // ============================
     // ============================
@@ -3372,105 +3561,7 @@ function initSpeech() {
         return;
       }
 
-      w.document.write("<html><head><title>" + escapeHtml(title) + "</title></head><body>
-
-  <div id="loginOverlay" class="login-overlay">
-    <div class="login-card">
-      <h2>Acesso</h2>
-
-      <div class="login-field">
-        <label for="loginInput">Login</label>
-        <input id="loginInput" type="text" autocomplete="username" placeholder="Digite seu login" />
-      </div>
-
-      <div class="login-field">
-        <label for="passwordInput">Senha</label>
-        <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Digite sua senha" />
-      </div>
-
-      <div class="login-actions">
-        <button id="loginBtn" class="login-btn" type="button">Entrar</button>
-      </div>
-
-      <div id="loginError" class="login-error"></div>
-
-      <div class="login-contact">
-        <a href="https://wa.me/5575981457012?text=Ol%C3%A1%21%20Gostaria%20de%20reportar%20um%20erro%2C%20tirar%20uma%20d%C3%BAvida%20ou%20enviar%20uma%20sugest%C3%A3o." target="_blank" rel="noopener">Entrar em contato</a>
-      </div>
-    </div>
-  </div>
-
-  <div id="adminPage" class="admin-page">
-    <div class="admin-header">
-      <h1>Painel do Administrador</h1>
-      <button id="adminLogoutBtn" class="btn-logout" type="button">Sair</button>
-    </div>
-
-    <div id="adminStats" class="admin-card" style="margin-bottom: 12px;"></div>
-
-    <div class="admin-grid">
-      <div class="admin-card">
-        <h3>Cadastrar enfermeiro</h3>
-
-        <div class="admin-form-row">
-          <input id="newFullName" type="text" placeholder="Nome completo" />
-          <input id="newDob" type="text" placeholder="Data de nascimento (DD/MM/AAAA ou AAAA-MM-DD)" />
-          <input id="newPhone" type="text" placeholder="Telefone" />
-          <input id="newLogin" type="text" placeholder="Login" />
-          <input id="newPassword" type="text" placeholder="Senha" />
-        </div>
-
-        <button id="createUserBtn" class="admin-btn" type="button">Criar usuário</button>
-        <div id="createUserMsg" class="admin-muted"></div>
-
-        <hr style="border:none;border-top:1px solid #e5e7eb;margin:14px 0;" />
-
-        <h3>Auditoria</h3>
-        <button id="refreshAuditBtn" class="admin-btn admin-btn-secondary" type="button">Atualizar auditoria</button>
-        <div id="auditBox" class="admin-muted" style="margin-top:10px; max-height: 260px; overflow:auto;"></div>
-      </div>
-
-      <div class="admin-card">
-        <div class="admin-top-controls">
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <input id="userSearch" type="text" placeholder="Buscar por nome, login ou telefone" />
-            <button id="refreshUsersBtn" class="admin-btn admin-btn-secondary" type="button" style="width:auto;">Atualizar</button>
-          </div>
-          <div class="admin-muted" id="adminMonthLabel"></div>
-        </div>
-
-        <div style="overflow:auto;">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Enfermeiro</th>
-                <th>Online</th>
-                <th>Mensalidade</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody id="usersTbody"></tbody>
-          </table>
-        </div>
-
-        <div class="admin-muted" style="margin-top:10px;">
-          Histórico de pagamento é permanente: o sistema não oferece edição/exclusão via painel.
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="paymentModal" class="modal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 id="paymentModalTitle">Pagamentos</h3>
-        <button id="paymentModalClose" class="modal-close" type="button">Fechar</button>
-      </div>
-
-      <div id="paymentModalBody"></div>
-    </div>
-  </div>
-");
+      w.document.write("<html><head><title>" + escapeHtml(title) + "</title></head><body>");
       w.document.write("<pre style='font-family: Arial, sans-serif; white-space: pre-wrap;'>" +
         escapeHtml(content) +
         "</pre>");
@@ -3599,7 +3690,7 @@ function initSpeech() {
         const resp = await fetch(BACKEND_URL + "/api/prescricao-hospitalar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao })
+          body: JSON.stringify({ transcricao, tipo_documento: (reportDocTypeSelect && reportDocTypeSelect.value && reportDocTypeSelect.value !== "auto") ? reportDocTypeSelect.value : null })
         });
 
         if (!resp.ok) {
@@ -3762,6 +3853,8 @@ function initSpeech() {
       reportStatus.textContent = "";
       reportOutput.value = "";
       reportFinalTranscript = "";
+      if (reportDocTypeDetected) reportDocTypeDetected.textContent = "";
+      if (reportMissingFields) reportMissingFields.textContent = "";
 
       if (!reportRecognition) {
         reportRecognition = initReportSpeech();
@@ -3773,7 +3866,7 @@ function initSpeech() {
 
       reportRecordBtn.className = "small-record-btn recording";
       reportRecordBtn.innerText = "Encerrar gravação";
-      reportStatus.textContent = "Gravando relatório...";
+      reportStatus.textContent = "Gravando documento...";
       reportStatus.classList.remove("loading-dot");
       reportStatus.classList.add("loading-dot");
 
@@ -3801,7 +3894,7 @@ function initSpeech() {
       stopReportStatusTimer();
 
       reportRecordBtn.className = "small-record-btn start";
-      reportRecordBtn.innerText = "Gravar relatório";
+      reportRecordBtn.innerText = "Gravar documento";
 
       const transcricao = reportFinalTranscript.trim();
       if (!transcricao) {
@@ -3810,7 +3903,7 @@ function initSpeech() {
         return;
       }
 
-      reportStatus.textContent = "Gerando relatório clínico...";
+      reportStatus.textContent = "Gerando documento...";
       reportStatus.classList.add("loading-dot");
 
       try {
@@ -3829,10 +3922,16 @@ function initSpeech() {
         }
 
         const data = await resp.json();
-        const relatorio = data.relatorio || "";
-        reportOutput.value = relatorio;
+        const documento = (data && (data.documento || data.relatorio)) ? String(data.documento || data.relatorio) : "";
+        const tipoIdentificado = (data && data.tipo_documento) ? String(data.tipo_documento) : "";
+        const pendentes = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : (Array.isArray(data?.campos_faltantes) ? data.campos_faltantes : []);
 
-        reportStatus.textContent = relatorio ? "Relatório gerado." : "Não foi possível gerar o relatório.";
+        if (reportDocTypeDetected) reportDocTypeDetected.textContent = tipoIdentificado ? tipoIdentificado : "não informado";
+        if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "Nenhum";
+
+        reportOutput.value = normalizeNumberedParagraphs(documento);
+
+        reportStatus.textContent = documento ? "Documento gerado." : "Não foi possível gerar o documento.";
         reportStatus.classList.remove("loading-dot");
       } catch (err) {
         console.error("Erro ao gerar relatório:", err);
@@ -4239,6 +4338,41 @@ function initSpeech() {
         ]
       },
 
+
+      puerperio: {
+        title: "Consulta de puerpério",
+        subtitle: "Avalie recuperação materna, amamentação, sinais de infecção e saúde mental no pós-parto.",
+        sections: [
+          {
+            title: "Perguntas essenciais",
+            items: [
+              "Data do parto e tipo de parto (vaginal/cesárea) e intercorrências no parto e pós-parto imediato.",
+              "Sangramento (lóquios): quantidade, cor e odor; presença de coágulos; piora súbita do sangramento; tontura ou fraqueza.",
+              "Dor: intensidade e localização (períneo, incisão cirúrgica, abdome, mamas); necessidade e adesão a analgésicos prescritos.",
+              "Febre ou calafrios; mal-estar; disúria; corrimento vaginal com odor fétido.",
+              "Amamentação: pega e posição, dor/fissuras, ingurgitamento, mastite (dor localizada, rubor, febre), frequência das mamadas, dificuldades para ordenhar/armazenar.",
+              "Eliminações: diurese e evacuação (constipação), dor ao evacuar, hemorroidas.",
+              "Sono e suporte familiar; alimentação e hidratação; retorno às atividades e rede de apoio.",
+              "Saúde mental: humor, ansiedade, irritabilidade, choro frequente, anedonia; ideias de autoagressão; percepção de vínculo com o bebê.",
+              "Planejamento reprodutivo: desejo contraceptivo, método em uso, dúvidas; retorno da atividade sexual e orientações de prevenção de IST.",
+              "Vacinas e consultas de seguimento; exames ou orientações dadas na alta."
+            ]
+          },
+          {
+            title: "Procedimentos e exame físico",
+            items: [
+              "Aferir sinais vitais; avaliar palidez, hidratação e sinais de gravidade.",
+              "Avaliar útero e involução uterina quando aplicável (dor importante, sensibilidade, subinvolução suspeita).",
+              "Avaliar ferida operatória (cesárea) ou períneo/episiotomia quando indicado: hiperemia, secreção, deiscência, dor desproporcional.",
+              "Avaliar mamas: ingurgitamento, fissuras, áreas de rubor/calor/dor; orientar ordenha, pega correta e manejo de fissuras.",
+              "Orientar sinais de alarme e encaminhar/acionar serviço de urgência quando: sangramento intenso, febre, odor fétido importante, dor intensa, sinais de trombose (dor/inchaço em perna), dispneia ou dor torácica.",
+              "Reforçar cuidados gerais: higiene perineal, hidratação, alimentação, repouso possível, retorno programado e quando procurar a unidade.",
+              "Registrar orientações e, se necessário, encaminhar para avaliação médica, serviço social ou saúde mental conforme achados."
+            ]
+          }
+        ]
+      },
+
       prenatal: {
         title: "Consulta pré-natal",
         subtitle: "Escolha o trimestre para ver perguntas e procedimentos em ordem.",
@@ -4423,651 +4557,330 @@ function initSpeech() {
       }
     });
   
-/* =========================
-   Autenticação (login único)
-   ========================= */
-(function () {
-  const TOKEN_KEY = "suist_enf_token_v1";
-  const ROLE_KEY = "suist_enf_role_v1";
-
-  function $(id) { return document.getElementById(id); }
-
-  const loginOverlay = $("loginOverlay");
-  const appPage = $("appPage");
-  const adminPage = $("adminPage");
-  const loginInput = $("loginInput");
-  const passwordInput = $("passwordInput");
-  const loginBtn = $("loginBtn");
-  const loginError = $("loginError");
-
-  const userBar = $("userBar");
-  const userBarName = $("userBarName");
-  const userBarStatus = $("userBarStatus");
-  const paidPill = $("paidPill");
-  const logoutBtn = $("logoutBtn");
-
-  const adminLogoutBtn = $("adminLogoutBtn");
-  const adminStats = $("adminStats");
-  const adminMonthLabel = $("adminMonthLabel");
-  const userSearch = $("userSearch");
-  const refreshUsersBtn = $("refreshUsersBtn");
-  const usersTbody = $("usersTbody");
-
-  const createUserBtn = $("createUserBtn");
-  const createUserMsg = $("createUserMsg");
-  const newFullName = $("newFullName");
-  const newDob = $("newDob");
-  const newPhone = $("newPhone");
-  const newLogin = $("newLogin");
-  const newPassword = $("newPassword");
-
-  const refreshAuditBtn = $("refreshAuditBtn");
-  const auditBox = $("auditBox");
-
-  const paymentModal = $("paymentModal");
-  const paymentModalTitle = $("paymentModalTitle");
-  const paymentModalBody = $("paymentModalBody");
-  const paymentModalClose = $("paymentModalClose");
-
-  let AUTH = {
-    token: null,
-    role: null, // "admin" | "nurse"
-    user: null
-  };
-
-  // Monkey-patch fetch: adiciona Authorization automaticamente em chamadas /api (exceto /api/auth)
-  (function patchFetch() {
-    const originalFetch = window.fetch.bind(window);
-    window.fetch = async function (input, init) {
-      try {
-        const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
-        const isApi = (typeof url === "string") && url.startsWith(BACKEND_URL + "/api/");
-        const isAuth = (typeof url === "string") && url.startsWith(BACKEND_URL + "/api/auth/");
-        if (isApi && !isAuth && AUTH.token) {
-          init = init || {};
-          const headers = init.headers || {};
-          if (headers instanceof Headers) {
-            headers.set("Authorization", "Bearer " + AUTH.token);
-            init.headers = headers;
-          } else {
-            init.headers = Object.assign({}, headers, { Authorization: "Bearer " + AUTH.token });
-          }
-        }
-      } catch (_) {}
-
-      const resp = await originalFetch(input, init);
-
-      if (resp && (resp.status === 401 || resp.status === 403)) {
-        // Sessão inválida ou acesso negado
-        // Mantém a tela atual se for admin em ações específicas, mas na dúvida volta ao login
-        if (!String(resp.url || "").includes("/api/auth/")) {
-          doLogout(true);
-        }
-      }
-
-      if (resp && resp.status === 402) {
-        // Mensalidade em atraso
-        try {
-          const txt = await resp.clone().text();
-          console.warn("Acesso bloqueado por mensalidade:", txt);
-        } catch (_) {}
-      }
-
-      return resp;
-    };
-  })();
-
-  function setAuth(token, role, user) {
-    AUTH.token = token || null;
-    AUTH.role = role || null;
-    AUTH.user = user || null;
-    window.__AUTH_TOKEN = AUTH.token || null;
-
-    if (AUTH.token) {
-      localStorage.setItem(TOKEN_KEY, AUTH.token);
-      localStorage.setItem(ROLE_KEY, AUTH.role || "");
-    } else {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(ROLE_KEY);
-    }
-  }
-
-  function showLogin() {
-    if (adminPage) adminPage.style.display = "none";
-    if (appPage) appPage.style.display = "none";
-    if (userBar) userBar.style.display = "none";
-    if (loginOverlay) loginOverlay.style.display = "flex";
-    if (loginInput) loginInput.value = "";
-    if (passwordInput) passwordInput.value = "";
-    if (loginError) loginError.textContent = "";
-  }
-
-  function showNurseApp() {
-    if (adminPage) adminPage.style.display = "none";
-    if (loginOverlay) loginOverlay.style.display = "none";
-    if (appPage) appPage.style.display = "block";
-    if (userBar) userBar.style.display = "flex";
-
-    const name = (AUTH.user && AUTH.user.fullName) ? AUTH.user.fullName : "Usuário";
-    const login = (AUTH.user && AUTH.user.login) ? AUTH.user.login : "";
-    userBarName.textContent = name;
-    userBarStatus.textContent = login ? ("Login: " + login) : "";
-
-    const paid = !!(AUTH.user && AUTH.user.paidCurrentMonth);
-    if (paid) {
-      paidPill.classList.remove("pill-red");
-      paidPill.classList.add("pill-green");
-      paidPill.textContent = "Mensalidade em dia";
-      paidPill.style.display = "inline-block";
-    } else {
-      paidPill.classList.remove("pill-green");
-      paidPill.classList.add("pill-red");
-      paidPill.textContent = "Mensalidade em atraso";
-      paidPill.style.display = "inline-block";
-    }
-  }
-
-  function showAdmin() {
-    if (appPage) appPage.style.display = "none";
-    if (userBar) userBar.style.display = "none";
-    if (loginOverlay) loginOverlay.style.display = "none";
-    if (adminPage) adminPage.style.display = "block";
-  }
-
-  async function doLogin() {
-    if (!loginInput || !passwordInput) return;
-    const login = String(loginInput.value || "").trim();
-    const password = String(passwordInput.value || "");
-
-    loginError.textContent = "";
-
-    if (!login || !password) {
-      loginError.textContent = "Informe login e senha.";
-      return;
-    }
-
-    loginBtn.disabled = true;
-    loginBtn.textContent = "Entrando...";
-
-    try {
-      const resp = await fetch(BACKEND_URL + "/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ login, password })
-      });
-
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        loginError.textContent = data && data.error ? data.error : "Falha no login.";
-        return;
-      }
-
-      setAuth(data.token, data.role, data.user);
-
-      if (data.role === "admin") {
-        showAdmin();
-        await loadAdminAll();
-      } else {
-        showNurseApp();
-      }
-
-      startHeartbeat();
-    } catch (e) {
-      console.error(e);
-      loginError.textContent = "Erro de conexão.";
-    } finally {
-      loginBtn.disabled = false;
-      loginBtn.textContent = "Entrar";
-    }
-  }
-
-  async function doLogout(silent) {
-    try {
-      if (AUTH.token) {
-        await fetch(BACKEND_URL + "/api/auth/logout", { method: "POST" });
-      }
-    } catch (_) {}
-    setAuth(null, null, null);
-    stopHeartbeat();
-    if (!silent) {
-      showLogin();
-    } else {
-      showLogin();
-    }
-  }
-
-  let heartbeatTimer = null;
-  function startHeartbeat() {
-    stopHeartbeat();
-    heartbeatTimer = setInterval(async () => {
-      try {
-        if (!AUTH.token) return;
-        await fetch(BACKEND_URL + "/api/auth/heartbeat", { method: "POST" });
-      } catch (_) {}
-    }, 60 * 1000);
-  }
-  function stopHeartbeat() {
-    if (heartbeatTimer) clearInterval(heartbeatTimer);
-    heartbeatTimer = null;
-  }
-
-  async function bootstrap() {
-    // Sempre começa em login, depois tenta restaurar sessão
-    if (loginOverlay) loginOverlay.style.display = "flex";
-    if (appPage) appPage.style.display = "none";
-    if (adminPage) adminPage.style.display = "none";
-
-    const saved = localStorage.getItem(TOKEN_KEY);
-    if (!saved) {
-      showLogin();
-      return;
-    }
-
-    setAuth(saved, localStorage.getItem(ROLE_KEY) || "", null);
-
-    try {
-      const resp = await fetch(BACKEND_URL + "/api/auth/me", { method: "GET" });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        showLogin();
-        return;
-      }
-      AUTH.role = data.role;
-      AUTH.user = data.user;
-
-      if (data.role === "admin") {
-        showAdmin();
-        await loadAdminAll();
-      } else {
-        showNurseApp();
-      }
-
-      startHeartbeat();
-    } catch (e) {
-      console.error(e);
-      showLogin();
-    }
-  }
-
-  // =========================
-  // Admin UI
-  // =========================
-  function fmtDt(iso) {
-    if (!iso) return "-";
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return String(iso);
-    return d.toLocaleString("pt-BR");
-  }
-
-  function escapeHtml(s) {
-    return String(s || "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  async function loadStats() {
-    const resp = await fetch(BACKEND_URL + "/api/admin/stats");
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) {
-      adminStats.textContent = (data && data.error) ? data.error : "Erro ao carregar estatísticas.";
-      return;
-    }
-
-    const t = data.totals || {};
-    adminStats.innerHTML = `
-      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
-        <div>
-          <div style="font-weight:bold; font-size:14px;">Resumo (${escapeHtml(data.month || "")})</div>
-          <div class="admin-muted">
-            Total: ${t.users || 0} | Ativos: ${t.active || 0} | Online: ${t.online || 0} | Em dia: ${t.paidCurrentMonth || 0} | Em atraso: ${t.unpaidCurrentMonth || 0}
-          </div>
-        </div>
-        <button id="adminRefreshAllBtn" class="admin-btn admin-btn-secondary" type="button" style="width:auto;">Atualizar tudo</button>
-      </div>
-    `;
-
-    const btn = document.getElementById("adminRefreshAllBtn");
-    if (btn) btn.onclick = async () => { await loadAdminAll(); };
-  }
-
-  async function loadUsers() {
-    const q = String((userSearch && userSearch.value) ? userSearch.value : "").trim();
-    const url = BACKEND_URL + "/api/admin/users" + (q ? ("?q=" + encodeURIComponent(q)) : "");
-    const resp = await fetch(url);
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) {
-      usersTbody.innerHTML = `<tr><td colspan="4" style="color:#b91c1c;">${escapeHtml((data && data.error) ? data.error : "Erro ao carregar usuários.")}</td></tr>`;
-      return;
-    }
-
-    if (adminMonthLabel) adminMonthLabel.textContent = "Mês atual: " + (data.month || "");
-
-    const users = Array.isArray(data.users) ? data.users : [];
-    if (!users.length) {
-      usersTbody.innerHTML = `<tr><td colspan="4" class="admin-muted">Nenhum usuário encontrado.</td></tr>`;
-      return;
-    }
-
-    usersTbody.innerHTML = users.map(u => {
-      const online = !!u.online;
-      const paid = !!u.paidCurrentMonth;
-      const paidBtnClass = paid ? "pay-btn pay-green" : "pay-btn pay-red";
-      const paidLabel = paid ? "Em dia" : "Em atraso";
-
-      const activeLabel = (u.active ? "Ativo" : "Desativado");
-      const activePill = u.active ? `<span class="pill pill-green" style="margin-top:4px;">${activeLabel}</span>` : `<span class="pill pill-red" style="margin-top:4px;">${activeLabel}</span>`;
-
-      const onlinePill = online ? `<span class="pill pill-green">Online</span>` : `<span class="pill" style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;">Offline</span>`;
-
-      return `
-        <tr>
-          <td>
-            <div style="font-weight:bold;">${escapeHtml(u.fullName || "")}</div>
-            <div class="admin-muted">Login: ${escapeHtml(u.login || "")}</div>
-            <div class="admin-muted">Telefone: ${escapeHtml(u.phone || "")}</div>
-            <div class="admin-muted">Nascimento: ${escapeHtml(u.dob || "")}</div>
-            ${activePill}
-            <div class="admin-muted">Último acesso: ${escapeHtml(u.lastLoginAt ? fmtDt(u.lastLoginAt) : "-")}</div>
-            <div class="admin-muted">Última atividade: ${escapeHtml(u.lastSeenAt ? fmtDt(u.lastSeenAt) : "-")}</div>
-          </td>
-          <td>${onlinePill}</td>
-          <td>
-            <button class="${paidBtnClass}" data-action="pay" data-id="${escapeHtml(u.id)}">${paidLabel}</button>
-            <div style="margin-top:8px;">
-              <span class="mini-link" data-action="history" data-id="${escapeHtml(u.id)}">Ver histórico</span>
-            </div>
-          </td>
-          <td>
-            <div style="display:flex; flex-direction:column; gap:8px;">
-              <button class="admin-btn admin-btn-secondary" data-action="toggle" data-id="${escapeHtml(u.id)}" style="width:auto;">
-                ${u.active ? "Desativar" : "Ativar"}
-              </button>
-              <button class="admin-btn admin-btn-secondary" data-action="resetpw" data-id="${escapeHtml(u.id)}" style="width:auto;">
-                Resetar senha
-              </button>
-              <button class="admin-btn" data-action="delete" data-id="${escapeHtml(u.id)}" style="width:auto; background:#ef4444;">
-                Excluir
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join("");
-
-    // Attach actions
-    usersTbody.querySelectorAll("[data-action]").forEach(el => {
-      el.addEventListener("click", async () => {
-        const action = el.getAttribute("data-action");
-        const id = el.getAttribute("data-id");
-        if (!id) return;
-
-        if (action === "history") {
-          await openPaymentModal(id, false);
-        } else if (action === "pay") {
-          await openPaymentModal(id, true);
-        } else if (action === "toggle") {
-          await toggleUserActive(id);
-        } else if (action === "resetpw") {
-          await resetUserPassword(id);
-        } else if (action === "delete") {
-          await deleteUser(id);
-        }
-      });
-    });
-  }
-
-  async function createUser() {
-    createUserMsg.textContent = "";
-    const payload = {
-      fullName: String(newFullName.value || "").trim(),
-      dob: String(newDob.value || "").trim(),
-      phone: String(newPhone.value || "").trim(),
-      login: String(newLogin.value || "").trim(),
-      password: String(newPassword.value || "")
-    };
-
-    if (!payload.fullName || !payload.dob || !payload.phone || !payload.login || !payload.password) {
-      createUserMsg.textContent = "Preencha todos os campos do cadastro.";
-      return;
-    }
-
-    createUserBtn.disabled = true;
-    createUserBtn.textContent = "Criando...";
-    try {
-      const resp = await fetch(BACKEND_URL + "/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        createUserMsg.textContent = (data && data.error) ? data.error : "Erro ao criar usuário.";
-        return;
-      }
-      createUserMsg.textContent = "Usuário criado com sucesso.";
-      newFullName.value = "";
-      newDob.value = "";
-      newPhone.value = "";
-      newLogin.value = "";
-      newPassword.value = "";
-      await loadAdminAll();
-    } finally {
-      createUserBtn.disabled = false;
-      createUserBtn.textContent = "Criar usuário";
-    }
-  }
-
-  async function toggleUserActive(id) {
-    const ok = confirm("Deseja alternar o status (ativar/desativar) deste usuário?");
-    if (!ok) return;
-    // Primeiro busca lista para descobrir status atual
-    const respList = await fetch(BACKEND_URL + "/api/admin/users");
-    const dataList = await respList.json().catch(() => ({}));
-    const u = (dataList.users || []).find(x => x.id === id);
-    const nextActive = !(u && u.active);
-
-    const resp = await fetch(BACKEND_URL + "/api/admin/users/" + encodeURIComponent(id), {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ active: nextActive })
-    });
-    await resp.json().catch(() => ({}));
-    await loadAdminAll();
-  }
-
-  async function resetUserPassword(id) {
-    const newPw = prompt("Digite a nova senha:");
-    if (!newPw) return;
-
-    const resp = await fetch(BACKEND_URL + "/api/admin/users/" + encodeURIComponent(id), {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: String(newPw) })
-    });
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) {
-      alert((data && data.error) ? data.error : "Erro ao resetar senha.");
-      return;
-    }
-    alert("Senha atualizada.");
-    await loadAdminAll();
-  }
-
-  async function deleteUser(id) {
-    const ok = confirm("Excluir usuário? Isso remove o acesso, mas mantém pagamentos e auditoria.");
-    if (!ok) return;
-
-    const resp = await fetch(BACKEND_URL + "/api/admin/users/" + encodeURIComponent(id), { method: "DELETE" });
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) {
-      alert((data && data.error) ? data.error : "Erro ao excluir.");
-      return;
-    }
-    await loadAdminAll();
-  }
-
-  async function openPaymentModal(userId, focusPay) {
-    paymentModal.style.display = "flex";
-    paymentModalTitle.textContent = "Pagamentos";
-
-    paymentModalBody.innerHTML = `<div class="admin-muted">Carregando...</div>`;
-
-    const resp = await fetch(BACKEND_URL + "/api/admin/users/" + encodeURIComponent(userId) + "/payments");
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) {
-      paymentModalBody.innerHTML = `<div style="color:#b91c1c;">${escapeHtml((data && data.error) ? data.error : "Erro ao carregar pagamentos.")}</div>`;
-      return;
-    }
-
-    const user = data.user || {};
-    const payments = Array.isArray(data.payments) ? data.payments : [];
-
-    const currentMonth = (adminMonthLabel && adminMonthLabel.textContent) ? "" : "";
-    const monthDefault = new Date();
-    const yyyy = monthDefault.getFullYear();
-    const mm = String(monthDefault.getMonth() + 1).padStart(2, "0");
-    const def = `${yyyy}-${mm}`;
-
-    paymentModalTitle.textContent = `Pagamentos - ${user.fullName || ""} (${user.login || ""})`;
-
-    const listHtml = payments.length
-      ? `<div style="overflow:auto; max-height: 260px;">
-           <table class="admin-table">
-             <thead><tr><th>Mês</th><th>Pago em</th><th>Admin</th><th>Obs.</th></tr></thead>
-             <tbody>
-               ${payments.map(p => `
-                 <tr>
-                   <td>${escapeHtml(p.month || "")}</td>
-                   <td>${escapeHtml(p.paidAt ? fmtDt(p.paidAt) : "-")}</td>
-                   <td>${escapeHtml(p.adminLogin || "-")}</td>
-                   <td>${escapeHtml(p.note || "")}</td>
-                 </tr>
-               `).join("")}
-             </tbody>
-           </table>
-         </div>`
-      : `<div class="admin-muted">Nenhum pagamento registrado.</div>`;
-
-    paymentModalBody.innerHTML = `
-      <div class="admin-card" style="box-shadow:none; border:1px solid #e5e7eb; border-radius:12px; margin-bottom:10px;">
-        <div style="font-weight:bold; margin-bottom:8px;">Marcar mensalidade como paga</div>
-        <div class="admin-form-row" style="margin-bottom:8px;">
-          <input id="payMonthInput" type="month" value="${escapeHtml(def)}" />
-          <input id="payNoteInput" type="text" placeholder="Observação (opcional)" />
-        </div>
-        <button id="markPaidBtn" class="admin-btn" type="button">Marcar como pago</button>
-        <div class="admin-muted" id="markPaidMsg" style="margin-top:8px;"></div>
-      </div>
-
-      <div class="admin-card" style="box-shadow:none; border:1px solid #e5e7eb; border-radius:12px;">
-        <div style="font-weight:bold; margin-bottom:8px;">Histórico de pagamento (permanente)</div>
-        ${listHtml}
-      </div>
-    `;
-
-    const markPaidBtn = document.getElementById("markPaidBtn");
-    const payMonthInput = document.getElementById("payMonthInput");
-    const payNoteInput = document.getElementById("payNoteInput");
-    const markPaidMsg = document.getElementById("markPaidMsg");
-
-    markPaidBtn.onclick = async () => {
-      markPaidMsg.textContent = "";
-      const month = String(payMonthInput.value || "").trim();
-      const note = String(payNoteInput.value || "").trim();
-
-      if (!month) {
-        markPaidMsg.textContent = "Selecione o mês.";
-        return;
-      }
-
-      markPaidBtn.disabled = true;
-      markPaidBtn.textContent = "Salvando...";
-
-      try {
-        const resp2 = await fetch(BACKEND_URL + "/api/admin/users/" + encodeURIComponent(userId) + "/pay", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ month, note })
-        });
-        const data2 = await resp2.json().catch(() => ({}));
-        if (!resp2.ok) {
-          markPaidMsg.textContent = (data2 && data2.error) ? data2.error : "Erro ao marcar pagamento.";
+    if (copyReportBtn) {
+      copyReportBtn.addEventListener("click", () => {
+        const text = (reportOutput && reportOutput.value) ? reportOutput.value.trim() : "";
+        if (!text) {
+          reportStatus.textContent = "Não há conteúdo para copiar.";
           return;
         }
-        markPaidMsg.textContent = "Pagamento registrado.";
-        await loadAdminAll();
-        await openPaymentModal(userId, false);
-      } finally {
-        markPaidBtn.disabled = false;
-        markPaidBtn.textContent = "Marcar como pago";
+        copyToClipboard(text);
+        reportStatus.textContent = "Documento copiado.";
+      });
+    }
+
+    if (printReportBtn) {
+      printReportBtn.addEventListener("click", () => {
+        const text = (reportOutput && reportOutput.value) ? reportOutput.value.trim() : "";
+        openPrintWindow("Documento de enfermagem", text);
+      });
+    }
+
+
+
+    // =========================
+    // ADMIN (cadastro, mensalidade, histórico e auditoria)
+    // =========================
+    let ADMIN_CACHE_USERS = [];
+    let ADMIN_CACHE_AUDIT = [];
+    let ADMIN_SELECTED_USER_ID = null;
+    let ADMIN_SELECTED_USER_LABEL = "";
+
+    function fmtDt(iso) {
+      if (!iso) return "-";
+      try { return new Date(iso).toLocaleString("pt-BR"); } catch { return String(iso); }
+    }
+
+    function currentYYYYMM() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      return `${y}-${m}`;
+    }
+
+    async function adminFetchJson(path, options) {
+      const resp = await fetch(BACKEND_URL + path, Object.assign({ method: "GET" }, options || {}));
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.error || ("Falha: " + resp.status));
+      return data;
+    }
+
+    async function adminLoadAll() {
+      try {
+        const [users, audit] = await Promise.all([
+          adminFetchJson("/api/admin/users"),
+          adminFetchJson("/api/admin/audit")
+        ]);
+        ADMIN_CACHE_USERS = Array.isArray(users.users) ? users.users : [];
+        ADMIN_CACHE_AUDIT = Array.isArray(audit.audit) ? audit.audit : [];
+        renderAdminUsers();
+        renderAdminAudit();
+        const sub = document.getElementById("adminSubtitle");
+        if (sub) sub.textContent = `Usuários cadastrados: ${ADMIN_CACHE_USERS.length}`;
+        const st = document.getElementById("adminStatus");
+        if (st) st.textContent = "";
+      } catch (e) {
+        const st = document.getElementById("adminStatus");
+        if (st) st.textContent = String(e.message || e);
       }
-    };
-
-    if (focusPay) {
-      const el = document.getElementById("payMonthInput");
-      if (el) el.focus();
     }
-  }
 
-  async function loadAudit() {
-    auditBox.textContent = "Carregando...";
-    const resp = await fetch(BACKEND_URL + "/api/admin/audit");
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) {
-      auditBox.textContent = (data && data.error) ? data.error : "Erro ao carregar auditoria.";
-      return;
+    function renderAdminAudit() {
+      const tbody = document.getElementById("auditTbody");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+      for (const a of ADMIN_CACHE_AUDIT.slice().reverse().slice(0, 200)) {
+        const tr = document.createElement("tr");
+        const tdAt = document.createElement("td");
+        const tdAc = document.createElement("td");
+        const tdTa = document.createElement("td");
+        const tdDe = document.createElement("td");
+        tdAt.textContent = fmtDt(a.at);
+        tdAc.textContent = a.action || "";
+        tdTa.textContent = a.target || "";
+        tdDe.textContent = a.details || "";
+        tr.appendChild(tdAt); tr.appendChild(tdAc); tr.appendChild(tdTa); tr.appendChild(tdDe);
+        tbody.appendChild(tr);
+      }
     }
-    const audit = Array.isArray(data.audit) ? data.audit : [];
-    const last = audit.slice(0, 40);
-    auditBox.innerHTML = last.length
-      ? last.map(a => {
-          const at = escapeHtml(a.at ? fmtDt(a.at) : "");
-          const action = escapeHtml(a.action || "");
-          const who = escapeHtml(a.adminLogin || "");
-          const target = escapeHtml(a.targetUserId || "");
-          return `<div style="padding:6px 0;border-bottom:1px solid #eee;">
-                    <div style="font-weight:bold;">${action}</div>
-                    <div class="admin-muted">${at} | ${who} | ${target}</div>
-                  </div>`;
-        }).join("")
-      : `<div class="admin-muted">Sem registros.</div>`;
-  }
 
-  async function loadAdminAll() {
-    await loadStats();
-    await loadUsers();
-    await loadAudit();
-  }
+    function isOnline(lastSeenAt) {
+      if (!lastSeenAt) return false;
+      try {
+        const t = new Date(lastSeenAt).getTime();
+        return (Date.now() - t) <= (2 * 60 * 1000);
+      } catch {
+        return false;
+      }
+    }
 
-  // =========================
-  // Bindings
-  // =========================
-  if (loginBtn) loginBtn.addEventListener("click", doLogin);
-  if (passwordInput) passwordInput.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
-  if (logoutBtn) logoutBtn.addEventListener("click", () => doLogout(false));
-  if (adminLogoutBtn) adminLogoutBtn.addEventListener("click", () => doLogout(false));
+    function renderAdminUsers() {
+      const tbody = document.getElementById("usersTbody");
+      if (!tbody) return;
+      tbody.innerHTML = "";
 
-  if (refreshUsersBtn) refreshUsersBtn.addEventListener("click", loadUsers);
-  if (userSearch) userSearch.addEventListener("input", () => {
-    // debounce simples
-    if (window.__suistUserSearchTimer) clearTimeout(window.__suistUserSearchTimer);
-    window.__suistUserSearchTimer = setTimeout(loadUsers, 350);
-  });
+      const q = (document.getElementById("adminSearch")?.value || "").trim().toLowerCase();
+      const rows = ADMIN_CACHE_USERS.filter(u => {
+        if (!q) return true;
+        const s = `${u.fullName||""} ${u.login||""} ${u.phone||""}`.toLowerCase();
+        return s.includes(q);
+      });
 
-  if (createUserBtn) createUserBtn.addEventListener("click", createUser);
-  if (refreshAuditBtn) refreshAuditBtn.addEventListener("click", loadAudit);
+      for (const u of rows) {
+        const tr = document.createElement("tr");
 
-  if (paymentModalClose) paymentModalClose.addEventListener("click", () => { paymentModal.style.display = "none"; });
-  if (paymentModal) paymentModal.addEventListener("click", (e) => {
-    if (e.target === paymentModal) paymentModal.style.display = "none";
-  });
+        const tdName = document.createElement("td");
+        tdName.textContent = u.fullName || "-";
 
-  // Start
-  bootstrap();
-})();
+        const tdLogin = document.createElement("td");
+        tdLogin.textContent = u.login || "-";
+
+        const tdPhone = document.createElement("td");
+        tdPhone.textContent = u.phone || "-";
+
+        const tdOnline = document.createElement("td");
+        const on = isOnline(u.lastSeenAt);
+        const pillOn = document.createElement("span");
+        pillOn.className = "pill " + (on ? "green" : "gray");
+        pillOn.textContent = on ? "Online" : "Offline";
+        tdOnline.appendChild(pillOn);
+
+        const tdPay = document.createElement("td");
+        const paid = !!u.paidCurrentMonth;
+        const pillPay = document.createElement("button");
+        pillPay.type = "button";
+        pillPay.className = "pill " + (paid ? "green" : "red");
+        pillPay.textContent = paid ? "Em dia" : "Em atraso";
+        pillPay.title = "Clique para marcar pagamento do mês";
+        pillPay.addEventListener("click", async () => {
+          const month = prompt("Mês no formato AAAA-MM", currentYYYYMM());
+          if (!month) return;
+          const amount = prompt("Valor (opcional)", "");
+          const method = prompt("Método (opcional)", "PIX");
+          const notes = prompt("Observações (opcional)", "");
+          try {
+            await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/pay`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ month, amount, method, notes })
+            });
+            await adminLoadAll();
+          } catch (e) {
+            const st = document.getElementById("adminStatus");
+            if (st) st.textContent = String(e.message || e);
+          }
+        });
+        tdPay.appendChild(pillPay);
+
+        const tdLast = document.createElement("td");
+        tdLast.textContent = u.lastLoginAt ? fmtDt(u.lastLoginAt) : "-";
+
+        const tdActions = document.createElement("td");
+        const actions = document.createElement("div");
+        actions.className = "admin-actions";
+
+        const btnHist = document.createElement("button");
+        btnHist.className = "admin-btn secondary";
+        btnHist.type = "button";
+        btnHist.textContent = "Histórico";
+        btnHist.addEventListener("click", async () => {
+          try {
+            const data = await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/payments`);
+            openPaymentsModal(u, data.payments || []);
+          } catch (e) {
+            const st = document.getElementById("adminStatus");
+            if (st) st.textContent = String(e.message || e);
+          }
+        });
+
+        const btnActive = document.createElement("button");
+        btnActive.className = "admin-btn secondary";
+        btnActive.type = "button";
+        btnActive.textContent = u.active ? "Desativar" : "Ativar";
+        btnActive.addEventListener("click", async () => {
+          try {
+            await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/active`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ active: !u.active })
+            });
+            await adminLoadAll();
+          } catch (e) {
+            const st = document.getElementById("adminStatus");
+            if (st) st.textContent = String(e.message || e);
+          }
+        });
+
+        const btnReset = document.createElement("button");
+        btnReset.className = "admin-btn secondary";
+        btnReset.type = "button";
+        btnReset.textContent = "Reset senha";
+        btnReset.addEventListener("click", async () => {
+          const newPass = prompt("Nova senha (será salva)", "");
+          if (!newPass) return;
+          try {
+            await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/reset-password`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password: newPass })
+            });
+            await adminLoadAll();
+          } catch (e) {
+            const st = document.getElementById("adminStatus");
+            if (st) st.textContent = String(e.message || e);
+          }
+        });
+
+        const btnDelete = document.createElement("button");
+        btnDelete.className = "admin-btn danger";
+        btnDelete.type = "button";
+        btnDelete.textContent = "Excluir";
+        btnDelete.addEventListener("click", async () => {
+          if (!confirm("Excluir este usuário? O histórico de pagamentos será preservado.")) return;
+          try {
+            await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}`, { method: "DELETE" });
+            await adminLoadAll();
+          } catch (e) {
+            const st = document.getElementById("adminStatus");
+            if (st) st.textContent = String(e.message || e);
+          }
+        });
+
+        actions.appendChild(btnHist);
+        actions.appendChild(btnActive);
+        actions.appendChild(btnReset);
+        actions.appendChild(btnDelete);
+        tdActions.appendChild(actions);
+
+        tr.appendChild(tdName);
+        tr.appendChild(tdLogin);
+        tr.appendChild(tdPhone);
+        tr.appendChild(tdOnline);
+        tr.appendChild(tdPay);
+        tr.appendChild(tdLast);
+        tr.appendChild(tdActions);
+
+        tbody.appendChild(tr);
+      }
+    }
+
+    function openPaymentsModal(user, payments) {
+      const modal = document.getElementById("paymentsModal");
+      const subtitle = document.getElementById("paymentsModalSubtitle");
+      const tbody = document.getElementById("paymentsTbody");
+      if (!modal || !tbody) return;
+      if (subtitle) subtitle.textContent = `${user.fullName || "-"} • ${user.login || "-"}`;
+
+      tbody.innerHTML = "";
+      const list = Array.isArray(payments) ? payments.slice().reverse() : [];
+      for (const p of list) {
+        const tr = document.createElement("tr");
+        const tdM = document.createElement("td");
+        const tdAt = document.createElement("td");
+        const tdAm = document.createElement("td");
+        const tdMe = document.createElement("td");
+        const tdNo = document.createElement("td");
+        tdM.textContent = p.month || "-";
+        tdAt.textContent = fmtDt(p.paidAt);
+        tdAm.textContent = (p.amount !== undefined && p.amount !== null && String(p.amount).trim() !== "") ? String(p.amount) : "-";
+        tdMe.textContent = p.method || "-";
+        tdNo.textContent = p.notes || "-";
+        tr.appendChild(tdM); tr.appendChild(tdAt); tr.appendChild(tdAm); tr.appendChild(tdMe); tr.appendChild(tdNo);
+        tbody.appendChild(tr);
+      }
+
+      modal.classList.remove("hidden");
+    }
+
+    document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
+      document.getElementById("paymentsModal")?.classList.add("hidden");
+    });
+
+    document.getElementById("adminSearch")?.addEventListener("input", renderAdminUsers);
+
+    document.getElementById("adminRefreshBtn")?.addEventListener("click", adminLoadAll);
+
+    document.getElementById("createUserBtn")?.addEventListener("click", async () => {
+      const fullName = (document.getElementById("newFullName")?.value || "").trim();
+      const dob = (document.getElementById("newDob")?.value || "").trim();
+      const phone = (document.getElementById("newPhone")?.value || "").trim();
+      const login = (document.getElementById("newLogin")?.value || "").trim();
+      const password = (document.getElementById("newPassword")?.value || "").trim();
+      const st = document.getElementById("createUserStatus");
+      if (!fullName || !dob || !phone || !login || !password) {
+        if (st) st.textContent = "Preencha nome completo, data de nascimento, telefone, login e senha.";
+        return;
+      }
+      if (st) st.textContent = "Cadastrando...";
+      try {
+        await adminFetchJson("/api/admin/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fullName, dob, phone, login, password })
+        });
+        if (st) st.textContent = "Usuário cadastrado.";
+        // Limpa campos
+        ["newFullName","newDob","newPhone","newLogin","newPassword"].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = "";
+        });
+        await adminLoadAll();
+      } catch (e) {
+        if (st) st.textContent = String(e.message || e);
+      }
+    });
+
+    // Inicializa a sessão ao carregar
+    restoreSession();
+
+    // Failsafe: se nenhuma view estiver visível após 1s, mostra login
+    setTimeout(() => {
+      const lv = document.getElementById("loginView");
+      const av = document.getElementById("adminView");
+      const nv = document.getElementById("nurseView");
+      const anyVisible = (lv && !lv.classList.contains("hidden")) || (av && !av.classList.contains("hidden")) || (nv && !nv.classList.contains("hidden"));
+      if (!anyVisible) showLogin();
+    }, 1000);
 
 </script>
 
