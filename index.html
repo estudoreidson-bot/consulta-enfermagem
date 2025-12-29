@@ -1105,6 +1105,10 @@
     .admin-actions button { padding: 8px 10px; border-radius: 10px; font-size: 12px; }
     .modal-overlay.hidden { display: none; }
 
+
+    .admin-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    @media (max-width: 720px){.admin-form-grid{grid-template-columns:1fr;}}
+
 </style>
 </head>
 <body>
@@ -1242,7 +1246,43 @@
       </div>
       <div style="margin-top: 10px; font-size: 12px; color: #666;">Este histórico é permanente. Não há opção de editar ou apagar registros.</div>
     </div>
+    <div id="editUserModal" class="modal-overlay hidden">
+    <div class="modal" style="max-width: 720px;">
+      <h3 style="margin:0 0 8px 0;">Editar enfermeiro(a)</h3>
+      <p id="editUserSubtitle" style="margin:0 0 10px 0; font-size: 12px; color: #555;"></p>
+
+      <div class="admin-form-grid">
+        <div>
+          <label class="auth-label">Nome completo</label>
+          <input id="editFullName" class="auth-input" placeholder="Nome completo" />
+        </div>
+        <div>
+          <label class="auth-label">Data de nascimento</label>
+          <input id="editDob" class="auth-input" placeholder="dd/mm/aaaa" />
+        </div>
+        <div>
+          <label class="auth-label">Telefone</label>
+          <input id="editPhone" class="auth-input" placeholder="Telefone" />
+        </div>
+        <div>
+          <label class="auth-label">Login</label>
+          <input id="editLogin" class="auth-input" placeholder="Login" />
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label class="auth-label">Nova senha (opcional)</label>
+          <input id="editPassword" class="auth-input" placeholder="Deixe em branco para não alterar" />
+          <div style="margin-top:6px; font-size: 12px; color:#666;">Se preencher, a senha será atualizada. O histórico de pagamentos não é alterado.</div>
+        </div>
+      </div>
+
+      <div class="admin-row" style="justify-content:flex-end; margin-top: 14px;">
+        <button id="cancelEditUserBtn" class="admin-btn secondary" type="button">Cancelar</button>
+        <button id="saveEditUserBtn" class="admin-btn" type="button" style="margin-left: 10px;">Salvar</button>
+      </div>
+    </div>
   </div>
+
+</div>
 
   <div id="nurseView" class="hidden">
   <div class="page">
@@ -4671,6 +4711,7 @@ function initSpeech() {
 
       for (const u of rows) {
         const tr = document.createElement("tr");
+        const active = (u && (u.isActive !== undefined ? !!u.isActive : !!u.active));
 
         const tdName = document.createElement("td");
         tdName.textContent = u.fullName || "-";
@@ -4722,6 +4763,14 @@ function initSpeech() {
         const actions = document.createElement("div");
         actions.className = "admin-actions";
 
+        const btnEdit = document.createElement("button");
+        btnEdit.className = "admin-btn secondary";
+        btnEdit.type = "button";
+        btnEdit.textContent = "Editar";
+        btnEdit.addEventListener("click", () => {
+          openEditUserModal(u);
+        });
+
         const btnHist = document.createElement("button");
         btnHist.className = "admin-btn secondary";
         btnHist.type = "button";
@@ -4737,15 +4786,16 @@ function initSpeech() {
         });
 
         const btnActive = document.createElement("button");
-        btnActive.className = "admin-btn secondary";
         btnActive.type = "button";
-        btnActive.textContent = u.active ? "Desativar" : "Ativar";
+        btnActive.className = "pill " + (active ? "green" : "red");
+        btnActive.textContent = active ? "Ativado" : "Desativado";
+        btnActive.title = "Clique para ativar/desativar. Se desativado ou em débito, o acesso do usuário será bloqueado.";
         btnActive.addEventListener("click", async () => {
           try {
             await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/active`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ active: !u.active })
+              body: JSON.stringify({ active: !active })
             });
             await adminLoadAll();
           } catch (e) {
@@ -4789,6 +4839,7 @@ function initSpeech() {
           }
         });
 
+        actions.appendChild(btnEdit);
         actions.appendChild(btnHist);
         actions.appendChild(btnActive);
         actions.appendChild(btnReset);
@@ -4835,7 +4886,59 @@ function initSpeech() {
       modal.classList.remove("hidden");
     }
 
-    document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
+        // =========================
+    // EDITAR USUÁRIO (ADMIN)
+    // =========================
+    let EDIT_USER_ID = null;
+
+    function openEditUserModal(user) {
+      EDIT_USER_ID = user?.id || null;
+      document.getElementById("editUserSubtitle").textContent = `${user.fullName || "-"} • ${user.login || "-"}`;
+
+      document.getElementById("editFullName").value = user.fullName || "";
+      document.getElementById("editDob").value = user.dob || "";
+      document.getElementById("editPhone").value = user.phone || "";
+      document.getElementById("editLogin").value = user.login || "";
+      document.getElementById("editPassword").value = "";
+
+      document.getElementById("editUserModal").classList.remove("hidden");
+    }
+
+    function closeEditUserModal() {
+      EDIT_USER_ID = null;
+      document.getElementById("editUserModal")?.classList.add("hidden");
+    }
+
+    document.getElementById("cancelEditUserBtn")?.addEventListener("click", closeEditUserModal);
+
+    document.getElementById("saveEditUserBtn")?.addEventListener("click", async () => {
+      try {
+        if (!EDIT_USER_ID) throw new Error("Usuário inválido.");
+        const fullName = (document.getElementById("editFullName")?.value || "").trim();
+        const dob = (document.getElementById("editDob")?.value || "").trim();
+        const phone = (document.getElementById("editPhone")?.value || "").trim();
+        const login = (document.getElementById("editLogin")?.value || "").trim();
+        const password = (document.getElementById("editPassword")?.value || "").trim();
+
+        if (!fullName || !dob || !phone || !login) {
+          alert("Preencha: nome completo, data de nascimento, telefone e login.");
+          return;
+        }
+
+        await adminFetchJson(`/api/admin/users/${encodeURIComponent(EDIT_USER_ID)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fullName, dob, phone, login, password })
+        });
+
+        closeEditUserModal();
+        await adminLoadAll();
+      } catch (e) {
+        alert(String(e?.message || e || "Falha ao editar usuário."));
+      }
+    });
+
+document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       document.getElementById("paymentsModal")?.classList.add("hidden");
     });
 

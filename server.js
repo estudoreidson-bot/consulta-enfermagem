@@ -541,10 +541,10 @@ function requirePaidOrAdmin(req, res, next) {
 
   const user = req.auth.user;
   if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
-  if (!user.isActive) return res.status(403).json({ error: "Usuário desativado." });
+  if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
 
   if (!isUserPaidThisMonth(user.id)) {
-    return res.status(402).json({ error: "Mensalidade em atraso (mês atual). Procure o administrador." });
+    return res.status(402).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
   }
   next();
 }
@@ -568,10 +568,14 @@ app.post("/api/auth/login", (req, res) => {
     // Usuário enfermeiro
     const user = findUserByLogin(login);
     if (!user || user.isDeleted) return res.status(401).json({ error: "Credenciais inválidas." });
-    if (!user.isActive) return res.status(403).json({ error: "Usuário desativado." });
+    if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
 
     const computed = sha256(`${user.salt || ""}:${senha}`);
     if (computed !== user.passwordHash) return res.status(401).json({ error: "Credenciais inválidas." });
+
+
+    // Bloqueio por mensalidade em débito
+    if (!isUserPaidThisMonth(user.id)) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
 
     user.lastLoginAt = nowIso();
     user.lastSeenAt = nowIso();
@@ -632,6 +636,7 @@ app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
       phone: u.phone,
       login: u.login,
       isActive: !!u.isActive,
+      active: !!u.isActive,
       lastLoginAt: u.lastLoginAt || "",
       lastSeenAt: u.lastSeenAt || "",
       isOnline: isUserOnline(u),
@@ -681,6 +686,47 @@ app.post("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
     return res.status(500).json({ error: "Falha ao cadastrar usuário." });
   }
 });
+app.put("/api/admin/users/:id", requireAuth, requireAdmin, (req, res) => {
+  try {
+    const id = String(req.params.id || "");
+    const user = DB.users.find(u => u.id === id && !u.isDeleted);
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado." });
+
+    const fullName = String(req.body?.fullName ?? user.fullName ?? "").trim();
+    const dob = String(req.body?.dob ?? user.dob ?? "").trim();
+    const phone = String(req.body?.phone ?? user.phone ?? "").trim();
+    const login = String(req.body?.login ?? user.login ?? "").trim();
+    const password = String(req.body?.password || "").trim();
+
+    if (!fullName || !dob || !phone || !login) {
+      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone e login são obrigatórios." });
+    }
+
+    // Se mudar o login, garantir unicidade
+    const existing = DB.users.find(u => !u.isDeleted && u.id !== id && String(u.login || "").toLowerCase() === String(login).toLowerCase());
+    if (existing) return res.status(409).json({ error: "Já existe usuário com este login." });
+
+    user.fullName = fullName;
+    user.dob = dob;
+    user.phone = phone;
+    user.login = login;
+
+    if (password) {
+      const salt = crypto.randomBytes(10).toString("hex");
+      user.salt = salt;
+      user.passwordHash = sha256(`${salt}:${password}`);
+      audit("user_update_password", id, `Senha atualizada para ${user.login}`);
+    }
+
+    saveDb(DB);
+    audit("user_update", id, `Dados atualizados para ${user.login}`);
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao editar usuário." });
+  }
+});
+
 
 app.post("/api/admin/users/:id/reset-password", requireAuth, requireAdmin, (req, res) => {
   try {
