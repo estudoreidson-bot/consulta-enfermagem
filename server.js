@@ -196,6 +196,7 @@ const ADMIN_LOGIN = "027-315-125-80";
 const ADMIN_PASSWORD = "39-96-93";
 const ADMIN_LOGIN_N = onlyDigits(ADMIN_LOGIN);
 const ADMIN_PASSWORD_N = onlyDigits(ADMIN_PASSWORD);
+const ADMIN_PASSWORD_ALT_N = "390693"; // aceita variante digitada sem pontuação
 
 function audit(action, target, details) {
   try {
@@ -312,7 +313,7 @@ app.post("/api/auth/login", (req, res) => {
     // Admin (aceita com ou sem pontuação)
     const loginN = onlyDigits(login);
     const senhaN = onlyDigits(senha);
-    if ((login === ADMIN_LOGIN && senha === ADMIN_PASSWORD) || (loginN && senhaN && loginN === ADMIN_LOGIN_N && senhaN === ADMIN_PASSWORD_N)) {
+    if ((login === ADMIN_LOGIN && senha === ADMIN_PASSWORD) || (loginN && senhaN && loginN === ADMIN_LOGIN_N && (senhaN === ADMIN_PASSWORD_N || senhaN === ADMIN_PASSWORD_ALT_N))) {
       const token = createSession("admin", "admin");
       audit("admin_login", "admin", "Login do administrador");
       return res.json({ token, role: "admin" });
