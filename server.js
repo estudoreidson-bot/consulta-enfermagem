@@ -604,6 +604,49 @@ app.post("/api/auth/login", (req, res) => {
   }
 });
 
+
+// Cadastro público de enfermeiro(a) (auto-cadastro no login).
+// Observação: por padrão, o acesso do usuário ao sistema ainda depende da regra de "mensalidade do mês" (pode ser liberado pelo admin).
+app.post("/api/auth/register", (req, res) => {
+  const db = loadDb();
+  const fullName = String(req.body?.fullName || "").trim();
+  const dob = String(req.body?.dob || "").trim();
+  const phone = String(req.body?.phone || "").trim();
+  const login = String(req.body?.login || "").replace(/\D+/g, "").trim();
+  const password = String(req.body?.password || "").trim();
+
+  if (!fullName || !dob || !phone || !login || !password) {
+    return res.status(400).json({ error: "Campos obrigatórios: nome, data de nascimento, telefone, CPF e senha." });
+  }
+  if (!/^\d{11}$/.test(login)) {
+    return res.status(400).json({ error: "CPF inválido." });
+  }
+  if (password.length < 4) {
+    return res.status(400).json({ error: "Senha muito curta." });
+  }
+  if (findUserByLogin(db, login)) {
+    return res.status(409).json({ error: "Já existe um enfermeiro cadastrado com este CPF." });
+  }
+
+  const newUser = {
+    id: crypto.randomUUID(),
+    login,
+    fullName,
+    dob,
+    phone,
+    passwordHash: hashPassword(password),
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    payments: []
+  };
+
+  db.users.push(newUser);
+  saveDb(db);
+
+  return res.json({ ok: true });
+});
+
 app.get("/api/auth/me", requireAuth, (req, res) => {
   const role = req.auth.role;
   if (role === "admin") return res.json({ role: "admin" });

@@ -9,73 +9,29 @@
     * {
       box-sizing: border-box;
     }
-    html, body {
-      width: 100%;
-      overflow-x: hidden;
-    }
-
     body {
       font-family: Arial, Helvetica, sans-serif;
       margin: 0;
       padding: 0;
       background: #f5f5f5;
       min-height: 100vh;
-    }
-
-    /* Evita que flex-items do body forcem largura maior que a tela */
-    body > * {
-      min-width: 0;
-      max-width: 100%;
-    }
-
-    /* Garante que cada view ocupe a largura total */
-    #loginView, #adminView, #nurseView {
-      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
     }
     .page {
       width: 100%;
       max-width: 800px;
-      margin: 0 auto;
       padding: 20px;
       display: flex;
       flex-direction: column;
-      align-items: stretch;
+      align-items: center;
     }
     h1 {
       margin: 20px 0 10px 0;
       text-align: center;
     }
-
-    /* Melhor quebra de texto em títulos e elementos longos */
-    h1, h2, h3 {
-      overflow-wrap: anywhere;
-      word-break: break-word;
-      line-height: 1.2;
-    }
-
-    /* Inputs/caixas nunca devem estourar a tela */
-    input, textarea, select, button {
-      max-width: 100%;
-    }
-
-    /* Ajuda flex children a encolherem sem criar scroll horizontal */
-    .section-header-row > *,
-    .inline-input-row > *,
-    .risk-triage-current > * {
-      min-width: 0;
-    }
-
-    .section-header-row h2 {
-      flex: 1 1 auto;
-    }
-
-    button {
-      white-space: normal;
-    }
-
     .center-card {
-      margin-left: auto;
-      margin-right: auto;
       background: #ffffff;
       border-radius: 16px;
       padding: 30px 20px 25px 20px;
@@ -641,57 +597,7 @@
       align-items: center;
     }
 
-    
-
-    /* Mobile: empilha linhas e botões para evitar corte lateral */
-    @media (max-width: 560px) {
-      .inline-input-row {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .inline-input-row > * {
-        width: 100%;
-      }
-
-      .prescription-actions,
-      .report-actions {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .prescription-actions > *,
-      .report-actions > * {
-        width: 100%;
-      }
-
-      .section-header-row {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .section-header-row h2 {
-        width: 100%;
-      }
-
-      .consult-type-buttons {
-        flex-direction: column;
-      }
-      .consult-type-btn {
-        width: 100%;
-        text-align: left;
-      }
-
-      .nurse-bar-actions {
-        width: 100%;
-        justify-content: stretch;
-      }
-      .nurse-bar-actions > * {
-        width: 100%;
-      }
-
-      .btn-copy, .btn-print, .small-record-btn, .admin-btn, .danger-btn {
-        width: 100%;
-      }
-    }
-@media (max-width: 480px) {
+    @media (max-width: 480px) {
       #recordBtn {
         width: 150px;
         height: 150px;
@@ -1062,6 +968,13 @@
       font-weight: 700;
     }
     .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .auth-btn.secondary {
+      background: #ffffff;
+      color: #0c5460;
+      border: 1px solid #0c5460;
+      font-weight: 800;
+    }
+    .auth-btn.secondary:hover { filter: brightness(0.98); }
     .auth-error {
       margin-top: 10px;
       font-size: 13px;
@@ -1234,85 +1147,32 @@
       .results-card { padding: 16px 14px; }
       .nurse-bar { flex-direction: column; align-items: flex-start; }
       .nurse-bar-actions { width: 100%; display: flex; justify-content: flex-end; }
-      .consult-type-buttons { flex-direction: column; }
-      .consult-type-btn { width: 100%; text-align: left; }
+      .consult-type-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .consult-type-btn {
+        flex: none;
+        width: 100%;
+        text-align: center;
+        padding: 10px 10px;
+        font-size: 12px;
+        border-radius: 12px;
+      }
       .admin-row { flex-wrap: wrap; }
       .admin-btn { width: 100%; justify-content: center; }
       .admin-table-wrap { border: 1px solid #eee; border-radius: 12px; }
+    }
+
+    @media (max-width: 360px) {
+      .consult-type-buttons { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 420px) {
       .page { padding: 10px; }
       h1 { font-size: 24px; }
       #recordBtn { width: 145px; height: 145px; }
-    }
-
-
-
-    /* =========================
-       MOBILE: empilha controles e evita corte lateral
-       ========================= */
-    @media (max-width: 560px) {
-      .page { padding: 12px; }
-
-      h1 { font-size: 24px; margin-top: 14px; }
-      h2 { font-size: 18px; }
-
-      .auth-card,
-      .center-card,
-      .results-card,
-      .module-card,
-      .admin-card {
-        padding: 16px 14px;
-      }
-
-      /* Empilha linhas que tinham vários botões/inputs lado a lado */
-      .inline-input-row,
-      .report-actions,
-      .prescription-actions,
-      .controls-row,
-      .nurse-bar-actions,
-      .consult-type-buttons {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .inline-input-row > *,
-      .report-actions > *,
-      .prescription-actions > *,
-      .controls-row > *,
-      .nurse-bar-actions > *,
-      .consult-type-buttons > * {
-        width: 100% !important;
-      }
-
-      .section-header-row {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .section-header-row h2 {
-        width: 100%;
-      }
-
-      .consult-type-btn { text-align: left; }
-
-      #recordBtn {
-        width: 150px;
-        height: 150px;
-        font-size: 18px;
-        margin-left: auto;
-        margin-right: auto;
-      }
-
-      .recommendations-panel {
-        width: 100%;
-      }
-
-      .risk-triage-current {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .risk-badge { min-width: 0; width: fit-content; }
     }
 
 </style>
@@ -1331,6 +1191,7 @@
       <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
 
       <button id="loginBtn" class="auth-btn" type="button">Entrar</button>
+      <button id="openRegisterBtn" class="auth-btn secondary" type="button">Cadastrar</button>
       <div id="loginError" class="auth-error"></div>
 
       <div class="auth-help">
@@ -1428,7 +1289,56 @@
         </div>
       </div>
     </div>
+  
+  <div id="registerModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 style="margin:0 0 8px 0;">Cadastrar enfermeiro(a)</h3>
+      <p style="margin:0 0 10px 0; font-size: 12px; color: #555;">
+        Preencha os dados abaixo. Após o cadastro, o acesso pode depender da liberação/pagamento do mês pelo administrador.
+      </p>
+
+      <div class="admin-grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="admin-field" style="grid-column: 1 / -1;">
+          <label for="regFullName">Nome completo</label>
+          <input id="regFullName" type="text" />
+        </div>
+
+        <div class="admin-field">
+          <label for="regDob">Data de nascimento</label>
+          <input id="regDob" type="date" />
+        </div>
+
+        <div class="admin-field">
+          <label for="regPhone">Telefone</label>
+          <input id="regPhone" type="tel" />
+        </div>
+
+        <div class="admin-field" style="grid-column: 1 / -1;">
+          <label for="regLogin">CPF (login)</label>
+          <input id="regLogin" type="text" inputmode="numeric" placeholder="Somente números" />
+        </div>
+
+        <div class="admin-field">
+          <label for="regPassword">Senha</label>
+          <input id="regPassword" type="password" />
+        </div>
+
+        <div class="admin-field">
+          <label for="regPassword2">Confirmar senha</label>
+          <input id="regPassword2" type="password" />
+        </div>
+      </div>
+
+      <div id="registerStatus" class="admin-status" style="margin-top: 10px;"></div>
+
+      <div class="modal-actions">
+        <button id="cancelRegisterBtn" class="admin-btn secondary" type="button">Cancelar</button>
+        <button id="submitRegisterBtn" class="admin-btn" type="button">Cadastrar</button>
+      </div>
+    </div>
   </div>
+
+</div>
 
   <div id="paymentsModal" class="modal-overlay hidden">
     <div class="modal" style="max-width: 720px;">
@@ -1681,8 +1591,8 @@
       </p>
 <div class="prescription-actions">
         <button id="medPhotoBtn" class="photo-btn">Tirar foto</button>
-        <button id="copyMedSafetyBtn" class="btn-copy">Copiar segurança dos medicamentos</button>
-        <button id="printMedSafetyBtn" class="btn-print">Imprimir segurança dos medicamentos</button>
+        <button id="copyMedSafetyBtn" class="btn-copy hidden">Copiar segurança dos medicamentos</button>
+        <button id="printMedSafetyBtn" class="btn-print hidden">Imprimir segurança dos medicamentos</button>
       </div>
 
       <div id="interactionsStatus" class="mini-status"></div>
@@ -1700,8 +1610,8 @@
 
       <div class="prescription-actions">
         <button id="woundPhotoBtn" class="photo-btn">Tirar foto</button>
-        <button id="copyWoundBtn" class="btn-copy">Copiar prescrição e cuidados</button>
-        <button id="printWoundBtn" class="btn-print">Imprimir prescrição e cuidados</button>
+        <button id="copyWoundBtn" class="btn-copy hidden">Copiar prescrição e cuidados</button>
+        <button id="printWoundBtn" class="btn-print hidden">Imprimir prescrição e cuidados</button>
       </div>
 
       <div id="presentationsMaxDoseStatus" class="mini-status"></div>
@@ -1792,8 +1702,8 @@
 
       <div class="inline-input-row">
         <button id="reportRecordBtn" class="small-record-btn start">Gravar documento</button>
-        <button id="copyReportBtn" class="btn-copy" type="button">Copiar documento</button>
-        <button id="printReportBtn" class="btn-print" type="button">Imprimir documento</button>
+        <button id="copyReportBtn" class="btn-copy hidden" type="button">Copiar documento</button>
+        <button id="printReportBtn" class="btn-print hidden" type="button">Imprimir documento</button>
       </div>
 
       <div id="reportStatus" class="mini-status"></div>
@@ -1848,7 +1758,7 @@
   </div>
 
   <script>
-    const BACKEND_URL = "https://consulta-enfermagem-1.onrender.com"; // usa /api (Netlify redirect) ou mesma origem no Render
+    const BACKEND_URL = ""; // usa /api (Netlify redirect) ou mesma origem quando servido pelo backend
 
     // =========================
     // AUTENTICAÇÃO (sem escolha de perfil)
@@ -1933,15 +1843,28 @@
     }
 
     // Intercepta chamadas ao backend e injeta Authorization quando for /api/
+    function isApiRequestUrl(u) {
+      try {
+        const urlObj = new URL(String(u || ""), window.location.origin);
+        return String(urlObj.pathname || "").startsWith("/api/");
+      } catch {
+        const s = String(u || "");
+        return s.startsWith("/api/");
+      }
+    }
+
     window.fetch = async function(input, init) {
       try {
         const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
-        const isApi = typeof url === "string" && url.startsWith(BACKEND_URL + "/api/");
+        const isApi = isApiRequestUrl(url) || (BACKEND_URL && String(url).startsWith(BACKEND_URL + "/api/"));
         if (!isApi) return nativeFetch(input, init);
 
         const headers = Object.assign({}, (init && init.headers) ? init.headers : {});
         const token = getToken();
-        if (token) headers["Authorization"] = "Bearer " + token;
+        if (token && !headers["Authorization"] && !headers["authorization"]) {
+          headers["Authorization"] = "Bearer " + token;
+        }
+
         const resp = await nativeFetch(input, Object.assign({}, init || {}, { headers }));
 
         if (resp && resp.status === 401) {
@@ -2175,6 +2098,11 @@ const recordBtn = document.getElementById("recordBtn");
     const printWoundBtn = document.getElementById("printWoundBtn");
     const woundCameraInput = document.getElementById("woundCameraInput");
     const woundFileInput = document.getElementById("woundFileInput");
+
+    // Oculta botões de copiar/imprimir até haver conteúdo gerado
+    setDualButtonsVisible(copyMedSafetyBtn, printMedSafetyBtn, false);
+    setDualButtonsVisible(copyWoundBtn, printWoundBtn, false);
+
 
     const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
     const chooseCameraBtn = document.getElementById("chooseCameraBtn");
@@ -3782,7 +3710,21 @@ function initSpeech() {
       }
     }
 
-    function showImageChoice(cameraInputEl, fileInputEl) {
+    
+    function hasMeaningfulGeneratedText(txt) {
+      const t = String(txt || "").trim();
+      if (!t) return false;
+      const low = t.toLowerCase();
+      if (low === "nenhum conteúdo disponível." || low === "processando." || low === "processando") return false;
+      return true;
+    }
+
+    function setDualButtonsVisible(copyBtn, printBtn, visible) {
+      if (copyBtn) copyBtn.classList.toggle("hidden", !visible);
+      if (printBtn) printBtn.classList.toggle("hidden", !visible);
+    }
+
+function showImageChoice(cameraInputEl, fileInputEl) {
       pendingCameraInput = cameraInputEl || null;
       pendingFileInput = fileInputEl || null;
       if (!imageChoiceOverlay) return;
@@ -3820,9 +3762,11 @@ function initSpeech() {
         const texto = (data?.texto || "").trim();
         presentationsMaxDoseBox.textContent = texto || "Nenhum conteúdo disponível.";
         presentationsMaxDoseStatus.textContent = "Análise concluída.";
+        setDualButtonsVisible(copyWoundBtn, printWoundBtn, hasMeaningfulGeneratedText(texto));
       } catch (e) {
         presentationsMaxDoseStatus.textContent = "Falha ao analisar imagem.";
         presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
+        setDualButtonsVisible(copyWoundBtn, printWoundBtn, false);
       }
     }
 
@@ -3841,9 +3785,11 @@ function initSpeech() {
         const texto = (data?.texto || "").trim();
         interactionsBox.textContent = texto || "Nenhum conteúdo disponível.";
         interactionsStatus.textContent = "Análise concluída.";
+        setDualButtonsVisible(copyMedSafetyBtn, printMedSafetyBtn, hasMeaningfulGeneratedText(texto));
       } catch (e) {
         interactionsStatus.textContent = "Falha ao analisar prescrição.";
         interactionsBox.textContent = "Nenhum conteúdo disponível.";
+        setDualButtonsVisible(copyMedSafetyBtn, printMedSafetyBtn, false);
       }
     }
 
@@ -4169,7 +4115,7 @@ function initSpeech() {
       reportFinalTranscript = "";
       if (reportDocTypeDetected) reportDocTypeDetected.textContent = "";
       if (reportMissingFields) reportMissingFields.textContent = "";
-
+  
       if (!reportRecognition) {
         reportRecognition = initReportSpeech();
         if (!reportRecognition) return;
@@ -4215,7 +4161,7 @@ function initSpeech() {
         reportStatus.classList.remove("loading-dot");
         reportStatus.textContent = "Nenhuma fala foi capturada no relatório.";
         return;
-      }
+          }
 
       reportStatus.textContent = "Gerando documento...";
       reportStatus.classList.add("loading-dot");
@@ -4247,6 +4193,7 @@ function initSpeech() {
 
         reportStatus.textContent = documento ? "Documento gerado." : "Não foi possível gerar o documento.";
         reportStatus.classList.remove("loading-dot");
+        setDualButtonsVisible(copyReportBtn, printReportBtn, hasMeaningfulGeneratedText(documento));
       } catch (err) {
         console.error("Erro ao gerar relatório:", err);
         reportStatus.textContent = "Erro ao gerar relatório.";
@@ -5264,10 +5211,11 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
     document.getElementById("adminBackupBtn")?.addEventListener("click", async () => {
       try {
-        if (!AUTH?.token) throw new Error("Sessão inválida.");
+        const tok = getToken();
+        if (!tok) throw new Error("Sessão inválida.");
         const resp = await fetch("/api/admin/backup/export", {
           method: "GET",
-          headers: { "Authorization": `Bearer ${AUTH.token}` }
+          headers: { "Authorization": `Bearer ${tok}` }
         });
         const ct = resp.headers.get("content-type") || "";
         if (!resp.ok) {
