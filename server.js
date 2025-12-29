@@ -566,7 +566,7 @@ app.post("/api/auth/login", (req, res) => {
     if ((login === ADMIN_LOGIN && senha === ADMIN_PASSWORD) || (loginN && senhaN && loginN === ADMIN_LOGIN_N && (senhaN === ADMIN_PASSWORD_N || senhaN === ADMIN_PASSWORD_ALT_N))) {
       const token = createSession("admin", "admin");
       audit("admin_login", "admin", "Login do administrador");
-      return res.json({ token, role: "admin" });
+      return res.json({ token, role: "admin", login: ADMIN_LOGIN, currentMonth: currentYYYYMM() });
     }
 
     // Usuário enfermeiro
@@ -590,7 +590,13 @@ app.post("/api/auth/login", (req, res) => {
     return res.json({
       token,
       role: "nurse",
-      user: { id: user.id, fullName: user.fullName, login: user.login, phone: user.phone }
+      fullName: user.fullName,
+      login: user.login,
+      phone: user.phone,
+      currentMonth: currentYYYYMM(),
+      isPaidThisMonth: isUserPaidThisMonth(user.id),
+      paidCurrentMonth: isUserPaidThisMonth(user.id),
+      user: { id: user.id, fullName: user.fullName, login: user.login, phone: user.phone, currentMonth: currentYYYYMM(), isPaidThisMonth: isUserPaidThisMonth(user.id), paidCurrentMonth: isUserPaidThisMonth(user.id) }
     });
   } catch (e) {
     console.error(e);
@@ -605,7 +611,13 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
   const u = req.auth.user;
   return res.json({
     role: "nurse",
-    user: { id: u.id, fullName: u.fullName, login: u.login, phone: u.phone, isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id) }
+    fullName: u.fullName,
+    login: u.login,
+    phone: u.phone,
+    currentMonth: currentYYYYMM(),
+    isPaidThisMonth: isUserPaidThisMonth(u.id),
+    paidCurrentMonth: isUserPaidThisMonth(u.id),
+    user: { id: u.id, fullName: u.fullName, login: u.login, phone: u.phone, currentMonth: currentYYYYMM(), isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id) }
   });
 });
 
@@ -644,7 +656,7 @@ app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
       lastLoginAt: u.lastLoginAt || "",
       lastSeenAt: u.lastSeenAt || "",
       isOnline: isUserOnline(u),
-      isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id)
+      isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id)
     }))
     .sort((a,b) => (a.fullName||"").localeCompare(b.fullName||""));
   return res.json({ users });

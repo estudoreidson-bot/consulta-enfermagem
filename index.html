@@ -1109,6 +1109,50 @@
     .admin-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
     @media (max-width: 720px){.admin-form-grid{grid-template-columns:1fr;}}
 
+
+    /* Ajustes visuais e responsividade (computador e celular) */
+    .page { width: 100%; }
+    .center-card, .results-card, .admin-card { width: 100%; }
+    input, textarea, select { max-width: 100%; }
+
+    .nurse-bar {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+      margin: 10px auto 14px auto;
+    }
+    .nurse-bar-line { margin: 2px 0; }
+
+    .consult-type-btn { white-space: normal; }
+
+    @media (max-width: 720px) {
+      body { align-items: flex-start; }
+      .page { padding: 12px; }
+      h1 { font-size: 26px; margin-top: 14px; }
+      .center-card { padding: 18px 14px; max-width: 100%; }
+      .results-card { padding: 16px 14px; }
+      .nurse-bar { flex-direction: column; align-items: flex-start; }
+      .nurse-bar-actions { width: 100%; display: flex; justify-content: flex-end; }
+      .consult-type-buttons { flex-direction: column; }
+      .consult-type-btn { width: 100%; text-align: left; }
+      .admin-row { flex-wrap: wrap; }
+      .admin-btn { width: 100%; justify-content: center; }
+      .admin-table-wrap { border: 1px solid #eee; border-radius: 12px; }
+    }
+
+    @media (max-width: 420px) {
+      .page { padding: 10px; }
+      h1 { font-size: 24px; }
+      #recordBtn { width: 145px; height: 145px; }
+    }
+
 </style>
 </head>
 <body>
@@ -1293,6 +1337,7 @@
     <div class="nurse-bar" id="nurseBar">
       <div>
         <div class="nurse-bar-line"><span class="nurse-bar-label">Usuário:</span><span id="nurseUserLabel">-</span></div>
+        <div class="nurse-bar-line"><span class="nurse-bar-label">Login:</span><span id="nurseLoginLabel">-</span></div>
         <div class="nurse-bar-line"><span class="nurse-bar-label">Mensalidade:</span><span id="nursePaymentLabel" class="pill">-</span></div>
       </div>
       <div class="nurse-bar-actions">
@@ -1826,17 +1871,30 @@
     }
 
     function updateNurseBar(me) {
-      const name = me.fullName || me.login || "-";
-      const paid = (me && (me.isPaidThisMonth !== undefined ? !!me.isPaidThisMonth : !!me.paidCurrentMonth));
-      const month = me.currentMonth || "";
+      // Aceita tanto o formato {role, user:{...}} quanto formato "achatado"
+      const u = (me && me.user && typeof me.user === "object") ? me.user : (me || {});
+      const name = (u.fullName || u.login || "-");
+      const login = (u.login || "-");
+      const paidFlag = (u.isPaidThisMonth !== undefined) ? !!u.isPaidThisMonth
+        : (u.paidCurrentMonth !== undefined) ? !!u.paidCurrentMonth
+        : (me && me.isPaidThisMonth !== undefined) ? !!me.isPaidThisMonth
+        : (me && me.paidCurrentMonth !== undefined) ? !!me.paidCurrentMonth
+        : false;
+
+      const month = (me && me.currentMonth) ? me.currentMonth : (u.currentMonth || "");
       const lbl = document.getElementById("nurseUserLabel");
+      const lblLogin = document.getElementById("nurseLoginLabel");
       const pay = document.getElementById("nursePaymentLabel");
+
       if (lbl) lbl.textContent = name;
+      if (lblLogin) lblLogin.textContent = login;
+
       if (pay) {
-        pay.textContent = paid ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Em atraso" + (month ? " (" + month + ")" : ""));
+        pay.textContent = paidFlag ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Em atraso" + (month ? " (" + month + ")" : ""));
         pay.classList.remove("green","red");
-        pay.classList.add(paid ? "green" : "red");
+        pay.classList.add(paidFlag ? "green" : "red");
       }
+    }
     }
 
     // Eventos de login/logout
