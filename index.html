@@ -1153,6 +1153,117 @@
       #recordBtn { width: 145px; height: 145px; }
     }
 
+
+
+    /* =========================
+       AJUSTES MOBILE (RESPONSIVO)
+       ========================= */
+    html, body {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+    body {
+      display: block;
+    }
+    .page {
+      align-items: stretch;
+      margin: 0 auto;
+      max-width: 980px;
+      min-width: 0;
+    }
+    .center-card,
+    .results-card,
+    .module-card,
+    .auth-card,
+    .admin-wrap {
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    /* Evitar cortes por itens flex/grids */
+    .section-header-row > * { min-width: 0; }
+    .inline-input-row > * { min-width: 0; }
+    input, select, textarea, button { max-width: 100%; }
+    .answer-box, .classification-box, .patient-summary {
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 720px) {
+      h1 { font-size: 22px; margin: 14px 0 8px 0; }
+      .page { padding: 12px; }
+      .center-card { padding: 16px 12px 14px 12px; }
+      .results-card, .module-card { padding: 14px; }
+      .nurse-bar { padding: 10px; }
+      .nurse-bar-actions { width: 100%; justify-content: flex-end; }
+    }
+
+    @media (max-width: 520px) {
+      .inline-input-row,
+      .patientinfo-row,
+      .controls-row,
+      .section-header-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .prescription-actions,
+      .report-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .prescription-actions > button,
+      .report-actions > button,
+      .nurse-bar-actions > button,
+      #recommendationsBtn {
+        width: 100%;
+      }
+
+      .text-input {
+        min-width: 0 !important;
+        width: 100%;
+      }
+
+      /* Guias de consulta: compacto no celular */
+      .consult-type-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .consult-type-btn {
+        flex: initial;
+        width: 100%;
+        text-align: center;
+        font-size: 12px;
+        padding: 8px 10px;
+        border-radius: 12px;
+        line-height: 1.15;
+      }
+
+      .consult-guide-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .consult-guide-close { width: 100%; }
+
+      .recommendations-panel {
+        width: 100%;
+        right: 0;
+      }
+
+      .whatsapp-fab {
+        width: 52px;
+        height: 52px;
+        right: 12px;
+        bottom: 12px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .consult-type-buttons { grid-template-columns: 1fr; }
+    }
+
 </style>
 </head>
 <body>
