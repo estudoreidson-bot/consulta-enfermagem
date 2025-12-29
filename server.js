@@ -136,6 +136,19 @@ function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, "data");
 const DB_PATH = path.join(DATA_DIR, "enfermagem_users_db.json");
 
+// Persistência opcional no GitHub (para não perder usuários em redeploy).
+// Configure via variáveis de ambiente no host do backend (Render/Replit/etc).
+// - GITHUB_TOKEN: token com permissão de escrita no repositório
+// - GITHUB_REPO: "owner/repo"
+// - GITHUB_BRANCH: ex "main"
+// - GITHUB_DB_PATH: ex "data/enfermagem_users_snapshot.json"
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
+const GITHUB_REPO = process.env.GITHUB_REPO || "";
+const GITHUB_BRANCH = process.env.GITHUB_BRANCH || "main";
+const GITHUB_DB_PATH = process.env.GITHUB_DB_PATH || "data/enfermagem_users_snapshot.json";
+const GITHUB_ENABLED = !!(GITHUB_TOKEN && GITHUB_REPO);
+
+
 function ensureDataDir() {
   try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch {}
 }
@@ -429,10 +442,196 @@ function saveDb(db, reason = "auto") {
 
   try {
     safeWriteFileAtomic(DB_PATH, JSON.stringify(next, null, 2));
+    try { scheduleGithubSnapshot(next, reason); } catch (e) { console.error("[GITHUB] Falha ao agendar persistência:", e); }
   } catch (e) {
     console.error("[DB] Falha ao salvar DB:", e);
   }
 }
+
+// ======================================================================
+// Persistência no GitHub (snapshot estável de usuários + pagamentos)
+// - Evita perder usuários em redeploy, mesmo sem disco persistente.
+// - Snapshot não inclui campos voláteis (lastSeenAt/lastLoginAt/audit), para não gerar commits a cada heartbeat.
+// ======================================================================
+
+function encodeGithubPath(p) {
+  return String(p || "")
+    .split("/")
+    .map(seg => encodeURIComponent(seg))
+    .join("/");
+}
+
+function parseGithubRepo(repoStr) {
+  const s = String(repoStr || "").trim();
+  const m = s.match(/^([^/]+)\/([^/]+)$/);
+  if (!m) return null;
+  return { owner: m[1], repo: m[2] };
+}
+
+function buildGithubSnapshot(db) {
+  const users = (Array.isArray(db?.users) ? db.users : []).map(u => ({
+    id: u.id,
+    fullName: u.fullName,
+    dob: u.dob,
+    phone: u.phone,
+    login: u.login,
+    salt: u.salt,
+    passwordHash: u.passwordHash,
+    isActive: !!u.isActive,
+    isDeleted: !!u.isDeleted,
+    createdAt: u.createdAt || ""
+  })).sort((a, b) => String(a.id || "").localeCompare(String(b.id || "")));
+
+  const payments = (Array.isArray(db?.payments) ? db.payments : []).map(p => ({
+    id: p.id,
+    userId: p.userId,
+    month: p.month,
+    paidAt: p.paidAt || "",
+    amount: p.amount || "",
+    method: p.method || "",
+    notes: p.notes || ""
+  })).sort((a, b) => {
+    const ak = `${a.userId || ""}|${a.month || ""}|${a.paidAt || ""}|${a.id || ""}`;
+    const bk = `${b.userId || ""}|${b.month || ""}|${b.paidAt || ""}|${b.id || ""}`;
+    return ak.localeCompare(bk);
+  });
+
+  return { schemaVersion: 1, users, payments };
+}
+
+function sha256Hex(str) {
+  return crypto.createHash("sha256").update(String(str), "utf-8").digest("hex");
+}
+
+let GH_TIMER = null;
+let GH_LAST_HASH = "";
+let GH_PENDING_STR = "";
+let GH_PENDING_HASH = "";
+let GH_IN_FLIGHT = false;
+
+function scheduleGithubSnapshot(db, reason = "auto") {
+  if (!GITHUB_ENABLED) return;
+
+  const snap = buildGithubSnapshot(db);
+  const contentStr = JSON.stringify(snap, null, 2);
+  const h = sha256Hex(contentStr);
+
+  if (h && h === GH_LAST_HASH) return;
+
+  GH_PENDING_STR = contentStr;
+  GH_PENDING_HASH = h;
+
+  if (GH_TIMER) clearTimeout(GH_TIMER);
+  GH_TIMER = setTimeout(() => {
+    pushGithubSnapshot(GH_PENDING_STR, GH_PENDING_HASH, reason).catch(err => {
+      console.error("[GITHUB] Falha ao persistir snapshot:", err);
+    });
+  }, 4000);
+  GH_TIMER.unref?.();
+}
+
+async function githubRequest(method, url, bodyObj) {
+  const headers = {
+    "Accept": "application/vnd.github+json",
+    "Authorization": `Bearer ${GITHUB_TOKEN}`,
+    "X-GitHub-Api-Version": "2022-11-28"
+  };
+  if (bodyObj) headers["Content-Type"] = "application/json";
+
+  const resp = await fetch(url, {
+    method,
+    headers,
+    body: bodyObj ? JSON.stringify(bodyObj) : undefined
+  });
+
+  if (resp.status === 404) return { ok: false, status: 404, data: null };
+  const data = await resp.json().catch(() => null);
+  return { ok: resp.ok, status: resp.status, data };
+}
+
+async function getGithubFileSha(owner, repo, branch, filePath) {
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeGithubPath(filePath)}?ref=${encodeURIComponent(branch)}`;
+  const r = await githubRequest("GET", url);
+  if (!r.ok) return null;
+  return r.data?.sha || null;
+}
+
+async function putGithubFile(owner, repo, branch, filePath, contentStr, message, sha) {
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeGithubPath(filePath)}`;
+  const body = {
+    message: message || "Atualização automática do banco de usuários",
+    content: Buffer.from(String(contentStr), "utf-8").toString("base64"),
+    branch
+  };
+  if (sha) body.sha = sha;
+
+  const r = await githubRequest("PUT", url, body);
+  if (!r.ok) throw new Error(`Falha GitHub PUT (${r.status}): ${JSON.stringify(r.data || {})}`);
+  return r.data;
+}
+
+async function fetchGithubSnapshot() {
+  if (!GITHUB_ENABLED) return null;
+  const repoInfo = parseGithubRepo(GITHUB_REPO);
+  if (!repoInfo) return null;
+
+  const url = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.repo}/contents/${encodeGithubPath(GITHUB_DB_PATH)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`;
+  const r = await githubRequest("GET", url);
+  if (!r.ok) return null;
+  const contentB64 = r.data?.content || "";
+  if (!contentB64) return null;
+
+  const txt = Buffer.from(String(contentB64).replace(/\n/g, ""), "base64").toString("utf-8");
+  const snap = JSON.parse(txt);
+  if (!snap || typeof snap !== "object") return null;
+  if (!Array.isArray(snap.users) || !Array.isArray(snap.payments)) return null;
+  return snap;
+}
+
+async function pushGithubSnapshot(contentStr, contentHash, reason = "auto") {
+  if (!GITHUB_ENABLED) return;
+  if (GH_IN_FLIGHT) return;
+
+  const repoInfo = parseGithubRepo(GITHUB_REPO);
+  if (!repoInfo) return;
+
+  GH_IN_FLIGHT = true;
+  try {
+    const sha = await getGithubFileSha(repoInfo.owner, repoInfo.repo, GITHUB_BRANCH, GITHUB_DB_PATH);
+    const msg = `Auto-save usuários (${reason})`;
+    await putGithubFile(repoInfo.owner, repoInfo.repo, GITHUB_BRANCH, GITHUB_DB_PATH, contentStr, msg, sha);
+    GH_LAST_HASH = contentHash || sha256Hex(contentStr);
+  } finally {
+    GH_IN_FLIGHT = false;
+  }
+}
+
+// Restauração automática ao subir o servidor, se o DB local estiver vazio
+async function bootstrapFromGithubIfEmpty() {
+  try {
+    if (!GITHUB_ENABLED) return;
+
+    const hasLocal = (Array.isArray(DB?.users) && DB.users.length) || (Array.isArray(DB?.payments) && DB.payments.length);
+    if (hasLocal) return;
+
+    const snap = await fetchGithubSnapshot();
+    if (!snap) return;
+
+    const restored = {
+      users: Array.isArray(snap.users) ? snap.users : [],
+      payments: Array.isArray(snap.payments) ? snap.payments : [],
+      audit: []
+    };
+
+    DB = mergeDbs(DB, restored);
+    saveDb(DB, "github_bootstrap");
+    console.log("[GITHUB] DB restaurado a partir do snapshot do GitHub.");
+  } catch (e) {
+    console.error("[GITHUB] Falha ao restaurar DB do GitHub:", e);
+  }
+}
+setTimeout(() => { bootstrapFromGithubIfEmpty(); }, 1500).unref?.();
+
 
 
 let DB = loadDb();
@@ -554,6 +753,62 @@ function requirePaidOrAdmin(req, res, next) {
 }
 
 // Rotas de autenticação
+
+// Cadastro público (auto-cadastro do enfermeiro)
+// Observação: o acesso ao sistema continua condicionado à liberação e mensalidade (pagamento do mês).
+app.post("/api/auth/signup", (req, res) => {
+  try {
+    const fullName = String(req.body?.fullName || "").trim();
+    const dob = String(req.body?.dob || "").trim();
+    const phone = String(req.body?.phone || "").trim();
+    const login = String(req.body?.login || "").trim();
+    const password = String(req.body?.password || "").trim();
+
+    if (!fullName || !dob || !phone || !login || !password) {
+      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, CPF (login) e senha são obrigatórios." });
+    }
+
+    const cpfDigits = onlyDigits(login);
+    if (!cpfDigits || cpfDigits.length !== 11) {
+      return res.status(400).json({ error: "CPF inválido. Informe 11 dígitos (pode ser com pontuação)." });
+    }
+
+    if (password.length < 4) {
+      return res.status(400).json({ error: "Senha muito curta. Use pelo menos 4 caracteres." });
+    }
+
+    if (findUserByLogin(login)) {
+      return res.status(409).json({ error: "Já existe usuário com este CPF/login." });
+    }
+
+    const salt = crypto.randomBytes(10).toString("hex");
+    const passwordHash = sha256(`${salt}:${password}`);
+
+    const user = {
+      id: makeId("usr"),
+      fullName,
+      dob,
+      phone,
+      login,
+      salt,
+      passwordHash,
+      isActive: true,
+      isDeleted: false,
+      createdAt: nowIso(),
+      lastLoginAt: "",
+      lastSeenAt: ""
+    };
+
+    DB.users.push(user);
+    saveDb(DB, "signup");
+    audit("user_signup", user.id, `Auto-cadastro do usuário ${user.login}`);
+    return res.json({ ok: true, id: user.id });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao cadastrar usuário." });
+  }
+});
+
 app.post("/api/auth/login", (req, res) => {
   try {
     const login = String(req.body?.login || "").trim();
@@ -602,49 +857,6 @@ app.post("/api/auth/login", (req, res) => {
     console.error(e);
     return res.status(500).json({ error: "Falha no login." });
   }
-});
-
-
-// Cadastro público de enfermeiro(a) (auto-cadastro no login).
-// Observação: por padrão, o acesso do usuário ao sistema ainda depende da regra de "mensalidade do mês" (pode ser liberado pelo admin).
-app.post("/api/auth/register", (req, res) => {
-  const db = loadDb();
-  const fullName = String(req.body?.fullName || "").trim();
-  const dob = String(req.body?.dob || "").trim();
-  const phone = String(req.body?.phone || "").trim();
-  const login = String(req.body?.login || "").replace(/\D+/g, "").trim();
-  const password = String(req.body?.password || "").trim();
-
-  if (!fullName || !dob || !phone || !login || !password) {
-    return res.status(400).json({ error: "Campos obrigatórios: nome, data de nascimento, telefone, CPF e senha." });
-  }
-  if (!/^\d{11}$/.test(login)) {
-    return res.status(400).json({ error: "CPF inválido." });
-  }
-  if (password.length < 4) {
-    return res.status(400).json({ error: "Senha muito curta." });
-  }
-  if (findUserByLogin(db, login)) {
-    return res.status(409).json({ error: "Já existe um enfermeiro cadastrado com este CPF." });
-  }
-
-  const newUser = {
-    id: crypto.randomUUID(),
-    login,
-    fullName,
-    dob,
-    phone,
-    passwordHash: hashPassword(password),
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    payments: []
-  };
-
-  db.users.push(newUser);
-  saveDb(db);
-
-  return res.json({ ok: true });
 });
 
 app.get("/api/auth/me", requireAuth, (req, res) => {
