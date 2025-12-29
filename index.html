@@ -9,29 +9,73 @@
     * {
       box-sizing: border-box;
     }
+    html, body {
+      width: 100%;
+      overflow-x: hidden;
+    }
+
     body {
       font-family: Arial, Helvetica, sans-serif;
       margin: 0;
       padding: 0;
       background: #f5f5f5;
       min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
+    }
+
+    /* Evita que flex-items do body forcem largura maior que a tela */
+    body > * {
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    /* Garante que cada view ocupe a largura total */
+    #loginView, #adminView, #nurseView {
+      width: 100%;
     }
     .page {
       width: 100%;
       max-width: 800px;
+      margin: 0 auto;
       padding: 20px;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: stretch;
     }
     h1 {
       margin: 20px 0 10px 0;
       text-align: center;
     }
+
+    /* Melhor quebra de texto em títulos e elementos longos */
+    h1, h2, h3 {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.2;
+    }
+
+    /* Inputs/caixas nunca devem estourar a tela */
+    input, textarea, select, button {
+      max-width: 100%;
+    }
+
+    /* Ajuda flex children a encolherem sem criar scroll horizontal */
+    .section-header-row > *,
+    .inline-input-row > *,
+    .risk-triage-current > * {
+      min-width: 0;
+    }
+
+    .section-header-row h2 {
+      flex: 1 1 auto;
+    }
+
+    button {
+      white-space: normal;
+    }
+
     .center-card {
+      margin-left: auto;
+      margin-right: auto;
       background: #ffffff;
       border-radius: 16px;
       padding: 30px 20px 25px 20px;
@@ -597,7 +641,57 @@
       align-items: center;
     }
 
-    @media (max-width: 480px) {
+    
+
+    /* Mobile: empilha linhas e botões para evitar corte lateral */
+    @media (max-width: 560px) {
+      .inline-input-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .inline-input-row > * {
+        width: 100%;
+      }
+
+      .prescription-actions,
+      .report-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .prescription-actions > *,
+      .report-actions > * {
+        width: 100%;
+      }
+
+      .section-header-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .section-header-row h2 {
+        width: 100%;
+      }
+
+      .consult-type-buttons {
+        flex-direction: column;
+      }
+      .consult-type-btn {
+        width: 100%;
+        text-align: left;
+      }
+
+      .nurse-bar-actions {
+        width: 100%;
+        justify-content: stretch;
+      }
+      .nurse-bar-actions > * {
+        width: 100%;
+      }
+
+      .btn-copy, .btn-print, .small-record-btn, .admin-btn, .danger-btn {
+        width: 100%;
+      }
+    }
+@media (max-width: 480px) {
       #recordBtn {
         width: 150px;
         height: 150px;
@@ -1151,6 +1245,74 @@
       .page { padding: 10px; }
       h1 { font-size: 24px; }
       #recordBtn { width: 145px; height: 145px; }
+    }
+
+
+
+    /* =========================
+       MOBILE: empilha controles e evita corte lateral
+       ========================= */
+    @media (max-width: 560px) {
+      .page { padding: 12px; }
+
+      h1 { font-size: 24px; margin-top: 14px; }
+      h2 { font-size: 18px; }
+
+      .auth-card,
+      .center-card,
+      .results-card,
+      .module-card,
+      .admin-card {
+        padding: 16px 14px;
+      }
+
+      /* Empilha linhas que tinham vários botões/inputs lado a lado */
+      .inline-input-row,
+      .report-actions,
+      .prescription-actions,
+      .controls-row,
+      .nurse-bar-actions,
+      .consult-type-buttons {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .inline-input-row > *,
+      .report-actions > *,
+      .prescription-actions > *,
+      .controls-row > *,
+      .nurse-bar-actions > *,
+      .consult-type-buttons > * {
+        width: 100% !important;
+      }
+
+      .section-header-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .section-header-row h2 {
+        width: 100%;
+      }
+
+      .consult-type-btn { text-align: left; }
+
+      #recordBtn {
+        width: 150px;
+        height: 150px;
+        font-size: 18px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .recommendations-panel {
+        width: 100%;
+      }
+
+      .risk-triage-current {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .risk-badge { min-width: 0; width: fit-content; }
     }
 
 </style>
