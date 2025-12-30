@@ -6,6 +6,115 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const OpenAI = require("openai");
+// ======================================================================
+// ARMAZENAMENTO PERSISTENTE (opcional)
+// - Em Render Free, o filesystem é efêmero e perde dados em redeploy/restart.
+// - Persistent Disks exigem instância paga.
+// Solução robusta: usar DATABASE_URL (Postgres externo, ex.: Supabase/Neon/Render paid).
+// Implementação simples: persiste o "DB JSON" em uma única linha (JSONB).
+// ======================================================================
+
+let Pool = null;
+try { ({ Pool } = require("pg")); } catch { Pool = null; }
+
+const DATABASE_URL = process.env.DATABASE_URL || "";
+const USE_PG_STORE = Boolean(DATABASE_URL) && Boolean(Pool);
+const PG_STATE_ID = process.env.PG_STATE_ID || "main";
+let pgPool = null;
+
+let pgWriteInFlight = null;
+let pgDirty = false;
+
+function pgPoolOrNull() {
+  if (!USE_PG_STORE) return null;
+  if (pgPool) return pgPool;
+  // Muitos provedores exigem SSL; manter compatível com conexões que não exigem.
+  const sslEnabled = String(process.env.PG_SSL || "auto").toLowerCase();
+  const useSsl = (sslEnabled === "true") || (sslEnabled === "1") || (sslEnabled === "yes") || (sslEnabled === "require") || (sslEnabled === "auto");
+  pgPool = new Pool({
+    connectionString: DATABASE_URL,
+    ssl: useSsl ? { rejectUnauthorized: false } : false,
+    max: 5,
+    idleTimeoutMillis: 30_000
+  });
+  return pgPool;
+}
+
+async function pgEnsureTable() {
+  const pool = pgPoolOrNull();
+  if (!pool) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_state (
+      id TEXT PRIMARY KEY,
+      data JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+}
+
+async function pgReadState() {
+  const pool = pgPoolOrNull();
+  if (!pool) return null;
+  await pgEnsureTable();
+  const r = await pool.query("SELECT data FROM app_state WHERE id = $1 LIMIT 1", [PG_STATE_ID]);
+  if (!r.rows || !r.rows.length) return null;
+  return r.rows[0].data;
+}
+
+async function pgWriteState(dbObj) {
+  const pool = pgPoolOrNull();
+  if (!pool) return;
+  await pgEnsureTable();
+  await pool.query(
+    "INSERT INTO app_state (id, data, updated_at) VALUES ($1, $2::jsonb, now()) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()",
+    [PG_STATE_ID, JSON.stringify(dbObj)]
+  );
+}
+
+function schedulePgSave(dbObj) {
+  // Não bloqueia a requisição; mantém última versão consistente no Postgres.
+  if (!USE_PG_STORE) return;
+
+  const doWrite = async () => {
+    try {
+      await pgWriteState(dbObj);
+    } catch (e) {
+      console.error("[PG_STORE] falha ao persistir:", e?.message || e);
+    }
+  };
+
+  if (pgWriteInFlight) {
+    pgDirty = true;
+    return;
+  }
+  pgWriteInFlight = doWrite()
+    .finally(() => {
+      pgWriteInFlight = null;
+      if (pgDirty) {
+        pgDirty = false;
+        // escreve a versão atual em memória
+        schedulePgSave(DB);
+      }
+    });
+}
+
+async function hydrateDbFromPgIfAvailable() {
+  if (!USE_PG_STORE) return { backend: "file", hydrated: false };
+  try {
+    const data = await pgReadState();
+    if (data && typeof data === "object") {
+      DB = normalizeDb(data);
+      return { backend: "postgres", hydrated: true, seeded: false };
+    }
+    // Se não existir estado ainda, "semeia" com o que já está em memória (arquivo/local).
+    await pgWriteState(normalizeDb(DB));
+    return { backend: "postgres", hydrated: true, seeded: true };
+  } catch (e) {
+    console.error("[PG_STORE] falha ao hidratar:", e?.message || e);
+    return { backend: "postgres", hydrated: false, error: e?.message || String(e) };
+  }
+}
+
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -133,16 +242,7 @@ function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
 // AUTENTICAÇÃO + BASE LOCAL (usuários, pagamentos e auditoria)
 // ======================================================================
 
-// Persistência de dados:
-// - Render (recomendado): monte um disco persistente em "/var/data" e deixe DATA_DIR vazio
-//   (ou configure DATA_DIR=/var/data). Assim os usuários NÃO somem em redeploy.
-// - Replit: o diretório do projeto já é persistente; pode manter padrão.
-const DEFAULT_RENDER_DATA_DIR = "/var/data";
-const DATA_DIR = process.env.DATA_DIR
-  ? path.resolve(process.env.DATA_DIR)
-  : (process.env.RENDER
-      ? DEFAULT_RENDER_DATA_DIR
-      : path.join(__dirname, "data"));
+const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, "data");
 const DB_PATH = path.join(DATA_DIR, "enfermagem_users_db.json");
 
 // Persistência opcional no GitHub (para não perder usuários em redeploy).
@@ -431,10 +531,18 @@ function normalizeDb(db) {
 // - Cria backup antes de gravar
 // - Bloqueia gravação "vazia" se já houver dados (proteção anti-apagão)
 function saveDb(db, reason = "auto") {
+  // Persistência principal via Postgres (se DATABASE_URL configurado)
+  // Mantemos o arquivo local como fallback, mas no Render Free ele é efêmero.
+  const next = normalizeDb(db);
+  if (USE_PG_STORE) {
+    // Atualiza em memória e agenda persistência
+    schedulePgSave(next);
+    // ainda tenta escrever em disco quando possível (dev/local)
+  }
+
   ensureDataDir();
   ensureBackupDir();
 
-  const next = normalizeDb(db);
   const currentOnDisk = tryReadDbFile(DB_PATH);
   const currentScore = dbScore(currentOnDisk);
   const nextScore = dbScore(next);
@@ -644,25 +752,6 @@ setTimeout(() => { bootstrapFromGithubIfEmpty(); }, 1500).unref?.();
 
 
 let DB = loadDb();
-
-// Diagnóstico rápido (útil para verificar se o backend está usando disco persistente)
-app.get("/api/health", (req, res) => {
-  try {
-    return res.json({
-      ok: true,
-      dataDir: DATA_DIR,
-      dbPath: DB_PATH,
-      counts: {
-        users: Array.isArray(DB?.users) ? DB.users.length : 0,
-        payments: Array.isArray(DB?.payments) ? DB.payments.length : 0,
-        audit: Array.isArray(DB?.audit) ? DB.audit.length : 0,
-      },
-      time: nowIso(),
-    });
-  } catch (e) {
-    return res.status(500).json({ ok: false });
-  }
-});
 
 // Sessões em memória
 const SESSIONS = new Map(); // token -> { role, userId, createdAt, lastSeenAt }
@@ -2220,11 +2309,40 @@ Transcrição:
 // ======================================================================
 // SAÚDE DO BACKEND (TESTE RÁPIDO)
 // ======================================================================
-app.get("/api/health", (req, res) => {
+app.get("/api/health", async (req, res) => {
+  let storage = "file";
+  let pg_ok = false;
+  let pg_error = null;
+
+  if (USE_PG_STORE) {
+    storage = "postgres";
+    try {
+      await pgEnsureTable();
+      pg_ok = true;
+    } catch (e) {
+      pg_ok = false;
+      pg_error = e?.message || String(e);
+    }
+  }
+
   return res.json({
     ok: true,
+    time: new Date().toISOString(),
     has_openai_key: Boolean(process.env.OPENAI_API_KEY),
-    time: new Date().toISOString()
+    storage: {
+      backend: storage,
+      data_dir: DATA_DIR,
+      db_path: DB_PATH,
+      backups_dir: BACKUP_DIR,
+      pg_ok,
+      pg_state_id: USE_PG_STORE ? PG_STATE_ID : null,
+      pg_error
+    },
+    counts: {
+      users: Array.isArray(DB?.users) ? DB.users.length : 0,
+      payments: Array.isArray(DB?.payments) ? DB.payments.length : 0,
+      audit: Array.isArray(DB?.audit) ? DB.audit.length : 0
+    }
   });
 });
 
@@ -2475,6 +2593,12 @@ Transcrição:
 // INICIALIZAÇÃO DO SERVIDOR
 // ======================================================================
 
-app.listen(port, () => {
-  console.log(`Servidor escutando na porta ${port}`);
-});
+(async () => {
+  // Se DATABASE_URL estiver configurado, carrega o estado do Postgres antes de aceitar tráfego.
+  const info = await hydrateDbFromPgIfAvailable();
+  console.log("[storage]", info);
+
+  app.listen(port, () => {
+    console.log(`Servidor escutando na porta ${port}`);
+  });
+})();

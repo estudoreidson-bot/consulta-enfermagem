@@ -1797,11 +1797,7 @@
   </div>
 
   <script>
-    // IMPORTANTE:
-    // - Em produção (Netlify), use os endpoints relativos "/api/*".
-    //   O netlify.toml já redireciona "/api/*" para o backend.
-    // - Assim, você pode atualizar o frontend sem precisar trocar URLs no código.
-    const BACKEND_URL = "";
+    const BACKEND_URL = "https://consulta-enfermagem-1.onrender.com"; // usa /api (Netlify redirect) ou mesma origem no Render
 
     // =========================
     // ADMIN (caches globais - sem TDZ)
@@ -1894,18 +1890,10 @@
     }
 
     // Intercepta chamadas ao backend e injeta Authorization quando for /api/
-    // (funciona tanto com URLs relativas "/api/..." quanto absolutas)
     window.fetch = async function(input, init) {
       try {
-        const rawUrl = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
-        let isApi = false;
-        try {
-          const u = new URL(rawUrl, window.location.origin);
-          isApi = !!u && typeof u.pathname === "string" && u.pathname.startsWith("/api/");
-        } catch {
-          isApi = (typeof rawUrl === "string") && rawUrl.startsWith("/api/");
-        }
-
+        const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
+        const isApi = typeof url === "string" && url.startsWith(BACKEND_URL + "/api/");
         if (!isApi) return nativeFetch(input, init);
 
         const headers = Object.assign({}, (init && init.headers) ? init.headers : {});
@@ -5226,32 +5214,46 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
     document.getElementById("adminBackupBtn")?.addEventListener("click", async () => {
       try {
+        // Usa o token salvo em sessão (localStorage) e o wrapper de fetch já injeta Authorization
         const t = getToken();
-        if (!t) throw new Error("Sessão inválida.");
-        // Observação: o window.fetch (acima) já injeta Authorization para /api/*.
-        // Mantemos também o header explícito para robustez.
-        const resp = await fetch("/api/admin/backup/export", {
-          method: "GET",
-          headers: { "Authorization": "Bearer " + t }
-        });
+        if (!t) throw new Error("Sessão inválida. Faça login novamente.");
+
+        const resp = await fetch(BACKEND_URL + "/api/admin/backup/export", { method: "GET" });
         const ct = resp.headers.get("content-type") || "";
+
         if (!resp.ok) {
           let msg = "Falha ao exportar.";
-          try { const j = ct.includes("application/json") ? await resp.json() : null; if (j?.error) msg = j.error; } catch {}
+          try {
+            if (ct.includes("application/json")) {
+              const j = await resp.json();
+              msg = j?.error || msg;
+            } else {
+              msg = (await resp.text()) || msg;
+            }
+          } catch {}
           throw new Error(msg);
         }
+
         const blob = await resp.blob();
-        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
+        const url = URL.createObjectURL(blob);
         a.href = url;
-        a.download = `enfermagem-backup-${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `backup-enfermagem-${new Date().toISOString().slice(0,10)}.json`;
         document.body.appendChild(a);
         a.click();
         a.remove();
-        URL.revokeObjectURL(url);
-        try { await refreshLocalBackupFromServer(); } catch {}
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+        // Atualiza o cache local do backup para contingência
+        try {
+          const txt = await (await fetch(BACKEND_URL + "/api/admin/backup/export", { method: "GET" })).text();
+          if (txt && txt.trim().startsWith("{")) {
+            setLocalBackupText(txt);
+            updateAdminLocalBackupBadge();
+          }
+        } catch {}
       } catch (e) {
-        alert(String(e?.message || e || "Falha ao baixar backup."));
+        alert(e?.message || "Erro ao baixar backup.");
       }
     });
 
