@@ -1804,6 +1804,7 @@
   </div>
 
   <script>
+
     const BACKEND_URL = "https://consulta-enfermagem-1.onrender.com"; // usa /api (Netlify redirect) ou mesma origem no Render
 
     // =========================
@@ -3944,7 +3945,6 @@ async function addFilesToPending(files) {
   }
 }
 
-    }
 
     async function analyzePrescriptionWithImages(dataUrls) {
   if (!interactionsStatus || !interactionsBox) return;
@@ -3986,8 +3986,6 @@ async function addFilesToPending(files) {
     updateMedSafetyActions();
   }
 }
-
-    }
 
     function getSoapSectionText(letter) {
       switch (letter) {
@@ -5547,6 +5545,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       const anyVisible = (lv && !lv.classList.contains("hidden")) || (av && !av.classList.contains("hidden")) || (nv && !nv.classList.contains("hidden"));
       if (!anyVisible) showLogin();
     }, 1000);
+
 
 </script>
 
