@@ -122,7 +122,7 @@ const port = process.env.PORT || 3000;
 // Configurações básicas
 app.use(cors());
 app.use(bodyParser.json({ limit: "25mb" }));
-app.use(bodyParser.urlencoded({ extended: true, limit: "25mb" }));
+app.use(bodyParser.urlencoded({ limit: "25mb", extended: true }));
 
 // Servir o index.html apenas na rota raiz (útil para testes locais)
 app.get("/", (req, res) => {
@@ -171,15 +171,13 @@ async function callOpenAIJson(prompt) {
 }
 
 // Função para chamar o modelo com imagem (data URL) e retornar JSON
-async function callOpenAIVisionJson(prompt, imagemDataUrl) {
-  const images = Array.isArray(imagemDataUrl) ? imagemDataUrl : [imagemDataUrl];
-  const imageParts = images
-    .filter(u => typeof u === "string" && u.trim())
-    .slice(0, 4)
-    .map(u => ({ type: "image_url", image_url: { url: u.trim() } }));
+async function callOpenAIVisionJson(prompt, imagensDataUrl) {
+  const imgs = Array.isArray(imagensDataUrl) ? imagensDataUrl : [imagensDataUrl];
+  const safeImgs = imgs.filter((x) => typeof x === "string" && x.trim()).slice(0, 4);
 
-  if (!imageParts.length) {
-    throw new Error("Imagem ausente para análise.");
+  const content = [{ type: "text", text: prompt }];
+  for (const url of safeImgs) {
+    content.push({ type: "image_url", image_url: { url } });
   }
 
   const completion = await openai.chat.completions.create({
@@ -188,34 +186,21 @@ async function callOpenAIVisionJson(prompt, imagemDataUrl) {
     messages: [
       {
         role: "user",
-        content: [
-          { type: "text", text: prompt },
-          ...imageParts
-        ]
+        content
       }
     ]
   });
 
-  const raw = (completion.choices?.[0]?.message?.content || "").trim();
-
+  const text = completion?.choices?.[0]?.message?.content || "";
   try {
-    return JSON.parse(raw);
-  } catch (e) {
-    const firstBrace = raw.indexOf("{");
-    const lastBrace = raw.lastIndexOf("}");
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
-      return JSON.parse(jsonSlice);
+    return JSON.parse(text);
+  } catch (_) {
+    const m = String(text).match(/\{[\s\S]*\}/);
+    if (m) {
+      try { return JSON.parse(m[0]); } catch (_) {}
     }
-    throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
   }
-}
-
-// Pequena validação para limitar tamanho e evitar abusos
-function normalizeText(input, maxLen) {
-  const s = (typeof input === "string" ? input : "").trim();
-  if (!s) return "";
-  return s.length > maxLen ? s.slice(0, maxLen) : s;
+  return {};
 }
 
 function normalizeImageDataUrl(input, maxLen) {
@@ -228,11 +213,7 @@ function normalizeImageDataUrl(input, maxLen) {
 
 function getImageDataUrlFromBody(body) {
   const b = body || {};
-  // Aceita array (images_data_url) e os padrões de string (imagem_data_url / image_data_url).
-  if (Array.isArray(b.images_data_url) && b.images_data_url.length) {
-    const first = b.images_data_url.find(v => typeof v === "string" && v.trim());
-    if (first) return first.trim();
-  }
+  // Aceita tanto o padrão interno (imagem_data_url) quanto o usado no frontend (image_data_url).
   return (typeof b.imagem_data_url === "string" && b.imagem_data_url.trim())
     ? b.imagem_data_url.trim()
     : (typeof b.image_data_url === "string" && b.image_data_url.trim())
@@ -240,21 +221,31 @@ function getImageDataUrlFromBody(body) {
       : "";
 }
 
-function getImageDataUrlsFromBody(body) {
+function getImagesDataUrlFromBody(body, maxItems, maxLenEach) {
   const b = body || {};
+  const arr =
+    Array.isArray(b.images_data_url) ? b.images_data_url :
+    Array.isArray(b.imagens_data_url) ? b.imagens_data_url :
+    Array.isArray(b.images) ? b.images :
+    [];
+
   const out = [];
-  if (Array.isArray(b.images_data_url)) {
-    for (const v of b.images_data_url) {
-      if (typeof v === "string" && v.trim()) out.push(v.trim());
-      if (out.length >= 4) break;
-    }
+  // Prioriza array; se vier apenas imagem única, inclui também
+  for (const v of arr) {
+    const s = normalizeImageDataUrl(v, maxLenEach);
+    if (s) out.push(s);
+    if (out.length >= maxItems) break;
   }
-  const single = getImageDataUrlFromBody(b);
-  if (single) out.unshift(single);
-  // Remove duplicatas mantendo ordem.
-  const seen = new Set();
-  return out.filter(u => (u && !seen.has(u)) ? (seen.add(u), true) : false).slice(0, 4);
+
+  if (!out.length) {
+    const single = getImageDataUrlFromBody(b);
+    const s = normalizeImageDataUrl(single, maxLenEach);
+    if (s) out.push(s);
+  }
+
+  return out.slice(0, maxItems);
 }
+
 
 function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
   if (!Array.isArray(arr)) return [];
@@ -1902,7 +1893,7 @@ Contexto:
 // ROTA 4.4 – ANÁLISE DE LESÃO POR FOTO (CURATIVOS E FERIDAS) (NOVA)
 // ======================================================================
 
-async function analisarLesaoPorImagem(safeImages) {
+async function analisarLesaoPorImagem(safeImage) {
   const prompt = `
 Você é um enfermeiro humano elaborando um REGISTRO DE CURATIVOS E FERIDAS com base em uma foto de lesão.
 
@@ -1929,7 +1920,7 @@ Orientações esperadas:
 - Se houver suspeita visual de gravidade (necrose extensa, sangramento ativo importante, exposição de estruturas profundas, sinais compatíveis com infecção importante), orientar priorização de avaliação médica.
 `;
 
-  const data = await callOpenAIVisionJson(prompt, safeImages);
+  const data = await callOpenAIVisionJson(prompt, safeImage);
 
   const caracteristicas = typeof data?.caracteristicas === "string" ? data.caracteristicas.trim() : "";
   const prescricao_cuidados = typeof data?.prescricao_cuidados === "string" ? data.prescricao_cuidados.trim() : "";
@@ -1944,16 +1935,16 @@ Orientações esperadas:
 
 app.post("/api/analisar-lesao", requirePaidOrAdmin, async(req, res) => {
   try {
-    const urls = getImageDataUrlsFromBody(req.body);
-    const safeImages = urls.map(u => normalizeImageDataUrl(u, 12_000_000)).filter(Boolean).slice(0, 4);
+    const imagemDataUrl = getImageDataUrlFromBody(req.body);
+    const safeImage = normalizeImageDataUrl(imagemDataUrl, 4_000_000); // ~4MB em caracteres
 
-    if (!safeImages.length) {
+    if (!safeImage) {
       return res.status(400).json({
         error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
       });
     }
 
-    const out = await analisarLesaoPorImagem(safeImages);
+    const out = await analisarLesaoPorImagem(safeImage);
     return res.json(out);
   } catch (e) {
     console.error(e);
@@ -1964,14 +1955,13 @@ app.post("/api/analisar-lesao", requirePaidOrAdmin, async(req, res) => {
 // Alias para compatibilidade com o frontend atual (retorna um texto único para exibição).
 app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
   try {
-    const urls = getImageDataUrlsFromBody(req.body);
-    const safeImages = urls.map(u => normalizeImageDataUrl(u, 12_000_000)).filter(Boolean).slice(0, 4);
+    const safeImages = getImagesDataUrlFromBody(req.body, 4, 4_000_000);
 
     if (!safeImages.length) {
       return res.status(400).json({ error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente." });
     }
 
-    const out = await analisarLesaoPorImagem(safeImages);
+    const out = await analisarLesaoPorImagem(safeImage);
     const texto =
       "Características visíveis:\n" + out.caracteristicas +
       "\n\nPrescrição e cuidados de enfermagem:\n" + out.prescricao_cuidados +
@@ -1991,8 +1981,7 @@ app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
 
 app.post("/api/analisar-prescricao-imagem", requirePaidOrAdmin, async(req, res) => {
   try {
-    const urls = getImageDataUrlsFromBody(req.body);
-    const safeImages = urls.map(u => normalizeImageDataUrl(u, 12_000_000)).filter(Boolean).slice(0, 4);
+    const safeImages = getImagesDataUrlFromBody(req.body, 4, 4_000_000);
 
     if (!safeImages.length) {
       return res.status(400).json({
@@ -2001,7 +1990,13 @@ app.post("/api/analisar-prescricao-imagem", requirePaidOrAdmin, async(req, res) 
     }
 
     const prompt = `
-Você é um enfermeiro humano realizando uma ANÁLISE DE SEGURANÇA DE UMA PRESCRIÇÃO MÉDICA baseada em uma foto.
+Você é um enfermeiro humano
+
+Você receberá de 1 a 4 imagens (ângulos diferentes). Considere que podem ser da mesma lesão/prescrição; não invente dados ilegíveis.
+
+
+Você receberá de 1 a 4 imagens (ângulos diferentes). Considere que podem ser da mesma lesão/prescrição; não invente dados ilegíveis.
+ realizando uma ANÁLISE DE SEGURANÇA DE UMA PRESCRIÇÃO MÉDICA baseada em uma foto.
 
 Objetivo:
 1) Transcrever somente o que estiver legível (sem inventar). Quando não der para ler, escreva "não informado".
