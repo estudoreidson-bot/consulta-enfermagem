@@ -718,7 +718,13 @@
       border-color: #dc3545;
     }
     .hidden-input {
-      display: none !important;
+      position: absolute !important;
+      left: -9999px !important;
+      top: auto !important;
+      width: 1px !important;
+      height: 1px !important;
+      opacity: 0 !important;
+      overflow: hidden !important;
     }
 
     .consult-type-panel {
@@ -1630,6 +1636,7 @@
       </p>
 <div class="prescription-actions">
         <button id="medPhotoBtn" class="photo-btn">Tirar foto</button>
+        <button id="medFileBtn" class="photo-btn">Escolher arquivo</button>
         <button id="copyMedSafetyBtn" class="btn-copy hidden">Copiar segurança dos medicamentos</button>
         <button id="printMedSafetyBtn" class="btn-print hidden">Imprimir segurança dos medicamentos</button>
       </div>
@@ -1637,8 +1644,8 @@
       <div id="interactionsStatus" class="mini-status"></div>
       <div id="interactionsBox" class="classification-box">Nenhum conteúdo disponível.</div>
 
-      <input id="medCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment"  multiple/>
-      <input id="medFileInput" class="hidden-input" type="file" accept="image/*"  multiple/>
+      <input id="medCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
+      <input id="medFileInput" class="hidden-input" type="file" accept="image/*" multiple />
     </div>
 
     <div id="woundCard" class="module-card">
@@ -1649,6 +1656,7 @@
 
       <div class="prescription-actions">
         <button id="woundPhotoBtn" class="photo-btn">Tirar foto</button>
+        <button id="woundFileBtn" class="photo-btn">Escolher arquivo</button>
         <button id="copyWoundBtn" class="btn-copy hidden">Copiar prescrição e cuidados</button>
         <button id="printWoundBtn" class="btn-print hidden">Imprimir prescrição e cuidados</button>
       </div>
@@ -1656,8 +1664,8 @@
       <div id="presentationsMaxDoseStatus" class="mini-status"></div>
       <div id="presentationsMaxDoseBox" class="classification-box">Nenhum conteúdo disponível.</div>
 
-      <input id="woundCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment"  multiple/>
-      <input id="woundFileInput" class="hidden-input" type="file" accept="image/*"  multiple/>
+      <input id="woundCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
+      <input id="woundFileInput" class="hidden-input" type="file" accept="image/*" multiple />
     </div>
 
 <div id="medicalDoubtsCard" class="module-card">
@@ -1806,6 +1814,29 @@
   <script>
 
     const BACKEND_URL = ""; // usa /api via Netlify redirects (ver netlify.toml)
+
+    // =========================
+    // IMAGENS (Curativos e Prescrição) - estado por módulo (até 4 fotos)
+    // =========================
+    let woundImages = [];
+    let medImages = [];
+    let woundAnalyzeTimer = null;
+    let medAnalyzeTimer = null;
+
+    function scheduleWoundAnalysis() {
+      if (woundAnalyzeTimer) clearTimeout(woundAnalyzeTimer);
+      woundAnalyzeTimer = setTimeout(() => {
+        analyzeWoundWithImages(woundImages.slice());
+      }, 350);
+    }
+
+    function scheduleMedAnalysis() {
+      if (medAnalyzeTimer) clearTimeout(medAnalyzeTimer);
+      medAnalyzeTimer = setTimeout(() => {
+        analyzePrescriptionWithImages(medImages.slice());
+      }, 350);
+    }
+
 
     // =========================
     // ADMIN (caches globais - sem TDZ)
@@ -2162,7 +2193,8 @@ const recordBtn = document.getElementById("recordBtn");
 
 
     const medPhotoBtn = document.getElementById("medPhotoBtn");
-    const interactionsBox = document.getElementById("interactionsBox");
+    const medFileBtn = document.getElementById("medFileBtn");
+const interactionsBox = document.getElementById("interactionsBox");
     const interactionsStatus = document.getElementById("interactionsStatus");
     const copyMedSafetyBtn = document.getElementById("copyMedSafetyBtn");
     const printMedSafetyBtn = document.getElementById("printMedSafetyBtn");
@@ -2170,7 +2202,8 @@ const recordBtn = document.getElementById("recordBtn");
     const medFileInput = document.getElementById("medFileInput");
 
     const woundPhotoBtn = document.getElementById("woundPhotoBtn");
-    const presentationsMaxDoseBox = document.getElementById("presentationsMaxDoseBox");
+    const woundFileBtn = document.getElementById("woundFileBtn");
+const presentationsMaxDoseBox = document.getElementById("presentationsMaxDoseBox");
     const presentationsMaxDoseStatus = document.getElementById("presentationsMaxDoseStatus");
     const copyWoundBtn = document.getElementById("copyWoundBtn");
     const printWoundBtn = document.getElementById("printWoundBtn");
@@ -3832,114 +3865,74 @@ function initSpeech() {
       }
     }
 
-    function renderImageChoicePreview() {
-  if (!imageChoicePreview || !imageChoiceCount || !runImageAnalysisBtn) return;
+        // =========================
+    // IMAGENS - compressão + análise automática (até 4 fotos por módulo)
+    // =========================
+    async function fileToCompressedDataUrl(file, maxDim = 1024, quality = 0.78) {
+      // Reduz tamanho para evitar estouro de limite do servidor / proxy (sem depender de libs).
+      const f = file;
+      if (!f) return "";
 
-  imageChoicePreview.innerHTML = "";
-  const imgs = Array.isArray(pendingImages) ? pendingImages : [];
-  const count = imgs.length;
+      // Alguns navegadores não suportam createImageBitmap para todos os formatos; usa Image() por compatibilidade.
+      const objectUrl = URL.createObjectURL(f);
+      try {
+        const img = await new Promise((resolve, reject) => {
+          const i = new Image();
+          i.onload = () => resolve(i);
+          i.onerror = () => reject(new Error("Falha ao carregar a imagem."));
+          i.src = objectUrl;
+        });
 
-  for (const url of imgs.slice(0, 12)) {
-    const img = document.createElement("img");
-    img.src = url;
-    img.alt = "Imagem selecionada";
-    imageChoicePreview.appendChild(img);
-  }
+        const w = img.naturalWidth || img.width || 0;
+        const h = img.naturalHeight || img.height || 0;
+        if (!w || !h) throw new Error("Dimensões inválidas.");
 
-  imageChoiceCount.textContent = count ? (`${count} imagem(ns) selecionada(s).`) : "Nenhuma imagem selecionada.";
-  runImageAnalysisBtn.disabled = count === 0;
-}
+        const scale = Math.min(1, maxDim / Math.max(w, h));
+        const outW = Math.max(1, Math.round(w * scale));
+        const outH = Math.max(1, Math.round(h * scale));
 
-function clearPendingImages() {
-  pendingImages = [];
-  renderImageChoicePreview();
-}
+        const canvas = document.createElement("canvas");
+        canvas.width = outW;
+        canvas.height = outH;
 
-function showImageChoice(cameraInputEl, fileInputEl, analysisFn, title, hint) {
-  pendingCameraInput = cameraInputEl || null;
-  pendingFileInput = fileInputEl || null;
-  pendingAnalysisFn = typeof analysisFn === "function" ? analysisFn : null;
-  pendingOverlayTitle = String(title || "").trim() || "Imagens para análise";
-  pendingOverlayHint = String(hint || "").trim() || "Selecione uma ou mais imagens. Você pode adicionar várias antes de analisar.";
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Falha ao preparar canvas.");
+        ctx.drawImage(img, 0, 0, outW, outH);
 
-  if (imageChoiceTitle) imageChoiceTitle.textContent = pendingOverlayTitle;
-  if (imageChoiceHint) imageChoiceHint.textContent = pendingOverlayHint;
-
-  if (!imageChoiceOverlay) return;
-  imageChoiceOverlay.classList.remove("hidden");
-  renderImageChoicePreview();
-}
-
-function hideImageChoice() {
-  if (!imageChoiceOverlay) return;
-  imageChoiceOverlay.classList.add("hidden");
-  pendingCameraInput = null;
-  pendingFileInput = null;
-  pendingAnalysisFn = null;
-  pendingOverlayTitle = "";
-  pendingOverlayHint = "";
-  clearPendingImages();
-}
-
-async function fileToCompressedDataUrl(file, maxDim = 1280, quality = 0.82) {
-  // Reduz tamanho para evitar estouro de limite do servidor / proxy (sem depender de libs).
-  const f = file;
-  if (!f) return "";
-
-  // Alguns navegadores não suportam createImageBitmap para todos os formatos; usa Image() por compatibilidade.
-  const objectUrl = URL.createObjectURL(f);
-  try {
-    const img = await new Promise((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = () => reject(new Error("Falha ao carregar a imagem."));
-      i.src = objectUrl;
-    });
-
-    const w = img.naturalWidth || img.width || 0;
-    const h = img.naturalHeight || img.height || 0;
-    if (!w || !h) throw new Error("Dimensões inválidas.");
-
-    const scale = Math.min(1, maxDim / Math.max(w, h));
-    const outW = Math.max(1, Math.round(w * scale));
-    const outH = Math.max(1, Math.round(h * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = outW;
-    canvas.height = outH;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Falha ao preparar canvas.");
-    ctx.drawImage(img, 0, 0, outW, outH);
-
-    // JPEG costuma reduzir bem o tamanho para fotos.
-    return canvas.toDataURL("image/jpeg", quality);
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
-
-async function addFilesToPending(files) {
-  const list = Array.from(files || []);
-  if (!list.length) return;
-
-  // Limite de imagens por análise para manter performance e reduzir custo.
-  const remaining = Math.max(0, 4 - (pendingImages ? pendingImages.length : 0));
-  const slice = list.slice(0, remaining);
-
-  for (const file of slice) {
-    try {
-      const dataUrl = await fileToCompressedDataUrl(file);
-      if (dataUrl) {
-        pendingImages = Array.isArray(pendingImages) ? pendingImages : [];
-        pendingImages.push(dataUrl);
+        // JPEG costuma reduzir bem o tamanho para fotos.
+        return canvas.toDataURL("image/jpeg", quality);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
       }
-    } catch (e) {
-      // ignora arquivo inválido
     }
-  }
-  renderImageChoicePreview();
-}
+
+    async function addFilesToTarget(files, targetKey, mode) {
+      const list = Array.from(files || []);
+      if (!list.length) return;
+
+      const isWound = targetKey === "wound";
+      const arr = isWound ? woundImages : medImages;
+
+      if (mode === "replace") {
+        arr.length = 0;
+      }
+
+      const remaining = Math.max(0, 4 - arr.length);
+      const slice = list.slice(0, remaining);
+
+      for (const file of slice) {
+        try {
+          const dataUrl = await fileToCompressedDataUrl(file);
+          if (dataUrl) arr.push(dataUrl);
+        } catch (e) {
+          // ignora arquivo inválido
+        }
+      }
+
+      // dispara análise automática
+      if (isWound) scheduleWoundAnalysis();
+      else scheduleMedAnalysis();
+    }
     async function analyzeWoundWithImages(dataUrls) {
   if (!presentationsMaxDoseStatus || !presentationsMaxDoseBox) return;
 
@@ -3975,7 +3968,7 @@ async function addFilesToPending(files) {
     presentationsMaxDoseStatus.textContent = "Análise concluída.";
     updateWoundActions();
   } catch (e) {
-    presentationsMaxDoseStatus.textContent = "Falha ao analisar imagem.";
+    presentationsMaxDoseStatus.textContent = "Falha ao analisar imagem. " + (e && e.message ? e.message : "");
     presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
     updateWoundActions();
   }
@@ -4017,7 +4010,7 @@ async function addFilesToPending(files) {
     interactionsStatus.textContent = "Análise concluída.";
     updateMedSafetyActions();
   } catch (e) {
-    interactionsStatus.textContent = "Falha ao analisar prescrição.";
+    interactionsStatus.textContent = "Falha ao analisar prescrição. " + (e && e.message ? e.message : "");
     interactionsBox.textContent = "Nenhum conteúdo disponível.";
     updateMedSafetyActions();
   }
@@ -4663,61 +4656,59 @@ if (runImageAnalysisBtn) {
 
     if (woundPhotoBtn) {
       woundPhotoBtn.addEventListener("click", () => {
-        showImageChoice(woundCameraInput, woundFileInput, analyzeWoundWithImages, "Curativos e feridas", "Selecione uma ou mais imagens da ferida/lesão. Você pode adicionar várias antes de analisar.");
+        if (woundCameraInput) woundCameraInput.click();
       });
     }
 
-    if (medPhotoBtn) {
+    if (woundFileBtn) {
+      woundFileBtn.addEventListener("click", () => {
+        if (woundFileInput) woundFileInput.click();
+      });
+    }
+if (medPhotoBtn) {
       medPhotoBtn.addEventListener("click", () => {
-        showImageChoice(medCameraInput, medFileInput, analyzePrescriptionWithImages, "Administração segura de medicamentos", "Selecione uma ou mais imagens da prescrição/medicamentos. Você pode adicionar várias antes de analisar.");
+        if (medCameraInput) medCameraInput.click();
       });
     }
 
-    if (woundCameraInput) {
-  woundCameraInput.addEventListener("change", async (e) => {
-    const files = e.target.files;
-    woundCameraInput.value = "";
-    if (!files || !files.length) return;
-    await addFilesToPending(files);
-    // Mantém o modal aberto para permitir adicionar mais imagens antes de analisar.
-    if (imageChoiceOverlay) imageChoiceOverlay.classList.remove("hidden");
-  });
-}
-
-    if (woundFileInput) {
-  woundFileInput.addEventListener("change", async (e) => {
-    const files = e.target.files;
-    woundFileInput.value = "";
-    if (!files || !files.length) return;
-    await addFilesToPending(files);
-    // Mantém o modal aberto para permitir adicionar mais imagens antes de analisar.
-    if (imageChoiceOverlay) imageChoiceOverlay.classList.remove("hidden");
-  });
-}
-
-    if (medCameraInput) {
-  medCameraInput.addEventListener("change", async (e) => {
-    const files = e.target.files;
-    medCameraInput.value = "";
-    if (!files || !files.length) return;
-    await addFilesToPending(files);
-    // Mantém o modal aberto para permitir adicionar mais imagens antes de analisar.
-    if (imageChoiceOverlay) imageChoiceOverlay.classList.remove("hidden");
-  });
-}
-
-    if (medFileInput) {
-  medFileInput.addEventListener("change", async (e) => {
-    const files = e.target.files;
-    medFileInput.value = "";
-    if (!files || !files.length) return;
-    await addFilesToPending(files);
-    // Mantém o modal aberto para permitir adicionar mais imagens antes de analisar.
-    if (imageChoiceOverlay) imageChoiceOverlay.classList.remove("hidden");
-  });
-}
-
-    if (copyWoundBtn) {
+    if (medFileBtn) {
+      medFileBtn.addEventListener("click", () => {
+        if (medFileInput) medFileInput.click();
+      });
+    }
+if (woundCameraInput) {
+      woundCameraInput.addEventListener("change", async (e) => {
+        const files = e.target.files;
+        woundCameraInput.value = "";
+        if (!files || !files.length) return;
+        await addFilesToTarget(files, "wound", "append");
+      });
+    }
+if (woundFileInput) {
+      woundFileInput.addEventListener("change", async (e) => {
+        const files = e.target.files;
+        woundFileInput.value = "";
+        if (!files || !files.length) return;
+        await addFilesToTarget(files, "wound", "replace");
+      });
+    }
+if (medCameraInput) {
+      medCameraInput.addEventListener("change", async (e) => {
+        const files = e.target.files;
+        medCameraInput.value = "";
+        if (!files || !files.length) return;
+        await addFilesToTarget(files, "med", "append");
+      });
+    }
+if (medFileInput) {
+      medFileInput.addEventListener("change", async (e) => {
+        const files = e.target.files;
+        medFileInput.value = "";
+        if (!files || !files.length) return;
+        await addFilesToTarget(files, "med", "replace");
+      });
+    }
+if (copyWoundBtn) {
       copyWoundBtn.addEventListener("click", () => {
         const text = (presentationsMaxDoseBox && presentationsMaxDoseBox.textContent) ? presentationsMaxDoseBox.textContent.trim() : "";
         if (!text) {
