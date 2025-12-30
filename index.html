@@ -725,7 +725,10 @@
       height: 1px !important;
       opacity: 0 !important;
       overflow: hidden !important;
-    }
+    
+    /* Desativa o modal antigo de escolha de imagem (evita botões Limpar/Analisar). */
+    #imageChoiceOverlay { display: none !important; }
+}
 
     .consult-type-panel {
       width: 100%;
@@ -1635,8 +1638,8 @@
         Use o botão para fotografar a prescrição médica. O sistema irá transcrever o que estiver legível, organizar os medicamentos, apontar riscos e inconsistências relevantes para a enfermagem e sinalizar interações importantes quando for possível confirmar com segurança.
       </p>
 <div class="prescription-actions">
-        <button id="medPhotoBtn" class="photo-btn">Tirar foto</button>
-        <button id="medFileBtn" class="photo-btn">Escolher arquivo</button>
+        <label for="medCameraInput" class="photo-btn">Tirar foto</label>
+        <label for="medFileInput" class="photo-btn">Escolher arquivo</label>
         <button id="copyMedSafetyBtn" class="btn-copy hidden">Copiar segurança dos medicamentos</button>
         <button id="printMedSafetyBtn" class="btn-print hidden">Imprimir segurança dos medicamentos</button>
       </div>
@@ -1655,8 +1658,8 @@
       </p>
 
       <div class="prescription-actions">
-        <button id="woundPhotoBtn" class="photo-btn">Tirar foto</button>
-        <button id="woundFileBtn" class="photo-btn">Escolher arquivo</button>
+        <label for="woundCameraInput" class="photo-btn">Tirar foto</label>
+        <label for="woundFileInput" class="photo-btn">Escolher arquivo</label>
         <button id="copyWoundBtn" class="btn-copy hidden">Copiar prescrição e cuidados</button>
         <button id="printWoundBtn" class="btn-print hidden">Imprimir prescrição e cuidados</button>
       </div>
@@ -1826,15 +1829,15 @@
     function scheduleWoundAnalysis() {
       if (woundAnalyzeTimer) clearTimeout(woundAnalyzeTimer);
       woundAnalyzeTimer = setTimeout(() => {
-        analyzeWoundWithImages(woundImages.slice());
-      }, 350);
+        if (woundImages && woundImages.length) analyzeWoundWithImages(woundImages.slice());
+      }, 180);
     }
 
     function scheduleMedAnalysis() {
       if (medAnalyzeTimer) clearTimeout(medAnalyzeTimer);
       medAnalyzeTimer = setTimeout(() => {
-        analyzePrescriptionWithImages(medImages.slice());
-      }, 350);
+        if (medImages && medImages.length) analyzePrescriptionWithImages(medImages.slice());
+      }, 180);
     }
 
 
@@ -3868,71 +3871,116 @@ function initSpeech() {
         // =========================
     // IMAGENS - compressão + análise automática (até 4 fotos por módulo)
     // =========================
-    async function fileToCompressedDataUrl(file, maxDim = 1024, quality = 0.78) {
-      // Reduz tamanho para evitar estouro de limite do servidor / proxy (sem depender de libs).
-      const f = file;
-      if (!f) return "";
+    async function fileToCompressedDataUrl(file, maxDim = 1280, quality = 0.82) {
+  // Tenta converter para JPEG via canvas (reduz tamanho e evita estouro de limite).
+  // Se falhar (ex.: formatos não suportados), retorna string vazia para permitir fallback.
+  const f = file;
+  if (!f) return "";
 
-      // Alguns navegadores não suportam createImageBitmap para todos os formatos; usa Image() por compatibilidade.
-      const objectUrl = URL.createObjectURL(f);
-      try {
-        const img = await new Promise((resolve, reject) => {
-          const i = new Image();
-          i.onload = () => resolve(i);
-          i.onerror = () => reject(new Error("Falha ao carregar a imagem."));
-          i.src = objectUrl;
-        });
+  const objectUrl = URL.createObjectURL(f);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("Falha ao carregar a imagem."));
+      i.src = objectUrl;
+    });
 
-        const w = img.naturalWidth || img.width || 0;
-        const h = img.naturalHeight || img.height || 0;
-        if (!w || !h) throw new Error("Dimensões inválidas.");
+    const w = img.naturalWidth || img.width || 0;
+    const h = img.naturalHeight || img.height || 0;
+    if (!w || !h) throw new Error("Dimensões inválidas.");
 
-        const scale = Math.min(1, maxDim / Math.max(w, h));
-        const outW = Math.max(1, Math.round(w * scale));
-        const outH = Math.max(1, Math.round(h * scale));
+    const scale = Math.min(1, maxDim / Math.max(w, h));
+    const outW = Math.max(1, Math.round(w * scale));
+    const outH = Math.max(1, Math.round(h * scale));
 
-        const canvas = document.createElement("canvas");
-        canvas.width = outW;
-        canvas.height = outH;
+    const canvas = document.createElement("canvas");
+    canvas.width = outW;
+    canvas.height = outH;
 
-        const ctx = canvas.getContext("2d");
-        if (!ctx) throw new Error("Falha ao preparar canvas.");
-        ctx.drawImage(img, 0, 0, outW, outH);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Falha ao preparar canvas.");
+    ctx.drawImage(img, 0, 0, outW, outH);
 
-        // JPEG costuma reduzir bem o tamanho para fotos.
-        return canvas.toDataURL("image/jpeg", quality);
-      } finally {
-        URL.revokeObjectURL(objectUrl);
-      }
+    return canvas.toDataURL("image/jpeg", quality);
+  } catch (e) {
+    return "";
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    try {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Falha ao ler arquivo."));
+      reader.readAsDataURL(file);
+    } catch (e) {
+      reject(e);
     }
+  });
+}
 
-    async function addFilesToTarget(files, targetKey, mode) {
-      const list = Array.from(files || []);
-      if (!list.length) return;
+async function addFilesToTarget(files, targetKey, mode) {
+  const list = Array.from(files || []);
+  if (!list.length) return;
 
-      const isWound = targetKey === "wound";
-      const arr = isWound ? woundImages : medImages;
+  const isWound = targetKey === "wound";
+  const arr = isWound ? woundImages : medImages;
 
-      if (mode === "replace") {
-        arr.length = 0;
+  const statusEl = isWound ? presentationsMaxDoseStatus : interactionsStatus;
+  const boxEl = isWound ? presentationsMaxDoseBox : interactionsBox;
+
+  if (mode === "replace") {
+    arr.length = 0;
+  }
+
+  // Feedback imediato (para não parecer que "não aconteceu nada")
+  if (statusEl) statusEl.textContent = "Carregando imagem(ns).";
+  if (boxEl) boxEl.textContent = "Processando.";
+  if (isWound) updateWoundActions(); else updateMedSafetyActions();
+
+  const remaining = Math.max(0, 4 - arr.length);
+  const slice = list.slice(0, remaining);
+
+  let added = 0;
+  let failed = 0;
+
+  for (const file of slice) {
+    try {
+      // 1) tenta canvas->JPEG (melhor para upload)
+      let dataUrl = await fileToCompressedDataUrl(file);
+      // 2) fallback: dataURL direto (quando canvas falha)
+      if (!dataUrl) dataUrl = await fileToDataUrl(file);
+
+      if (dataUrl && dataUrl.startsWith("data:image/")) {
+        arr.push(dataUrl);
+        added += 1;
+      } else {
+        failed += 1;
       }
-
-      const remaining = Math.max(0, 4 - arr.length);
-      const slice = list.slice(0, remaining);
-
-      for (const file of slice) {
-        try {
-          const dataUrl = await fileToCompressedDataUrl(file);
-          if (dataUrl) arr.push(dataUrl);
-        } catch (e) {
-          // ignora arquivo inválido
-        }
-      }
-
-      // dispara análise automática
-      if (isWound) scheduleWoundAnalysis();
-      else scheduleMedAnalysis();
+    } catch (e) {
+      failed += 1;
     }
+  }
+
+  if (!arr.length) {
+    const msg = "Não foi possível ler a imagem selecionada neste aparelho. Tente usar JPG/PNG (ou ajuste a câmera para modo mais compatível).";
+    if (statusEl) statusEl.textContent = msg;
+    if (boxEl) boxEl.textContent = "Nenhum conteúdo disponível.";
+    if (isWound) updateWoundActions(); else updateMedSafetyActions();
+    return;
+  }
+
+  // Dispara análise automática
+  const countMsg = arr.length + " imagem(ns) selecionada(s). Enviando para análise.";
+  if (statusEl) statusEl.textContent = countMsg;
+
+  if (isWound) scheduleWoundAnalysis();
+  else scheduleMedAnalysis();
+}
     async function analyzeWoundWithImages(dataUrls) {
   if (!presentationsMaxDoseStatus || !presentationsMaxDoseBox) return;
 

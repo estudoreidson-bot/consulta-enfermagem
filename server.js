@@ -121,7 +121,8 @@ const port = process.env.PORT || 3000;
 
 // Configurações básicas
 app.use(cors());
-app.use(bodyParser.json({ limit: "50mb" }));
+app.use(bodyParser.json({ limit: "25mb" }));
+app.use(bodyParser.urlencoded({ extended: true, limit: "25mb" }));
 
 // Servir o index.html apenas na rota raiz (útil para testes locais)
 app.get("/", (req, res) => {
@@ -130,20 +131,13 @@ app.get("/", (req, res) => {
 
 // Servir o index.html (útil para testes locais)
 
-// Cliente OpenAI usando a variável de ambiente do backend (Render/Replit/etc)
-let openai = null;
-try {
-  if (process.env.OPENAI_API_KEY) {
-    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  } else {
-    console.warn("[WARN] OPENAI_API_KEY ausente. Rotas de IA ficarão indisponíveis.");
-  }
-} catch (e) {
-  console.error("[ERRO] Falha ao iniciar OpenAI client:", e?.message || e);
-}
+// Cliente OpenAI usando a variável de ambiente do Render
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
 // Função genérica para chamar o modelo e retornar o texto
 async function callOpenAI(prompt) {
-  if (!openai) throw new Error("OPENAI_API_KEY não configurada.");
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.2,
@@ -178,41 +172,15 @@ async function callOpenAIJson(prompt) {
 
 // Função para chamar o modelo com imagem (data URL) e retornar JSON
 async function callOpenAIVisionJson(prompt, imagemDataUrl) {
-  if (!openai) throw new Error("OPENAI_API_KEY não configurada.");
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0.2,
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: imagemDataUrl } }
-        ]
-      }
-    ]
-  });
+  const images = Array.isArray(imagemDataUrl) ? imagemDataUrl : [imagemDataUrl];
+  const imageParts = images
+    .filter(u => typeof u === "string" && u.trim())
+    .slice(0, 4)
+    .map(u => ({ type: "image_url", image_url: { url: u.trim() } }));
 
-  const raw = (completion.choices?.[0]?.message?.content || "").trim();
-
-  try {
-    return JSON.parse(raw);
-  } catch (e) {
-    const firstBrace = raw.indexOf("{");
-    const lastBrace = raw.lastIndexOf("}");
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
-      return JSON.parse(jsonSlice);
-    }
-    throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
+  if (!imageParts.length) {
+    throw new Error("Imagem ausente para análise.");
   }
-}
-
-// Função para chamar o modelo com múltiplas imagens (data URL) e retornar JSON
-async function callOpenAIVisionJsonMulti(prompt, imagensDataUrl) {
-  if (!openai) throw new Error("OPENAI_API_KEY não configurada.");
-  const imagens = Array.isArray(imagensDataUrl) ? imagensDataUrl.filter(Boolean) : [];
-  if (!imagens.length) return {};
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
@@ -222,7 +190,7 @@ async function callOpenAIVisionJsonMulti(prompt, imagensDataUrl) {
         role: "user",
         content: [
           { type: "text", text: prompt },
-          ...imagens.map((url) => ({ type: "image_url", image_url: { url } }))
+          ...imageParts
         ]
       }
     ]
@@ -260,12 +228,32 @@ function normalizeImageDataUrl(input, maxLen) {
 
 function getImageDataUrlFromBody(body) {
   const b = body || {};
-  // Aceita tanto o padrão interno (imagem_data_url) quanto o usado no frontend (image_data_url).
+  // Aceita array (images_data_url) e os padrões de string (imagem_data_url / image_data_url).
+  if (Array.isArray(b.images_data_url) && b.images_data_url.length) {
+    const first = b.images_data_url.find(v => typeof v === "string" && v.trim());
+    if (first) return first.trim();
+  }
   return (typeof b.imagem_data_url === "string" && b.imagem_data_url.trim())
     ? b.imagem_data_url.trim()
     : (typeof b.image_data_url === "string" && b.image_data_url.trim())
       ? b.image_data_url.trim()
       : "";
+}
+
+function getImageDataUrlsFromBody(body) {
+  const b = body || {};
+  const out = [];
+  if (Array.isArray(b.images_data_url)) {
+    for (const v of b.images_data_url) {
+      if (typeof v === "string" && v.trim()) out.push(v.trim());
+      if (out.length >= 4) break;
+    }
+  }
+  const single = getImageDataUrlFromBody(b);
+  if (single) out.unshift(single);
+  // Remove duplicatas mantendo ordem.
+  const seen = new Set();
+  return out.filter(u => (u && !seen.has(u)) ? (seen.add(u), true) : false).slice(0, 4);
 }
 
 function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
@@ -277,32 +265,6 @@ function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
     if (!t) continue;
     out.push(t.length > maxLenEach ? t.slice(0, maxLenEach) : t);
     if (out.length >= maxItems) break;
-  }
-  return out;
-}
-
-function getImageDataUrlsFromBody(body) {
-  const b = body || {};
-  let arr = [];
-  if (Array.isArray(b.images_data_url)) arr = b.images_data_url;
-  else if (Array.isArray(b.images_data_urls)) arr = b.images_data_urls;
-  else if (Array.isArray(b.imagens_data_url)) arr = b.imagens_data_url;
-  else if (Array.isArray(b.imagens_data_urls)) arr = b.imagens_data_urls;
-  else if (Array.isArray(b.images)) arr = b.images;
-  else if (Array.isArray(b.imagens)) arr = b.imagens;
-
-  const single = getImageDataUrlFromBody(b);
-  if (single) arr = [...arr, single];
-
-  return arr.map((x) => (typeof x === "string" ? x.trim() : "")).filter(Boolean);
-}
-
-function normalizeImageDataUrls(arr, maxItems, maxLenEach) {
-  const raw = Array.isArray(arr) ? arr : [];
-  const out = [];
-  for (const s of raw.slice(0, maxItems)) {
-    const safe = normalizeImageDataUrl(s, maxLenEach);
-    if (safe) out.push(safe);
   }
   return out;
 }
@@ -1967,10 +1929,8 @@ Orientações esperadas:
 - Se houver suspeita visual de gravidade (necrose extensa, sangramento ativo importante, exposição de estruturas profundas, sinais compatíveis com infecção importante), orientar priorização de avaliação médica.
 `;
 
-  const imgs = Array.isArray(safeImages) ? safeImages.filter(Boolean) : (safeImages ? [safeImages] : []);
-  const data = (imgs.length > 1)
-    ? await callOpenAIVisionJsonMulti(prompt, imgs)
-    : await callOpenAIVisionJson(prompt, imgs[0]);
+  const data = await callOpenAIVisionJson(prompt, safeImages);
+
   const caracteristicas = typeof data?.caracteristicas === "string" ? data.caracteristicas.trim() : "";
   const prescricao_cuidados = typeof data?.prescricao_cuidados === "string" ? data.prescricao_cuidados.trim() : "";
   const sinais_alarme = typeof data?.sinais_alarme === "string" ? data.sinais_alarme.trim() : "";
@@ -1984,15 +1944,16 @@ Orientações esperadas:
 
 app.post("/api/analisar-lesao", requirePaidOrAdmin, async(req, res) => {
   try {
-    const imagens = normalizeImageDataUrls(getImageDataUrlsFromBody(req.body), 4, 12_000_000);
+    const urls = getImageDataUrlsFromBody(req.body);
+    const safeImages = urls.map(u => normalizeImageDataUrl(u, 12_000_000)).filter(Boolean).slice(0, 4);
 
-    if (!imagens.length) {
+    if (!safeImages.length) {
       return res.status(400).json({
         error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
       });
     }
 
-    const out = await analisarLesaoPorImagem(imagens);
+    const out = await analisarLesaoPorImagem(safeImages);
     return res.json(out);
   } catch (e) {
     console.error(e);
@@ -2003,13 +1964,14 @@ app.post("/api/analisar-lesao", requirePaidOrAdmin, async(req, res) => {
 // Alias para compatibilidade com o frontend atual (retorna um texto único para exibição).
 app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
   try {
-    const imagens = normalizeImageDataUrls(getImageDataUrlsFromBody(req.body), 4, 12_000_000);
+    const urls = getImageDataUrlsFromBody(req.body);
+    const safeImages = urls.map(u => normalizeImageDataUrl(u, 12_000_000)).filter(Boolean).slice(0, 4);
 
-    if (!imagens.length) {
+    if (!safeImages.length) {
       return res.status(400).json({ error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente." });
     }
 
-    const out = await analisarLesaoPorImagem(imagens);
+    const out = await analisarLesaoPorImagem(safeImages);
     const texto =
       "Características visíveis:\n" + out.caracteristicas +
       "\n\nPrescrição e cuidados de enfermagem:\n" + out.prescricao_cuidados +
@@ -2029,15 +1991,16 @@ app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
 
 app.post("/api/analisar-prescricao-imagem", requirePaidOrAdmin, async(req, res) => {
   try {
-    const imagens = normalizeImageDataUrls(getImageDataUrlsFromBody(req.body), 4, 12_000_000);
+    const urls = getImageDataUrlsFromBody(req.body);
+    const safeImages = urls.map(u => normalizeImageDataUrl(u, 12_000_000)).filter(Boolean).slice(0, 4);
 
-    if (!imagens.length) {
+    if (!safeImages.length) {
       return res.status(400).json({
         error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
       });
     }
 
-const prompt = `
+    const prompt = `
 Você é um enfermeiro humano realizando uma ANÁLISE DE SEGURANÇA DE UMA PRESCRIÇÃO MÉDICA baseada em uma foto.
 
 Objetivo:
@@ -2072,9 +2035,7 @@ Formato de saída: JSON estrito:
 }
 `;
 
-    const data = (imagens.length > 1)
-      ? await callOpenAIVisionJsonMulti(prompt, imagens)
-      : await callOpenAIVisionJson(prompt, imagens[0]);
+    const data = await callOpenAIVisionJson(prompt, safeImages);
 
     const meds = Array.isArray(data?.medicamentos) ? data.medicamentos : [];
     const riscos = Array.isArray(data?.riscos_e_inconsistencias) ? data.riscos_e_inconsistencias : [];
