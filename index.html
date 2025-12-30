@@ -4816,50 +4816,50 @@ if (medPhotoBtn) {
     }
 if (woundCameraInput) {
       woundCameraInput.addEventListener("change", async (e) => {
-        const files = e.target.files;
+        const files = Array.from((e && e.target && e.target.files) ? e.target.files : []);
         woundCameraInput.value = "";
-        if (!files || !files.length) return;
+        if (!files.length) return;
         await addFilesToTarget(files, "wound", "append");
       });
     }
 if (woundFileInput) {
       woundFileInput.addEventListener("change", async (e) => {
-        const files = e.target.files;
+        const files = Array.from((e && e.target && e.target.files) ? e.target.files : []);
         woundFileInput.value = "";
-        if (!files || !files.length) return;
+        if (!files.length) return;
         await addFilesToTarget(files, "wound", "replace");
       });
     }
 if (medCameraInput) {
       medCameraInput.addEventListener("change", async (e) => {
-        const files = e.target.files;
+        const files = Array.from((e && e.target && e.target.files) ? e.target.files : []);
         medCameraInput.value = "";
-        if (!files || !files.length) return;
+        if (!files.length) return;
         await addFilesToTarget(files, "med", "append");
       });
     }
 if (medFileInput) {
       medFileInput.addEventListener("change", async (e) => {
-        const files = e.target.files;
+        const files = Array.from((e && e.target && e.target.files) ? e.target.files : []);
         medFileInput.value = "";
-        if (!files || !files.length) return;
+        if (!files.length) return;
         await addFilesToTarget(files, "med", "replace");
       });
     }
 
 if (examCameraInput) {
       examCameraInput.addEventListener("change", async (e) => {
-        const files = e.target.files;
+        const files = Array.from((e && e.target && e.target.files) ? e.target.files : []);
         examCameraInput.value = "";
-        if (!files || !files.length) return;
+        if (!files.length) return;
         await addFilesToTarget(files, "exam", "append");
       });
     }
 if (examFileInput) {
       examFileInput.addEventListener("change", async (e) => {
-        const files = e.target.files;
+        const files = Array.from((e && e.target && e.target.files) ? e.target.files : []);
         examFileInput.value = "";
-        if (!files || !files.length) return;
+        if (!files.length) return;
         await addFilesToTarget(files, "exam", "replace");
       });
     }
