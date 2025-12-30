@@ -1637,8 +1637,8 @@
       <div id="interactionsStatus" class="mini-status"></div>
       <div id="interactionsBox" class="classification-box">Nenhum conteúdo disponível.</div>
 
-      <input id="medCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
-      <input id="medFileInput" class="hidden-input" type="file" accept="image/*" />
+      <input id="medCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment"  multiple/>
+      <input id="medFileInput" class="hidden-input" type="file" accept="image/*"  multiple/>
     </div>
 
     <div id="woundCard" class="module-card">
@@ -1656,8 +1656,8 @@
       <div id="presentationsMaxDoseStatus" class="mini-status"></div>
       <div id="presentationsMaxDoseBox" class="classification-box">Nenhum conteúdo disponível.</div>
 
-      <input id="woundCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
-      <input id="woundFileInput" class="hidden-input" type="file" accept="image/*" />
+      <input id="woundCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment"  multiple/>
+      <input id="woundFileInput" class="hidden-input" type="file" accept="image/*"  multiple/>
     </div>
 
 <div id="medicalDoubtsCard" class="module-card">
@@ -1782,15 +1782,22 @@
 
 
   <div id="imageChoiceOverlay" class="modal-overlay hidden">
-    <div class="modal">
-      <h3>Selecionar imagem</h3>
-      <p>Escolha uma opção.</p>
-      <div class="modal-actions">
-        <button id="chooseCameraBtn" class="danger">Tirar foto agora</button>
-        <button id="chooseFileBtn" class="primary">Escolher arquivo</button>
-        <button id="cancelImageChoiceBtn">Cancelar</button>
-      </div>
+  <div class="modal" style="max-width: 560px;">
+    <h3 id="imageChoiceTitle">Imagens para análise</h3>
+    <p id="imageChoiceHint">Selecione uma ou mais imagens. Você pode adicionar várias antes de analisar.</p>
+
+    <div id="imageChoicePreview" class="image-preview-grid" aria-label="Pré-visualização das imagens selecionadas"></div>
+    <div id="imageChoiceCount" style="margin-top: 8px; font-size: 12px; color: #374151;"></div>
+
+    <div class="modal-actions" style="flex-wrap: wrap;">
+      <button id="chooseCameraBtn" class="danger">Tirar foto agora</button>
+      <button id="chooseFileBtn" class="primary">Escolher arquivo</button>
+      <button id="clearChosenImagesBtn">Limpar</button>
+      <button id="runImageAnalysisBtn" class="primary" disabled>Analisar</button>
+      <button id="cancelImageChoiceBtn">Cancelar</button>
     </div>
+  </div>
+</div>
   </div>
 
 
@@ -2138,8 +2145,20 @@ const recordBtn = document.getElementById("recordBtn");
     const chooseFileBtn = document.getElementById("chooseFileBtn");
     const cancelImageChoiceBtn = document.getElementById("cancelImageChoiceBtn");
 
+    const runImageAnalysisBtn = document.getElementById("runImageAnalysisBtn");
+    const clearChosenImagesBtn = document.getElementById("clearChosenImagesBtn");
+    const imageChoicePreview = document.getElementById("imageChoicePreview");
+    const imageChoiceCount = document.getElementById("imageChoiceCount");
+    const imageChoiceTitle = document.getElementById("imageChoiceTitle");
+    const imageChoiceHint = document.getElementById("imageChoiceHint");
+
     let pendingCameraInput = null;
     let pendingFileInput = null;
+
+    let pendingImages = [];
+    let pendingAnalysisFn = null;
+    let pendingOverlayTitle = "";
+    let pendingOverlayHint = "";
 
     // ============================
     // VISIBILIDADE – botões de copiar/imprimir (foto/áudio)
@@ -3776,75 +3795,198 @@ function initSpeech() {
       }
     }
 
-    function showImageChoice(cameraInputEl, fileInputEl) {
-      pendingCameraInput = cameraInputEl || null;
-      pendingFileInput = fileInputEl || null;
-      if (!imageChoiceOverlay) return;
-      imageChoiceOverlay.classList.remove("hidden");
-    }
+    function renderImageChoicePreview() {
+  if (!imageChoicePreview || !imageChoiceCount || !runImageAnalysisBtn) return;
 
-    function hideImageChoice() {
-      if (!imageChoiceOverlay) return;
-      imageChoiceOverlay.classList.add("hidden");
-      pendingCameraInput = null;
-      pendingFileInput = null;
-    }
+  imageChoicePreview.innerHTML = "";
+  const imgs = Array.isArray(pendingImages) ? pendingImages : [];
+  const count = imgs.length;
 
-    async function fileToDataUrl(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ""));
-        reader.onerror = () => reject(new Error("Falha ao ler a imagem."));
-        reader.readAsDataURL(file);
-      });
-    }
+  for (const url of imgs.slice(0, 12)) {
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = "Imagem selecionada";
+    imageChoicePreview.appendChild(img);
+  }
 
-    async function analyzeWoundWithImage(dataUrl) {
-      if (!presentationsMaxDoseStatus || !presentationsMaxDoseBox) return;
-      presentationsMaxDoseStatus.textContent = "Analisando imagem da lesão.";
-      presentationsMaxDoseBox.textContent = "Processando.";
-      updateWoundActions();
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/analisar-lesao-imagem", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image_data_url: dataUrl })
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(data?.error || "Falha ao analisar imagem.");
-        const texto = (data?.texto || "").trim();
-        presentationsMaxDoseBox.textContent = texto || "Nenhum conteúdo disponível.";
-        presentationsMaxDoseStatus.textContent = "Análise concluída.";
-        updateWoundActions();
-      } catch (e) {
-        presentationsMaxDoseStatus.textContent = "Falha ao analisar imagem.";
-        presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
-        updateWoundActions();
+  imageChoiceCount.textContent = count ? (`${count} imagem(ns) selecionada(s).`) : "Nenhuma imagem selecionada.";
+  runImageAnalysisBtn.disabled = count === 0;
+}
+
+function clearPendingImages() {
+  pendingImages = [];
+  renderImageChoicePreview();
+}
+
+function showImageChoice(cameraInputEl, fileInputEl, analysisFn, title, hint) {
+  pendingCameraInput = cameraInputEl || null;
+  pendingFileInput = fileInputEl || null;
+  pendingAnalysisFn = typeof analysisFn === "function" ? analysisFn : null;
+  pendingOverlayTitle = String(title || "").trim() || "Imagens para análise";
+  pendingOverlayHint = String(hint || "").trim() || "Selecione uma ou mais imagens. Você pode adicionar várias antes de analisar.";
+
+  if (imageChoiceTitle) imageChoiceTitle.textContent = pendingOverlayTitle;
+  if (imageChoiceHint) imageChoiceHint.textContent = pendingOverlayHint;
+
+  if (!imageChoiceOverlay) return;
+  imageChoiceOverlay.classList.remove("hidden");
+  renderImageChoicePreview();
+}
+
+function hideImageChoice() {
+  if (!imageChoiceOverlay) return;
+  imageChoiceOverlay.classList.add("hidden");
+  pendingCameraInput = null;
+  pendingFileInput = null;
+  pendingAnalysisFn = null;
+  pendingOverlayTitle = "";
+  pendingOverlayHint = "";
+  clearPendingImages();
+}
+
+async function fileToCompressedDataUrl(file, maxDim = 1280, quality = 0.82) {
+  // Reduz tamanho para evitar estouro de limite do servidor / proxy (sem depender de libs).
+  const f = file;
+  if (!f) return "";
+
+  // Alguns navegadores não suportam createImageBitmap para todos os formatos; usa Image() por compatibilidade.
+  const objectUrl = URL.createObjectURL(f);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("Falha ao carregar a imagem."));
+      i.src = objectUrl;
+    });
+
+    const w = img.naturalWidth || img.width || 0;
+    const h = img.naturalHeight || img.height || 0;
+    if (!w || !h) throw new Error("Dimensões inválidas.");
+
+    const scale = Math.min(1, maxDim / Math.max(w, h));
+    const outW = Math.max(1, Math.round(w * scale));
+    const outH = Math.max(1, Math.round(h * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = outW;
+    canvas.height = outH;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Falha ao preparar canvas.");
+    ctx.drawImage(img, 0, 0, outW, outH);
+
+    // JPEG costuma reduzir bem o tamanho para fotos.
+    return canvas.toDataURL("image/jpeg", quality);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function addFilesToPending(files) {
+  const list = Array.from(files || []);
+  if (!list.length) return;
+
+  // Limite de imagens por análise para manter performance e reduzir custo.
+  const remaining = Math.max(0, 4 - (pendingImages ? pendingImages.length : 0));
+  const slice = list.slice(0, remaining);
+
+  for (const file of slice) {
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file);
+      if (dataUrl) {
+        pendingImages = Array.isArray(pendingImages) ? pendingImages : [];
+        pendingImages.push(dataUrl);
       }
+    } catch (e) {
+      // ignora arquivo inválido
+    }
+  }
+  renderImageChoicePreview();
+}
+    async function analyzeWoundWithImages(dataUrls) {
+  if (!presentationsMaxDoseStatus || !presentationsMaxDoseBox) return;
+
+  const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
+  if (!images.length) {
+    presentationsMaxDoseStatus.textContent = "Nenhuma imagem selecionada.";
+    presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
+    updateWoundActions();
+    return;
+  }
+
+  presentationsMaxDoseStatus.textContent = "Analisando imagem(ns) da lesão.";
+  presentationsMaxDoseBox.textContent = "Processando.";
+  updateWoundActions();
+
+  try {
+    const payload = {
+      images_data_url: images,
+      image_data_url: images[0] // compatibilidade
+    };
+
+    const resp = await fetch(BACKEND_URL + "/api/analisar-lesao-imagem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data?.error || "Falha ao analisar imagem.");
+
+    const texto = (data?.texto || "").trim();
+    presentationsMaxDoseBox.textContent = texto || "Nenhum conteúdo disponível.";
+    presentationsMaxDoseStatus.textContent = "Análise concluída.";
+    updateWoundActions();
+  } catch (e) {
+    presentationsMaxDoseStatus.textContent = "Falha ao analisar imagem.";
+    presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
+    updateWoundActions();
+  }
+}
+
     }
 
-    async function analyzePrescriptionWithImage(dataUrl) {
-      if (!interactionsStatus || !interactionsBox) return;
-      interactionsStatus.textContent = "Analisando prescrição.";
-      interactionsBox.textContent = "Processando.";
-      updateMedSafetyActions();
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/analisar-prescricao-imagem", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image_data_url: dataUrl })
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(data?.error || "Falha ao analisar prescrição.");
-        const texto = (data?.texto || "").trim();
-        interactionsBox.textContent = texto || "Nenhum conteúdo disponível.";
-        interactionsStatus.textContent = "Análise concluída.";
-        updateMedSafetyActions();
-      } catch (e) {
-        interactionsStatus.textContent = "Falha ao analisar prescrição.";
-        interactionsBox.textContent = "Nenhum conteúdo disponível.";
-        updateMedSafetyActions();
-      }
+    async function analyzePrescriptionWithImages(dataUrls) {
+  if (!interactionsStatus || !interactionsBox) return;
+
+  const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
+  if (!images.length) {
+    interactionsStatus.textContent = "Nenhuma imagem selecionada.";
+    interactionsBox.textContent = "Nenhum conteúdo disponível.";
+    updateMedSafetyActions();
+    return;
+  }
+
+  interactionsStatus.textContent = "Analisando prescrição (imagem(ns)).";
+  interactionsBox.textContent = "Processando.";
+  updateMedSafetyActions();
+
+  try {
+    const payload = {
+      images_data_url: images,
+      image_data_url: images[0] // compatibilidade
+    };
+
+    const resp = await fetch(BACKEND_URL + "/api/analisar-prescricao-imagem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data?.error || "Falha ao analisar prescrição.");
+
+    const texto = (data?.texto || "").trim();
+    interactionsBox.textContent = texto || "Nenhum conteúdo disponível.";
+    interactionsStatus.textContent = "Análise concluída.";
+    updateMedSafetyActions();
+  } catch (e) {
+    interactionsStatus.textContent = "Falha ao analisar prescrição.";
+    interactionsBox.textContent = "Nenhum conteúdo disponível.";
+    updateMedSafetyActions();
+  }
+}
+
     }
 
     function getSoapSectionText(letter) {
@@ -4438,20 +4580,35 @@ function initSpeech() {
 
 
     if (chooseCameraBtn) {
-      chooseCameraBtn.addEventListener("click", () => {
-        const input = pendingCameraInput;
-        hideImageChoice();
-        if (input) input.click();
-      });
-    }
+  chooseCameraBtn.addEventListener("click", () => {
+    const input = pendingCameraInput;
+    if (input) input.click();
+  });
+}
 
     if (chooseFileBtn) {
-      chooseFileBtn.addEventListener("click", () => {
-        const input = pendingFileInput;
-        hideImageChoice();
-        if (input) input.click();
-      });
+  chooseFileBtn.addEventListener("click", () => {
+    const input = pendingFileInput;
+    if (input) input.click();
+  });
+}
+
+if (clearChosenImagesBtn) {
+  clearChosenImagesBtn.addEventListener("click", () => {
+    clearPendingImages();
+  });
+}
+
+if (runImageAnalysisBtn) {
+  runImageAnalysisBtn.addEventListener("click", async () => {
+    const fn = pendingAnalysisFn;
+    const imgs = Array.isArray(pendingImages) ? pendingImages.slice() : [];
+    hideImageChoice();
+    if (fn && imgs.length) {
+      await fn(imgs);
     }
+  });
+}
 
     // Estado inicial: botões de copiar/imprimir ficam ocultos até gerar conteúdo
     updateMedSafetyActions();
@@ -4472,55 +4629,59 @@ function initSpeech() {
 
     if (woundPhotoBtn) {
       woundPhotoBtn.addEventListener("click", () => {
-        showImageChoice(woundCameraInput, woundFileInput);
+        showImageChoice(woundCameraInput, woundFileInput, analyzeWoundWithImages, "Curativos e feridas", "Selecione uma ou mais imagens da ferida/lesão. Você pode adicionar várias antes de analisar.");
       });
     }
 
     if (medPhotoBtn) {
       medPhotoBtn.addEventListener("click", () => {
-        showImageChoice(medCameraInput, medFileInput);
+        showImageChoice(medCameraInput, medFileInput, analyzePrescriptionWithImages, "Administração segura de medicamentos", "Selecione uma ou mais imagens da prescrição/medicamentos. Você pode adicionar várias antes de analisar.");
       });
     }
 
     if (woundCameraInput) {
-      woundCameraInput.addEventListener("change", async (e) => {
-        const file = e.target.files && e.target.files[0];
-        woundCameraInput.value = "";
-        if (!file) return;
-        const dataUrl = await fileToDataUrl(file);
-        await analyzeWoundWithImage(dataUrl);
-      });
-    }
+  woundCameraInput.addEventListener("change", async (e) => {
+    const files = e.target.files;
+    woundCameraInput.value = "";
+    if (!files || !files.length) return;
+    await addFilesToPending(files);
+    // Mantém o modal aberto para permitir adicionar mais imagens antes de analisar.
+    if (imageChoiceOverlay) imageChoiceOverlay.classList.remove("hidden");
+  });
+}
 
     if (woundFileInput) {
-      woundFileInput.addEventListener("change", async (e) => {
-        const file = e.target.files && e.target.files[0];
-        woundFileInput.value = "";
-        if (!file) return;
-        const dataUrl = await fileToDataUrl(file);
-        await analyzeWoundWithImage(dataUrl);
-      });
-    }
+  woundFileInput.addEventListener("change", async (e) => {
+    const files = e.target.files;
+    woundFileInput.value = "";
+    if (!files || !files.length) return;
+    await addFilesToPending(files);
+    // Mantém o modal aberto para permitir adicionar mais imagens antes de analisar.
+    if (imageChoiceOverlay) imageChoiceOverlay.classList.remove("hidden");
+  });
+}
 
     if (medCameraInput) {
-      medCameraInput.addEventListener("change", async (e) => {
-        const file = e.target.files && e.target.files[0];
-        medCameraInput.value = "";
-        if (!file) return;
-        const dataUrl = await fileToDataUrl(file);
-        await analyzePrescriptionWithImage(dataUrl);
-      });
-    }
+  medCameraInput.addEventListener("change", async (e) => {
+    const files = e.target.files;
+    medCameraInput.value = "";
+    if (!files || !files.length) return;
+    await addFilesToPending(files);
+    // Mantém o modal aberto para permitir adicionar mais imagens antes de analisar.
+    if (imageChoiceOverlay) imageChoiceOverlay.classList.remove("hidden");
+  });
+}
 
     if (medFileInput) {
-      medFileInput.addEventListener("change", async (e) => {
-        const file = e.target.files && e.target.files[0];
-        medFileInput.value = "";
-        if (!file) return;
-        const dataUrl = await fileToDataUrl(file);
-        await analyzePrescriptionWithImage(dataUrl);
-      });
-    }
+  medFileInput.addEventListener("change", async (e) => {
+    const files = e.target.files;
+    medFileInput.value = "";
+    if (!files || !files.length) return;
+    await addFilesToPending(files);
+    // Mantém o modal aberto para permitir adicionar mais imagens antes de analisar.
+    if (imageChoiceOverlay) imageChoiceOverlay.classList.remove("hidden");
+  });
+}
 
     if (copyWoundBtn) {
       copyWoundBtn.addEventListener("click", () => {
