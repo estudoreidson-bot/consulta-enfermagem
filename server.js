@@ -121,7 +121,7 @@ const port = process.env.PORT || 3000;
 
 // Configurações básicas
 app.use(cors());
-app.use(bodyParser.json({ limit: "25mb" }));
+app.use(bodyParser.json({ limit: "50mb" }));
 
 // Servir o index.html apenas na rota raiz (útil para testes locais)
 app.get("/", (req, res) => {
@@ -130,13 +130,20 @@ app.get("/", (req, res) => {
 
 // Servir o index.html (útil para testes locais)
 
-// Cliente OpenAI usando a variável de ambiente do Render
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
+// Cliente OpenAI usando a variável de ambiente do backend (Render/Replit/etc)
+let openai = null;
+try {
+  if (process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  } else {
+    console.warn("[WARN] OPENAI_API_KEY ausente. Rotas de IA ficarão indisponíveis.");
+  }
+} catch (e) {
+  console.error("[ERRO] Falha ao iniciar OpenAI client:", e?.message || e);
+}
 // Função genérica para chamar o modelo e retornar o texto
 async function callOpenAI(prompt) {
+  if (!openai) throw new Error("OPENAI_API_KEY não configurada.");
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.2,
@@ -171,6 +178,7 @@ async function callOpenAIJson(prompt) {
 
 // Função para chamar o modelo com imagem (data URL) e retornar JSON
 async function callOpenAIVisionJson(prompt, imagemDataUrl) {
+  if (!openai) throw new Error("OPENAI_API_KEY não configurada.");
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.2,
@@ -198,32 +206,42 @@ async function callOpenAIVisionJson(prompt, imagemDataUrl) {
     }
     throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
   }
-}async function callOpenAIVisionJsonMulti(prompt, imagensDataUrl) {
-  const images = Array.isArray(imagensDataUrl) ? imagensDataUrl.filter(Boolean) : [];
-  if (!images.length) return {};
+}
 
-  const content = [
-    { type: "text", text: prompt },
-    ...images.map((u) => ({ type: "image_url", image_url: { url: u } }))
-  ];
+// Função para chamar o modelo com múltiplas imagens (data URL) e retornar JSON
+async function callOpenAIVisionJsonMulti(prompt, imagensDataUrl) {
+  if (!openai) throw new Error("OPENAI_API_KEY não configurada.");
+  const imagens = Array.isArray(imagensDataUrl) ? imagensDataUrl.filter(Boolean) : [];
+  if (!imagens.length) return {};
 
-  const resp = await openai.chat.completions.create({
+  const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.2,
     messages: [
       {
         role: "user",
-        content
+        content: [
+          { type: "text", text: prompt },
+          ...imagens.map((url) => ({ type: "image_url", image_url: { url } }))
+        ]
       }
-    ],
-    response_format: { type: "json_object" }
+    ]
   });
 
-  const txt = resp?.choices?.[0]?.message?.content || "{}";
-  try { return JSON.parse(txt); } catch { return {}; }
+  const raw = (completion.choices?.[0]?.message?.content || "").trim();
+
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    const firstBrace = raw.indexOf("{");
+    const lastBrace = raw.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
+      return JSON.parse(jsonSlice);
+    }
+    throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
+  }
 }
-
-
 
 // Pequena validação para limitar tamanho e evitar abusos
 function normalizeText(input, maxLen) {
@@ -261,7 +279,9 @@ function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
     if (out.length >= maxItems) break;
   }
   return out;
-}function getImageDataUrlsFromBody(body) {
+}
+
+function getImageDataUrlsFromBody(body) {
   const b = body || {};
   let arr = [];
   if (Array.isArray(b.images_data_url)) arr = b.images_data_url;
@@ -274,8 +294,7 @@ function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
   const single = getImageDataUrlFromBody(b);
   if (single) arr = [...arr, single];
 
-  // strings somente
-  return arr.map(x => (typeof x === "string" ? x.trim() : "")).filter(Boolean);
+  return arr.map((x) => (typeof x === "string" ? x.trim() : "")).filter(Boolean);
 }
 
 function normalizeImageDataUrls(arr, maxItems, maxLenEach) {
@@ -287,8 +306,6 @@ function normalizeImageDataUrls(arr, maxItems, maxLenEach) {
   }
   return out;
 }
-
-
 
 // ======================================================================
 // AUTENTICAÇÃO + BASE LOCAL (usuários, pagamentos e auditoria)
@@ -1925,7 +1942,7 @@ Contexto:
 
 async function analisarLesaoPorImagem(safeImages) {
   const prompt = `
-Você é um enfermeiro humano elaborando um REGISTRO DE CURATIVOS E FERIDAS com base em uma ou mais fotos da mesma lesão (ângulos/iluminação diferentes).
+Você é um enfermeiro humano elaborando um REGISTRO DE CURATIVOS E FERIDAS com base em uma foto de lesão.
 
 Tarefa:
 1) Descrever somente características VISÍVEIS e com linguagem prudente (sem inventar).
@@ -1954,7 +1971,6 @@ Orientações esperadas:
   const data = (imgs.length > 1)
     ? await callOpenAIVisionJsonMulti(prompt, imgs)
     : await callOpenAIVisionJson(prompt, imgs[0]);
-
   const caracteristicas = typeof data?.caracteristicas === "string" ? data.caracteristicas.trim() : "";
   const prescricao_cuidados = typeof data?.prescricao_cuidados === "string" ? data.prescricao_cuidados.trim() : "";
   const sinais_alarme = typeof data?.sinais_alarme === "string" ? data.sinais_alarme.trim() : "";
@@ -1968,7 +1984,7 @@ Orientações esperadas:
 
 app.post("/api/analisar-lesao", requirePaidOrAdmin, async(req, res) => {
   try {
-        const imagens = normalizeImageDataUrls(getImageDataUrlsFromBody(req.body), 4, 12_000_000);
+    const imagens = normalizeImageDataUrls(getImageDataUrlsFromBody(req.body), 4, 12_000_000);
 
     if (!imagens.length) {
       return res.status(400).json({
@@ -1987,7 +2003,7 @@ app.post("/api/analisar-lesao", requirePaidOrAdmin, async(req, res) => {
 // Alias para compatibilidade com o frontend atual (retorna um texto único para exibição).
 app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
   try {
-        const imagens = normalizeImageDataUrls(getImageDataUrlsFromBody(req.body), 4, 12_000_000);
+    const imagens = normalizeImageDataUrls(getImageDataUrlsFromBody(req.body), 4, 12_000_000);
 
     if (!imagens.length) {
       return res.status(400).json({ error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente." });
@@ -2013,15 +2029,16 @@ app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
 
 app.post("/api/analisar-prescricao-imagem", requirePaidOrAdmin, async(req, res) => {
   try {
-        const imagens = normalizeImageDataUrls(getImageDataUrlsFromBody(req.body), 4, 12_000_000);
+    const imagens = normalizeImageDataUrls(getImageDataUrlsFromBody(req.body), 4, 12_000_000);
+
     if (!imagens.length) {
       return res.status(400).json({
         error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
       });
     }
 
-    const prompt = `
-Você é um enfermeiro humano realizando uma ANÁLISE DE SEGURANÇA DE UMA PRESCRIÇÃO MÉDICA baseada em uma ou mais fotos (pode haver páginas/ângulos diferentes).
+const prompt = `
+Você é um enfermeiro humano realizando uma ANÁLISE DE SEGURANÇA DE UMA PRESCRIÇÃO MÉDICA baseada em uma foto.
 
 Objetivo:
 1) Transcrever somente o que estiver legível (sem inventar). Quando não der para ler, escreva "não informado".
