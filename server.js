@@ -122,7 +122,6 @@ const port = process.env.PORT || 3000;
 // Configurações básicas
 app.use(cors());
 app.use(bodyParser.json({ limit: "25mb" }));
-app.use(bodyParser.urlencoded({ limit: "25mb", extended: true }));
 
 // Servir o index.html apenas na rota raiz (útil para testes locais)
 app.get("/", (req, res) => {
@@ -171,36 +170,41 @@ async function callOpenAIJson(prompt) {
 }
 
 // Função para chamar o modelo com imagem (data URL) e retornar JSON
-async function callOpenAIVisionJson(prompt, imagensDataUrl) {
-  const imgs = Array.isArray(imagensDataUrl) ? imagensDataUrl : [imagensDataUrl];
-  const safeImgs = imgs.filter((x) => typeof x === "string" && x.trim()).slice(0, 4);
-
-  const content = [{ type: "text", text: prompt }];
-  for (const url of safeImgs) {
-    content.push({ type: "image_url", image_url: { url } });
-  }
-
+async function callOpenAIVisionJson(prompt, imagemDataUrl) {
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.2,
     messages: [
       {
         role: "user",
-        content
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: imagemDataUrl } }
+        ]
       }
     ]
   });
 
-  const text = completion?.choices?.[0]?.message?.content || "";
+  const raw = (completion.choices?.[0]?.message?.content || "").trim();
+
   try {
-    return JSON.parse(text);
-  } catch (_) {
-    const m = String(text).match(/\{[\s\S]*\}/);
-    if (m) {
-      try { return JSON.parse(m[0]); } catch (_) {}
+    return JSON.parse(raw);
+  } catch (e) {
+    const firstBrace = raw.indexOf("{");
+    const lastBrace = raw.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
+      return JSON.parse(jsonSlice);
     }
+    throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
   }
-  return {};
+}
+
+// Pequena validação para limitar tamanho e evitar abusos
+function normalizeText(input, maxLen) {
+  const s = (typeof input === "string" ? input : "").trim();
+  if (!s) return "";
+  return s.length > maxLen ? s.slice(0, maxLen) : s;
 }
 
 function normalizeImageDataUrl(input, maxLen) {
@@ -220,32 +224,6 @@ function getImageDataUrlFromBody(body) {
       ? b.image_data_url.trim()
       : "";
 }
-
-function getImagesDataUrlFromBody(body, maxItems, maxLenEach) {
-  const b = body || {};
-  const arr =
-    Array.isArray(b.images_data_url) ? b.images_data_url :
-    Array.isArray(b.imagens_data_url) ? b.imagens_data_url :
-    Array.isArray(b.images) ? b.images :
-    [];
-
-  const out = [];
-  // Prioriza array; se vier apenas imagem única, inclui também
-  for (const v of arr) {
-    const s = normalizeImageDataUrl(v, maxLenEach);
-    if (s) out.push(s);
-    if (out.length >= maxItems) break;
-  }
-
-  if (!out.length) {
-    const single = getImageDataUrlFromBody(b);
-    const s = normalizeImageDataUrl(single, maxLenEach);
-    if (s) out.push(s);
-  }
-
-  return out.slice(0, maxItems);
-}
-
 
 function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
   if (!Array.isArray(arr)) return [];
@@ -850,9 +828,18 @@ function isUserOnline(user) {
 }
 
 function authFromReq(req) {
-  const h = req.headers["authorization"] || "";
-  const m = String(h).match(/^Bearer\s+(.+)$/i);
-  const token = m ? m[1].trim() : "";
+  // Aceita token via Authorization: Bearer <token> e também via X-Auth-Token (fallback para proxies).
+  const hAuth = req.headers["authorization"] || "";
+  const hX = req.headers["x-auth-token"] || req.headers["x-authorization"] || "";
+
+  function extractToken(v) {
+    const s = String(v || "").trim();
+    if (!s) return "";
+    const m = s.match(/^Bearer\s+(.+)$/i);
+    return m ? m[1].trim() : s;
+  }
+
+  const token = extractToken(hAuth) || extractToken(hX) || extractToken(req.query && req.query.token);
   const sess = getSession(token);
   if (!sess) return null;
 
@@ -1955,9 +1942,10 @@ app.post("/api/analisar-lesao", requirePaidOrAdmin, async(req, res) => {
 // Alias para compatibilidade com o frontend atual (retorna um texto único para exibição).
 app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
   try {
-    const safeImages = getImagesDataUrlFromBody(req.body, 4, 4_000_000);
+    const imagemDataUrl = getImageDataUrlFromBody(req.body);
+    const safeImage = normalizeImageDataUrl(imagemDataUrl, 4_000_000);
 
-    if (!safeImages.length) {
+    if (!safeImage) {
       return res.status(400).json({ error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente." });
     }
 
@@ -1981,22 +1969,17 @@ app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
 
 app.post("/api/analisar-prescricao-imagem", requirePaidOrAdmin, async(req, res) => {
   try {
-    const safeImages = getImagesDataUrlFromBody(req.body, 4, 4_000_000);
+    const imagemDataUrl = getImageDataUrlFromBody(req.body);
+    const safeImage = normalizeImageDataUrl(imagemDataUrl, 4_000_000);
 
-    if (!safeImages.length) {
+    if (!safeImage) {
       return res.status(400).json({
         error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
       });
     }
 
     const prompt = `
-Você é um enfermeiro humano
-
-Você receberá de 1 a 4 imagens (ângulos diferentes). Considere que podem ser da mesma lesão/prescrição; não invente dados ilegíveis.
-
-
-Você receberá de 1 a 4 imagens (ângulos diferentes). Considere que podem ser da mesma lesão/prescrição; não invente dados ilegíveis.
- realizando uma ANÁLISE DE SEGURANÇA DE UMA PRESCRIÇÃO MÉDICA baseada em uma foto.
+Você é um enfermeiro humano realizando uma ANÁLISE DE SEGURANÇA DE UMA PRESCRIÇÃO MÉDICA baseada em uma foto.
 
 Objetivo:
 1) Transcrever somente o que estiver legível (sem inventar). Quando não der para ler, escreva "não informado".
@@ -2030,7 +2013,7 @@ Formato de saída: JSON estrito:
 }
 `;
 
-    const data = await callOpenAIVisionJson(prompt, safeImages);
+    const data = await callOpenAIVisionJson(prompt, safeImage);
 
     const meds = Array.isArray(data?.medicamentos) ? data.medicamentos : [];
     const riscos = Array.isArray(data?.riscos_e_inconsistencias) ? data.riscos_e_inconsistencias : [];

@@ -1657,27 +1657,30 @@
     </div>
 
     
+    
     <div id="medSafetyCard" class="module-card">
       <h2>Administração segura de medicamentos (registro de enfermagem)</h2>
-                  <p class="mini-status" style="margin-top: 0;">
+      <p class="mini-status" style="margin-top: 0;">
         Use o botão para fotografar a prescrição médica. O sistema irá transcrever o que estiver legível, organizar os medicamentos, apontar riscos e inconsistências relevantes para a enfermagem e sinalizar interações importantes quando for possível confirmar com segurança.
       </p>
-<div class="prescription-actions">
+
+      <div class="prescription-actions">
         <div class="file-btn photo-btn">Tirar foto
-</div>
+          <input id="medCameraInput" type="file" accept="image/*" capture="environment" />
+        </div>
         <div class="file-btn photo-btn">Escolher arquivo
-</div>
+          <input id="medFileInput" type="file" accept="image/*" multiple />
+        </div>
         <button id="copyMedSafetyBtn" class="btn-copy hidden">Copiar segurança dos medicamentos</button>
         <button id="printMedSafetyBtn" class="btn-print hidden">Imprimir segurança dos medicamentos</button>
       </div>
+
       <div id="medImagesCount" class="mini-status"></div>
       <div id="medPreview" class="image-preview-grid"></div>
 
-      </div>
-
       <div id="interactionsStatus" class="mini-status"></div>
       <div id="interactionsBox" class="classification-box">Nenhum conteúdo disponível.</div>
-</div>
+    </div>
 
     <div id="woundCard" class="module-card">
       <h2>Curativos e feridas</h2>
@@ -1695,18 +1698,13 @@
         <button id="copyWoundBtn" class="btn-copy hidden">Copiar prescrição e cuidados</button>
         <button id="printWoundBtn" class="btn-print hidden">Imprimir prescrição e cuidados</button>
       </div>
+
       <div id="woundImagesCount" class="mini-status"></div>
       <div id="woundPreview" class="image-preview-grid"></div>
 
       <div id="woundStatus" class="mini-status"></div>
       <div id="woundBox" class="classification-box">Nenhum conteúdo disponível.</div>
- class="mini-status"></div>
-      <div id="presentationsMaxDoseBox" class="classification-box">Nenhum conteúdo disponível.</div>
-
-      <input id="woundCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment"  multiple/>
-      <input id="woundFileInput" class="hidden-input" type="file" accept="image/*"  multiple/>
     </div>
-
 <div id="medicalDoubtsCard" class="module-card">
       <h2>Dúvidas de Enfermagem</h2>
       <p class="mini-status" style="margin-top: 0;">Digite sua dúvida e pressione Enter para obter uma resposta.</p>
@@ -1965,13 +1963,28 @@
     // Intercepta chamadas ao backend e injeta Authorization quando for /api/
     window.fetch = async function(input, init) {
       try {
-        const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
-        const isApi = typeof url === "string" && url.startsWith(BACKEND_URL + "/api/");
+        const rawUrl = (typeof input === "string")
+          ? input
+          : (input && typeof input.url === "string" ? input.url : "");
+
+        let isApi = false;
+        try {
+          const u = new URL(rawUrl, window.location.origin);
+          isApi = (u && typeof u.pathname === "string" && u.pathname.startsWith("/api/"));
+        } catch {
+          isApi = (typeof rawUrl === "string" && rawUrl.startsWith("/api/"));
+        }
+
         if (!isApi) return nativeFetch(input, init);
 
-        const headers = Object.assign({}, (init && init.headers) ? init.headers : {});
+        const headers = new Headers((init && init.headers) ? init.headers : undefined);
         const token = getToken();
-        if (token) headers["Authorization"] = "Bearer " + token;
+        if (token) {
+          headers.set("Authorization", "Bearer " + token);
+          // Fallback para proxies que possam remover Authorization
+          headers.set("X-Auth-Token", token);
+        }
+
         const resp = await nativeFetch(input, Object.assign({}, init || {}, { headers }));
 
         if (resp && resp.status === 401) {
@@ -2004,7 +2017,7 @@
       try {
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/login", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({ login, senha })
         });
         const data = await resp.json().catch(() => ({}));
@@ -2486,7 +2499,7 @@ const recordBtn = document.getElementById("recordBtn");
       try {
         const resp = await fetch(BACKEND_URL + "/api/classificacao-risco", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({ contexto })
         });
 
@@ -2537,7 +2550,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       try {
         const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({ transcricao: t })
         });
 
@@ -2644,7 +2657,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       try {
         const resp = await fetch(BACKEND_URL + "/api/extrair-dados-paciente", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({ transcricao: transcricaoCurta })
         });
 
@@ -3063,7 +3076,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       try {
         const resp = await fetch(BACKEND_URL + "/api/guia-tempo-real", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify(payload)
         });
 
@@ -3230,7 +3243,7 @@ function initSpeech() {
       try {
         const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({ transcricao: transcricaoParaGeracao })
         });
 
@@ -3351,7 +3364,7 @@ function initSpeech() {
       try {
         const resp = await fetch(BACKEND_URL + "/api/interacoes-medicamentosas", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({ contexto })
         });
 
@@ -3422,7 +3435,7 @@ function initSpeech() {
       try {
         const resp = await fetch(BACKEND_URL + "/api/apresentacoes-dosagem-maxima", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({ contexto })
         });
 
@@ -3593,7 +3606,7 @@ function initSpeech() {
       try {
         const resp = await fetch(BACKEND_URL + "/api/atualizar-soap-perguntas", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({
             soap_atual: soapAtual,
             perguntas_e_respostas: qa,
@@ -3682,7 +3695,7 @@ function initSpeech() {
       try {
         const resp = await fetch(BACKEND_URL + "/api/recomendacoes-anamnese", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({
             soap: combinedSoap
           })
@@ -3992,7 +4005,7 @@ async function addFilesToPending(files) {
 
     const resp = await fetch(BACKEND_URL + "/api/analisar-lesao-imagem", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
       body: JSON.stringify(payload)
     });
 
@@ -4034,7 +4047,7 @@ async function addFilesToPending(files) {
 
     const resp = await fetch(BACKEND_URL + "/api/analisar-prescricao-imagem", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
       body: JSON.stringify(payload)
     });
 
@@ -4208,7 +4221,7 @@ async function addFilesToPending(files) {
       try {
         const resp = await fetch(BACKEND_URL + "/api/prescricao-hospitalar", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({ transcricao, tipo_documento: (reportDocTypeSelect && reportDocTypeSelect.value && reportDocTypeSelect.value !== "auto") ? reportDocTypeSelect.value : null })
         });
 
@@ -4270,7 +4283,7 @@ async function addFilesToPending(files) {
       try {
         const resp = await fetch(BACKEND_URL + "/api/classificar-gestacao-lactacao", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({ contexto })
         });
 
@@ -4429,7 +4442,7 @@ async function addFilesToPending(files) {
       try {
         const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({ transcricao })
         });
 
@@ -4473,7 +4486,7 @@ async function addFilesToPending(files) {
       try {
         const resp = await fetch(BACKEND_URL + "/api/duvidas-enfermagem", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({ duvida: q })
         });
 
@@ -5164,7 +5177,7 @@ if (runImageAnalysisBtn) {
 
         await adminFetchJson("/api/admin/backup/import", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify(payload)
         });
 
@@ -5281,7 +5294,7 @@ if (runImageAnalysisBtn) {
           try {
             await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/pay`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
               body: JSON.stringify({ month, amount, method, notes })
             });
             await adminLoadAll();
@@ -5331,7 +5344,7 @@ if (runImageAnalysisBtn) {
           try {
             await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/active`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
               body: JSON.stringify({ active: !active })
             });
             await adminLoadAll();
@@ -5352,7 +5365,7 @@ if (runImageAnalysisBtn) {
           try {
             await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/reset-password`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
               body: JSON.stringify({ password: newPass })
             });
             await adminLoadAll();
@@ -5467,7 +5480,7 @@ if (runImageAnalysisBtn) {
 
         await adminFetchJson(`/api/admin/users/${encodeURIComponent(EDIT_USER_ID)}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({ fullName, dob, phone, login, password })
         });
 
@@ -5554,7 +5567,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
         await adminFetchJson("/api/admin/backup/import", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify(payload)
         });
 
@@ -5583,7 +5596,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       try {
         await adminFetchJson("/api/admin/users", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
           body: JSON.stringify({ fullName, dob, phone, login, password })
         });
         if (st) st.textContent = "Usuário cadastrado.";
@@ -5763,7 +5776,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     try {
       const resp = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
         credentials: "include",
         body: JSON.stringify(payload)
       });
