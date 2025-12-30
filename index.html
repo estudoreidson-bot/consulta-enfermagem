@@ -721,60 +721,6 @@
       display: none !important;
     }
 
-    .photo-queue {
-      width: 100%;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-      gap: 10px;
-      margin-top: 10px;
-    }
-    .photo-thumb {
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .photo-thumb img {
-      width: 100%;
-      height: 92px;
-      object-fit: cover;
-      border-radius: 10px;
-      border: 1px solid #f3f4f6;
-    }
-    .photo-thumb .photo-thumb-meta {
-      font-size: 11px;
-      color: #555;
-      line-height: 1.2;
-      word-break: break-word;
-      min-height: 14px;
-    }
-    .photo-thumb button {
-      border: none;
-      border-radius: 10px;
-      padding: 8px 10px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      background: #dc3545;
-      color: #fff;
-    }
-    .photo-thumb button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    .photo-queue-empty {
-      font-size: 12px;
-      color: #666;
-      background: #ffffff;
-      border-radius: 12px;
-      border: 1px dashed #c8d8f5;
-      padding: 10px;
-      margin-top: 10px;
-    }
-
     .consult-type-panel {
       width: 100%;
       background: #ffffff;
@@ -914,32 +860,6 @@
     }
     .btn-print:hover { opacity: 0.92; }
     .btn-print:active { transform: scale(0.98); }
-
-    .btn-analyze {
-      padding: 8px 18px;
-      border-radius: 20px;
-      border: 1px solid #198754 !important;
-      background: #198754 !important;
-      color: #ffffff !important;
-      font-size: 14px;
-      cursor: pointer;
-      transition: transform 0.05s, opacity 0.15s;
-    }
-    .btn-analyze:hover { opacity: 0.92; }
-    .btn-analyze:active { transform: scale(0.98); }
-
-    .btn-secondary {
-      padding: 8px 18px;
-      border-radius: 20px;
-      border: 1px solid #6c757d !important;
-      background: #6c757d !important;
-      color: #ffffff !important;
-      font-size: 14px;
-      cursor: pointer;
-      transition: transform 0.05s, opacity 0.15s;
-    }
-    .btn-secondary:hover { opacity: 0.92; }
-    .btn-secondary:active { transform: scale(0.98); }
 
     /* Botões "Copiar" por seção do SOAP (mesma identidade visual, tamanho menor) */
     .copy-soap-btn {
@@ -1709,69 +1629,35 @@
         Use o botão para fotografar a prescrição médica. O sistema irá transcrever o que estiver legível, organizar os medicamentos, apontar riscos e inconsistências relevantes para a enfermagem e sinalizar interações importantes quando for possível confirmar com segurança.
       </p>
 <div class="prescription-actions">
-        <button id="medPhotoBtn" class="photo-btn">Adicionar foto</button>
-        <button id="medAnalyzeBtn" class="btn-analyze">Analisar fotos</button>
-        <button id="medClearPhotosBtn" class="btn-secondary">Limpar fotos</button>
+        <button id="medPhotoBtn" class="photo-btn">Tirar foto</button>
         <button id="copyMedSafetyBtn" class="btn-copy">Copiar segurança dos medicamentos</button>
         <button id="printMedSafetyBtn" class="btn-print">Imprimir segurança dos medicamentos</button>
       </div>
-
-      <div id="medPhotoQueueEmpty" class="photo-queue-empty">Nenhuma foto adicionada. Em geral, uma foto nítida já é suficiente. Se necessário, adicione fotos adicionais (outras páginas, ângulos e zoom) antes de analisar.</div>
-      <div id="medPhotoQueue" class="photo-queue"></div>
 
       <div id="interactionsStatus" class="mini-status"></div>
       <div id="interactionsBox" class="classification-box">Nenhum conteúdo disponível.</div>
 
       <input id="medCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
-      <input id="medFileInput" class="hidden-input" type="file" accept="image/*" multiple />
+      <input id="medFileInput" class="hidden-input" type="file" accept="image/*" />
     </div>
 
     <div id="woundCard" class="module-card">
       <h2>Curativos e feridas</h2>
       <p class="mini-status" style="margin-top: 0;">
-        Use o botão para adicionar fotos da lesão. Para melhorar a avaliação, prefira fotos nítidas em mais de uma posição: uma foto geral (contexto), uma aproximada (detalhe) e, se possível, uma com referência de escala (régua). Em seguida, clique em "Analisar fotos".
+        Use o botão para fotografar a lesão. O sistema irá descrever apenas o que for visível na imagem e sugerir cuidados de enfermagem e prescrição de curativo de forma segura, sem inventar dados.
       </p>
 
       <div class="prescription-actions">
-        <button id="woundPhotoBtn" class="photo-btn">Adicionar foto</button>
-        <button id="woundAnalyzeBtn" class="btn-analyze">Analisar fotos</button>
-        <button id="woundClearPhotosBtn" class="btn-secondary">Limpar fotos</button>
+        <button id="woundPhotoBtn" class="photo-btn">Tirar foto</button>
         <button id="copyWoundBtn" class="btn-copy">Copiar prescrição e cuidados</button>
         <button id="printWoundBtn" class="btn-print">Imprimir prescrição e cuidados</button>
       </div>
-
-      <div id="woundPhotoQueueEmpty" class="photo-queue-empty">Nenhuma foto adicionada. Adicione 1 a 6 fotos (ângulos diferentes e/ou outras evoluções) para melhorar a análise.</div>
-      <div id="woundPhotoQueue" class="photo-queue"></div>
 
       <div id="presentationsMaxDoseStatus" class="mini-status"></div>
       <div id="presentationsMaxDoseBox" class="classification-box">Nenhum conteúdo disponível.</div>
 
       <input id="woundCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
-      <input id="woundFileInput" class="hidden-input" type="file" accept="image/*" multiple />
-    </div>
-
-    <div id="examCard" class="module-card">
-      <h2>Análise de exames (foto)</h2>
-      <p class="mini-status" style="margin-top: 0;">
-        Use o botão para adicionar foto de exames (resultado laboratorial, laudos, relatórios impressos ou capturas de tela). Em seguida, clique em "Analisar fotos" para obter transcrição do que estiver legível, destaques de alterações, interpretação prudente e condutas práticas de enfermagem, incluindo sinais de alarme e o que deve ser confirmado.
-      </p>
-
-      <div class="prescription-actions">
-        <button id="examPhotoBtn" class="photo-btn">Adicionar foto</button>
-        <button id="examAnalyzeBtn" class="btn-analyze">Analisar fotos</button>
-        <button id="examClearPhotosBtn" class="btn-secondary">Limpar fotos</button>
-        <button id="copyExamBtn" class="btn-copy">Copiar análise de exames</button>
-        <button id="printExamBtn" class="btn-print">Imprimir análise de exames</button>
-      </div>
-
-      <div id="examPhotoQueueEmpty" class="photo-queue-empty">Nenhuma foto adicionada. Para melhorar a leitura, prefira fotos nítidas, sem reflexo e com todo o conteúdo do exame visível.</div>
-      <div id="examPhotoQueue" class="photo-queue"></div>
-
-      <div id="examStatus" class="mini-status"></div>
-      <div id="examBox" class="classification-box">Nenhum conteúdo disponível.</div>
-
-      <input id="examCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
-      <input id="examFileInput" class="hidden-input" type="file" accept="image/*" multiple />
+      <input id="woundFileInput" class="hidden-input" type="file" accept="image/*" />
     </div>
 
 <div id="medicalDoubtsCard" class="module-card">
@@ -1911,7 +1797,11 @@
   </div>
 
   <script>
-    const BACKEND_URL = "https://consulta-enfermagem-1.onrender.com"; // usa /api (Netlify redirect) ou mesma origem no Render
+    // IMPORTANTE:
+    // - Em produção (Netlify), use os endpoints relativos "/api/*".
+    //   O netlify.toml já redireciona "/api/*" para o backend.
+    // - Assim, você pode atualizar o frontend sem precisar trocar URLs no código.
+    const BACKEND_URL = "";
 
     // =========================
     // ADMIN (caches globais - sem TDZ)
@@ -2004,10 +1894,18 @@
     }
 
     // Intercepta chamadas ao backend e injeta Authorization quando for /api/
+    // (funciona tanto com URLs relativas "/api/..." quanto absolutas)
     window.fetch = async function(input, init) {
       try {
-        const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
-        const isApi = typeof url === "string" && url.startsWith(BACKEND_URL + "/api/");
+        const rawUrl = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
+        let isApi = false;
+        try {
+          const u = new URL(rawUrl, window.location.origin);
+          isApi = !!u && typeof u.pathname === "string" && u.pathname.startsWith("/api/");
+        } catch {
+          isApi = (typeof rawUrl === "string") && rawUrl.startsWith("/api/");
+        }
+
         if (!isApi) return nativeFetch(input, init);
 
         const headers = Object.assign({}, (init && init.headers) ? init.headers : {});
@@ -2232,10 +2130,6 @@ const recordBtn = document.getElementById("recordBtn");
 
 
     const medPhotoBtn = document.getElementById("medPhotoBtn");
-    const medAnalyzeBtn = document.getElementById("medAnalyzeBtn");
-    const medClearPhotosBtn = document.getElementById("medClearPhotosBtn");
-    const medPhotoQueue = document.getElementById("medPhotoQueue");
-    const medPhotoQueueEmpty = document.getElementById("medPhotoQueueEmpty");
     const interactionsBox = document.getElementById("interactionsBox");
     const interactionsStatus = document.getElementById("interactionsStatus");
     const copyMedSafetyBtn = document.getElementById("copyMedSafetyBtn");
@@ -2244,28 +2138,12 @@ const recordBtn = document.getElementById("recordBtn");
     const medFileInput = document.getElementById("medFileInput");
 
     const woundPhotoBtn = document.getElementById("woundPhotoBtn");
-    const woundAnalyzeBtn = document.getElementById("woundAnalyzeBtn");
-    const woundClearPhotosBtn = document.getElementById("woundClearPhotosBtn");
-    const woundPhotoQueue = document.getElementById("woundPhotoQueue");
-    const woundPhotoQueueEmpty = document.getElementById("woundPhotoQueueEmpty");
     const presentationsMaxDoseBox = document.getElementById("presentationsMaxDoseBox");
     const presentationsMaxDoseStatus = document.getElementById("presentationsMaxDoseStatus");
     const copyWoundBtn = document.getElementById("copyWoundBtn");
     const printWoundBtn = document.getElementById("printWoundBtn");
     const woundCameraInput = document.getElementById("woundCameraInput");
     const woundFileInput = document.getElementById("woundFileInput");
-
-    const examPhotoBtn = document.getElementById("examPhotoBtn");
-    const examAnalyzeBtn = document.getElementById("examAnalyzeBtn");
-    const examClearPhotosBtn = document.getElementById("examClearPhotosBtn");
-    const copyExamBtn = document.getElementById("copyExamBtn");
-    const printExamBtn = document.getElementById("printExamBtn");
-    const examCameraInput = document.getElementById("examCameraInput");
-    const examFileInput = document.getElementById("examFileInput");
-    const examPhotoQueue = document.getElementById("examPhotoQueue");
-    const examPhotoQueueEmpty = document.getElementById("examPhotoQueueEmpty");
-    const examStatus = document.getElementById("examStatus");
-    const examBox = document.getElementById("examBox");
 
     const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
     const chooseCameraBtn = document.getElementById("chooseCameraBtn");
@@ -2274,105 +2152,6 @@ const recordBtn = document.getElementById("recordBtn");
 
     let pendingCameraInput = null;
     let pendingFileInput = null;
-
-    // ============================
-    // MÓDULOS DE FOTO (multi-foto)
-    // ============================
-    const MAX_PHOTOS_PER_MODULE = 6;
-    let woundImageDataUrls = [];
-    let medImageDataUrls = [];
-    let examImageDataUrls = [];
-
-    function setQueueVisibility(queueEl, emptyEl, arr) {
-      const has = Array.isArray(arr) && arr.length > 0;
-      if (queueEl) queueEl.style.display = has ? "grid" : "none";
-      if (emptyEl) emptyEl.style.display = has ? "none" : "block";
-    }
-
-    function safeShortLabel(prefix, index) {
-      const n = Number.isFinite(index) ? (index + 1) : 1;
-      return `${prefix} ${n}`;
-    }
-
-    function renderPhotoQueue(queueEl, emptyEl, arr, prefix, onRemove) {
-      if (!queueEl) return;
-      queueEl.innerHTML = "";
-      setQueueVisibility(queueEl, emptyEl, arr);
-      if (!Array.isArray(arr) || !arr.length) return;
-
-      arr.forEach((dataUrl, idx) => {
-        const wrap = document.createElement("div");
-        wrap.className = "photo-thumb";
-
-        const img = document.createElement("img");
-        img.src = dataUrl;
-        img.alt = safeShortLabel(prefix, idx);
-        wrap.appendChild(img);
-
-        const meta = document.createElement("div");
-        meta.className = "photo-thumb-meta";
-        meta.textContent = safeShortLabel(prefix, idx);
-        wrap.appendChild(meta);
-
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.textContent = "Remover";
-        btn.addEventListener("click", () => {
-          if (typeof onRemove === "function") onRemove(idx);
-        });
-        wrap.appendChild(btn);
-
-        queueEl.appendChild(wrap);
-      });
-    }
-
-    function setAnalyzeEnabled(btn, arr) {
-      if (!btn) return;
-      const ok = Array.isArray(arr) && arr.length > 0;
-      btn.disabled = !ok;
-      btn.style.opacity = ok ? "1" : "0.55";
-    }
-
-    function refreshAllPhotoUIs() {
-      renderPhotoQueue(woundPhotoQueue, woundPhotoQueueEmpty, woundImageDataUrls, "Ferida", (idx) => {
-        woundImageDataUrls.splice(idx, 1);
-        refreshAllPhotoUIs();
-      });
-      renderPhotoQueue(medPhotoQueue, medPhotoQueueEmpty, medImageDataUrls, "Prescrição", (idx) => {
-        medImageDataUrls.splice(idx, 1);
-        refreshAllPhotoUIs();
-      });
-      renderPhotoQueue(examPhotoQueue, examPhotoQueueEmpty, examImageDataUrls, "Exame", (idx) => {
-        examImageDataUrls.splice(idx, 1);
-        refreshAllPhotoUIs();
-      });
-
-      setAnalyzeEnabled(woundAnalyzeBtn, woundImageDataUrls);
-      setAnalyzeEnabled(medAnalyzeBtn, medImageDataUrls);
-      setAnalyzeEnabled(examAnalyzeBtn, examImageDataUrls);
-    }
-
-    async function addFilesToImageList(files, targetArr) {
-      if (!files || !files.length) return;
-      if (!Array.isArray(targetArr)) return;
-
-      const available = Math.max(0, MAX_PHOTOS_PER_MODULE - targetArr.length);
-      if (available <= 0) {
-        alert(`Limite de ${MAX_PHOTOS_PER_MODULE} fotos atingido.`);
-        return;
-      }
-
-      const slice = Array.from(files).slice(0, available);
-      for (const f of slice) {
-        try {
-          const dataUrl = await fileToDataUrl(f);
-          if (dataUrl && dataUrl.startsWith("data:image/")) {
-            targetArr.push(dataUrl);
-          }
-        } catch {}
-      }
-      refreshAllPhotoUIs();
-    }
 
 
 
@@ -3308,14 +3087,6 @@ function initSpeech() {
       if (interactionsStatus) interactionsStatus.textContent = "";
       if (presentationsMaxDoseBox) presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
       if (presentationsMaxDoseStatus) presentationsMaxDoseStatus.textContent = "";
-
-      if (examBox) examBox.textContent = "Nenhum conteúdo disponível.";
-      if (examStatus) examStatus.textContent = "";
-
-      woundImageDataUrls = [];
-      medImageDataUrls = [];
-      examImageDataUrls = [];
-      refreshAllPhotoUIs();
     }
 
     async function finalizarConsulta() {
@@ -4003,21 +3774,15 @@ function initSpeech() {
       });
     }
 
-    async function analyzeWoundWithImages(imageDataUrls) {
+    async function analyzeWoundWithImage(dataUrl) {
       if (!presentationsMaxDoseStatus || !presentationsMaxDoseBox) return;
-      const arr = Array.isArray(imageDataUrls) ? imageDataUrls.filter(Boolean) : [];
-      if (!arr.length) {
-        presentationsMaxDoseStatus.textContent = "Nenhuma foto adicionada.";
-        return;
-      }
-      presentationsMaxDoseStatus.textContent = "Analisando fotos da lesão.";
-      presentationsMaxDoseStatus.classList.add("loading-dot");
+      presentationsMaxDoseStatus.textContent = "Analisando imagem da lesão.";
       presentationsMaxDoseBox.textContent = "Processando.";
       try {
         const resp = await fetch(BACKEND_URL + "/api/analisar-lesao-imagem", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image_data_urls: arr })
+          body: JSON.stringify({ image_data_url: dataUrl })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(data?.error || "Falha ao analisar imagem.");
@@ -4025,28 +3790,20 @@ function initSpeech() {
         presentationsMaxDoseBox.textContent = texto || "Nenhum conteúdo disponível.";
         presentationsMaxDoseStatus.textContent = "Análise concluída.";
       } catch (e) {
-        presentationsMaxDoseStatus.textContent = "Falha ao analisar fotos.";
+        presentationsMaxDoseStatus.textContent = "Falha ao analisar imagem.";
         presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
-      } finally {
-        presentationsMaxDoseStatus.classList.remove("loading-dot");
       }
     }
 
-    async function analyzePrescriptionWithImages(imageDataUrls) {
+    async function analyzePrescriptionWithImage(dataUrl) {
       if (!interactionsStatus || !interactionsBox) return;
-      const arr = Array.isArray(imageDataUrls) ? imageDataUrls.filter(Boolean) : [];
-      if (!arr.length) {
-        interactionsStatus.textContent = "Nenhuma foto adicionada.";
-        return;
-      }
       interactionsStatus.textContent = "Analisando prescrição.";
-      interactionsStatus.classList.add("loading-dot");
       interactionsBox.textContent = "Processando.";
       try {
         const resp = await fetch(BACKEND_URL + "/api/analisar-prescricao-imagem", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image_data_urls: arr })
+          body: JSON.stringify({ image_data_url: dataUrl })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(data?.error || "Falha ao analisar prescrição.");
@@ -4056,37 +3813,6 @@ function initSpeech() {
       } catch (e) {
         interactionsStatus.textContent = "Falha ao analisar prescrição.";
         interactionsBox.textContent = "Nenhum conteúdo disponível.";
-      } finally {
-        interactionsStatus.classList.remove("loading-dot");
-      }
-    }
-
-    async function analyzeExamWithImages(imageDataUrls) {
-      if (!examStatus || !examBox) return;
-      const arr = Array.isArray(imageDataUrls) ? imageDataUrls.filter(Boolean) : [];
-      if (!arr.length) {
-        examStatus.textContent = "Nenhuma foto adicionada.";
-        return;
-      }
-      examStatus.textContent = "Analisando exame.";
-      examStatus.classList.add("loading-dot");
-      examBox.textContent = "Processando.";
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/analisar-exame-imagem", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image_data_urls: arr })
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(data?.error || "Falha ao analisar exame.");
-        const texto = (data?.texto || "").trim();
-        examBox.textContent = texto || "Nenhum conteúdo disponível.";
-        examStatus.textContent = "Análise concluída.";
-      } catch (e) {
-        examStatus.textContent = "Falha ao analisar exame.";
-        examBox.textContent = "Nenhum conteúdo disponível.";
-      } finally {
-        examStatus.classList.remove("loading-dot");
       }
     }
 
@@ -4717,101 +4443,45 @@ function initSpeech() {
       });
     }
 
-    if (examPhotoBtn) {
-      examPhotoBtn.addEventListener("click", () => {
-        showImageChoice(examCameraInput, examFileInput);
-      });
-    }
-
-    if (woundAnalyzeBtn) {
-      woundAnalyzeBtn.addEventListener("click", async () => {
-        await analyzeWoundWithImages(woundImageDataUrls);
-      });
-    }
-
-    if (medAnalyzeBtn) {
-      medAnalyzeBtn.addEventListener("click", async () => {
-        await analyzePrescriptionWithImages(medImageDataUrls);
-      });
-    }
-
-    if (examAnalyzeBtn) {
-      examAnalyzeBtn.addEventListener("click", async () => {
-        await analyzeExamWithImages(examImageDataUrls);
-      });
-    }
-
-    if (woundClearPhotosBtn) {
-      woundClearPhotosBtn.addEventListener("click", () => {
-        woundImageDataUrls = [];
-        refreshAllPhotoUIs();
-      });
-    }
-
-    if (medClearPhotosBtn) {
-      medClearPhotosBtn.addEventListener("click", () => {
-        medImageDataUrls = [];
-        refreshAllPhotoUIs();
-      });
-    }
-
-    if (examClearPhotosBtn) {
-      examClearPhotosBtn.addEventListener("click", () => {
-        examImageDataUrls = [];
-        refreshAllPhotoUIs();
-      });
-    }
-
     if (woundCameraInput) {
       woundCameraInput.addEventListener("change", async (e) => {
-        const files = e.target.files ? Array.from(e.target.files) : [];
+        const file = e.target.files && e.target.files[0];
         woundCameraInput.value = "";
-        await addFilesToImageList(files, woundImageDataUrls);
+        if (!file) return;
+        const dataUrl = await fileToDataUrl(file);
+        await analyzeWoundWithImage(dataUrl);
       });
     }
 
     if (woundFileInput) {
       woundFileInput.addEventListener("change", async (e) => {
-        const files = e.target.files ? Array.from(e.target.files) : [];
+        const file = e.target.files && e.target.files[0];
         woundFileInput.value = "";
-        await addFilesToImageList(files, woundImageDataUrls);
+        if (!file) return;
+        const dataUrl = await fileToDataUrl(file);
+        await analyzeWoundWithImage(dataUrl);
       });
     }
 
     if (medCameraInput) {
       medCameraInput.addEventListener("change", async (e) => {
-        const files = e.target.files ? Array.from(e.target.files) : [];
+        const file = e.target.files && e.target.files[0];
         medCameraInput.value = "";
-        await addFilesToImageList(files, medImageDataUrls);
+        if (!file) return;
+        const dataUrl = await fileToDataUrl(file);
+        await analyzePrescriptionWithImage(dataUrl);
       });
     }
 
     if (medFileInput) {
       medFileInput.addEventListener("change", async (e) => {
-        const files = e.target.files ? Array.from(e.target.files) : [];
+        const file = e.target.files && e.target.files[0];
         medFileInput.value = "";
-        await addFilesToImageList(files, medImageDataUrls);
+        if (!file) return;
+        const dataUrl = await fileToDataUrl(file);
+        await analyzePrescriptionWithImage(dataUrl);
       });
     }
-
-    if (examCameraInput) {
-      examCameraInput.addEventListener("change", async (e) => {
-        const files = e.target.files ? Array.from(e.target.files) : [];
-        examCameraInput.value = "";
-        await addFilesToImageList(files, examImageDataUrls);
-      });
-    }
-
-    if (examFileInput) {
-      examFileInput.addEventListener("change", async (e) => {
-        const files = e.target.files ? Array.from(e.target.files) : [];
-        examFileInput.value = "";
-        await addFilesToImageList(files, examImageDataUrls);
-      });
-    }
-
-    // Estado inicial dos módulos de foto
-    refreshAllPhotoUIs();
 
     if (copyWoundBtn) {
       copyWoundBtn.addEventListener("click", () => {
@@ -4844,23 +4514,6 @@ function initSpeech() {
     if (printMedSafetyBtn) {
       printMedSafetyBtn.addEventListener("click", () => {
         openPrintWindow("Administração segura de medicamentos (registro de enfermagem)", interactionsBox ? interactionsBox.textContent : "");
-      });
-    }
-
-    if (copyExamBtn) {
-      copyExamBtn.addEventListener("click", () => {
-        const text = (examBox && examBox.textContent) ? examBox.textContent.trim() : "";
-        if (!text) {
-          alert("Não há conteúdo para copiar.");
-          return;
-        }
-        copyToClipboard(text);
-      });
-    }
-
-    if (printExamBtn) {
-      printExamBtn.addEventListener("click", () => {
-        openPrintWindow("Análise de exames (foto)", examBox ? examBox.textContent : "");
       });
     }
 
@@ -5573,10 +5226,13 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
     document.getElementById("adminBackupBtn")?.addEventListener("click", async () => {
       try {
-        if (!AUTH?.token) throw new Error("Sessão inválida.");
+        const t = getToken();
+        if (!t) throw new Error("Sessão inválida.");
+        // Observação: o window.fetch (acima) já injeta Authorization para /api/*.
+        // Mantemos também o header explícito para robustez.
         const resp = await fetch("/api/admin/backup/export", {
           method: "GET",
-          headers: { "Authorization": `Bearer ${AUTH.token}` }
+          headers: { "Authorization": "Bearer " + t }
         });
         const ct = resp.headers.get("content-type") || "";
         if (!resp.ok) {
