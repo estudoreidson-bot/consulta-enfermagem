@@ -717,7 +717,7 @@
       color: #fff;
       border-color: #dc3545;
     }
-    .hidden-input {
+        .hidden-input {
       position: absolute !important;
       left: -9999px !important;
       top: auto !important;
@@ -725,12 +725,12 @@
       height: 1px !important;
       opacity: 0 !important;
       overflow: hidden !important;
-    
-    /* Desativa o modal antigo de escolha de imagem (evita botões Limpar/Analisar). */
-    #imageChoiceOverlay { display: none !important; }
-}
+    }
 
-    .consult-type-panel {
+    /* Mantém o modal antigo oculto para evitar interferência com os módulos de foto/arquivo. */
+    #imageChoiceOverlay { display: none !important; }
+
+.consult-type-panel {
       width: 100%;
       background: #ffffff;
       border-radius: 12px;
@@ -4814,448 +4814,52 @@ if (medPhotoBtn) {
         if (medFileInput) medFileInput.click();
       });
     }
-if (woundCameraInput) {
-      woundCameraInput.addEventListener("change", async (e) => {
-        const files = Array.from((e && e.target && e.target.files) ? e.target.files : []);
-        woundCameraInput.value = "";
+function getImageUiByKey(key) {
+      const k = String(key || "").toLowerCase();
+      if (k === "wound") return { statusEl: presentationsMaxDoseStatus, boxEl: presentationsMaxDoseBox };
+      if (k === "exam") return { statusEl: examInterpretationStatus, boxEl: examInterpretationBox };
+      return { statusEl: interactionsStatus, boxEl: interactionsBox };
+    }
+
+    function bindImageInput(inputEl, key, mode) {
+      if (!inputEl) return;
+
+      const handler = async (e) => {
+        const input = e && e.currentTarget ? e.currentTarget : inputEl;
+        const files = (input && input.files) ? Array.from(input.files) : [];
         if (!files.length) return;
-        await addFilesToTarget(files, "wound", "append");
-      });
-    }
-if (woundFileInput) {
-      woundFileInput.addEventListener("change", async (e) => {
-        const files = Array.from((e && e.target && e.target.files) ? e.target.files : []);
-        woundFileInput.value = "";
-        if (!files.length) return;
-        await addFilesToTarget(files, "wound", "replace");
-      });
-    }
-if (medCameraInput) {
-      medCameraInput.addEventListener("change", async (e) => {
-        const files = Array.from((e && e.target && e.target.files) ? e.target.files : []);
-        medCameraInput.value = "";
-        if (!files.length) return;
-        await addFilesToTarget(files, "med", "append");
-      });
-    }
-if (medFileInput) {
-      medFileInput.addEventListener("change", async (e) => {
-        const files = Array.from((e && e.target && e.target.files) ? e.target.files : []);
-        medFileInput.value = "";
-        if (!files.length) return;
-        await addFilesToTarget(files, "med", "replace");
-      });
-    }
 
-if (examCameraInput) {
-      examCameraInput.addEventListener("change", async (e) => {
-        const files = Array.from((e && e.target && e.target.files) ? e.target.files : []);
-        examCameraInput.value = "";
-        if (!files.length) return;
-        await addFilesToTarget(files, "exam", "append");
-      });
-    }
-if (examFileInput) {
-      examFileInput.addEventListener("change", async (e) => {
-        const files = Array.from((e && e.target && e.target.files) ? e.target.files : []);
-        examFileInput.value = "";
-        if (!files.length) return;
-        await addFilesToTarget(files, "exam", "replace");
-      });
-    }
-if (copyWoundBtn) {
-      copyWoundBtn.addEventListener("click", () => {
-        const text = (presentationsMaxDoseBox && presentationsMaxDoseBox.textContent) ? presentationsMaxDoseBox.textContent.trim() : "";
-        if (!text) {
-          alert("Não há prescrição e cuidados para copiar.");
-          return;
+        const ui = getImageUiByKey(key);
+        const firstName = (files[0] && files[0].name) ? files[0].name : "arquivo";
+        const msg0 = `Arquivo recebido: ${firstName}. Preparando imagem.`;
+        if (ui && ui.statusEl) ui.statusEl.textContent = msg0;
+
+        // Evita que alguns navegadores invalidem o FileList ao limpar cedo demais.
+        inputEl.disabled = true;
+        try {
+          await addFilesToTarget(files, key, mode);
+        } catch (err) {
+          const msg = "Erro ao processar a imagem selecionada. Tente JPG/PNG (ou refaça a foto) e confirme a conexão.";
+          if (ui && ui.statusEl) ui.statusEl.textContent = msg;
+          if (ui && ui.boxEl) ui.boxEl.textContent = "Nenhum conteúdo disponível.";
+        } finally {
+          try { input.value = ""; } catch {}
+          inputEl.disabled = false;
         }
-        copyToClipboard(text);
-      });
+      };
+
+      // Alguns navegadores disparam 'input' em vez de 'change' em certos fluxos.
+      inputEl.addEventListener("change", handler);
+      inputEl.addEventListener("input", handler);
     }
 
-    if (printWoundBtn) {
-      printWoundBtn.addEventListener("click", () => {
-        openPrintWindow("Curativos e feridas", presentationsMaxDoseBox ? presentationsMaxDoseBox.textContent : "");
-      });
-    }
+if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
+    if (woundFileInput) bindImageInput(woundFileInput, "wound", "replace");
+    if (medCameraInput) bindImageInput(medCameraInput, "med", "append");
+    if (medFileInput) bindImageInput(medFileInput, "med", "replace");
+    if (examCameraInput) bindImageInput(examCameraInput, "exam", "append");
+    if (examFileInput) bindImageInput(examFileInput, "exam", "replace");
 
-    if (copyExamBtn) {
-      copyExamBtn.addEventListener("click", () => {
-        const text = (examInterpretationBox && examInterpretationBox.textContent) ? examInterpretationBox.textContent.trim() : "";
-        if (!text) {
-          alert("Não há conteúdo para copiar.");
-          return;
-        }
-        copyToClipboard(text);
-      });
-    }
-
-    if (printExamBtn) {
-      printExamBtn.addEventListener("click", () => {
-        openPrintWindow("Interpretação de resultados de exames", examInterpretationBox ? examInterpretationBox.textContent : "");
-      });
-    }
-
-
-    if (copyMedSafetyBtn) {
-      copyMedSafetyBtn.addEventListener("click", () => {
-        const text = (interactionsBox && interactionsBox.textContent) ? interactionsBox.textContent.trim() : "";
-        if (!text) {
-          alert("Não há conteúdo para copiar.");
-          return;
-        }
-        copyToClipboard(text);
-      });
-    }
-
-    if (printMedSafetyBtn) {
-      printMedSafetyBtn.addEventListener("click", () => {
-        openPrintWindow("Administração segura de medicamentos (registro de enfermagem)", interactionsBox ? interactionsBox.textContent : "");
-      });
-    }
-
-
-
-    const consultTypeButtons = Array.from(document.querySelectorAll(".consult-type-btn"));
-    const consultGuideDrawer = document.getElementById("consultGuideDrawer");
-    const consultGuideTitle = document.getElementById("consultGuideTitle");
-    const consultGuideSubtitle = document.getElementById("consultGuideSubtitle");
-    const consultGuideContent = document.getElementById("consultGuideContent");
-    const closeConsultGuideBtn = document.getElementById("closeConsultGuideBtn");
-    const prenatalTrimesterRow = document.getElementById("prenatalTrimesterRow");
-    const trimesterButtons = Array.from(document.querySelectorAll(".trimester-btn"));
-
-    let selectedConsultType = null;
-    let selectedPrenatalTrimester = "1";
-
-    const guideData = {
-      puericultura: {
-        title: "Consulta de puericultura",
-        subtitle: "Sequência sugerida para orientar perguntas e procedimentos iniciais.",
-        sections: [
-          {
-            title: "Perguntas essenciais",
-            items: [
-              "Identificação e contexto: idade, cuidador presente, motivo da consulta, dúvidas principais da família.",
-              "História desde a última consulta: intercorrências, internações, uso de medicamentos, alergias, exposição a doentes.",
-              "Alimentação: aleitamento materno (exclusivo ou não), fórmula, frequência, aceitação, introdução alimentar (se aplicável), consumo de água, ingestão de ultraprocessados.",
-              "Eliminações: diurese, evacuações (frequência, consistência, sangue, dor), sinais de desidratação.",
-              "Sono e rotina: padrão de sono, despertares, ambiente, segurança do sono, telas.",
-              "Desenvolvimento: marcos motores e linguagem conforme idade, interação social, audição/visão percebidas, comportamento.",
-              "Segurança e ambiente: quedas, engasgo, afogamento, acidentes domésticos, cadeira no carro, fumaça, violência, condições de moradia.",
-              "Vacinas: conferir caderneta, doses atrasadas, reações prévias.",
-              "Saúde bucal: higiene, erupção dentária, uso de flúor (conforme orientação local)."
-            ]
-          },
-          {
-            title: "Procedimentos e exame físico",
-            items: [
-              "Sinais vitais quando indicado: temperatura, frequência cardíaca e respiratória, saturação se sintomas respiratórios.",
-              "Antropometria: peso, estatura/comprimento, perímetro cefálico (especialmente em menores), cálculo e registro na curva (OMS).",
-              "Exame físico direcionado: pele e mucosas, hidratação, orofaringe, otoscopia se queixa, ausculta cardíaca e pulmonar, abdome, genitais quando indicado.",
-              "Triagem de sinais de gravidade: prostração, desconforto respiratório, sinais de desidratação, febre persistente, convulsão, cianose, recusa de líquidos.",
-              "Orientações finais: alimentação por faixa etária, sinais de alarme, retorno programado e vacinação."
-            ]
-          }
-        ]
-      },
-
-      planejamento: {
-        title: "Consulta de planejamento familiar",
-        subtitle: "Sequência sugerida para escolha do método com segurança.",
-        sections: [
-          {
-            title: "Perguntas essenciais",
-            items: [
-              "Objetivo do paciente: evitar gestação, espaçar, planejar para quando, ou tratar sintomas (sangramento, cólica).",
-              "História reprodutiva: gestações, partos, abortos, complicações, lactação atual, desejo reprodutivo do casal.",
-              "Data da última menstruação, regularidade do ciclo, sangramentos anormais, suspeita de gestação atual.",
-              "Doenças e riscos: hipertensão, diabetes, enxaqueca com aura, trombose, doença hepática, câncer de mama, tabagismo, pós-parto recente.",
-              "Medicamentos em uso e possíveis interações (ex.: indutores enzimáticos).",
-              "História ginecológica: IST prévias, corrimentos, dor pélvica, última citologia conforme protocolo local.",
-              "Risco de IST e necessidade de dupla proteção (preservativo).",
-              "Preferências: método diário ou de longa duração, desejo de método sem hormônio, tolerância a sangramento irregular."
-            ]
-          },
-          {
-            title: "Procedimentos e orientações",
-            items: [
-              "Sinais vitais e avaliação clínica básica: pressão arterial e peso/IMC (essencial antes de métodos combinados).",
-              "Teste de gravidez quando houver dúvida ou critério clínico.",
-              "Aconselhamento estruturado: eficácia, modo de uso, efeitos adversos, contraindicações e sinais de alarme do método escolhido.",
-              "Reforçar preservativo para IST e como usar corretamente.",
-              "Planejar retorno: adaptação do método, manejo de efeitos e revisão de segurança."
-            ]
-          }
-        ]
-      },
-
-      hiperdia: {
-        title: "Consulta de Hiperdia (HAS e/ou DM)",
-        subtitle: "Sequência sugerida para acompanhamento e segurança do cuidado.",
-        sections: [
-          {
-            title: "Perguntas essenciais",
-            items: [
-              "Motivo da consulta: rotina, sintomas, aferições alteradas, falta de medicação, intercorrências recentes.",
-              "Adesão ao tratamento: horários, esquecimento, efeitos adversos, dificuldades de acesso aos medicamentos.",
-              "Pressão e glicemias: valores recentes, sintomas de hipo/hiperglicemia, desmaios, palpitações, cefaleia, visão turva.",
-              "Estilo de vida: alimentação, sal, açúcar, atividade física, álcool, tabagismo, sono e estresse.",
-              "Complicações e rastreios: dor torácica, dispneia, edema, claudicação, feridas nos pés, perda de sensibilidade, alterações visuais, sintomas urinários.",
-              "Comorbidades: doença renal, AVC prévio, infarto, dislipidemia; vacinas e cuidados preventivos."
-            ]
-          },
-          {
-            title: "Procedimentos e exame físico",
-            items: [
-              "Aferir sinais vitais: pressão arterial, frequência cardíaca, peso, circunferência abdominal quando aplicável.",
-              "Glicemia capilar quando indicado; registrar jejum/pós-prandial conforme contexto.",
-              "Avaliação de pés (DM): inspeção, pulsos, sensibilidade (monofilamento se disponível), orientações de autocuidado.",
-              "Sinais de gravidade: PA muito elevada com sintomas, hipoglicemia, hiperglicemia importante com sinais de desidratação, dor torácica, dispneia.",
-              "Reforçar plano: metas, adesão, autocuidado, retorno e quando procurar urgência."
-            ]
-          }
-        ]
-      },
-
-
-      puerperio: {
-        title: "Consulta de puerpério",
-        subtitle: "Avalie recuperação materna, amamentação, sinais de infecção e saúde mental no pós-parto.",
-        sections: [
-          {
-            title: "Perguntas essenciais",
-            items: [
-              "Data do parto e tipo de parto (vaginal/cesárea) e intercorrências no parto e pós-parto imediato.",
-              "Sangramento (lóquios): quantidade, cor e odor; presença de coágulos; piora súbita do sangramento; tontura ou fraqueza.",
-              "Dor: intensidade e localização (períneo, incisão cirúrgica, abdome, mamas); necessidade e adesão a analgésicos prescritos.",
-              "Febre ou calafrios; mal-estar; disúria; corrimento vaginal com odor fétido.",
-              "Amamentação: pega e posição, dor/fissuras, ingurgitamento, mastite (dor localizada, rubor, febre), frequência das mamadas, dificuldades para ordenhar/armazenar.",
-              "Eliminações: diurese e evacuação (constipação), dor ao evacuar, hemorroidas.",
-              "Sono e suporte familiar; alimentação e hidratação; retorno às atividades e rede de apoio.",
-              "Saúde mental: humor, ansiedade, irritabilidade, choro frequente, anedonia; ideias de autoagressão; percepção de vínculo com o bebê.",
-              "Planejamento reprodutivo: desejo contraceptivo, método em uso, dúvidas; retorno da atividade sexual e orientações de prevenção de IST.",
-              "Vacinas e consultas de seguimento; exames ou orientações dadas na alta."
-            ]
-          },
-          {
-            title: "Procedimentos e exame físico",
-            items: [
-              "Aferir sinais vitais; avaliar palidez, hidratação e sinais de gravidade.",
-              "Avaliar útero e involução uterina quando aplicável (dor importante, sensibilidade, subinvolução suspeita).",
-              "Avaliar ferida operatória (cesárea) ou períneo/episiotomia quando indicado: hiperemia, secreção, deiscência, dor desproporcional.",
-              "Avaliar mamas: ingurgitamento, fissuras, áreas de rubor/calor/dor; orientar ordenha, pega correta e manejo de fissuras.",
-              "Orientar sinais de alarme e encaminhar/acionar serviço de urgência quando: sangramento intenso, febre, odor fétido importante, dor intensa, sinais de trombose (dor/inchaço em perna), dispneia ou dor torácica.",
-              "Reforçar cuidados gerais: higiene perineal, hidratação, alimentação, repouso possível, retorno programado e quando procurar a unidade.",
-              "Registrar orientações e, se necessário, encaminhar para avaliação médica, serviço social ou saúde mental conforme achados."
-            ]
-          }
-        ]
-      },
-
-      prenatal: {
-        title: "Consulta pré-natal",
-        subtitle: "Escolha o trimestre para ver perguntas e procedimentos em ordem.",
-        trimesters: {
-          "1": {
-            subtitle: "1º trimestre (até 13 semanas e 6 dias)",
-            sections: [
-              {
-                title: "Perguntas essenciais",
-                items: [
-                  "Identificação e dados essenciais: nome completo, idade, peso, sinais vitais iniciais e queixa/objetivo da consulta.",
-                  "Data da última menstruação, regularidade menstrual, cálculo de idade gestacional e data provável do parto conforme rotina do serviço.",
-                  "História obstétrica: gestações anteriores, partos, abortos, complicações (pré-eclâmpsia, hemorragia, prematuridade).",
-                  "Sintomas atuais: náuseas/vômitos, dor abdominal, sangramento vaginal, corrimento, febre, disúria.",
-                  "Comorbidades: hipertensão, diabetes, epilepsia, doença renal, tireoide, trombofilias; uso de medicamentos e suplementos.",
-                  "Alergias, uso de álcool/tabaco/outras substâncias, situação social e apoio.",
-                  "Vacinação e exames anteriores, histórico de IST e testagens."
-                ]
-              },
-              {
-                title: "Procedimentos e exame físico",
-                items: [
-                  "Aferir sinais vitais e peso; calcular IMC e registrar.",
-                  "Avaliar edema, sinais de anemia/desidratação e exame clínico direcionado.",
-                  "Solicitar/confirmar exames iniciais conforme rotina local: hemograma, tipagem ABO/Rh e Coombs indireto quando indicado, glicemia, sorologias (sífilis, HIV, hepatites), exame de urina e urocultura, outros conforme protocolo.",
-                  "Orientações: sinais de alarme (sangramento, dor forte, febre, perda de líquidos), suplementação prescrita e hábitos saudáveis.",
-                  "Se idade gestacional permitir e houver recurso, auscultar batimentos cardíacos fetais conforme prática do serviço."
-                ]
-              }
-            ]
-          },
-          "2": {
-            subtitle: "2º trimestre (14 a 27 semanas e 6 dias)",
-            sections: [
-              {
-                title: "Perguntas essenciais",
-                items: [
-                  "Evolução desde a última consulta: intercorrências, urgências, uso e adesão a medicamentos/suplementos.",
-                  "Movimentação fetal (quando aplicável): início, frequência percebida, redução de movimentos.",
-                  "Sintomas de alerta: cefaleia intensa, escotomas, dor epigástrica, edema importante, sangramento, perda de líquido, febre, disúria.",
-                  "Revisar exames e vacinação; reforçar orientações e plano de retorno."
-                ]
-              },
-              {
-                title: "Procedimentos e exame físico",
-                items: [
-                  "Aferir sinais vitais e peso; avaliar edema.",
-                  "Medir altura uterina e comparar com idade gestacional; avaliar apresentação quando possível.",
-                  "Auscultar batimentos cardíacos fetais conforme rotina do serviço.",
-                  "Revisar/solicitar exames do período conforme rotina local (inclui rastreios de anemia e diabetes gestacional quando indicado).",
-                  "Orientar sinais de trabalho de parto prematuro e quando procurar urgência."
-                ]
-              }
-            ]
-          },
-          "3": {
-            subtitle: "3º trimestre (28 semanas até o parto)",
-            sections: [
-              {
-                title: "Perguntas essenciais",
-                items: [
-                  "Movimentos fetais e percepção materna; redução de movimentos é sinal de alerta.",
-                  "Sintomas de pré-eclâmpsia e urgência: cefaleia intensa, visão turva, dor epigástrica, edema súbito, falta de ar.",
-                  "Sinais de trabalho de parto: contrações ritmadas, perda de tampão mucoso, sangramento, perda de líquido.",
-                  "Plano de parto e rede de referência: onde buscar assistência, transporte, acompanhante, documentação.",
-                  "Revisar exames do final da gestação conforme rotina local e vacinação."
-                ]
-              },
-              {
-                title: "Procedimentos e exame físico",
-                items: [
-                  "Aferir sinais vitais e peso; atenção reforçada à pressão arterial e edema.",
-                  "Medir altura uterina, avaliar apresentação fetal e auscultar batimentos cardíacos fetais.",
-                  "Reforçar orientações: sinais de alarme, preparo para o parto, amamentação e cuidados no pós-parto imediato.",
-                  "Planejar retorno mais frequente conforme idade gestacional e risco."
-                ]
-              }
-            ]
-          }
-        }
-      }
-    };
-
-    function renderGuideSections(sections) {
-      if (!consultGuideContent) return;
-      const parts = [];
-      for (const section of sections || []) {
-        parts.push(`<div class="guide-section-title">${escapeHtml(section.title)}</div>`);
-        parts.push("<ol>");
-        for (const item of section.items || []) {
-          parts.push(`<li>${escapeHtml(item)}</li>`);
-        }
-        parts.push("</ol>");
-      }
-      consultGuideContent.innerHTML = parts.join("");
-    }
-
-    function openGuideFor(type) {
-      selectedConsultType = type;
-      consultTypeButtons.forEach(btn => {
-        btn.classList.toggle("active", btn.dataset.consult === type);
-      });
-
-      if (!consultGuideDrawer || !consultGuideTitle || !consultGuideSubtitle) return;
-
-      consultGuideDrawer.classList.remove("hidden");
-      const data = guideData[type];
-
-      if (!data) {
-        consultGuideTitle.textContent = "Guia não disponível";
-        consultGuideSubtitle.textContent = "";
-        consultGuideContent.innerHTML = "";
-        prenatalTrimesterRow?.classList.add("hidden");
-        return;
-      }
-
-      consultGuideTitle.textContent = data.title || "";
-      consultGuideSubtitle.textContent = data.subtitle || "";
-
-      if (type === "prenatal") {
-        prenatalTrimesterRow?.classList.remove("hidden");
-        setPrenatalTrimester(selectedPrenatalTrimester);
-      } else {
-        prenatalTrimesterRow?.classList.add("hidden");
-        renderGuideSections(data.sections || []);
-      }
-    }
-
-    function setPrenatalTrimester(tri) {
-      selectedPrenatalTrimester = String(tri || "1");
-      trimesterButtons.forEach(b => {
-        b.classList.toggle("active", b.dataset.tri === selectedPrenatalTrimester);
-      });
-
-      const data = guideData.prenatal;
-      const t = data?.trimesters?.[selectedPrenatalTrimester];
-      if (!t) {
-        consultGuideSubtitle.textContent = guideData.prenatal.subtitle || "";
-        consultGuideContent.innerHTML = "";
-        return;
-      }
-
-      consultGuideSubtitle.textContent = t.subtitle || guideData.prenatal.subtitle || "";
-      renderGuideSections(t.sections || []);
-    }
-
-    function closeGuide() {
-      consultGuideDrawer?.classList.add("hidden");
-      consultTypeButtons.forEach(btn => btn.classList.remove("active"));
-      selectedConsultType = null;
-    }
-
-    if (consultTypeButtons.length) {
-      consultTypeButtons.forEach(btn => {
-        btn.addEventListener("click", () => openGuideFor(btn.dataset.consult || ""));
-      });
-    }
-
-    if (trimesterButtons.length) {
-      trimesterButtons.forEach(btn => {
-        btn.addEventListener("click", () => setPrenatalTrimester(btn.dataset.tri || "1"));
-      });
-    }
-
-    if (closeConsultGuideBtn) {
-      closeConsultGuideBtn.addEventListener("click", closeGuide);
-    }
-
-
-    medicalDoubtInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        submitMedicalDoubt();
-      }
-    });
-
-    reportRecordBtn.addEventListener("click", () => {
-      if (!reportIsRecording) {
-        startReportRecording();
-      } else {
-        stopReportRecordingAndGenerate();
-      }
-    });
-  
-    if (copyReportBtn) {
-      copyReportBtn.addEventListener("click", () => {
-        const text = (reportOutput && reportOutput.value) ? reportOutput.value.trim() : "";
-        if (!text) {
-          reportStatus.textContent = "Não há conteúdo para copiar.";
-          return;
-        }
-        copyToClipboard(text);
-        reportStatus.textContent = "Documento copiado.";
-      });
-    }
-
-    if (printReportBtn) {
-      printReportBtn.addEventListener("click", () => {
-        const text = (reportOutput && reportOutput.value) ? reportOutput.value.trim() : "";
-        openPrintWindow("Documento de enfermagem", text);
-      });
-    }
     // =========================
     // ADMIN (cadastro, mensalidade, histórico e auditoria)
     // =========================
