@@ -12,7 +12,9 @@ const port = process.env.PORT || 3000;
 
 // Configurações básicas
 app.use(cors());
-app.use(bodyParser.json());
+// A aplicação recebe imagens em data URL, por isso o limite precisa ser maior.
+app.use(bodyParser.json({ limit: "35mb" }));
+app.use(bodyParser.urlencoded({ extended: true, limit: "35mb" }));
 
 // Servir o index.html apenas na rota raiz (útil para testes locais)
 app.get("/", (req, res) => {
@@ -91,6 +93,44 @@ async function callOpenAIVisionJson(prompt, imagemDataUrl) {
   }
 }
 
+// Função para chamar o modelo com múltiplas imagens (data URLs) e retornar JSON
+async function callOpenAIVisionJsonMulti(prompt, imagensDataUrls) {
+  const imgs = Array.isArray(imagensDataUrls) ? imagensDataUrls.filter(Boolean) : [];
+  if (!imgs.length) {
+    throw new Error("Nenhuma imagem fornecida.");
+  }
+
+  const content = [{ type: "text", text: prompt }];
+  for (const url of imgs) {
+    content.push({ type: "image_url", image_url: { url } });
+  }
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    temperature: 0.2,
+    messages: [
+      {
+        role: "user",
+        content
+      }
+    ]
+  });
+
+  const raw = (completion.choices?.[0]?.message?.content || "").trim();
+
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    const firstBrace = raw.indexOf("{");
+    const lastBrace = raw.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
+      return JSON.parse(jsonSlice);
+    }
+    throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
+  }
+}
+
 // Pequena validação para limitar tamanho e evitar abusos
 function normalizeText(input, maxLen) {
   const s = (typeof input === "string" ? input : "").trim();
@@ -114,6 +154,36 @@ function getImageDataUrlFromBody(body) {
     : (typeof b.image_data_url === "string" && b.image_data_url.trim())
       ? b.image_data_url.trim()
       : "";
+}
+
+function getImageDataUrlsFromBody(body) {
+  const b = body || {};
+  const candidates = [
+    b.image_data_urls,
+    b.imagem_data_urls,
+    b.imagens_data_url,
+    b.imagens_data_urls
+  ];
+  for (const c of candidates) {
+    if (Array.isArray(c) && c.length) return c;
+  }
+  return [];
+}
+
+function getNormalizedImageDataUrls(body, maxItems, maxLenEach) {
+  const rawArr = getImageDataUrlsFromBody(body);
+  const out = [];
+  for (const v of rawArr) {
+    const n = normalizeImageDataUrl(v, maxLenEach);
+    if (n) out.push(n);
+    if (out.length >= maxItems) break;
+  }
+  // fallback p/ compatibilidade
+  if (!out.length) {
+    const single = normalizeImageDataUrl(getImageDataUrlFromBody(body), maxLenEach);
+    if (single) out.push(single);
+  }
+  return out;
 }
 
 function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
@@ -1754,58 +1824,75 @@ Contexto:
 // ROTA 4.4 – ANÁLISE DE LESÃO POR FOTO (CURATIVOS E FERIDAS) (NOVA)
 // ======================================================================
 
-async function analisarLesaoPorImagem(safeImage) {
+async function analisarLesaoPorImagens(safeImages) {
   const prompt = `
-Você é um enfermeiro humano elaborando um REGISTRO DE CURATIVOS E FERIDAS com base em uma foto de lesão.
+Você é um enfermeiro humano elaborando um REGISTRO DE CURATIVOS E FERIDAS com base em 1 a 6 fotos da mesma lesão.
 
 Tarefa:
-1) Descrever somente características VISÍVEIS e com linguagem prudente (sem inventar).
-2) Recomendar prescrição e cuidados de enfermagem de forma objetiva e segura, aplicável no dia a dia.
-3) Informar sinais de alerta e critérios objetivos para encaminhamento/avaliação médica.
+1) Descrever somente características VISÍVEIS, sem inventar, e sempre indicar limitações.
+2) Organizar um plano de curativo e cuidados de enfermagem objetivo e seguro, aplicável na prática.
+3) Informar sinais de alarme e critérios objetivos para encaminhamento/avaliação médica.
+4) Sugerir insumos e medicamentos frequentemente usados em curativos (quando aplicável), deixando claro que dependem de prescrição médica/protocolo institucional quando necessário.
 
 Regras obrigatórias:
 - Não fazer diagnóstico médico definitivo.
-- Se a imagem estiver insuficiente (iluminação, foco, ângulo), diga "não informado" nos itens que não forem confiáveis.
+- Se a imagem estiver insuficiente (iluminação, foco, ângulo, reflexo), diga "não informado" nos itens que não forem confiáveis.
 - Evitar afirmações absolutas quando houver incerteza.
 - Sem emojis e sem símbolos gráficos.
 
 Formato de saída: JSON estrito:
 {
-  "caracteristicas": "string",
-  "prescricao_cuidados": "string",
-  "sinais_alarme": "string"
+  "qualidade_e_limitacoes": "string",
+  "descricao_visivel": "string",
+  "hipoteses_visuais": ["string"],
+  "plano_curativo_execucao": "string",
+  "cuidados_enfermagem": "string",
+  "insumos_e_medicamentos": "string",
+  "sinais_alarme_e_encaminhamento": "string",
+  "texto_pronto_registro": "string"
 }
 
-Orientações esperadas:
-- Incluir higiene/limpeza, cobertura, frequência de troca, proteção da pele perilesional, controle de dor, prevenção de infecção quando aplicável.
-- Se houver suspeita visual de gravidade (necrose extensa, sangramento ativo importante, exposição de estruturas profundas, sinais compatíveis com infecção importante), orientar priorização de avaliação médica.
+Conteúdo esperado (quando possível):
+- Localização/segmento corporal (se visível), dimensões estimadas somente se houver referência de escala; caso contrário, "não informado".
+- Tipo de tecido visível (ex.: granulação, fibrina/esfacelo, necrose), exsudato (quantidade/aspecto), bordas, pele perilesional, odor (apenas se indicado visualmente como sugestivo).
+- Intervenções: limpeza/irrigação, proteção de pele perilesional, tipo de cobertura, frequência de troca, controle de dor, prevenção de maceração.
+- Itens que precisam ser confirmados: dor, febre, sinais sistêmicos, tempo de evolução, comorbidades (diabetes/vasculopatia), uso de anticoagulantes.
 `;
 
-  const data = await callOpenAIVisionJson(prompt, safeImage);
+  const data = await callOpenAIVisionJsonMulti(prompt, safeImages);
 
-  const caracteristicas = typeof data?.caracteristicas === "string" ? data.caracteristicas.trim() : "";
-  const prescricao_cuidados = typeof data?.prescricao_cuidados === "string" ? data.prescricao_cuidados.trim() : "";
-  const sinais_alarme = typeof data?.sinais_alarme === "string" ? data.sinais_alarme.trim() : "";
+  const qualidade = typeof data?.qualidade_e_limitacoes === "string" ? data.qualidade_e_limitacoes.trim() : "";
+  const descricao = typeof data?.descricao_visivel === "string" ? data.descricao_visivel.trim() : "";
+  const hipoteses = Array.isArray(data?.hipoteses_visuais) ? data.hipoteses_visuais.map(s => String(s || "").trim()).filter(Boolean) : [];
+  const plano = typeof data?.plano_curativo_execucao === "string" ? data.plano_curativo_execucao.trim() : "";
+  const cuidados = typeof data?.cuidados_enfermagem === "string" ? data.cuidados_enfermagem.trim() : "";
+  const insumos = typeof data?.insumos_e_medicamentos === "string" ? data.insumos_e_medicamentos.trim() : "";
+  const sinais = typeof data?.sinais_alarme_e_encaminhamento === "string" ? data.sinais_alarme_e_encaminhamento.trim() : "";
+  const registro = typeof data?.texto_pronto_registro === "string" ? data.texto_pronto_registro.trim() : "";
 
   return {
-    caracteristicas: caracteristicas || "não informado",
-    prescricao_cuidados: prescricao_cuidados || "não informado",
-    sinais_alarme: sinais_alarme || "não informado",
+    qualidade_e_limitacoes: qualidade || "não informado",
+    descricao_visivel: descricao || "não informado",
+    hipoteses_visuais: hipoteses.length ? hipoteses : ["não informado"],
+    plano_curativo_execucao: plano || "não informado",
+    cuidados_enfermagem: cuidados || "não informado",
+    insumos_e_medicamentos: insumos || "não informado",
+    sinais_alarme_e_encaminhamento: sinais || "não informado",
+    texto_pronto_registro: registro || "não informado"
   };
 }
 
 app.post("/api/analisar-lesao", requirePaidOrAdmin, async(req, res) => {
   try {
-    const imagemDataUrl = getImageDataUrlFromBody(req.body);
-    const safeImage = normalizeImageDataUrl(imagemDataUrl, 4_000_000); // ~4MB em caracteres
+    const safeImages = getNormalizedImageDataUrls(req.body, 6, 4_000_000);
 
-    if (!safeImage) {
+    if (!safeImages.length) {
       return res.status(400).json({
         error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
       });
     }
 
-    const out = await analisarLesaoPorImagem(safeImage);
+    const out = await analisarLesaoPorImagens(safeImages);
     return res.json(out);
   } catch (e) {
     console.error(e);
@@ -1816,18 +1903,22 @@ app.post("/api/analisar-lesao", requirePaidOrAdmin, async(req, res) => {
 // Alias para compatibilidade com o frontend atual (retorna um texto único para exibição).
 app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
   try {
-    const imagemDataUrl = getImageDataUrlFromBody(req.body);
-    const safeImage = normalizeImageDataUrl(imagemDataUrl, 4_000_000);
+    const safeImages = getNormalizedImageDataUrls(req.body, 6, 4_000_000);
 
-    if (!safeImage) {
+    if (!safeImages.length) {
       return res.status(400).json({ error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente." });
     }
 
-    const out = await analisarLesaoPorImagem(safeImage);
+    const out = await analisarLesaoPorImagens(safeImages);
     const texto =
-      "Características visíveis:\n" + out.caracteristicas +
-      "\n\nPrescrição e cuidados de enfermagem:\n" + out.prescricao_cuidados +
-      "\n\nSinais de alarme e encaminhamento:\n" + out.sinais_alarme;
+      "Qualidade e limitações:\n" + out.qualidade_e_limitacoes +
+      "\n\nDescrição visível:\n" + out.descricao_visivel +
+      "\n\nHipóteses visuais (não definitivas):\n" + (out.hipoteses_visuais || []).join("\n") +
+      "\n\nPlano de curativo (execução):\n" + out.plano_curativo_execucao +
+      "\n\nCuidados de enfermagem:\n" + out.cuidados_enfermagem +
+      "\n\nInsumos e medicamentos (quando aplicável):\n" + out.insumos_e_medicamentos +
+      "\n\nSinais de alarme e encaminhamento:\n" + out.sinais_alarme_e_encaminhamento +
+      "\n\nTexto pronto para registro:\n" + out.texto_pronto_registro;
 
     return res.json({ texto });
   } catch (e) {
@@ -1843,24 +1934,24 @@ app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
 
 app.post("/api/analisar-prescricao-imagem", requirePaidOrAdmin, async(req, res) => {
   try {
-    const imagemDataUrl = getImageDataUrlFromBody(req.body);
-    const safeImage = normalizeImageDataUrl(imagemDataUrl, 4_000_000);
+    const safeImages = getNormalizedImageDataUrls(req.body, 6, 4_000_000);
 
-    if (!safeImage) {
+    if (!safeImages.length) {
       return res.status(400).json({
         error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
       });
     }
 
     const prompt = `
-Você é um enfermeiro humano realizando uma ANÁLISE DE SEGURANÇA DE UMA PRESCRIÇÃO MÉDICA baseada em uma foto.
+Você é um enfermeiro humano realizando uma ANÁLISE DE SEGURANÇA DE UMA PRESCRIÇÃO MÉDICA baseada em 1 a 6 fotos (páginas diferentes, ângulos diferentes e zoom).
 
 Objetivo:
 1) Transcrever somente o que estiver legível (sem inventar). Quando não der para ler, escreva "não informado".
-2) Para cada medicamento identificado, informar para que serve em linguagem prática.
-3) Identificar riscos relevantes para a enfermagem: dose potencialmente excessiva, via/frequência incompatíveis, duplicidade terapêutica, alergia mencionada, necessidade de ajuste por idade/gestação/lactação quando houver dado, e ausência de informações críticas (ex.: diluente, velocidade, volume) quando aplicável.
-4) Se houver interação medicamentosa potencialmente relevante, listar e dizer se é um risco importante ou se é "não informado" por falta de dados.
-5) Se a via for EV ou IM e a prescrição estiver incompleta, orientar a CONFIRMAÇÃO do preparo/diluição/velocidade conforme protocolo institucional e bula. Não inventar volumes/concentrações.
+2) Organizar os medicamentos identificados e destacar pontos críticos para administração segura.
+3) Gerar um checklist prático de enfermagem (os 9 certos), sinalizar alto risco e itens que exigem dupla checagem.
+4) Identificar riscos/inconsistências: dose potencialmente excessiva, via/frequência incompatíveis, duplicidade terapêutica, necessidade de ajuste por idade/gestação/lactação quando houver dado, ausência de informação crítica (diluente, velocidade, volume, concentração).
+5) Se houver interação medicamentosa potencialmente relevante, listar e indicar se é risco importante ou "não informado" por falta de dados.
+6) Indicar monitorização após administração (parâmetros e o que observar) e conduta sugerida diante de evento adverso, SEM prescrever nem alterar a prescrição.
 
 Regras obrigatórias:
 - Não prescrever ou alterar a prescrição médica.
@@ -1870,6 +1961,7 @@ Regras obrigatórias:
 
 Formato de saída: JSON estrito:
 {
+  "transcricao_bruta": "string",
   "medicamentos": [
     {
       "nome": "string",
@@ -1877,37 +1969,55 @@ Formato de saída: JSON estrito:
       "via": "string",
       "frequencia": "string",
       "indicacao_pratica": "string",
-      "observacoes_enfermagem": "string"
+      "observacoes_enfermagem": "string",
+      "legibilidade_confianca": "string"
     }
   ],
+  "checagem_9_certos": "string",
+  "alertas_alto_risco_dupla_checagem": ["string"],
   "riscos_e_inconsistencias": ["string"],
   "interacoes_medicamentosas": ["string"],
   "itens_a_confirmar": ["string"],
+  "monitorizacao_pos_administracao": ["string"],
+  "conduta_evento_adverso": "string",
+  "texto_pronto_registro": "string",
   "resumo_operacional": "string"
 }
 `;
 
-    const data = await callOpenAIVisionJson(prompt, safeImage);
+    const data = await callOpenAIVisionJsonMulti(prompt, safeImages);
 
+    const transcricao = typeof data?.transcricao_bruta === "string" ? data.transcricao_bruta.trim() : "";
     const meds = Array.isArray(data?.medicamentos) ? data.medicamentos : [];
+    const checagem = typeof data?.checagem_9_certos === "string" ? data.checagem_9_certos.trim() : "";
+    const altoRisco = Array.isArray(data?.alertas_alto_risco_dupla_checagem) ? data.alertas_alto_risco_dupla_checagem : [];
     const riscos = Array.isArray(data?.riscos_e_inconsistencias) ? data.riscos_e_inconsistencias : [];
     const interacoes = Array.isArray(data?.interacoes_medicamentosas) ? data.interacoes_medicamentosas : [];
     const confirmar = Array.isArray(data?.itens_a_confirmar) ? data.itens_a_confirmar : [];
+    const monitor = Array.isArray(data?.monitorizacao_pos_administracao) ? data.monitorizacao_pos_administracao : [];
+    const condutaEA = typeof data?.conduta_evento_adverso === "string" ? data.conduta_evento_adverso.trim() : "";
+    const registro = typeof data?.texto_pronto_registro === "string" ? data.texto_pronto_registro.trim() : "";
     const resumo = typeof data?.resumo_operacional === "string" ? data.resumo_operacional.trim() : "";
 
     const lines = [];
-    lines.push("Prescrição identificada (somente o que está legível):");
+
+    lines.push("Transcrição bruta (somente o que está legível):");
+    lines.push(transcricao || "não informado");
+    lines.push("");
+
+    lines.push("Medicamentos identificados:");
     if (!meds.length) {
       lines.push("não informado");
     } else {
       let i = 1;
-      for (const m of meds.slice(0, 30)) {
-        const nome = normalizeText(m?.nome || "", 120) || "não informado";
-        const pos = normalizeText(m?.posologia_legivel || "", 200) || "não informado";
+      for (const m of meds.slice(0, 40)) {
+        const nome = normalizeText(m?.nome || "", 140) || "não informado";
+        const pos = normalizeText(m?.posologia_legivel || "", 240) || "não informado";
         const via = normalizeText(m?.via || "", 80) || "não informado";
-        const freq = normalizeText(m?.frequencia || "", 80) || "não informado";
+        const freq = normalizeText(m?.frequencia || "", 100) || "não informado";
         const ind = normalizeText(m?.indicacao_pratica || "", 260) || "não informado";
-        const obs = normalizeText(m?.observacoes_enfermagem || "", 420) || "não informado";
+        const obs = normalizeText(m?.observacoes_enfermagem || "", 520) || "não informado";
+        const conf = normalizeText(m?.legibilidade_confianca || "", 80) || "não informado";
 
         lines.push(`${i}) ${nome}`);
         lines.push(`Posologia legível: ${pos}`);
@@ -1915,22 +2025,35 @@ Formato de saída: JSON estrito:
         lines.push(`Frequência: ${freq}`);
         lines.push(`Para que serve: ${ind}`);
         lines.push(`Pontos de enfermagem: ${obs}`);
+        lines.push(`Legibilidade/confiança: ${conf}`);
         lines.push("");
         i += 1;
       }
     }
 
-    lines.push("Riscos e inconsistências relevantes:");
-    if (riscos.length) {
-      for (const r of riscos.slice(0, 30)) lines.push("- " + normalizeText(r, 260));
+    lines.push("Checagem de segurança (os 9 certos):");
+    lines.push(checagem || "não informado");
+    lines.push("");
+
+    lines.push("Alertas de alto risco e necessidade de dupla checagem:");
+    if (altoRisco.length) {
+      for (const a of altoRisco.slice(0, 40)) lines.push("- " + normalizeText(a, 260));
     } else {
       lines.push("- não informado");
     }
 
     lines.push("");
-    lines.push("Interações medicamentosas (se possível inferir com segurança):");
+    lines.push("Riscos e inconsistências relevantes:");
+    if (riscos.length) {
+      for (const r of riscos.slice(0, 40)) lines.push("- " + normalizeText(r, 260));
+    } else {
+      lines.push("- não informado");
+    }
+
+    lines.push("");
+    lines.push("Interações medicamentosas (quando possível inferir com segurança):");
     if (interacoes.length) {
-      for (const it of interacoes.slice(0, 30)) lines.push("- " + normalizeText(it, 260));
+      for (const it of interacoes.slice(0, 40)) lines.push("- " + normalizeText(it, 260));
     } else {
       lines.push("- não informado");
     }
@@ -1938,9 +2061,27 @@ Formato de saída: JSON estrito:
     lines.push("");
     lines.push("Itens que devem ser confirmados antes da administração:");
     if (confirmar.length) {
-      for (const c of confirmar.slice(0, 30)) lines.push("- " + normalizeText(c, 260));
+      for (const c of confirmar.slice(0, 40)) lines.push("- " + normalizeText(c, 260));
     } else {
       lines.push("- não informado");
+    }
+
+    lines.push("");
+    lines.push("Monitorização pós-administração:");
+    if (monitor.length) {
+      for (const m of monitor.slice(0, 40)) lines.push("- " + normalizeText(m, 260));
+    } else {
+      lines.push("- não informado");
+    }
+
+    lines.push("");
+    lines.push("Conduta diante de evento adverso (orientação geral, sem alterar prescrição):");
+    lines.push(condutaEA || "não informado");
+
+    if (registro) {
+      lines.push("");
+      lines.push("Texto pronto para registro:");
+      lines.push(registro);
     }
 
     if (resumo) {
@@ -1953,6 +2094,109 @@ Formato de saída: JSON estrito:
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "Falha interna ao analisar a prescrição." });
+  }
+});
+
+
+// ======================================================================
+// ROTA 4.6 – ANÁLISE DE EXAMES POR FOTO (NOVA)
+// ======================================================================
+
+app.post("/api/analisar-exame-imagem", requirePaidOrAdmin, async(req, res) => {
+  try {
+    const safeImages = getNormalizedImageDataUrls(req.body, 6, 4_000_000);
+    if (!safeImages.length) {
+      return res.status(400).json({
+        error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
+      });
+    }
+
+    const prompt = `
+Você é um profissional de saúde humano analisando foto(s) de EXAMES (resultados laboratoriais, laudos e relatórios). Baseie-se SOMENTE no que estiver legível.
+
+Objetivos:
+1) Transcrever o que estiver legível (sem inventar). Se algo não for legível, usar "não informado".
+2) Destacar valores fora da faixa, termos relevantes e achados importantes quando o próprio exame indicar referência ou quando o achado for explicitamente descrito.
+3) Fazer uma interpretação prudente e operacional (para apoiar a enfermagem), incluindo possíveis hipóteses e explicando limitações.
+4) Indicar condutas práticas de enfermagem: o que monitorar, cuidados imediatos, sinais de alarme e quando escalar para avaliação médica.
+5) Sugerir tratamentos/condutas possíveis de acordo com protocolos institucionais e avaliação médica, deixando claro o que depende de prescrição médica.
+
+Regras obrigatórias:
+- Não emitir diagnóstico médico definitivo.
+- Não prescrever medicações; apenas orientar sobre necessidade de prescrição e monitorização.
+- Se a foto for parcial, refletir essa limitação.
+- Sem emojis e sem símbolos gráficos.
+
+Formato de saída: JSON estrito:
+{
+  "tipo_de_exame": "string",
+  "transcricao_bruta": "string",
+  "destaques_e_alteracoes": ["string"],
+  "interpretacao_prudente": "string",
+  "condutas_de_enfermagem": "string",
+  "sinais_de_alarme_e_encaminhamento": "string",
+  "itens_a_confirmar": ["string"],
+  "texto_pronto_registro": "string"
+}
+`;
+
+    const data = await callOpenAIVisionJsonMulti(prompt, safeImages);
+
+    const tipo = typeof data?.tipo_de_exame === "string" ? data.tipo_de_exame.trim() : "";
+    const trans = typeof data?.transcricao_bruta === "string" ? data.transcricao_bruta.trim() : "";
+    const destaques = Array.isArray(data?.destaques_e_alteracoes) ? data.destaques_e_alteracoes : [];
+    const interp = typeof data?.interpretacao_prudente === "string" ? data.interpretacao_prudente.trim() : "";
+    const cond = typeof data?.condutas_de_enfermagem === "string" ? data.condutas_de_enfermagem.trim() : "";
+    const alarme = typeof data?.sinais_de_alarme_e_encaminhamento === "string" ? data.sinais_de_alarme_e_encaminhamento.trim() : "";
+    const confirmar = Array.isArray(data?.itens_a_confirmar) ? data.itens_a_confirmar : [];
+    const registro = typeof data?.texto_pronto_registro === "string" ? data.texto_pronto_registro.trim() : "";
+
+    const lines = [];
+    lines.push("Tipo de exame:");
+    lines.push(tipo || "não informado");
+    lines.push("");
+
+    lines.push("Transcrição bruta (somente o que está legível):");
+    lines.push(trans || "não informado");
+    lines.push("");
+
+    lines.push("Destaques e alterações (quando identificáveis):");
+    if (destaques.length) {
+      for (const d of destaques.slice(0, 60)) lines.push("- " + normalizeText(d, 300));
+    } else {
+      lines.push("- não informado");
+    }
+
+    lines.push("");
+    lines.push("Interpretação prudente (com limitações):");
+    lines.push(interp || "não informado");
+
+    lines.push("");
+    lines.push("Condutas práticas de enfermagem:");
+    lines.push(cond || "não informado");
+
+    lines.push("");
+    lines.push("Sinais de alarme e encaminhamento:");
+    lines.push(alarme || "não informado");
+
+    lines.push("");
+    lines.push("Itens a confirmar:");
+    if (confirmar.length) {
+      for (const c of confirmar.slice(0, 60)) lines.push("- " + normalizeText(c, 300));
+    } else {
+      lines.push("- não informado");
+    }
+
+    if (registro) {
+      lines.push("");
+      lines.push("Texto pronto para registro:");
+      lines.push(registro);
+    }
+
+    return res.json({ texto: lines.join("\n") });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao analisar o exame." });
   }
 });
 
