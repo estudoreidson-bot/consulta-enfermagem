@@ -1271,7 +1271,7 @@
   <div id="loginView" class="auth-shell">
     <div class="auth-card">
       <h1>Atendimento de Enfermagem</h1>
-      <p class="auth-subtitle">Acesso restrito para profissionais cadastrados.</p>
+      <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
 
       <label class="auth-label" for="loginField">Login</label>
       <input id="loginField" class="auth-input" autocomplete="username" inputmode="text" />
@@ -1805,7 +1805,7 @@
 
   <script>
 
-    const BACKEND_URL = "https://consulta-enfermagem-1.onrender.com"; // usa /api (Netlify redirect) ou mesma origem no Render
+    const BACKEND_URL = ""; // usa /api via Netlify redirects (ver netlify.toml)
 
     // =========================
     // ADMIN (caches globais - sem TDZ)
@@ -1819,6 +1819,42 @@
     // AUTENTICAÇÃO (sem escolha de perfil)
     // =========================
     const TOKEN_KEY = "ae_token_v1";
+
+    // Diagnóstico visível: se algum erro de JS impedir o login, ele aparece aqui
+    function showFatalError(msg) {
+      const el = document.getElementById("loginError");
+      if (el && msg) el.textContent = String(msg);
+    }
+    window.addEventListener("error", (ev) => {
+      try {
+        const m = (ev && ev.message) ? ev.message : "Erro inesperado";
+        showFatalError("Erro no sistema: " + m);
+      } catch {}
+    });
+    window.addEventListener("unhandledrejection", (ev) => {
+      try {
+        const r = ev && ev.reason;
+        const m = (r && r.message) ? r.message : (typeof r === "string" ? r : "Falha inesperada");
+        showFatalError("Erro no sistema: " + m);
+      } catch {}
+    });
+
+
+    // Mostra erros de script diretamente na tela de login (evita sensação de "não acontece nada")
+    window.addEventListener('error', (ev) => {
+      try {
+        const el = document.getElementById('loginError');
+        if (el && ev && ev.message) el.textContent = 'Erro no sistema: ' + ev.message;
+      } catch {}
+    });
+    window.addEventListener('unhandledrejection', (ev) => {
+      try {
+        const el = document.getElementById('loginError');
+        const msg = (ev && ev.reason && (ev.reason.message || String(ev.reason))) ? (ev.reason.message || String(ev.reason)) : 'Erro inesperado.';
+        if (el) el.textContent = 'Erro no sistema: ' + msg;
+      } catch {}
+    });
+
     const nativeFetch = window.fetch.bind(window);
 
     // Backup local automático (para não perder clientes em redeploy/atualizações do backend)
@@ -1934,7 +1970,7 @@
         if (errEl) errEl.textContent = "Informe login e senha.";
         return;
       }
-      if (errEl) errEl.textContent = "";
+      if (errEl) errEl.textContent = "Conectando...";
       if (btn) btn.disabled = true;
       try {
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/login", {
