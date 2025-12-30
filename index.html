@@ -1630,8 +1630,8 @@
       </p>
 <div class="prescription-actions">
         <button id="medPhotoBtn" class="photo-btn">Tirar foto</button>
-        <button id="copyMedSafetyBtn" class="btn-copy">Copiar segurança dos medicamentos</button>
-        <button id="printMedSafetyBtn" class="btn-print">Imprimir segurança dos medicamentos</button>
+        <button id="copyMedSafetyBtn" class="btn-copy hidden">Copiar segurança dos medicamentos</button>
+        <button id="printMedSafetyBtn" class="btn-print hidden">Imprimir segurança dos medicamentos</button>
       </div>
 
       <div id="interactionsStatus" class="mini-status"></div>
@@ -1649,8 +1649,8 @@
 
       <div class="prescription-actions">
         <button id="woundPhotoBtn" class="photo-btn">Tirar foto</button>
-        <button id="copyWoundBtn" class="btn-copy">Copiar prescrição e cuidados</button>
-        <button id="printWoundBtn" class="btn-print">Imprimir prescrição e cuidados</button>
+        <button id="copyWoundBtn" class="btn-copy hidden">Copiar prescrição e cuidados</button>
+        <button id="printWoundBtn" class="btn-print hidden">Imprimir prescrição e cuidados</button>
       </div>
 
       <div id="presentationsMaxDoseStatus" class="mini-status"></div>
@@ -1741,8 +1741,8 @@
 
       <div class="inline-input-row">
         <button id="reportRecordBtn" class="small-record-btn start">Gravar documento</button>
-        <button id="copyReportBtn" class="btn-copy" type="button">Copiar documento</button>
-        <button id="printReportBtn" class="btn-print" type="button">Imprimir documento</button>
+        <button id="copyReportBtn" class="btn-copy hidden" type="button">Copiar documento</button>
+        <button id="printReportBtn" class="btn-print hidden" type="button">Imprimir documento</button>
       </div>
 
       <div id="reportStatus" class="mini-status"></div>
@@ -2140,6 +2140,43 @@ const recordBtn = document.getElementById("recordBtn");
 
     let pendingCameraInput = null;
     let pendingFileInput = null;
+
+    // ============================
+    // VISIBILIDADE – botões de copiar/imprimir (foto/áudio)
+    // ============================
+    function setVisible(el, visible) {
+      if (!el) return;
+      if (visible) el.classList.remove("hidden");
+      else el.classList.add("hidden");
+    }
+
+    function isMeaningfulText(t) {
+      const s = String(t || "").trim();
+      if (!s) return false;
+      const low = s.toLowerCase();
+      if (low === "nenhum conteúdo disponível." || low === "nenhum conteudo disponivel.") return false;
+      if (low === "processando." || low === "processando") return false;
+      return true;
+    }
+
+    function updateMedSafetyActions() {
+      const has = isMeaningfulText(interactionsBox ? interactionsBox.textContent : "");
+      setVisible(copyMedSafetyBtn, has);
+      setVisible(printMedSafetyBtn, has);
+    }
+
+    function updateWoundActions() {
+      const has = isMeaningfulText(presentationsMaxDoseBox ? presentationsMaxDoseBox.textContent : "");
+      setVisible(copyWoundBtn, has);
+      setVisible(printWoundBtn, has);
+    }
+
+    function updateReportActions() {
+      const has = isMeaningfulText(reportOutput ? reportOutput.value : "");
+      setVisible(copyReportBtn, has);
+      setVisible(printReportBtn, has);
+    }
+
 
 
 
@@ -3766,6 +3803,7 @@ function initSpeech() {
       if (!presentationsMaxDoseStatus || !presentationsMaxDoseBox) return;
       presentationsMaxDoseStatus.textContent = "Analisando imagem da lesão.";
       presentationsMaxDoseBox.textContent = "Processando.";
+      updateWoundActions();
       try {
         const resp = await fetch(BACKEND_URL + "/api/analisar-lesao-imagem", {
           method: "POST",
@@ -3777,9 +3815,11 @@ function initSpeech() {
         const texto = (data?.texto || "").trim();
         presentationsMaxDoseBox.textContent = texto || "Nenhum conteúdo disponível.";
         presentationsMaxDoseStatus.textContent = "Análise concluída.";
+        updateWoundActions();
       } catch (e) {
         presentationsMaxDoseStatus.textContent = "Falha ao analisar imagem.";
         presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
+        updateWoundActions();
       }
     }
 
@@ -3787,6 +3827,7 @@ function initSpeech() {
       if (!interactionsStatus || !interactionsBox) return;
       interactionsStatus.textContent = "Analisando prescrição.";
       interactionsBox.textContent = "Processando.";
+      updateMedSafetyActions();
       try {
         const resp = await fetch(BACKEND_URL + "/api/analisar-prescricao-imagem", {
           method: "POST",
@@ -3798,9 +3839,11 @@ function initSpeech() {
         const texto = (data?.texto || "").trim();
         interactionsBox.textContent = texto || "Nenhum conteúdo disponível.";
         interactionsStatus.textContent = "Análise concluída.";
+        updateMedSafetyActions();
       } catch (e) {
         interactionsStatus.textContent = "Falha ao analisar prescrição.";
         interactionsBox.textContent = "Nenhum conteúdo disponível.";
+        updateMedSafetyActions();
       }
     }
 
@@ -4124,6 +4167,7 @@ function initSpeech() {
       reportStatus.textContent = "";
       reportOutput.value = "";
       reportFinalTranscript = "";
+      updateReportActions();
       if (reportDocTypeDetected) reportDocTypeDetected.textContent = "";
       if (reportMissingFields) reportMissingFields.textContent = "";
 
@@ -4201,6 +4245,7 @@ function initSpeech() {
         if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "Nenhum";
 
         reportOutput.value = normalizeNumberedParagraphs(documento);
+        updateReportActions();
 
         reportStatus.textContent = documento ? "Documento gerado." : "Não foi possível gerar o documento.";
         reportStatus.classList.remove("loading-dot");
@@ -4208,6 +4253,7 @@ function initSpeech() {
         console.error("Erro ao gerar relatório:", err);
         reportStatus.textContent = "Erro ao gerar relatório.";
         reportStatus.classList.remove("loading-dot");
+        updateReportActions();
       }
     }
 
@@ -4406,6 +4452,11 @@ function initSpeech() {
         if (input) input.click();
       });
     }
+
+    // Estado inicial: botões de copiar/imprimir ficam ocultos até gerar conteúdo
+    updateMedSafetyActions();
+    updateWoundActions();
+    updateReportActions();
 
     if (cancelImageChoiceBtn) {
       cancelImageChoiceBtn.addEventListener("click", () => {
