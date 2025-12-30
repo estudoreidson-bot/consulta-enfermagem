@@ -122,6 +122,7 @@ const port = process.env.PORT || 3000;
 // Configurações básicas
 app.use(cors());
 app.use(bodyParser.json({ limit: "25mb" }));
+app.use(bodyParser.urlencoded({ limit: "25mb", extended: true }));
 
 // Servir o index.html apenas na rota raiz (útil para testes locais)
 app.get("/", (req, res) => {
@@ -828,18 +829,13 @@ function isUserOnline(user) {
 }
 
 function authFromReq(req) {
-  // Aceita token via Authorization: Bearer <token> e também via X-Auth-Token (fallback para proxies).
-  const hAuth = req.headers["authorization"] || "";
-  const hX = req.headers["x-auth-token"] || req.headers["x-authorization"] || "";
-
-  function extractToken(v) {
-    const s = String(v || "").trim();
-    if (!s) return "";
-    const m = s.match(/^Bearer\s+(.+)$/i);
-    return m ? m[1].trim() : s;
+  const h = req.headers["authorization"] || "";
+  const m = String(h).match(/^Bearer\s+(.+)$/i);
+  let token = m ? m[1].trim() : "";
+  if (!token) {
+    const xt = req.headers["x-auth-token"] || req.headers["X-Auth-Token"] || "";
+    token = String(xt || "").trim();
   }
-
-  const token = extractToken(hAuth) || extractToken(hX) || extractToken(req.query && req.query.token);
   const sess = getSession(token);
   if (!sess) return null;
 
@@ -865,7 +861,14 @@ function requireAdmin(req, res, next) {
 }
 
 function requirePaidOrAdmin(req, res, next) {
-  if (!req.auth) return res.status(401).json({ error: "Não autenticado." });
+  // Garante que req.auth exista mesmo quando esta middleware for usada diretamente
+  // (algumas rotas a chamam sem passar antes por requireAuth).
+  if (!req.auth) {
+    const ctx = authFromReq(req);
+    if (!ctx) return res.status(401).json({ error: "Não autenticado." });
+    req.auth = ctx;
+  }
+
   if (req.auth.role === "admin") return next();
 
   const user = req.auth.user;
