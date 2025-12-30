@@ -201,6 +201,40 @@ async function callOpenAIVisionJson(prompt, imagemDataUrl) {
   }
 }
 
+
+
+// Função para chamar o modelo com múltiplas imagens (data URLs) e retornar JSON
+async function callOpenAIVisionJsonMulti(prompt, imagensDataUrl) {
+  const imgs = Array.isArray(imagensDataUrl) ? imagensDataUrl.filter(Boolean) : [];
+  const content = [{ type: "text", text: prompt }];
+
+  for (const url of imgs) {
+    content.push({ type: "image_url", image_url: { url } });
+  }
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    temperature: 0.2,
+    messages: [
+      { role: "user", content }
+    ]
+  });
+
+  const raw = (completion.choices?.[0]?.message?.content || "").trim();
+
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    const firstBrace = raw.indexOf("{");
+    const lastBrace = raw.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
+      return JSON.parse(jsonSlice);
+    }
+    throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
+  }
+}
+
 // Pequena validação para limitar tamanho e evitar abusos
 function normalizeText(input, maxLen) {
   const s = (typeof input === "string" ? input : "").trim();
@@ -2084,6 +2118,97 @@ Formato de saída: JSON estrito:
     return res.status(500).json({ error: "Falha interna ao analisar a prescrição." });
   }
 });
+
+
+// ======================================================================
+// ROTA 4.6 – INTERPRETAÇÃO DE EXAMES POR FOTO (LABORATORIAIS / IMAGEM) (NOVO)
+// ======================================================================
+
+app.post("/api/interpretar-exame-imagem", requirePaidOrAdmin, async(req, res) => {
+  try {
+    const b = req.body || {};
+    const rawList = Array.isArray(b.images_data_url) ? b.images_data_url : [];
+
+    const images = [];
+    for (const it of rawList) {
+      if (images.length >= 4) break;
+      const safe = normalizeImageDataUrl(it, 4_000_000);
+      if (safe) images.push(safe);
+    }
+
+    if (!images.length) {
+      const one = getImageDataUrlFromBody(b);
+      const safeOne = normalizeImageDataUrl(one, 4_000_000);
+      if (safeOne) images.push(safeOne);
+    }
+
+    if (!images.length) {
+      return res.status(400).json({
+        error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
+      });
+    }
+
+    const prompt = `
+Você é um médico humano interpretando RESULTADOS DE EXAMES (laboratoriais e laudos de exames de imagem) a partir de uma ou mais fotos.
+
+Objetivo:
+1) Transcrever somente o que estiver legível na(s) imagem(ns), sem inventar. Se algo não estiver legível, escreva "não informado".
+2) Identificar, quando possível, o tipo de exame (laboratorial, laudo de imagem, eletrocardiograma impresso, etc).
+3) Fornecer uma interpretação prudente, com linguagem prática, destacando resultados fora do intervalo de referência quando estiverem visíveis.
+4) Listar sinais/valores potencialmente críticos e orientações de conduta segura (ex.: repetir/exigir confirmação, correlacionar com sintomas, procurar urgência quando houver critério).
+5) Informar limitações da interpretação baseada em foto e reforçar correlação clínica.
+
+Regras obrigatórias:
+- Não inventar valores, não inferir dados que não estejam na imagem.
+- Não fazer diagnóstico definitivo; apresentar hipóteses apenas quando compatíveis com dados legíveis e sempre pedir correlação clínica.
+- Se o material for imagem diagnóstica (radiografia/TC/RM) sem laudo legível, orientar que a interpretação adequada depende do laudo e/ou avaliação especializada.
+- Sem emojis e sem símbolos gráficos.
+
+Formato de saída: JSON estrito:
+{
+  "tipo_exame": "string",
+  "dados_legiveis": "string",
+  "interpretacao": "string",
+  "alertas": "string",
+  "proximos_passos": "string",
+  "limitacoes": "string"
+}
+`;
+
+    const data = await callOpenAIVisionJsonMulti(prompt, images);
+
+    const tipo_exame = typeof data?.tipo_exame === "string" ? data.tipo_exame.trim() : "";
+    const dados_legiveis = typeof data?.dados_legiveis === "string" ? data.dados_legiveis.trim() : "";
+    const interpretacao = typeof data?.interpretacao === "string" ? data.interpretacao.trim() : "";
+    const alertas = typeof data?.alertas === "string" ? data.alertas.trim() : "";
+    const proximos_passos = typeof data?.proximos_passos === "string" ? data.proximos_passos.trim() : "";
+    const limitacoes = typeof data?.limitacoes === "string" ? data.limitacoes.trim() : "";
+
+    const texto = `Tipo de exame:
+${tipo_exame || "não informado"}
+
+Transcrição do que está legível:
+${dados_legiveis || "não informado"}
+
+Interpretação:
+${interpretacao || "não informado"}
+
+Alertas e possíveis valores críticos:
+${alertas || "não informado"}
+
+Próximos passos sugeridos:
+${proximos_passos || "não informado"}
+
+Limitações:
+${limitacoes || "não informado"}`;
+
+    return res.json({ texto });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao interpretar o exame." });
+  }
+});
+
 
 
 

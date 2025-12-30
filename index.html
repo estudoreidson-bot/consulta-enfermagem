@@ -725,35 +725,10 @@
       height: 1px !important;
       opacity: 0 !important;
       overflow: hidden !important;
-    }
-
-    .file-btn {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .file-btn input[type="file"] {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      opacity: 0;
-      cursor: pointer;
-    }
-    .image-preview-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .image-preview-grid img {
-      width: 100%;
-      height: 70px;
-      object-fit: cover;
-      border-radius: 10px;
-      border: 1px solid #e5e7eb;
-    }
+    
+    /* Desativa o modal antigo de escolha de imagem (evita botões Limpar/Analisar). */
+    #imageChoiceOverlay { display: none !important; }
+}
 
     .consult-type-panel {
       width: 100%;
@@ -1657,29 +1632,23 @@
     </div>
 
     
-    
     <div id="medSafetyCard" class="module-card">
       <h2>Administração segura de medicamentos (registro de enfermagem)</h2>
-      <p class="mini-status" style="margin-top: 0;">
+                  <p class="mini-status" style="margin-top: 0;">
         Use o botão para fotografar a prescrição médica. O sistema irá transcrever o que estiver legível, organizar os medicamentos, apontar riscos e inconsistências relevantes para a enfermagem e sinalizar interações importantes quando for possível confirmar com segurança.
       </p>
-
-      <div class="prescription-actions">
-        <div class="file-btn photo-btn">Tirar foto
-          <input id="medCameraInput" type="file" accept="image/*" capture="environment" />
-        </div>
-        <div class="file-btn photo-btn">Escolher arquivo
-          <input id="medFileInput" type="file" accept="image/*" multiple />
-        </div>
+<div class="prescription-actions">
+        <label for="medCameraInput" class="photo-btn">Tirar foto</label>
+        <label for="medFileInput" class="photo-btn">Escolher arquivo</label>
         <button id="copyMedSafetyBtn" class="btn-copy hidden">Copiar segurança dos medicamentos</button>
         <button id="printMedSafetyBtn" class="btn-print hidden">Imprimir segurança dos medicamentos</button>
       </div>
 
-      <div id="medImagesCount" class="mini-status"></div>
-      <div id="medPreview" class="image-preview-grid"></div>
-
       <div id="interactionsStatus" class="mini-status"></div>
       <div id="interactionsBox" class="classification-box">Nenhum conteúdo disponível.</div>
+
+      <input id="medCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
+      <input id="medFileInput" class="hidden-input" type="file" accept="image/*" multiple />
     </div>
 
     <div id="woundCard" class="module-card">
@@ -1689,22 +1658,40 @@
       </p>
 
       <div class="prescription-actions">
-        <div class="file-btn photo-btn">Tirar foto
-          <input id="woundCameraInput" type="file" accept="image/*" capture="environment" />
-        </div>
-        <div class="file-btn photo-btn">Escolher arquivo
-          <input id="woundFileInput" type="file" accept="image/*" multiple />
-        </div>
+        <label for="woundCameraInput" class="photo-btn">Tirar foto</label>
+        <label for="woundFileInput" class="photo-btn">Escolher arquivo</label>
         <button id="copyWoundBtn" class="btn-copy hidden">Copiar prescrição e cuidados</button>
         <button id="printWoundBtn" class="btn-print hidden">Imprimir prescrição e cuidados</button>
       </div>
 
-      <div id="woundImagesCount" class="mini-status"></div>
-      <div id="woundPreview" class="image-preview-grid"></div>
+      <div id="presentationsMaxDoseStatus" class="mini-status"></div>
+      <div id="presentationsMaxDoseBox" class="classification-box">Nenhum conteúdo disponível.</div>
 
-      <div id="woundStatus" class="mini-status"></div>
-      <div id="woundBox" class="classification-box">Nenhum conteúdo disponível.</div>
+      <input id="woundCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
+      <input id="woundFileInput" class="hidden-input" type="file" accept="image/*" multiple />
     </div>
+
+
+    <div id="examInterpretationCard" class="module-card">
+      <h2>Interpretação de resultados de exames (laboratoriais, de imagem, etc)</h2>
+      <p class="mini-status" style="margin-top: 0;">
+        Use os botões para fotografar o resultado do exame (ex.: laudo, tabela de laboratório, impressão do sistema). O sistema irá transcrever somente o que estiver legível, organizar os principais achados e sugerir uma interpretação prudente com alertas e próximos passos, sem inventar dados.
+      </p>
+
+      <div class="prescription-actions">
+        <label for="examCameraInput" class="photo-btn">Tirar foto</label>
+        <label for="examFileInput" class="photo-btn">Escolher arquivo</label>
+        <button id="copyExamBtn" class="btn-copy hidden">Copiar interpretação</button>
+        <button id="printExamBtn" class="btn-print hidden">Imprimir interpretação</button>
+      </div>
+
+      <div id="examInterpretationStatus" class="mini-status"></div>
+      <div id="examInterpretationBox" class="classification-box">Nenhum conteúdo disponível.</div>
+
+      <input id="examCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
+      <input id="examFileInput" class="hidden-input" type="file" accept="image/*" multiple />
+    </div>
+
 <div id="medicalDoubtsCard" class="module-card">
       <h2>Dúvidas de Enfermagem</h2>
       <p class="mini-status" style="margin-top: 0;">Digite sua dúvida e pressione Enter para obter uma resposta.</p>
@@ -1824,6 +1811,24 @@
       As respostas serão usadas para atualizar automaticamente o SOAP e a conduta.
     </p>
   </div>
+
+
+  <div id="imageChoiceOverlay" class="modal-overlay hidden">
+  <div class="modal" style="max-width: 560px;">
+    <h3 id="imageChoiceTitle">Imagens para análise</h3>
+    <p id="imageChoiceHint">Selecione uma ou mais imagens. Você pode adicionar várias antes de analisar.</p>
+
+    <div id="imageChoicePreview" class="image-preview-grid" aria-label="Pré-visualização das imagens selecionadas"></div>
+    <div id="imageChoiceCount" style="margin-top: 8px; font-size: 12px; color: #374151;"></div>
+
+    <div class="modal-actions" style="flex-wrap: wrap;">
+      <button id="chooseCameraBtn" class="danger">Tirar foto agora</button>
+      <button id="chooseFileBtn" class="primary">Escolher arquivo</button>
+      <button id="clearChosenImagesBtn">Limpar</button>
+      <button id="runImageAnalysisBtn" class="primary" disabled>Analisar</button>
+      <button id="cancelImageChoiceBtn">Cancelar</button>
+    </div>
+  </div>
 </div>
   </div>
 
@@ -1835,6 +1840,37 @@
     const BACKEND_URL = ""; // usa /api via Netlify redirects (ver netlify.toml)
 
     // =========================
+    // IMAGENS (Curativos e Prescrição) - estado por módulo (até 4 fotos)
+    // =========================
+    let woundImages = [];
+    let medImages = [];
+    let examImages = [];
+    let woundAnalyzeTimer = null;
+    let medAnalyzeTimer = null;
+    let examAnalyzeTimer = null;
+
+    function scheduleWoundAnalysis() {
+      if (woundAnalyzeTimer) clearTimeout(woundAnalyzeTimer);
+      woundAnalyzeTimer = setTimeout(() => {
+        if (woundImages && woundImages.length) analyzeWoundWithImages(woundImages.slice());
+      }, 180);
+    }
+
+    function scheduleMedAnalysis() {
+      if (medAnalyzeTimer) clearTimeout(medAnalyzeTimer);
+      medAnalyzeTimer = setTimeout(() => {
+        if (medImages && medImages.length) analyzePrescriptionWithImages(medImages.slice());
+      }, 180);
+    }
+
+    function scheduleExamAnalysis() {
+      if (examAnalyzeTimer) clearTimeout(examAnalyzeTimer);
+      examAnalyzeTimer = setTimeout(() => {
+        if (examImages && examImages.length) analyzeExamWithImages(examImages.slice());
+      }, 180);
+    }
+
+// =========================
     // ADMIN (caches globais - sem TDZ)
     // =========================
     var ADMIN_CACHE_USERS = [];
@@ -1963,28 +1999,13 @@
     // Intercepta chamadas ao backend e injeta Authorization quando for /api/
     window.fetch = async function(input, init) {
       try {
-        const rawUrl = (typeof input === "string")
-          ? input
-          : (input && typeof input.url === "string" ? input.url : "");
-
-        let isApi = false;
-        try {
-          const u = new URL(rawUrl, window.location.origin);
-          isApi = (u && typeof u.pathname === "string" && u.pathname.startsWith("/api/"));
-        } catch {
-          isApi = (typeof rawUrl === "string" && rawUrl.startsWith("/api/"));
-        }
-
+        const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
+        const isApi = typeof url === "string" && url.startsWith(BACKEND_URL + "/api/");
         if (!isApi) return nativeFetch(input, init);
 
-        const headers = new Headers((init && init.headers) ? init.headers : undefined);
+        const headers = Object.assign({}, (init && init.headers) ? init.headers : {});
         const token = getToken();
-        if (token) {
-          headers.set("Authorization", "Bearer " + token);
-          // Fallback para proxies que possam remover Authorization
-          headers.set("X-Auth-Token", token);
-        }
-
+        if (token) headers["Authorization"] = "Bearer " + token;
         const resp = await nativeFetch(input, Object.assign({}, init || {}, { headers }));
 
         if (resp && resp.status === 401) {
@@ -2017,7 +2038,7 @@
       try {
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/login", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ login, senha })
         });
         const data = await resp.json().catch(() => ({}));
@@ -2204,7 +2225,8 @@ const recordBtn = document.getElementById("recordBtn");
 
 
     const medPhotoBtn = document.getElementById("medPhotoBtn");
-    const interactionsBox = document.getElementById("interactionsBox");
+    const medFileBtn = document.getElementById("medFileBtn");
+const interactionsBox = document.getElementById("interactionsBox");
     const interactionsStatus = document.getElementById("interactionsStatus");
     const copyMedSafetyBtn = document.getElementById("copyMedSafetyBtn");
     const printMedSafetyBtn = document.getElementById("printMedSafetyBtn");
@@ -2212,14 +2234,22 @@ const recordBtn = document.getElementById("recordBtn");
     const medFileInput = document.getElementById("medFileInput");
 
     const woundPhotoBtn = document.getElementById("woundPhotoBtn");
-    const presentationsMaxDoseBox = document.getElementById("presentationsMaxDoseBox");
+    const woundFileBtn = document.getElementById("woundFileBtn");
+const presentationsMaxDoseBox = document.getElementById("presentationsMaxDoseBox");
     const presentationsMaxDoseStatus = document.getElementById("presentationsMaxDoseStatus");
     const copyWoundBtn = document.getElementById("copyWoundBtn");
     const printWoundBtn = document.getElementById("printWoundBtn");
     const woundCameraInput = document.getElementById("woundCameraInput");
     const woundFileInput = document.getElementById("woundFileInput");
 
-    const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
+        const examInterpretationBox = document.getElementById("examInterpretationBox");
+    const examInterpretationStatus = document.getElementById("examInterpretationStatus");
+    const copyExamBtn = document.getElementById("copyExamBtn");
+    const printExamBtn = document.getElementById("printExamBtn");
+    const examCameraInput = document.getElementById("examCameraInput");
+    const examFileInput = document.getElementById("examFileInput");
+
+const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
     const chooseCameraBtn = document.getElementById("chooseCameraBtn");
     const chooseFileBtn = document.getElementById("chooseFileBtn");
     const cancelImageChoiceBtn = document.getElementById("cancelImageChoiceBtn");
@@ -2267,6 +2297,12 @@ const recordBtn = document.getElementById("recordBtn");
       const has = isMeaningfulText(presentationsMaxDoseBox ? presentationsMaxDoseBox.textContent : "");
       setVisible(copyWoundBtn, has);
       setVisible(printWoundBtn, has);
+    }
+
+    function updateExamActions() {
+      const has = isMeaningfulText(examInterpretationBox ? examInterpretationBox.textContent : "");
+      setVisible(copyExamBtn, has);
+      setVisible(printExamBtn, has);
     }
 
     function updateReportActions() {
@@ -2499,7 +2535,7 @@ const recordBtn = document.getElementById("recordBtn");
       try {
         const resp = await fetch(BACKEND_URL + "/api/classificacao-risco", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contexto })
         });
 
@@ -2550,7 +2586,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       try {
         const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao: t })
         });
 
@@ -2657,7 +2693,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       try {
         const resp = await fetch(BACKEND_URL + "/api/extrair-dados-paciente", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao: transcricaoCurta })
         });
 
@@ -3076,7 +3112,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       try {
         const resp = await fetch(BACKEND_URL + "/api/guia-tempo-real", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
@@ -3243,7 +3279,7 @@ function initSpeech() {
       try {
         const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao: transcricaoParaGeracao })
         });
 
@@ -3364,7 +3400,7 @@ function initSpeech() {
       try {
         const resp = await fetch(BACKEND_URL + "/api/interacoes-medicamentosas", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contexto })
         });
 
@@ -3435,7 +3471,7 @@ function initSpeech() {
       try {
         const resp = await fetch(BACKEND_URL + "/api/apresentacoes-dosagem-maxima", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contexto })
         });
 
@@ -3606,7 +3642,7 @@ function initSpeech() {
       try {
         const resp = await fetch(BACKEND_URL + "/api/atualizar-soap-perguntas", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             soap_atual: soapAtual,
             perguntas_e_respostas: qa,
@@ -3695,7 +3731,7 @@ function initSpeech() {
       try {
         const resp = await fetch(BACKEND_URL + "/api/recomendacoes-anamnese", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             soap: combinedSoap
           })
@@ -3874,61 +3910,15 @@ function initSpeech() {
       }
     }
 
-    function renderImageChoicePreview() {
-  if (!imageChoicePreview || !imageChoiceCount || !runImageAnalysisBtn) return;
-
-  imageChoicePreview.innerHTML = "";
-  const imgs = Array.isArray(pendingImages) ? pendingImages : [];
-  const count = imgs.length;
-
-  for (const url of imgs.slice(0, 12)) {
-    const img = document.createElement("img");
-    img.src = url;
-    img.alt = "Imagem selecionada";
-    imageChoicePreview.appendChild(img);
-  }
-
-  imageChoiceCount.textContent = count ? (`${count} imagem(ns) selecionada(s).`) : "Nenhuma imagem selecionada.";
-  runImageAnalysisBtn.disabled = count === 0;
-}
-
-function clearPendingImages() {
-  pendingImages = [];
-  renderImageChoicePreview();
-}
-
-function showImageChoice(cameraInputEl, fileInputEl, analysisFn, title, hint) {
-  pendingCameraInput = cameraInputEl || null;
-  pendingFileInput = fileInputEl || null;
-  pendingAnalysisFn = typeof analysisFn === "function" ? analysisFn : null;
-  pendingOverlayTitle = String(title || "").trim() || "Imagens para análise";
-  pendingOverlayHint = String(hint || "").trim() || "Selecione uma ou mais imagens. Você pode adicionar várias antes de analisar.";
-
-  if (imageChoiceTitle) imageChoiceTitle.textContent = pendingOverlayTitle;
-  if (imageChoiceHint) imageChoiceHint.textContent = pendingOverlayHint;
-
-  if (!imageChoiceOverlay) return;
-  imageChoiceOverlay.classList.remove("hidden");
-  renderImageChoicePreview();
-}
-
-function hideImageChoice() {
-  if (!imageChoiceOverlay) return;
-  imageChoiceOverlay.classList.add("hidden");
-  pendingCameraInput = null;
-  pendingFileInput = null;
-  pendingAnalysisFn = null;
-  pendingOverlayTitle = "";
-  pendingOverlayHint = "";
-  clearPendingImages();
-}
-
-async function fileToCompressedDataUrl(file, maxDim = 1280, quality = 0.82) {
-  // Reduz tamanho para evitar estouro de limite do servidor / proxy (sem depender de libs).
+        // =========================
+    // IMAGENS - compressão + análise automática (até 4 fotos por módulo)
+    // =========================
+    async function fileToCompressedDataUrl(file, maxDim = 1280, quality = 0.82) {
+  // Tenta converter para JPEG via canvas (reduz tamanho e evita estouro de limite).
+  // Se falhar (ex.: formatos não suportados), retorna string vazia para permitir fallback.
   const f = file;
   if (!f) return "";
 
-  // Alguns navegadores não suportam createImageBitmap para todos os formatos; usa Image() por compatibilidade.
   const objectUrl = URL.createObjectURL(f);
   try {
     const img = await new Promise((resolve, reject) => {
@@ -3954,33 +3944,89 @@ async function fileToCompressedDataUrl(file, maxDim = 1280, quality = 0.82) {
     if (!ctx) throw new Error("Falha ao preparar canvas.");
     ctx.drawImage(img, 0, 0, outW, outH);
 
-    // JPEG costuma reduzir bem o tamanho para fotos.
     return canvas.toDataURL("image/jpeg", quality);
+  } catch (e) {
+    return "";
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
 }
 
-async function addFilesToPending(files) {
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    try {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Falha ao ler arquivo."));
+      reader.readAsDataURL(file);
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+async function addFilesToTarget(files, targetKey, mode) {
   const list = Array.from(files || []);
   if (!list.length) return;
 
-  // Limite de imagens por análise para manter performance e reduzir custo.
-  const remaining = Math.max(0, 4 - (pendingImages ? pendingImages.length : 0));
+  const key = (targetKey === "wound" || targetKey === "med" || targetKey === "exam") ? targetKey : "med";
+
+  const cfg = key === "wound"
+    ? { arr: woundImages, statusEl: presentationsMaxDoseStatus, boxEl: presentationsMaxDoseBox, update: updateWoundActions, schedule: scheduleWoundAnalysis }
+    : key === "exam"
+      ? { arr: examImages, statusEl: examInterpretationStatus, boxEl: examInterpretationBox, update: updateExamActions, schedule: scheduleExamAnalysis }
+      : { arr: medImages, statusEl: interactionsStatus, boxEl: interactionsBox, update: updateMedSafetyActions, schedule: scheduleMedAnalysis };
+
+  const arr = cfg.arr;
+  const statusEl = cfg.statusEl;
+  const boxEl = cfg.boxEl;
+
+  if (mode === "replace") {
+    arr.length = 0;
+  }
+
+  // Feedback imediato (para não parecer que "não aconteceu nada")
+  if (statusEl) statusEl.textContent = "Carregando imagem(ns).";
+  if (boxEl) boxEl.textContent = "Processando.";
+  if (cfg && cfg.update) cfg.update();
+
+  const remaining = Math.max(0, 4 - arr.length);
   const slice = list.slice(0, remaining);
+
+  let added = 0;
+  let failed = 0;
 
   for (const file of slice) {
     try {
-      const dataUrl = await fileToCompressedDataUrl(file);
-      if (dataUrl) {
-        pendingImages = Array.isArray(pendingImages) ? pendingImages : [];
-        pendingImages.push(dataUrl);
+      // 1) tenta canvas->JPEG (melhor para upload)
+      let dataUrl = await fileToCompressedDataUrl(file);
+      // 2) fallback: dataURL direto (quando canvas falha)
+      if (!dataUrl) dataUrl = await fileToDataUrl(file);
+
+      if (dataUrl && dataUrl.startsWith("data:image/")) {
+        arr.push(dataUrl);
+        added += 1;
+      } else {
+        failed += 1;
       }
     } catch (e) {
-      // ignora arquivo inválido
+      failed += 1;
     }
   }
-  renderImageChoicePreview();
+
+  if (!arr.length) {
+    const msg = "Não foi possível ler a imagem selecionada neste aparelho. Tente usar JPG/PNG (ou ajuste a câmera para modo mais compatível).";
+    if (statusEl) statusEl.textContent = msg;
+    if (boxEl) boxEl.textContent = "Nenhum conteúdo disponível.";
+    if (cfg && cfg.update) cfg.update();
+    return;
+  }
+
+  // Dispara análise automática
+  const countMsg = arr.length + " imagem(ns) selecionada(s). Enviando para análise.";
+  if (statusEl) statusEl.textContent = countMsg;
+
+  if (cfg && cfg.schedule) cfg.schedule();
 }
     async function analyzeWoundWithImages(dataUrls) {
   if (!presentationsMaxDoseStatus || !presentationsMaxDoseBox) return;
@@ -4005,7 +4051,7 @@ async function addFilesToPending(files) {
 
     const resp = await fetch(BACKEND_URL + "/api/analisar-lesao-imagem", {
       method: "POST",
-      headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
 
@@ -4017,7 +4063,7 @@ async function addFilesToPending(files) {
     presentationsMaxDoseStatus.textContent = "Análise concluída.";
     updateWoundActions();
   } catch (e) {
-    presentationsMaxDoseStatus.textContent = "Falha ao analisar imagem.";
+    presentationsMaxDoseStatus.textContent = "Falha ao analisar imagem. " + (e && e.message ? e.message : "");
     presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
     updateWoundActions();
   }
@@ -4047,7 +4093,7 @@ async function addFilesToPending(files) {
 
     const resp = await fetch(BACKEND_URL + "/api/analisar-prescricao-imagem", {
       method: "POST",
-      headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
 
@@ -4059,9 +4105,52 @@ async function addFilesToPending(files) {
     interactionsStatus.textContent = "Análise concluída.";
     updateMedSafetyActions();
   } catch (e) {
-    interactionsStatus.textContent = "Falha ao analisar prescrição.";
+    interactionsStatus.textContent = "Falha ao analisar prescrição. " + (e && e.message ? e.message : "");
     interactionsBox.textContent = "Nenhum conteúdo disponível.";
     updateMedSafetyActions();
+  }
+}
+
+
+
+    async function analyzeExamWithImages(dataUrls) {
+  if (!examInterpretationStatus || !examInterpretationBox) return;
+
+  const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
+  if (!images.length) {
+    examInterpretationStatus.textContent = "Nenhuma imagem selecionada.";
+    examInterpretationBox.textContent = "Nenhum conteúdo disponível.";
+    updateExamActions();
+    return;
+  }
+
+  examInterpretationStatus.textContent = "Analisando exame (imagem(ns)).";
+  examInterpretationBox.textContent = "Processando.";
+  updateExamActions();
+
+  try {
+    const payload = {
+      images_data_url: images,
+      image_data_url: images[0] // compatibilidade
+    };
+
+    const resp = await fetch(BACKEND_URL + "/api/interpretar-exame-imagem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data?.error || "Falha ao interpretar o exame.");
+
+    const texto = (data?.texto || "").trim();
+    examInterpretationBox.textContent = texto || "Nenhum conteúdo disponível.";
+    examInterpretationStatus.textContent = "Análise concluída.";
+    updateExamActions();
+  } catch (e) {
+    examInterpretationStatus.textContent = "Falha ao interpretar o exame. " + (e && e.message ? e.message : "");
+    examInterpretationBox.textContent = "Nenhum conteúdo disponível.";
+    updateExamActions();
   }
 }
 
@@ -4221,7 +4310,7 @@ async function addFilesToPending(files) {
       try {
         const resp = await fetch(BACKEND_URL + "/api/prescricao-hospitalar", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao, tipo_documento: (reportDocTypeSelect && reportDocTypeSelect.value && reportDocTypeSelect.value !== "auto") ? reportDocTypeSelect.value : null })
         });
 
@@ -4283,7 +4372,7 @@ async function addFilesToPending(files) {
       try {
         const resp = await fetch(BACKEND_URL + "/api/classificar-gestacao-lactacao", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contexto })
         });
 
@@ -4442,7 +4531,7 @@ async function addFilesToPending(files) {
       try {
         const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao })
         });
 
@@ -4486,7 +4575,7 @@ async function addFilesToPending(files) {
       try {
         const resp = await fetch(BACKEND_URL + "/api/duvidas-enfermagem", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ duvida: q })
         });
 
@@ -4705,61 +4794,76 @@ if (runImageAnalysisBtn) {
 
     if (woundPhotoBtn) {
       woundPhotoBtn.addEventListener("click", () => {
-        showImageChoice(woundCameraInput, woundFileInput, analyzeWoundWithImages, "Curativos e feridas", "Selecione uma ou mais imagens da ferida/lesão. Você pode adicionar várias antes de analisar.");
+        if (woundCameraInput) woundCameraInput.click();
       });
     }
 
-    if (medPhotoBtn) {
+    if (woundFileBtn) {
+      woundFileBtn.addEventListener("click", () => {
+        if (woundFileInput) woundFileInput.click();
+      });
+    }
+if (medPhotoBtn) {
       medPhotoBtn.addEventListener("click", () => {
-        showImageChoice(medCameraInput, medFileInput, analyzePrescriptionWithImages, "Administração segura de medicamentos", "Selecione uma ou mais imagens da prescrição/medicamentos. Você pode adicionar várias antes de analisar.");
+        if (medCameraInput) medCameraInput.click();
       });
     }
 
-    if (woundCameraInput) {
-  woundCameraInput.addEventListener("change", async (e) => {
-    const files = e.target.files;
-    woundCameraInput.value = "";
-    if (!files || !files.length) return;
-    await addFilesToPending(files);
-    // Mantém o modal aberto para permitir adicionar mais imagens antes de analisar.
-    if (imageChoiceOverlay) imageChoiceOverlay.classList.remove("hidden");
-  });
-}
+    if (medFileBtn) {
+      medFileBtn.addEventListener("click", () => {
+        if (medFileInput) medFileInput.click();
+      });
+    }
+if (woundCameraInput) {
+      woundCameraInput.addEventListener("change", async (e) => {
+        const files = e.target.files;
+        woundCameraInput.value = "";
+        if (!files || !files.length) return;
+        await addFilesToTarget(files, "wound", "append");
+      });
+    }
+if (woundFileInput) {
+      woundFileInput.addEventListener("change", async (e) => {
+        const files = e.target.files;
+        woundFileInput.value = "";
+        if (!files || !files.length) return;
+        await addFilesToTarget(files, "wound", "replace");
+      });
+    }
+if (medCameraInput) {
+      medCameraInput.addEventListener("change", async (e) => {
+        const files = e.target.files;
+        medCameraInput.value = "";
+        if (!files || !files.length) return;
+        await addFilesToTarget(files, "med", "append");
+      });
+    }
+if (medFileInput) {
+      medFileInput.addEventListener("change", async (e) => {
+        const files = e.target.files;
+        medFileInput.value = "";
+        if (!files || !files.length) return;
+        await addFilesToTarget(files, "med", "replace");
+      });
+    }
 
-    if (woundFileInput) {
-  woundFileInput.addEventListener("change", async (e) => {
-    const files = e.target.files;
-    woundFileInput.value = "";
-    if (!files || !files.length) return;
-    await addFilesToPending(files);
-    // Mantém o modal aberto para permitir adicionar mais imagens antes de analisar.
-    if (imageChoiceOverlay) imageChoiceOverlay.classList.remove("hidden");
-  });
-}
-
-    if (medCameraInput) {
-  medCameraInput.addEventListener("change", async (e) => {
-    const files = e.target.files;
-    medCameraInput.value = "";
-    if (!files || !files.length) return;
-    await addFilesToPending(files);
-    // Mantém o modal aberto para permitir adicionar mais imagens antes de analisar.
-    if (imageChoiceOverlay) imageChoiceOverlay.classList.remove("hidden");
-  });
-}
-
-    if (medFileInput) {
-  medFileInput.addEventListener("change", async (e) => {
-    const files = e.target.files;
-    medFileInput.value = "";
-    if (!files || !files.length) return;
-    await addFilesToPending(files);
-    // Mantém o modal aberto para permitir adicionar mais imagens antes de analisar.
-    if (imageChoiceOverlay) imageChoiceOverlay.classList.remove("hidden");
-  });
-}
-
-    if (copyWoundBtn) {
+if (examCameraInput) {
+      examCameraInput.addEventListener("change", async (e) => {
+        const files = e.target.files;
+        examCameraInput.value = "";
+        if (!files || !files.length) return;
+        await addFilesToTarget(files, "exam", "append");
+      });
+    }
+if (examFileInput) {
+      examFileInput.addEventListener("change", async (e) => {
+        const files = e.target.files;
+        examFileInput.value = "";
+        if (!files || !files.length) return;
+        await addFilesToTarget(files, "exam", "replace");
+      });
+    }
+if (copyWoundBtn) {
       copyWoundBtn.addEventListener("click", () => {
         const text = (presentationsMaxDoseBox && presentationsMaxDoseBox.textContent) ? presentationsMaxDoseBox.textContent.trim() : "";
         if (!text) {
@@ -4775,6 +4879,24 @@ if (runImageAnalysisBtn) {
         openPrintWindow("Curativos e feridas", presentationsMaxDoseBox ? presentationsMaxDoseBox.textContent : "");
       });
     }
+
+    if (copyExamBtn) {
+      copyExamBtn.addEventListener("click", () => {
+        const text = (examInterpretationBox && examInterpretationBox.textContent) ? examInterpretationBox.textContent.trim() : "";
+        if (!text) {
+          alert("Não há conteúdo para copiar.");
+          return;
+        }
+        copyToClipboard(text);
+      });
+    }
+
+    if (printExamBtn) {
+      printExamBtn.addEventListener("click", () => {
+        openPrintWindow("Interpretação de resultados de exames", examInterpretationBox ? examInterpretationBox.textContent : "");
+      });
+    }
+
 
     if (copyMedSafetyBtn) {
       copyMedSafetyBtn.addEventListener("click", () => {
@@ -5177,7 +5299,7 @@ if (runImageAnalysisBtn) {
 
         await adminFetchJson("/api/admin/backup/import", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
@@ -5294,7 +5416,7 @@ if (runImageAnalysisBtn) {
           try {
             await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/pay`, {
               method: "POST",
-              headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ month, amount, method, notes })
             });
             await adminLoadAll();
@@ -5344,7 +5466,7 @@ if (runImageAnalysisBtn) {
           try {
             await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/active`, {
               method: "POST",
-              headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ active: !active })
             });
             await adminLoadAll();
@@ -5365,7 +5487,7 @@ if (runImageAnalysisBtn) {
           try {
             await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/reset-password`, {
               method: "POST",
-              headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ password: newPass })
             });
             await adminLoadAll();
@@ -5480,7 +5602,7 @@ if (runImageAnalysisBtn) {
 
         await adminFetchJson(`/api/admin/users/${encodeURIComponent(EDIT_USER_ID)}`, {
           method: "PUT",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fullName, dob, phone, login, password })
         });
 
@@ -5567,7 +5689,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
         await adminFetchJson("/api/admin/backup/import", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
@@ -5596,7 +5718,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       try {
         await adminFetchJson("/api/admin/users", {
           method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fullName, dob, phone, login, password })
         });
         if (st) st.textContent = "Usuário cadastrado.";
@@ -5624,260 +5746,6 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       if (!anyVisible) showLogin();
     }, 1000);
 
-
-
-
-// ======================================================================
-// PATCH DEFINITIVO (Celular): seleção de imagens + análise nos módulos
-// - Evita "não acontece nada" ao escolher arquivo
-// - Remove dependência de modal antigo
-// - Usa /api/... (mesma origem do Netlify) e exibe erros no status
-// ======================================================================
-(function () {
-  function $(id) { return document.getElementById(id); }
-
-  // Desativa qualquer overlay antigo se ainda existir por algum motivo
-  const legacyOverlay = $("imageChoiceOverlay");
-  if (legacyOverlay) legacyOverlay.classList.add("hidden");
-
-  // Estado
-  const medImages = [];
-  const woundImages = [];
-  const MAX_IMAGES = 4;
-
-  // Util: substituir elemento para remover listeners antigos
-  function replaceElKeepAttrs(el) {
-    if (!el || !el.parentNode) return el;
-    const clone = el.cloneNode(true);
-    el.parentNode.replaceChild(clone, el);
-    return clone;
-  }
-
-  // Remove listeners antigos e pega referências definitivas
-  const medCameraInput = replaceElKeepAttrs($("medCameraInput"));
-  const medFileInput = replaceElKeepAttrs($("medFileInput"));
-  const woundCameraInput = replaceElKeepAttrs($("woundCameraInput"));
-  const woundFileInput = replaceElKeepAttrs($("woundFileInput"));
-  const copyMedSafetyBtn = replaceElKeepAttrs($("copyMedSafetyBtn"));
-  const printMedSafetyBtn = replaceElKeepAttrs($("printMedSafetyBtn"));
-  const copyWoundBtn = replaceElKeepAttrs($("copyWoundBtn"));
-  const printWoundBtn = replaceElKeepAttrs($("printWoundBtn"));
-
-  const interactionsStatus = $("interactionsStatus");
-  const interactionsBox = $("interactionsBox");
-  const woundStatus = $("woundStatus");
-  const woundBox = $("woundBox");
-
-  const medPreview = $("medPreview");
-  const woundPreview = $("woundPreview");
-  const medImagesCount = $("medImagesCount");
-  const woundImagesCount = $("woundImagesCount");
-
-  // Feedback caso algum id esteja faltando (evita "silêncio")
-  function safeSet(el, text) { if (el) el.textContent = text; }
-
-  function updatePreview(target) {
-    const arr = target === "med" ? medImages : woundImages;
-    const previewEl = target === "med" ? medPreview : woundPreview;
-    const countEl = target === "med" ? medImagesCount : woundImagesCount;
-
-    if (countEl) {
-      countEl.textContent = arr.length ? (arr.length + " imagem(ns) selecionada(s).") : "";
-    }
-    if (!previewEl) return;
-    previewEl.innerHTML = "";
-    for (const url of arr) {
-      const img = document.createElement("img");
-      img.src = url;
-      previewEl.appendChild(img);
-    }
-  }
-
-  function isHeic(file) {
-    const t = (file && file.type) ? file.type.toLowerCase() : "";
-    return t === "image/heic" || t === "image/heif";
-  }
-
-  function loadImageToCanvas(file, maxSide, quality) {
-    return new Promise((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onerror = () => reject(new Error("Falha ao ler a imagem."));
-      fr.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-          try {
-            const w = img.naturalWidth || img.width;
-            const h = img.naturalHeight || img.height;
-            if (!w || !h) return reject(new Error("Imagem inválida."));
-            const scale = Math.min(1, maxSide / Math.max(w, h));
-            const cw = Math.max(1, Math.round(w * scale));
-            const ch = Math.max(1, Math.round(h * scale));
-            const canvas = document.createElement("canvas");
-            canvas.width = cw;
-            canvas.height = ch;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0, cw, ch);
-            const dataUrl = canvas.toDataURL("image/jpeg", quality);
-            resolve(dataUrl);
-          } catch (e) {
-            reject(new Error("Falha ao processar a imagem."));
-          }
-        };
-        img.onerror = () => reject(new Error("Falha ao carregar a imagem."));
-        img.src = fr.result;
-      };
-      fr.readAsDataURL(file);
-    });
-  }
-
-  async function filesToDataUrls(files, statusEl) {
-    const list = Array.from(files || []);
-    const out = [];
-    for (const f of list) {
-      if (out.length >= MAX_IMAGES) break;
-
-      if (isHeic(f)) {
-        throw new Error("Imagem em formato HEIC/HEIF não suportada. Configure a câmera para salvar em JPEG ou envie PNG/JPG.");
-      }
-      safeSet(statusEl, "Carregando imagem.");
-      const url = await loadImageToCanvas(f, 1600, 0.9);
-      out.push(url);
-    }
-    return out;
-  }
-
-  function revealActions(target) {
-    if (target === "med") {
-      if (copyMedSafetyBtn) copyMedSafetyBtn.classList.remove("hidden");
-      if (printMedSafetyBtn) printMedSafetyBtn.classList.remove("hidden");
-    } else {
-      if (copyWoundBtn) copyWoundBtn.classList.remove("hidden");
-      if (printWoundBtn) printWoundBtn.classList.remove("hidden");
-    }
-  }
-
-  async function analyze(target) {
-    const arr = target === "med" ? medImages : woundImages;
-    const statusEl = target === "med" ? interactionsStatus : woundStatus;
-    const boxEl = target === "med" ? interactionsBox : woundBox;
-
-    if (!arr.length) {
-      safeSet(statusEl, "Nenhuma imagem selecionada.");
-      if (boxEl) boxEl.textContent = "Nenhum conteúdo disponível.";
-      return;
-    }
-
-    safeSet(statusEl, "Enviando para análise.");
-    if (boxEl) boxEl.textContent = "Processando.";
-
-    const endpoint = target === "med" ? "/api/analisar-prescricao-imagem" : "/api/analisar-lesao-imagem";
-    const payload = { images_data_url: arr, image_data_url: arr[0] };
-
-    try {
-      const resp = await fetch(endpoint, {
-        method: "POST",
-        headers: Object.assign({ "Content-Type": "application/json" }, (() => { const t = getToken(); return t ? { "X-Auth-Token": t, "Authorization": "Bearer " + t } : {}; })()),
-        credentials: "include",
-        body: JSON.stringify(payload)
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error((data && data.error) ? data.error : "Falha ao analisar imagem.");
-      const texto = (data && data.texto) ? String(data.texto).trim() : "";
-      if (boxEl) boxEl.textContent = texto || "Nenhum conteúdo disponível.";
-      safeSet(statusEl, "Análise concluída.");
-      revealActions(target);
-    } catch (e) {
-      safeSet(statusEl, "Erro: " + (e && e.message ? e.message : "falha na análise."));
-      if (boxEl) boxEl.textContent = "Nenhum conteúdo disponível.";
-    }
-  }
-
-  async function onPick(target, files, mode) {
-    const statusEl = target === "med" ? interactionsStatus : woundStatus;
-    const arr = target === "med" ? medImages : woundImages;
-
-    if (mode === "replace") arr.length = 0;
-
-    if (!files || !files.length) {
-      safeSet(statusEl, "Nenhuma imagem selecionada.");
-      return;
-    }
-
-    try {
-      const urls = await filesToDataUrls(files, statusEl);
-      for (const u of urls) {
-        if (arr.length >= MAX_IMAGES) break;
-        arr.push(u);
-      }
-      updatePreview(target);
-      await analyze(target);
-    } catch (e) {
-      safeSet(statusEl, "Erro: " + (e && e.message ? e.message : "falha ao carregar imagem."));
-    } finally {
-      // permite selecionar o mesmo arquivo novamente (alguns celulares exigem limpar o value)
-      if (target === "med") {
-        if (medCameraInput) medCameraInput.value = "";
-        if (medFileInput) medFileInput.value = "";
-      } else {
-        if (woundCameraInput) woundCameraInput.value = "";
-        if (woundFileInput) woundFileInput.value = "";
-      }
-    }
-  }
-
-  if (medCameraInput) {
-    medCameraInput.addEventListener("change", (e) => onPick("med", e.target.files, "append"));
-  }
-  if (medFileInput) {
-    medFileInput.addEventListener("change", (e) => onPick("med", e.target.files, "replace"));
-  }
-  if (woundCameraInput) {
-    woundCameraInput.addEventListener("change", (e) => onPick("wound", e.target.files, "append"));
-  }
-  if (woundFileInput) {
-    woundFileInput.addEventListener("change", (e) => onPick("wound", e.target.files, "replace"));
-  }
-
-  // Copiar/Imprimir (reativa com IDs corretos)
-  function copyToClipboardSafe(text) {
-    const t = (text || "").trim();
-    if (!t) { alert("Não há conteúdo para copiar."); return; }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(t).catch(() => fallbackCopy(t));
-    } else {
-      fallbackCopy(t);
-    }
-  }
-  function fallbackCopy(t) {
-    const ta = document.createElement("textarea");
-    ta.value = t;
-    document.body.appendChild(ta);
-    ta.select();
-    try { document.execCommand("copy"); } catch (_) {}
-    document.body.removeChild(ta);
-  }
-  function openPrintWindowSafe(title, text) {
-    const w = window.open("", "_blank");
-    if (!w) { alert("Não foi possível abrir a impressão."); return; }
-    const safeTitle = (title || "Impressão").replace(/[<>&]/g, "");
-    const safeText = (text || "").replace(/[<>&]/g, (c) => ({ "<":"&lt;", ">":"&gt;", "&":"&amp;" }[c]));
-    w.document.write("<html><head><title>" + safeTitle + "</title></head><body>");
-    w.document.write("<pre style='white-space:pre-wrap;font-family:Arial,Helvetica,sans-serif;'>" + safeText + "</pre>");
-    w.document.write("</body></html>");
-    w.document.close();
-    w.focus();
-    w.print();
-  }
-
-  if (copyMedSafetyBtn) copyMedSafetyBtn.addEventListener("click", () => copyToClipboardSafe(interactionsBox ? interactionsBox.textContent : ""));
-  if (printMedSafetyBtn) printMedSafetyBtn.addEventListener("click", () => openPrintWindowSafe("Administração segura de medicamentos", interactionsBox ? interactionsBox.textContent : ""));
-  if (copyWoundBtn) copyWoundBtn.addEventListener("click", () => copyToClipboardSafe(woundBox ? woundBox.textContent : ""));
-  if (printWoundBtn) printWoundBtn.addEventListener("click", () => openPrintWindowSafe("Curativos e feridas", woundBox ? woundBox.textContent : ""));
-
-  // Inicializa previews vazios
-  updatePreview("med");
-  updatePreview("wound");
-})();
 
 </script>
 
