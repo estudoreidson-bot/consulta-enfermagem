@@ -1792,7 +1792,7 @@
 
       <div id="calcPanel_imc" class="calc-panel">
         <div class="calc-title">IMC</div>
-        <p class="calc-help">Cálculo: peso (kg) / altura² (m²).</p>
+        <p class="calc-help">Como funciona: IMC = peso (kg) / altura² (m²). Informe peso (kg) e altura (cm).</p>
         <div class="calc-row">
           <input id="imcWeightKg" class="text-input" type="number" step="0.1" min="0" placeholder="Peso (kg)" />
           <input id="imcHeightCm" class="text-input" type="number" step="0.1" min="0" placeholder="Altura (cm)" />
@@ -1800,16 +1800,69 @@
         <div id="imcResult" class="answer-box"></div>
       </div>
 
+      
       <div id="calcPanel_cv_risk" class="calc-panel hidden">
-        <div class="calc-title">Estratificação de Risco Cardiovascular</div>
-        <p class="calc-help">A estratificação de risco possui diferentes ferramentas e fluxos. Aqui foi incluído acesso direto à calculadora oficial da Sociedade Brasileira de Cardiologia (SBC).</p>
-        <a class="calc-link" href="https://departamentos.cardiol.br/sbc-da/2015/CALCULADORAER2017/etapa1.html" target="_blank" rel="noopener">Abrir calculadora oficial da SBC (Estratificação de Risco)</a>
+        <div class="calc-title">Estratificação de Risco Cardiovascular (PREVENT)</div>
+        <p class="calc-help">
+          Como funciona: estima risco de eventos cardiovasculares em 10 anos (e, quando aplicável, em 30 anos) a partir de fatores clínicos e laboratoriais.
+          Informe idade, sexo, pressão arterial sistólica, colesterol total e HDL, peso e altura, creatinina, tabagismo, diabetes e se usa anti-hipertensivo ou estatina.
+        </p>
+
+        <a class="calc-link" href="https://sbc.tribemd.com/" target="_blank" rel="noopener">Abrir calculadora oficial da SBC (PREVENT)</a>
         <div class="calc-muted">Se o serviço bloquear abertura por política do navegador, copie o endereço acima e abra manualmente.</div>
+
+        <div class="calc-row" style="margin-top: 10px;">
+          <input id="cvAge" class="text-input" type="number" step="1" min="0" placeholder="Idade (anos)" />
+          <select id="cvSex" class="text-input">
+            <option value="female">Sexo: feminino</option>
+            <option value="male">Sexo: masculino</option>
+          </select>
+        </div>
+
+        <div class="calc-row">
+          <input id="cvWeightKg" class="text-input" type="number" step="0.1" min="0" placeholder="Peso (kg)" />
+          <input id="cvHeightCm" class="text-input" type="number" step="0.1" min="0" placeholder="Altura (cm)" />
+        </div>
+
+        <div class="calc-row">
+          <input id="cvSbp" class="text-input" type="number" step="1" min="0" placeholder="PAS (mmHg)" />
+          <input id="cvCreatinine" class="text-input" type="number" step="0.01" min="0" placeholder="Creatinina (mg/dL)" />
+        </div>
+
+        <div class="calc-row">
+          <input id="cvTotalChol" class="text-input" type="number" step="1" min="0" placeholder="Colesterol total (mg/dL)" />
+          <input id="cvHdl" class="text-input" type="number" step="1" min="0" placeholder="HDL (mg/dL)" />
+        </div>
+
+        <div class="calc-row">
+          <select id="cvSmoker" class="text-input">
+            <option value="0">Tabagismo: não</option>
+            <option value="1">Tabagismo: sim</option>
+          </select>
+          <select id="cvDiabetes" class="text-input">
+            <option value="0">Diabetes: não</option>
+            <option value="1">Diabetes: sim</option>
+          </select>
+        </div>
+
+        <div class="calc-row">
+          <select id="cvOnHtnMeds" class="text-input">
+            <option value="0">Em uso de anti-hipertensivo: não</option>
+            <option value="1">Em uso de anti-hipertensivo: sim</option>
+          </select>
+          <select id="cvOnStatin" class="text-input">
+            <option value="0">Em uso de estatina/hipolipemiante: não</option>
+            <option value="1">Em uso de estatina/hipolipemiante: sim</option>
+          </select>
+        </div>
+
+        <div id="cvRiskResult" class="answer-box"></div>
       </div>
 
-      <div id="calcPanel_bsa" class="calc-panel hidden">
+      <div id="calcPanel_bsa"
+ class="calc-panel hidden">
         <div class="calc-title">SC (Mosteller)</div>
-        <p class="calc-help">Superfície corporal (m²) = raiz quadrada de (altura(cm) x peso(kg) / 3600).</p>
+        <p class="calc-help">Como funciona: SC (Mosteller) = raiz quadrada de (altura(cm) x peso(kg) / 3600). Informe peso (kg) e altura (cm).</p>
         <div class="calc-row">
           <input id="bsaWeightKg" class="text-input" type="number" step="0.1" min="0" placeholder="Peso (kg)" />
           <input id="bsaHeightCm" class="text-input" type="number" step="0.1" min="0" placeholder="Altura (cm)" />
@@ -5831,6 +5884,275 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     }
     [imcWeightKg, imcHeightCm].forEach(el => el && el.addEventListener("input", calcIMC));
     calcIMC();
+
+    // Risco cardiovascular (PREVENT - SBC/TribeMD)
+    const cvAge = document.getElementById("cvAge");
+    const cvSex = document.getElementById("cvSex");
+    const cvWeightKg = document.getElementById("cvWeightKg");
+    const cvHeightCm = document.getElementById("cvHeightCm");
+    const cvSbp = document.getElementById("cvSbp");
+    const cvCreatinine = document.getElementById("cvCreatinine");
+    const cvTotalChol = document.getElementById("cvTotalChol");
+    const cvHdl = document.getElementById("cvHdl");
+    const cvSmoker = document.getElementById("cvSmoker");
+    const cvDiabetes = document.getElementById("cvDiabetes");
+    const cvOnHtnMeds = document.getElementById("cvOnHtnMeds");
+    const cvOnStatin = document.getElementById("cvOnStatin");
+    const cvRiskResult = document.getElementById("cvRiskResult");
+
+    // Coeficientes: PREVENT (AHA) - Base model (sem fatores "novos"): 10 anos e 30 anos.
+    // Referência técnica dos coeficientes: tabela do PREVENT (AHA) conforme EBMcalc.
+    const PREVENT_BASE_10 = {
+      C0: [0.7939329, 0.7688528, 0.719883, 0.7099847, 0.8998235, 0.8972642],
+      C1: [0, 0, 0, 0, 0, 0],
+      C2: [0.0305239, 0.0736174, 0.1176967, 0.1658663, 0, 0],
+      C3: [-0.1606857, -0.0954431, -0.151185, -0.1144285, 0, 0],
+      C4: [-0.2394003, -0.4347345, -0.0835358, -0.2837212, -0.4559771, -0.6811466],
+      C5: [0.3600781, 0.3362658, 0.3592852, 0.3239977, 0.3576505, 0.3634461],
+      C6: [0.8667604, 0.7692857, 0.8348585, 0.7189597, 1.038346, 0.923776],
+      C7: [0.5360739, 0.4386871, 0.4831078, 0.3956973, 0.583916, 0.5023736],
+      C8: [0, 0, 0, 0, -0.0072294, -0.0485841],
+      C9: [0, 0, 0, 0, 0.2997706, 0.3726929],
+      C10: [0.6045917, 0.5378979, 0.4864619, 0.3690075, 0.7451638, 0.6926917],
+      C11: [0.0433769, 0.0164827, 0.0397779, 0.0203619, 0.0557087, 0.0251827],
+      C12: [0.3151672, 0.288879, 0.2265309, 0.2036522, 0.3534442, 0.2980922],
+      C13: [-0.1477655, -0.1337349, -0.0592374, -0.0865581, 0, 0],
+      C14: [-0.0663612, -0.0475924, -0.0395762, -0.0322916, -0.0981511, -0.0497731],
+      C15: [0.1197879, 0.150273, 0.0844423, 0.114563, 0, 0],
+      C16: [-0.0819715, -0.0517874, -0.0567839, -0.0300005, 0, 0],
+      C17: [0.0306769, 0.0191169, 0.0325692, 0.0232747, 0, 0],
+      C18: [-0.0946348, -0.1049477, -0.1035985, -0.0927024, -0.0946663, -0.1289201],
+      C19: [-0.27057, -0.2251948, -0.2417542, -0.2018525, -0.3581041, -0.3040924],
+      C20: [-0.078715, -0.0895067, -0.0791142, -0.0970527, -0.1159453, -0.1401688],
+      C21: [0, 0, 0, 0, -0.003878, 0.0068126],
+      C22: [-0.1637806, -0.1543702, -0.1671492, -0.1217081, -0.1884289, -0.1797778],
+      C23: [0, 0, 0, 0, 0, 0],
+      C24: [0, 0, 0, 0, 0, 0],
+      C25: [0, 0, 0, 0, 0, 0],
+      C26: [0, 0, 0, 0, 0, 0],
+      C27: [0, 0, 0, 0, 0, 0],
+      C28: [0, 0, 0, 0, 0, 0],
+      C29: [0, 0, 0, 0, 0, 0],
+      C30: [0, 0, 0, 0, 0, 0],
+      C31: [-3.307728, -3.031168, -3.819975, -3.500655, -4.310409, -3.946391],
+    };
+
+    const PREVENT_BASE_30 = {
+      C0: [0.5503079, 0.4627309, 0.4669202, 0.3994099, 0.6254374, 0.5681541],
+      C1: [-0.0928369, -0.0984281, -0.0893118, -0.0937484, -0.0983038, -0.1048388],
+      C2: [0.0409794, 0.0836088, 0.1256901, 0.1744643, 0, 0],
+      C3: [-0.1663306, -0.1029824, -0.1542255, -0.120203, 0, 0],
+      C4: [-0.1628654, -0.2140352, -0.0018093, -0.0665117, -0.3919241, -0.4761564],
+      C5: [0.3299505, 0.2904325, 0.322949, 0.2753037, 0.3142295, 0.30324],
+      C6: [0.6793894, 0.5331276, 0.6296707, 0.4790257, 0.8330787, 0.6840338],
+      C7: [0.3196112, 0.2141914, 0.268292, 0.1782635, 0.3438651, 0.2656273],
+      C8: [0, 0, 0, 0, 0.0594874, 0.0833107],
+      C9: [0, 0, 0, 0, 0.2525536, 0.26999],
+      C10: [0.1857101, 0.1155556, 0.100106, -0.0218789, 0.2981642, 0.2541805],
+      C11: [0.0553528, 0.0603775, 0.0499663, 0.0602553, 0.0667159, 0.0638923],
+      C12: [0.2894, 0.232714, 0.1875292, 0.1421182, 0.333921, 0.2583631],
+      C13: [-0.075688, -0.0272112, 0.0152476, 0.0135996, 0, 0],
+      C14: [-0.056367, -0.0384488, -0.0276123, -0.0218265, -0.0893177, -0.0391938],
+      C15: [0.1071019, 0.134192, 0.0736147, 0.1013148, 0, 0],
+      C16: [-0.0751438, -0.0511759, -0.0521962, -0.0312619, 0, 0],
+      C17: [0.0301786, 0.0165865, 0.0316918, 0.020673, 0, 0],
+      C18: [-0.0998776, -0.1101437, -0.1046101, -0.0920935, -0.0974299, -0.1269124],
+      C19: [-0.3206166, -0.2585943, -0.2727793, -0.2159947, -0.404855, -0.3273572],
+      C20: [-0.1607862, -0.1566406, -0.1530907, -0.1548811, -0.1982991, -0.2043019],
+      C21: [0, 0, 0, 0, -0.0035619, -0.0182831],
+      C22: [-0.1450788, -0.1166776, -0.1299149, -0.0712547, -0.1564215, -0.1342618],
+      C23: [0, 0, 0, 0, 0, 0],
+      C24: [0, 0, 0, 0, 0, 0],
+      C25: [0, 0, 0, 0, 0, 0],
+      C26: [0, 0, 0, 0, 0, 0],
+      C27: [0, 0, 0, 0, 0, 0],
+      C28: [0, 0, 0, 0, 0, 0],
+      C29: [0, 0, 0, 0, 0, 0],
+      C30: [0, 0, 0, 0, 0, 0],
+      C31: [-1.318827, -1.148204, -1.974074, -1.736444, -2.205379, -1.95751],
+    };
+
+    function preventIndex(endpoint, sex) {
+      const sx = (sex === "male") ? "m" : "f";
+      if (endpoint === "total") return sx === "f" ? 0 : 1;
+      if (endpoint === "ascvd") return sx === "f" ? 2 : 3;
+      return sx === "f" ? 4 : 5; // hf
+    }
+
+    function preventEgfrCkdEpi2021(creatinineMgDl, ageYears, sex) {
+      // CKD-EPI 2021 (sem raça): https://www.kidney.org/professionals/kdoqi/gfr_calculator (equação 2021)
+      const scr = creatinineMgDl;
+      const age = ageYears;
+      const female = (sex !== "male");
+
+      const kappa = female ? 0.7 : 0.9;
+      const alpha = female ? -0.241 : -0.302;
+      const sexFactor = female ? 1.012 : 1.0;
+
+      const minPart = Math.min(scr / kappa, 1);
+      const maxPart = Math.max(scr / kappa, 1);
+
+      const egfr = 142 * Math.pow(minPart, alpha) * Math.pow(maxPart, -1.2) * Math.pow(0.9938, age) * sexFactor;
+      return egfr;
+    }
+
+    function preventRiskPct(logit) {
+      // 100 * exp(x) / (1 + exp(x))
+      const ex = Math.exp(logit);
+      const p = ex / (1 + ex);
+      return p * 100;
+    }
+
+    function preventComputeLogit(model, endpoint, sex, v) {
+      const idx = preventIndex(endpoint, sex);
+      const C = (name) => (model[name] ? model[name][idx] : 0);
+
+      // Variáveis conforme especificação do PREVENT:
+      const ageTerm = (v.age - 55) / 10;
+      const nonHdlTerm = (((v.totalChol - v.hdl) * 0.02586) - 3.5); // mmol/L
+      const hdlTerm = ((v.hdl * 0.02586) - 1.3) / 0.3; // mmol/L
+
+      const sbpLow = (Math.min(v.sbp, 110) - 110) / 20;
+      const sbpHigh = (Math.max(v.sbp, 110) - 130) / 20;
+
+      const bmiLow = (Math.min(v.bmi, 30) - 25) / 5;
+      const bmiHigh = (Math.max(v.bmi, 30) - 30) / 5;
+
+      const egfrLow = (Math.min(v.egfr, 60) - 60) / -15;
+      const egfrHigh = (Math.max(v.egfr, 60) - 90) / -15;
+
+      const diabetes = v.diabetes ? 1 : 0;
+      const smoker = v.smoker ? 1 : 0;
+      const onHtnMeds = v.onHtnMeds ? 1 : 0;
+      const onStatin = v.onStatin ? 1 : 0;
+
+      const logit =
+        (C("C0") * ageTerm) +
+        (C("C1") * (ageTerm * ageTerm)) +
+        (C("C2") * nonHdlTerm) +
+        (C("C3") * hdlTerm) +
+        (C("C4") * sbpLow) +
+        (C("C5") * sbpHigh) +
+        (C("C6") * diabetes) +
+        (C("C7") * smoker) +
+        (C("C8") * bmiLow) +
+        (C("C9") * bmiHigh) +
+        (C("C10") * egfrLow) +
+        (C("C11") * egfrHigh) +
+        (C("C12") * onHtnMeds) +
+        (C("C13") * onStatin) +
+        (C("C14") * onHtnMeds * sbpHigh) +
+        (C("C15") * onStatin * nonHdlTerm) +
+        (C("C16") * ageTerm * nonHdlTerm) +
+        (C("C17") * ageTerm * hdlTerm) +
+        (C("C18") * ageTerm * sbpHigh) +
+        (C("C19") * ageTerm * diabetes) +
+        (C("C20") * ageTerm * smoker) +
+        (C("C21") * bmiHigh) +
+        (C("C22") * ageTerm * egfrLow) +
+        (C("C31"));
+
+      return logit;
+    }
+
+    function cvRiskBandAscvd10y(pct) {
+      if (!Number.isFinite(pct)) return "-";
+      if (pct < 5) return "Baixo (<5%)";
+      if (pct < 7.5) return "Limítrofe (5% a <7,5%)";
+      if (pct < 20) return "Intermediário (7,5% a <20%)";
+      return "Alto (≥20%)";
+    }
+
+    function calcCvRiskPrevent() {
+      if (!cvRiskResult) return;
+
+      const age = safeNumber(cvAge?.value);
+      const sex = cvSex?.value || "female";
+      const w = safeNumber(cvWeightKg?.value);
+      const hcm = safeNumber(cvHeightCm?.value);
+      const sbp = safeNumber(cvSbp?.value);
+      const scr = safeNumber(cvCreatinine?.value);
+      const tc = safeNumber(cvTotalChol?.value);
+      const hdl = safeNumber(cvHdl?.value);
+      const smoker = Number(cvSmoker?.value || "0") === 1;
+      const diabetes = Number(cvDiabetes?.value || "0") === 1;
+      const onHtnMeds = Number(cvOnHtnMeds?.value || "0") === 1;
+      const onStatin = Number(cvOnStatin?.value || "0") === 1;
+
+      const missing = [];
+      if (!age || age <= 0) missing.push("idade");
+      if (!w || w <= 0) missing.push("peso");
+      if (!hcm || hcm <= 0) missing.push("altura");
+      if (!sbp || sbp <= 0) missing.push("PAS");
+      if (!scr || scr <= 0) missing.push("creatinina");
+      if (!tc || tc <= 0) missing.push("colesterol total");
+      if (!hdl || hdl <= 0) missing.push("HDL");
+
+      if (missing.length) {
+        cvRiskResult.textContent = "Preencha: " + missing.join(", ") + ".";
+        return;
+      }
+
+      const hm = hcm / 100;
+      const bmi = w / (hm * hm);
+      const egfr = preventEgfrCkdEpi2021(scr, age, sex);
+
+      const v = {
+        age,
+        sbp,
+        totalChol: tc,
+        hdl,
+        bmi,
+        egfr,
+        smoker,
+        diabetes,
+        onHtnMeds,
+        onStatin
+      };
+
+      const total10 = preventRiskPct(preventComputeLogit(PREVENT_BASE_10, "total", sex, v));
+      const ascvd10 = preventRiskPct(preventComputeLogit(PREVENT_BASE_10, "ascvd", sex, v));
+      const hf10 = preventRiskPct(preventComputeLogit(PREVENT_BASE_10, "hf", sex, v));
+
+      let text = "";
+      const warnings = [];
+      if (age < 30 || age > 79) warnings.push("Faixa etária fora do intervalo típico (30 a 79 anos) do PREVENT; interpretar com cautela.");
+      if (egfr <= 0 || !Number.isFinite(egfr)) warnings.push("Não foi possível estimar eTFG com segurança; verifique creatinina/idade/sexo.");
+      if (warnings.length) text += warnings.map(w => "Atenção: " + w).join("\n") + "\n\n";
+
+      text += `IMC: ${formatPtNumber(bmi, 1)} kg/m²\n`;
+      text += `eTFG (CKD-EPI 2021): ${formatPtNumber(egfr, 0)} mL/min/1,73m²\n\n`;
+
+      text += `Risco em 10 anos (PREVENT)\n`;
+      text += `CVD total: ${formatPtNumber(total10, 1)}%\n`;
+      text += `ASCVD: ${formatPtNumber(ascvd10, 1)}% (${cvRiskBandAscvd10y(ascvd10)})\n`;
+      text += `Insuficiência cardíaca: ${formatPtNumber(hf10, 1)}%\n`;
+
+      // 30-year: aplicável principalmente para 30-59 anos
+      if (age >= 30 && age <= 59) {
+        const total30 = preventRiskPct(preventComputeLogit(PREVENT_BASE_30, "total", sex, v));
+        const ascvd30 = preventRiskPct(preventComputeLogit(PREVENT_BASE_30, "ascvd", sex, v));
+        const hf30 = preventRiskPct(preventComputeLogit(PREVENT_BASE_30, "hf", sex, v));
+        text += `\nRisco em 30 anos (PREVENT)\n`;
+        text += `CVD total: ${formatPtNumber(total30, 1)}%\n`;
+        text += `ASCVD: ${formatPtNumber(ascvd30, 1)}%\n`;
+        text += `Insuficiência cardíaca: ${formatPtNumber(hf30, 1)}%\n`;
+      } else {
+        text += `\nRisco em 30 anos: aplicável principalmente para 30 a 59 anos.\n`;
+      }
+
+      text += `\nObservação: ferramenta de apoio. A interpretação e conduta dependem do contexto clínico e diretriz adotada.`;
+
+      cvRiskResult.textContent = text;
+    }
+
+    [
+      cvAge, cvSex, cvWeightKg, cvHeightCm, cvSbp, cvCreatinine,
+      cvTotalChol, cvHdl, cvSmoker, cvDiabetes, cvOnHtnMeds, cvOnStatin
+    ].forEach(el => el && el.addEventListener("input", calcCvRiskPrevent));
+    [cvSex, cvSmoker, cvDiabetes, cvOnHtnMeds, cvOnStatin].forEach(el => el && el.addEventListener("change", calcCvRiskPrevent));
+    calcCvRiskPrevent();
+
 
     // BSA (Mosteller)
     const bsaWeightKg = document.getElementById("bsaWeightKg");
