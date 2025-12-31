@@ -1759,8 +1759,10 @@
 
 <div id="medicalDoubtsCard" class="module-card">
       <h2>Dúvidas de Enfermagem</h2>
-      <p class="mini-status" style="margin-top: 0;">Digite sua dúvida e pressione Enter para obter uma resposta.</p>
-      <input id="medicalDoubtInput" class="text-input" type="text" placeholder="Digite aqui sua dúvida médica e pressione Enter" autocomplete="off" />
+      <p class="mini-status" style="margin-top: 0;">Digite sua dúvida e pressione Enter ou clique em Enviar.</p><div class="inline-input-row" style="gap: 10px; align-items: stretch;">
+  <input id="medicalDoubtInput" class="text-input" type="text" placeholder="Digite aqui sua dúvida e pressione Enter" autocomplete="off" style="flex: 1 1 auto; margin: 0;" />
+  <button id="medicalDoubtSendBtn" class="btn-print" type="button" style="white-space: nowrap;">Enviar</button>
+</div>
       <div id="medicalDoubtStatus" class="mini-status"></div>
       <div id="medicalDoubtAnswer" class="answer-box"></div>
     </div>
@@ -1769,7 +1771,7 @@
                 <div id="calculatorsCard" class="module-card">
       <h2>Calculadoras Clínicas</h2>
       <p class="mini-status" style="margin-top: 0;">
-        Selecione a calculadora, preencha os campos e veja o resultado. Em calculadoras que possuem ferramenta oficial, há um link para abrir a referência externa.
+        Selecione a calculadora, preencha os campos e veja o resultado.
       </p>
 
       <div class="inline-input-row">
@@ -1807,9 +1809,6 @@
           Como funciona: estima risco de eventos cardiovasculares em 10 anos (e, quando aplicável, em 30 anos) a partir de fatores clínicos e laboratoriais.
           Informe idade, sexo, pressão arterial sistólica, colesterol total e HDL, peso e altura, creatinina, tabagismo, diabetes e se usa anti-hipertensivo ou estatina.
         </p>
-
-        <a class="calc-link" href="https://sbc.tribemd.com/" target="_blank" rel="noopener">Abrir calculadora oficial da SBC (PREVENT)</a>
-        <div class="calc-muted">Se o serviço bloquear abertura por política do navegador, copie o endereço acima e abra manualmente.</div>
 
         <div class="calc-row" style="margin-top: 10px;">
           <input id="cvAge" class="text-input" type="number" step="1" min="0" placeholder="Idade (anos)" />
@@ -1872,12 +1871,11 @@
 
       <div id="calcPanel_gest_age" class="calc-panel hidden">
         <div class="calc-title">Idade gestacional</div>
-        <p class="calc-help">Cálculo local por DUM (DPP = DUM + 280 dias). Para validação/uso institucional, utilize também a calculadora oficial do DF.</p>
+        <p class="calc-help">Como funciona: calcula idade gestacional a partir da DUM e estima a DPP (DUM + 280 dias). Informe a data da DUM.</p>
         <div class="calc-row">
           <label style="font-size: 13px; color: #333; font-weight: 700;">DUM</label>
           <input id="gestDum" class="text-input" type="date" />
         </div>
-        <a class="calc-link" href="https://calculadoragestacional.saude.df.gov.br/" target="_blank" rel="noopener">Abrir calculadora oficial do DF</a>
         <div id="gestResult" class="answer-box"></div>
       </div>
 
@@ -2641,6 +2639,7 @@ const recordBtn = document.getElementById("recordBtn");
     const medicalDoubtInput = document.getElementById("medicalDoubtInput");
     const medicalDoubtStatus = document.getElementById("medicalDoubtStatus");
     const medicalDoubtAnswer = document.getElementById("medicalDoubtAnswer");
+    const medicalDoubtSendBtn = document.getElementById("medicalDoubtSendBtn");
 
 
     const medPhotoBtn = document.getElementById("medPhotoBtn");
@@ -5018,7 +5017,23 @@ async function addFilesToTarget(files, targetKey, mode) {
       }
     }
 
-    recordBtn.onclick = () => {
+    // Dúvidas de Enfermagem: Enter e botão Enviar
+if (medicalDoubtInput) {
+  medicalDoubtInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submitMedicalDoubt();
+    }
+  });
+}
+
+if (medicalDoubtSendBtn) {
+  medicalDoubtSendBtn.addEventListener("click", () => {
+    submitMedicalDoubt();
+  });
+}
+
+recordBtn.onclick = () => {
       if (!isRecording) {
         startRecording();
       } else {
