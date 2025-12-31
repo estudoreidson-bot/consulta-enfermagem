@@ -1293,7 +1293,54 @@
       .consult-type-buttons { grid-template-columns: 1fr; }
     }
 
-</style>
+
+    /* =========================
+       MÓDULO: CALCULADORAS CLÍNICAS
+       ========================= */
+    .calc-panel {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #eee;
+    }
+    .calc-title {
+      font-weight: 800;
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      color: #111827;
+    }
+    .calc-help {
+      margin: 0 0 10px 0;
+      font-size: 12px;
+      color: #555;
+      line-height: 1.35;
+    }
+    .calc-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .calc-row .text-input {
+      min-width: 160px;
+    }
+    .calc-link {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 13px;
+      color: #0c5460;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .calc-muted {
+      font-size: 12px;
+      color: #666;
+      margin-top: 8px;
+      white-space: pre-wrap;
+      line-height: 1.35;
+    }
+
+  </style>
 </head>
 <body>
 
@@ -1717,6 +1764,307 @@
       <div id="medicalDoubtStatus" class="mini-status"></div>
       <div id="medicalDoubtAnswer" class="answer-box"></div>
     </div>
+
+
+                <div id="calculatorsCard" class="module-card">
+      <h2>Calculadoras Clínicas</h2>
+      <p class="mini-status" style="margin-top: 0;">
+        Selecione a calculadora, preencha os campos e veja o resultado. Em calculadoras que possuem ferramenta oficial, há um link para abrir a referência externa.
+      </p>
+
+      <div class="inline-input-row">
+        <select id="calcSelect" class="text-input" style="min-width: 280px;">
+          <option value="imc">IMC</option>
+          <option value="cv_risk">Estratificação de Risco Cardiovascular</option>
+          <option value="bsa">SC (Mosteller)</option>
+          <option value="gest_age">Idade gestacional</option>
+          <option value="drip_pump">Gotejamento e bomba de infusão</option>
+          <option value="fluid_balance">Balanço hídrico</option>
+          <option value="weight_dose">Dose por peso</option>
+          <option value="glasgow">Glasgow (ECG)</option>
+          <option value="sedation">Ramsay / RASS</option>
+          <option value="pain">Escala de dor (0 a 10)</option>
+          <option value="morse">Risco de quedas (Morse)</option>
+          <option value="braden">Braden (LPP)</option>
+          <option value="pews">PEWS (pediatria)</option>
+        </select>
+      </div>
+
+      <div id="calcPanel_imc" class="calc-panel">
+        <div class="calc-title">IMC</div>
+        <p class="calc-help">Cálculo: peso (kg) / altura² (m²).</p>
+        <div class="calc-row">
+          <input id="imcWeightKg" class="text-input" type="number" step="0.1" min="0" placeholder="Peso (kg)" />
+          <input id="imcHeightCm" class="text-input" type="number" step="0.1" min="0" placeholder="Altura (cm)" />
+        </div>
+        <div id="imcResult" class="answer-box"></div>
+      </div>
+
+      <div id="calcPanel_cv_risk" class="calc-panel hidden">
+        <div class="calc-title">Estratificação de Risco Cardiovascular</div>
+        <p class="calc-help">A estratificação de risco possui diferentes ferramentas e fluxos. Aqui foi incluído acesso direto à calculadora oficial da Sociedade Brasileira de Cardiologia (SBC).</p>
+        <a class="calc-link" href="https://departamentos.cardiol.br/sbc-da/2015/CALCULADORAER2017/etapa1.html" target="_blank" rel="noopener">Abrir calculadora oficial da SBC (Estratificação de Risco)</a>
+        <div class="calc-muted">Se o serviço bloquear abertura por política do navegador, copie o endereço acima e abra manualmente.</div>
+      </div>
+
+      <div id="calcPanel_bsa" class="calc-panel hidden">
+        <div class="calc-title">SC (Mosteller)</div>
+        <p class="calc-help">Superfície corporal (m²) = raiz quadrada de (altura(cm) x peso(kg) / 3600).</p>
+        <div class="calc-row">
+          <input id="bsaWeightKg" class="text-input" type="number" step="0.1" min="0" placeholder="Peso (kg)" />
+          <input id="bsaHeightCm" class="text-input" type="number" step="0.1" min="0" placeholder="Altura (cm)" />
+        </div>
+        <div id="bsaResult" class="answer-box"></div>
+      </div>
+
+      <div id="calcPanel_gest_age" class="calc-panel hidden">
+        <div class="calc-title">Idade gestacional</div>
+        <p class="calc-help">Cálculo local por DUM (DPP = DUM + 280 dias). Para validação/uso institucional, utilize também a calculadora oficial do DF.</p>
+        <div class="calc-row">
+          <label style="font-size: 13px; color: #333; font-weight: 700;">DUM</label>
+          <input id="gestDum" class="text-input" type="date" />
+        </div>
+        <a class="calc-link" href="https://calculadoragestacional.saude.df.gov.br/" target="_blank" rel="noopener">Abrir calculadora oficial do DF</a>
+        <div id="gestResult" class="answer-box"></div>
+      </div>
+
+      <div id="calcPanel_drip_pump" class="calc-panel hidden">
+        <div class="calc-title">Gotejamento e bomba de infusão</div>
+        <p class="calc-help">Informe volume e tempo. O sistema calcula mL/h (bomba) e gotas/min (gotejamento) conforme o fator de gotejamento.</p>
+        <div class="calc-row">
+          <input id="dripVolumeMl" class="text-input" type="number" step="0.1" min="0" placeholder="Volume (mL)" />
+          <input id="dripTimeH" class="text-input" type="number" step="1" min="0" placeholder="Tempo (h)" />
+          <input id="dripTimeMin" class="text-input" type="number" step="1" min="0" placeholder="Tempo (min)" />
+          <select id="dripFactor" class="text-input">
+            <option value="20">Macro 20 gotas/mL</option>
+            <option value="60">Micro 60 gotas/mL</option>
+            <option value="10">10 gotas/mL</option>
+            <option value="15">15 gotas/mL</option>
+          </select>
+        </div>
+        <div id="dripResult" class="answer-box"></div>
+      </div>
+
+      <div id="calcPanel_fluid_balance" class="calc-panel hidden">
+        <div class="calc-title">Balanço hídrico</div>
+        <p class="calc-help">Preencha entradas e saídas (mL). Opcionalmente, informe peso e tempo para estimar diurese (mL/kg/h).</p>
+        <div class="calc-row">
+          <input id="fbInputMl" class="text-input" type="number" step="1" min="0" placeholder="Entradas (mL)" />
+          <input id="fbOutputMl" class="text-input" type="number" step="1" min="0" placeholder="Saídas (mL)" />
+          <input id="fbWeightKg" class="text-input" type="number" step="0.1" min="0" placeholder="Peso (kg, opcional)" />
+          <input id="fbHours" class="text-input" type="number" step="0.1" min="0" placeholder="Tempo (h, opcional)" />
+        </div>
+        <div id="fbResult" class="answer-box"></div>
+      </div>
+
+      <div id="calcPanel_weight_dose" class="calc-panel hidden">
+        <div class="calc-title">Dose por peso</div>
+        <p class="calc-help">Calcula a dose por tomada (mg) a partir de mg/kg. Se houver concentração (mg/mL), calcula volume (mL).</p>
+        <div class="calc-row">
+          <input id="wdWeightKg" class="text-input" type="number" step="0.1" min="0" placeholder="Peso (kg)" />
+          <input id="wdDoseMgKg" class="text-input" type="number" step="0.01" min="0" placeholder="Dose (mg/kg)" />
+          <input id="wdMaxDoseMg" class="text-input" type="number" step="0.1" min="0" placeholder="Dose máx (mg, opcional)" />
+          <input id="wdConcMgMl" class="text-input" type="number" step="0.01" min="0" placeholder="Concentração (mg/mL, opcional)" />
+        </div>
+        <div id="wdResult" class="answer-box"></div>
+      </div>
+
+      <div id="calcPanel_glasgow" class="calc-panel hidden">
+        <div class="calc-title">Escala de Coma de Glasgow (ECG)</div>
+        <p class="calc-help">Selecione os componentes. Total varia de 3 a 15.</p>
+
+        <div class="calc-row">
+          <select id="gcsEye" class="text-input">
+            <option value="4">Abertura ocular: espontânea (4)</option>
+            <option value="3">Abertura ocular: ao som (3)</option>
+            <option value="2">Abertura ocular: à dor (2)</option>
+            <option value="1">Abertura ocular: nenhuma (1)</option>
+          </select>
+
+          <select id="gcsVerbal" class="text-input">
+            <option value="5">Resposta verbal: orientado (5)</option>
+            <option value="4">Resposta verbal: confuso (4)</option>
+            <option value="3">Resposta verbal: palavras inapropriadas (3)</option>
+            <option value="2">Resposta verbal: sons incompreensíveis (2)</option>
+            <option value="1">Resposta verbal: nenhuma (1)</option>
+          </select>
+
+          <select id="gcsMotor" class="text-input">
+            <option value="6">Resposta motora: obedece comandos (6)</option>
+            <option value="5">Resposta motora: localiza dor (5)</option>
+            <option value="4">Resposta motora: retira à dor (4)</option>
+            <option value="3">Resposta motora: flexão anormal (3)</option>
+            <option value="2">Resposta motora: extensão (2)</option>
+            <option value="1">Resposta motora: nenhuma (1)</option>
+          </select>
+        </div>
+
+        <div id="gcsResult" class="answer-box"></div>
+      </div>
+
+      <div id="calcPanel_sedation" class="calc-panel hidden">
+        <div class="calc-title">Ramsay / RASS</div>
+        <p class="calc-help">Selecione a pontuação e veja a interpretação resumida.</p>
+
+        <div class="calc-row">
+          <select id="ramsay" class="text-input">
+            <option value="1">Ramsay 1: ansioso/agitado</option>
+            <option value="2">Ramsay 2: cooperativo/orientado/tranquilo</option>
+            <option value="3">Ramsay 3: responde a comandos</option>
+            <option value="4">Ramsay 4: resposta rápida a estímulo (tátil/sonoro)</option>
+            <option value="5">Ramsay 5: resposta lenta a estímulo</option>
+            <option value="6">Ramsay 6: sem resposta</option>
+          </select>
+
+          <select id="rass" class="text-input">
+            <option value="4">RASS +4: combativo</option>
+            <option value="3">RASS +3: muito agitado</option>
+            <option value="2">RASS +2: agitado</option>
+            <option value="1">RASS +1: inquieto</option>
+            <option value="0">RASS 0: alerta e calmo</option>
+            <option value="-1">RASS -1: sonolento</option>
+            <option value="-2">RASS -2: sedação leve</option>
+            <option value="-3">RASS -3: sedação moderada</option>
+            <option value="-4">RASS -4: sedação profunda</option>
+            <option value="-5">RASS -5: não desperta</option>
+          </select>
+        </div>
+
+        <div id="sedationResult" class="answer-box"></div>
+      </div>
+
+      <div id="calcPanel_pain" class="calc-panel hidden">
+        <div class="calc-title">Escala de dor (0 a 10)</div>
+        <p class="calc-help">Informe a pontuação referida. Interpretação usual: 1-3 leve, 4-6 moderada, 7-10 intensa.</p>
+        <div class="calc-row">
+          <input id="painScore" class="text-input" type="number" step="1" min="0" max="10" placeholder="Dor (0-10)" />
+        </div>
+        <div id="painResult" class="answer-box"></div>
+      </div>
+
+      <div id="calcPanel_morse" class="calc-panel hidden">
+        <div class="calc-title">Risco de quedas (Morse)</div>
+        <p class="calc-help">Selecione cada item e o sistema soma a pontuação.</p>
+
+        <div class="calc-row">
+          <select id="morseFallHx" class="text-input">
+            <option value="0">Histórico de quedas: não (0)</option>
+            <option value="25">Histórico de quedas: sim (25)</option>
+          </select>
+
+          <select id="morseSecondaryDx" class="text-input">
+            <option value="0">Diagnóstico secundário: não (0)</option>
+            <option value="15">Diagnóstico secundário: sim (15)</option>
+          </select>
+
+          <select id="morseAid" class="text-input">
+            <option value="0">Auxílio à deambulação: nenhum/repouso/leito/ajuda profissional (0)</option>
+            <option value="15">Auxílio à deambulação: muletas/bengala/andador (15)</option>
+            <option value="30">Auxílio à deambulação: apoia-se em móveis (30)</option>
+          </select>
+
+          <select id="morseIv" class="text-input">
+            <option value="0">Terapia endovenosa (soro/heparina lock): não (0)</option>
+            <option value="20">Terapia endovenosa (soro/heparina lock): sim (20)</option>
+          </select>
+
+          <select id="morseGait" class="text-input">
+            <option value="0">Marcha/transferência: normal/repouso/uso de cadeira (0)</option>
+            <option value="10">Marcha/transferência: fraca (10)</option>
+            <option value="20">Marcha/transferência: prejudicada (20)</option>
+          </select>
+
+          <select id="morseMental" class="text-input">
+            <option value="0">Estado mental: reconhece limitações (0)</option>
+            <option value="15">Estado mental: esquece limitações (15)</option>
+          </select>
+        </div>
+
+        <div id="morseResult" class="answer-box"></div>
+      </div>
+
+      <div id="calcPanel_braden" class="calc-panel hidden">
+        <div class="calc-title">Braden (risco de LPP)</div>
+        <p class="calc-help">Selecione cada subescala (valores usuais). Total varia de 6 a 23.</p>
+
+        <div class="calc-row">
+          <select id="brSensory" class="text-input">
+            <option value="4">Percepção sensorial: sem limitação (4)</option>
+            <option value="3">Percepção sensorial: levemente limitada (3)</option>
+            <option value="2">Percepção sensorial: muito limitada (2)</option>
+            <option value="1">Percepção sensorial: completamente limitada (1)</option>
+          </select>
+
+          <select id="brMoisture" class="text-input">
+            <option value="4">Umidade: raramente úmido (4)</option>
+            <option value="3">Umidade: ocasionalmente úmido (3)</option>
+            <option value="2">Umidade: frequentemente úmido (2)</option>
+            <option value="1">Umidade: constantemente úmido (1)</option>
+          </select>
+
+          <select id="brActivity" class="text-input">
+            <option value="4">Atividade: anda frequentemente (4)</option>
+            <option value="3">Atividade: anda ocasionalmente (3)</option>
+            <option value="2">Atividade: restrito à cadeira (2)</option>
+            <option value="1">Atividade: acamado (1)</option>
+          </select>
+
+          <select id="brMobility" class="text-input">
+            <option value="4">Mobilidade: sem limitação (4)</option>
+            <option value="3">Mobilidade: levemente limitada (3)</option>
+            <option value="2">Mobilidade: muito limitada (2)</option>
+            <option value="1">Mobilidade: completamente imóvel (1)</option>
+          </select>
+
+          <select id="brNutrition" class="text-input">
+            <option value="4">Nutrição: excelente (4)</option>
+            <option value="3">Nutrição: adequada (3)</option>
+            <option value="2">Nutrição: provavelmente inadequada (2)</option>
+            <option value="1">Nutrição: muito pobre (1)</option>
+          </select>
+
+          <select id="brFriction" class="text-input">
+            <option value="3">Fricção/cisalhamento: nenhum problema aparente (3)</option>
+            <option value="2">Fricção/cisalhamento: problema potencial (2)</option>
+            <option value="1">Fricção/cisalhamento: problema (1)</option>
+          </select>
+        </div>
+
+        <div id="bradenResult" class="answer-box"></div>
+      </div>
+
+      <div id="calcPanel_pews" class="calc-panel hidden">
+        <div class="calc-title">PEWS (pediatria)</div>
+        <p class="calc-help">Modelo baseado no Brighton PEWS: comportamento, cardiovascular e respiratório (0 a 3 cada). Use junto ao protocolo institucional de escalonamento.</p>
+
+        <div class="calc-row">
+          <select id="pewsBehavior" class="text-input">
+            <option value="0">Comportamento: responsivo/apropriado (0)</option>
+            <option value="1">Comportamento: sonolento/agitado, consolável (1)</option>
+            <option value="2">Comportamento: irritado/agitado, não consolável (2)</option>
+            <option value="3">Comportamento: letárgico/confuso ou pouca resposta à dor (3)</option>
+          </select>
+
+          <select id="pewsCardio" class="text-input">
+            <option value="0">Cardiovascular: cor normal ou TPC 1-2s (0)</option>
+            <option value="1">Cardiovascular: pálido ou TPC 3s (1)</option>
+            <option value="2">Cardiovascular: acinzentado/cianótico ou TPC 4s, ou FC &gt; 20 acima do normal (2)</option>
+            <option value="3">Cardiovascular: moteado/TPC ≥ 5s, ou FC &gt; 30 acima do normal, ou bradicardia (3)</option>
+          </select>
+
+          <select id="pewsResp" class="text-input">
+            <option value="0">Respiratório: sem desconforto (0)</option>
+            <option value="1">Respiratório: FR &gt; 10 acima do normal ou uso leve de musculatura acessória (1)</option>
+            <option value="2">Respiratório: FR &gt; 20 acima do normal ou retrações marcadas (2)</option>
+            <option value="3">Respiratório: FR &gt; 30 acima do normal ou desconforto grave (3)</option>
+          </select>
+        </div>
+
+        <div id="pewsResult" class="answer-box"></div>
+      </div>
+
+    </div>
+
 
                 <div id="patientReportCard" class="module-card">
       <h2>Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado de comparecimento ou permanência / ATA reunião / Registros de procedimentos</h2>
@@ -5386,6 +5734,401 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       const anyVisible = (lv && !lv.classList.contains("hidden")) || (av && !av.classList.contains("hidden")) || (nv && !nv.classList.contains("hidden"));
       if (!anyVisible) showLogin();
     }, 1000);
+
+
+
+    // ============================
+    // MÓDULO: Calculadoras Clínicas
+    // ============================
+    const calculatorsCard = document.getElementById("calculatorsCard");
+    const calcSelect = document.getElementById("calcSelect");
+
+    const calcPanels = {
+      imc: document.getElementById("calcPanel_imc"),
+      cv_risk: document.getElementById("calcPanel_cv_risk"),
+      bsa: document.getElementById("calcPanel_bsa"),
+      gest_age: document.getElementById("calcPanel_gest_age"),
+      drip_pump: document.getElementById("calcPanel_drip_pump"),
+      fluid_balance: document.getElementById("calcPanel_fluid_balance"),
+      weight_dose: document.getElementById("calcPanel_weight_dose"),
+      glasgow: document.getElementById("calcPanel_glasgow"),
+      sedation: document.getElementById("calcPanel_sedation"),
+      pain: document.getElementById("calcPanel_pain"),
+      morse: document.getElementById("calcPanel_morse"),
+      braden: document.getElementById("calcPanel_braden"),
+      pews: document.getElementById("calcPanel_pews"),
+    };
+
+    function safeNumber(v) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function formatPtNumber(n, decimals = 2) {
+      if (!Number.isFinite(n)) return "-";
+      return n.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    }
+
+    function parseDateYYYYMMDD(value) {
+      if (!value) return null;
+      const parts = String(value).split("-");
+      if (parts.length !== 3) return null;
+      const y = Number(parts[0]);
+      const m = Number(parts[1]);
+      const d = Number(parts[2]);
+      if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
+      // horário do meio-dia para reduzir risco de variações por fuso/DST
+      return new Date(y, m - 1, d, 12, 0, 0, 0);
+    }
+
+    function formatDatePt(dateObj) {
+      try {
+        return dateObj.toLocaleDateString("pt-BR");
+      } catch (e) {
+        return "-";
+      }
+    }
+
+    function showCalcPanel(key) {
+      Object.keys(calcPanels).forEach(k => {
+        const el = calcPanels[k];
+        if (!el) return;
+        if (k === key) el.classList.remove("hidden");
+        else el.classList.add("hidden");
+      });
+    }
+
+    if (calcSelect) {
+      calcSelect.addEventListener("change", () => {
+        showCalcPanel(calcSelect.value);
+      });
+      showCalcPanel(calcSelect.value || "imc");
+    }
+
+    // IMC
+    const imcWeightKg = document.getElementById("imcWeightKg");
+    const imcHeightCm = document.getElementById("imcHeightCm");
+    const imcResult = document.getElementById("imcResult");
+
+    function calcIMC() {
+      if (!imcResult) return;
+      const w = safeNumber(imcWeightKg?.value);
+      const hcm = safeNumber(imcHeightCm?.value);
+      if (!w || !hcm || w <= 0 || hcm <= 0) {
+        imcResult.textContent = "Preencha peso e altura.";
+        return;
+      }
+      const hm = hcm / 100;
+      const bmi = w / (hm * hm);
+      let cat = "";
+      if (bmi < 18.5) cat = "Baixo peso";
+      else if (bmi < 25) cat = "Eutrofia";
+      else if (bmi < 30) cat = "Sobrepeso";
+      else if (bmi < 35) cat = "Obesidade grau I";
+      else if (bmi < 40) cat = "Obesidade grau II";
+      else cat = "Obesidade grau III";
+      imcResult.textContent = `IMC: ${formatPtNumber(bmi, 1)}\nClassificação: ${cat}`;
+    }
+    [imcWeightKg, imcHeightCm].forEach(el => el && el.addEventListener("input", calcIMC));
+    calcIMC();
+
+    // BSA (Mosteller)
+    const bsaWeightKg = document.getElementById("bsaWeightKg");
+    const bsaHeightCm = document.getElementById("bsaHeightCm");
+    const bsaResult = document.getElementById("bsaResult");
+
+    function calcBSA() {
+      if (!bsaResult) return;
+      const w = safeNumber(bsaWeightKg?.value);
+      const hcm = safeNumber(bsaHeightCm?.value);
+      if (!w || !hcm || w <= 0 || hcm <= 0) {
+        bsaResult.textContent = "Preencha peso e altura.";
+        return;
+      }
+      const bsa = Math.sqrt((hcm * w) / 3600);
+      bsaResult.textContent = `SC (Mosteller): ${formatPtNumber(bsa, 2)} m²`;
+    }
+    [bsaWeightKg, bsaHeightCm].forEach(el => el && el.addEventListener("input", calcBSA));
+    calcBSA();
+
+    // Idade gestacional (por DUM)
+    const gestDum = document.getElementById("gestDum");
+    const gestResult = document.getElementById("gestResult");
+
+    function calcGestAge() {
+      if (!gestResult) return;
+      const dum = parseDateYYYYMMDD(gestDum?.value);
+      if (!dum) {
+        gestResult.textContent = "Informe a DUM.";
+        return;
+      }
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
+      const diffMs = today.getTime() - dum.getTime();
+      const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+      if (diffDays < 0) {
+        gestResult.textContent = "A DUM está no futuro. Verifique a data.";
+        return;
+      }
+      const weeks = Math.floor(diffDays / 7);
+      const days = diffDays % 7;
+
+      const dpp = new Date(dum.getTime() + 280 * 24 * 60 * 60 * 1000);
+      gestResult.textContent = `Idade gestacional hoje: ${weeks} semanas e ${days} dias\nDPP (DUM + 280 dias): ${formatDatePt(dpp)}\nDUM: ${formatDatePt(dum)}`;
+    }
+    gestDum && gestDum.addEventListener("change", calcGestAge);
+    calcGestAge();
+
+    // Gotejamento e bomba
+    const dripVolumeMl = document.getElementById("dripVolumeMl");
+    const dripTimeH = document.getElementById("dripTimeH");
+    const dripTimeMin = document.getElementById("dripTimeMin");
+    const dripFactor = document.getElementById("dripFactor");
+    const dripResult = document.getElementById("dripResult");
+
+    function calcDrip() {
+      if (!dripResult) return;
+      const vol = safeNumber(dripVolumeMl?.value);
+      const h = safeNumber(dripTimeH?.value) ?? 0;
+      const m = safeNumber(dripTimeMin?.value) ?? 0;
+      const factor = safeNumber(dripFactor?.value);
+      const totalMin = (h * 60) + m;
+
+      if (!vol || vol <= 0 || !factor || factor <= 0 || !totalMin || totalMin <= 0) {
+        dripResult.textContent = "Preencha volume, tempo e fator de gotejamento.";
+        return;
+      }
+
+      const mlPerH = vol / (totalMin / 60);
+      const gttPerMin = (vol * factor) / totalMin;
+
+      dripResult.textContent =
+        `Bomba de infusão: ${formatPtNumber(mlPerH, 1)} mL/h\nGotejamento: ${formatPtNumber(gttPerMin, 0)} gotas/min\n(Volume: ${formatPtNumber(vol, 1)} mL, Tempo: ${formatPtNumber(totalMin, 0)} min, Fator: ${formatPtNumber(factor, 0)} gotas/mL)`;
+    }
+    [dripVolumeMl, dripTimeH, dripTimeMin, dripFactor].forEach(el => el && el.addEventListener("input", calcDrip));
+    dripFactor && dripFactor.addEventListener("change", calcDrip);
+    calcDrip();
+
+    // Balanço hídrico
+    const fbInputMl = document.getElementById("fbInputMl");
+    const fbOutputMl = document.getElementById("fbOutputMl");
+    const fbWeightKg = document.getElementById("fbWeightKg");
+    const fbHours = document.getElementById("fbHours");
+    const fbResult = document.getElementById("fbResult");
+
+    function calcFluidBalance() {
+      if (!fbResult) return;
+      const input = safeNumber(fbInputMl?.value) ?? 0;
+      const output = safeNumber(fbOutputMl?.value) ?? 0;
+      const bal = input - output;
+
+      let msg = `Entradas: ${formatPtNumber(input, 0)} mL\nSaídas: ${formatPtNumber(output, 0)} mL\nBalanço: ${formatPtNumber(bal, 0)} mL`;
+
+      const w = safeNumber(fbWeightKg?.value);
+      const hours = safeNumber(fbHours?.value);
+      if (w && w > 0 && hours && hours > 0) {
+        const diuresis = output / (w * hours);
+        msg += `\nDiurese estimada: ${formatPtNumber(diuresis, 2)} mL/kg/h`;
+      }
+      fbResult.textContent = msg;
+    }
+    [fbInputMl, fbOutputMl, fbWeightKg, fbHours].forEach(el => el && el.addEventListener("input", calcFluidBalance));
+    calcFluidBalance();
+
+    // Dose por peso
+    const wdWeightKg = document.getElementById("wdWeightKg");
+    const wdDoseMgKg = document.getElementById("wdDoseMgKg");
+    const wdMaxDoseMg = document.getElementById("wdMaxDoseMg");
+    const wdConcMgMl = document.getElementById("wdConcMgMl");
+    const wdResult = document.getElementById("wdResult");
+
+    function calcWeightDose() {
+      if (!wdResult) return;
+      const w = safeNumber(wdWeightKg?.value);
+      const d = safeNumber(wdDoseMgKg?.value);
+      if (!w || !d || w <= 0 || d <= 0) {
+        wdResult.textContent = "Preencha peso e dose (mg/kg).";
+        return;
+      }
+      let mg = w * d;
+      const maxMg = safeNumber(wdMaxDoseMg?.value);
+      let capped = false;
+      if (maxMg && maxMg > 0 && mg > maxMg) {
+        mg = maxMg;
+        capped = true;
+      }
+
+      let msg = `Dose por tomada: ${formatPtNumber(mg, 2)} mg`;
+      if (capped) msg += `\n(Aplicado limite de dose máxima: ${formatPtNumber(maxMg, 2)} mg)`;
+
+      const conc = safeNumber(wdConcMgMl?.value);
+      if (conc && conc > 0) {
+        const ml = mg / conc;
+        msg += `\nVolume por tomada: ${formatPtNumber(ml, 2)} mL (concentração: ${formatPtNumber(conc, 2)} mg/mL)`;
+      }
+      wdResult.textContent = msg;
+    }
+    [wdWeightKg, wdDoseMgKg, wdMaxDoseMg, wdConcMgMl].forEach(el => el && el.addEventListener("input", calcWeightDose));
+    calcWeightDose();
+
+    // Glasgow
+    const gcsEye = document.getElementById("gcsEye");
+    const gcsVerbal = document.getElementById("gcsVerbal");
+    const gcsMotor = document.getElementById("gcsMotor");
+    const gcsResult = document.getElementById("gcsResult");
+
+    function calcGCS() {
+      if (!gcsResult) return;
+      const e = safeNumber(gcsEye?.value) ?? 0;
+      const v = safeNumber(gcsVerbal?.value) ?? 0;
+      const m = safeNumber(gcsMotor?.value) ?? 0;
+      const total = e + v + m;
+      let grav = "";
+      if (total >= 13) grav = "Leve (13 a 15)";
+      else if (total >= 9) grav = "Moderado (9 a 12)";
+      else grav = "Grave (3 a 8)";
+      gcsResult.textContent = `ECG total: ${total} (E${e} V${v} M${m})\nGravidade (interpretação usual): ${grav}`;
+    }
+    [gcsEye, gcsVerbal, gcsMotor].forEach(el => el && el.addEventListener("change", calcGCS));
+    calcGCS();
+
+    // Ramsay / RASS
+    const ramsay = document.getElementById("ramsay");
+    const rass = document.getElementById("rass");
+    const sedationResult = document.getElementById("sedationResult");
+
+    function ramsayText(score) {
+      const map = {
+        1: "Ansioso/agitado.",
+        2: "Cooperativo/orientado/tranquilo.",
+        3: "Responde apenas a comandos.",
+        4: "Resposta rápida a estímulo (tátil/sonoro).",
+        5: "Resposta lenta a estímulo.",
+        6: "Sem resposta."
+      };
+      return map[score] || "-";
+    }
+
+    function rassText(score) {
+      const map = {
+        4: "Combativo.",
+        3: "Muito agitado.",
+        2: "Agitado.",
+        1: "Inquieto.",
+        0: "Alerta e calmo.",
+        "-1": "Sonolento (desperta ao chamado).",
+        "-2": "Sedação leve (breve despertar ao chamado).",
+        "-3": "Sedação moderada (movimenta ou abre olhos à voz, sem contato visual).",
+        "-4": "Sedação profunda (responde a estímulo físico).",
+        "-5": "Não desperta."
+      };
+      return map[String(score)] || "-";
+    }
+
+    function calcSedation() {
+      if (!sedationResult) return;
+      const rs = safeNumber(ramsay?.value);
+      const ra = safeNumber(rass?.value);
+      const ram = rs ? `Ramsay: ${rs} - ${ramsayText(rs)}` : "Ramsay: -";
+      const raa = (ra !== null) ? `RASS: ${ra} - ${rassText(ra)}` : "RASS: -";
+      sedationResult.textContent = `${ram}\n${raa}`;
+    }
+    [ramsay, rass].forEach(el => el && el.addEventListener("change", calcSedation));
+    calcSedation();
+
+    // Dor
+    const painScore = document.getElementById("painScore");
+    const painResult = document.getElementById("painResult");
+
+    function calcPain() {
+      if (!painResult) return;
+      const p = safeNumber(painScore?.value);
+      if (p === null || p < 0 || p > 10) {
+        painResult.textContent = "Informe um valor de 0 a 10.";
+        return;
+      }
+      let cat = "";
+      if (p === 0) cat = "Sem dor";
+      else if (p <= 3) cat = "Dor leve";
+      else if (p <= 6) cat = "Dor moderada";
+      else cat = "Dor intensa";
+      painResult.textContent = `Pontuação: ${p}\nClassificação: ${cat}`;
+    }
+    painScore && painScore.addEventListener("input", calcPain);
+    calcPain();
+
+    // Morse
+    const morseFallHx = document.getElementById("morseFallHx");
+    const morseSecondaryDx = document.getElementById("morseSecondaryDx");
+    const morseAid = document.getElementById("morseAid");
+    const morseIv = document.getElementById("morseIv");
+    const morseGait = document.getElementById("morseGait");
+    const morseMental = document.getElementById("morseMental");
+    const morseResult = document.getElementById("morseResult");
+
+    function calcMorse() {
+      if (!morseResult) return;
+      const items = [morseFallHx, morseSecondaryDx, morseAid, morseIv, morseGait, morseMental]
+        .map(el => safeNumber(el?.value) ?? 0);
+      const total = items.reduce((a,b) => a + b, 0);
+      let risk = "";
+      if (total <= 24) risk = "Baixo (0 a 24)";
+      else if (total <= 44) risk = "Moderado (25 a 44)";
+      else risk = "Alto (≥ 45)";
+      morseResult.textContent = `Morse total: ${total}\nClassificação (interpretação usual): ${risk}`;
+    }
+    [morseFallHx, morseSecondaryDx, morseAid, morseIv, morseGait, morseMental].forEach(el => el && el.addEventListener("change", calcMorse));
+    calcMorse();
+
+    // Braden
+    const brSensory = document.getElementById("brSensory");
+    const brMoisture = document.getElementById("brMoisture");
+    const brActivity = document.getElementById("brActivity");
+    const brMobility = document.getElementById("brMobility");
+    const brNutrition = document.getElementById("brNutrition");
+    const brFriction = document.getElementById("brFriction");
+    const bradenResult = document.getElementById("bradenResult");
+
+    function calcBraden() {
+      if (!bradenResult) return;
+      const vals = [brSensory, brMoisture, brActivity, brMobility, brNutrition, brFriction]
+        .map(el => safeNumber(el?.value) ?? 0);
+      const total = vals.reduce((a,b) => a + b, 0);
+
+      let cat = "";
+      if (total <= 9) cat = "Risco muito alto (≤ 9)";
+      else if (total <= 12) cat = "Risco alto (10 a 12)";
+      else if (total <= 14) cat = "Risco moderado (13 a 14)";
+      else if (total <= 18) cat = "Risco leve (15 a 18)";
+      else cat = "Sem risco ou risco mínimo (19 a 23)";
+
+      bradenResult.textContent = `Braden total: ${total}\nClassificação (interpretação usual): ${cat}`;
+    }
+    [brSensory, brMoisture, brActivity, brMobility, brNutrition, brFriction].forEach(el => el && el.addEventListener("change", calcBraden));
+    calcBraden();
+
+    // PEWS (Brighton)
+    const pewsBehavior = document.getElementById("pewsBehavior");
+    const pewsCardio = document.getElementById("pewsCardio");
+    const pewsResp = document.getElementById("pewsResp");
+    const pewsResult = document.getElementById("pewsResult");
+
+    function calcPEWS() {
+      if (!pewsResult) return;
+      const b = safeNumber(pewsBehavior?.value) ?? 0;
+      const c = safeNumber(pewsCardio?.value) ?? 0;
+      const r = safeNumber(pewsResp?.value) ?? 0;
+      const total = b + c + r;
+
+      let cat = "";
+      if (total <= 2) cat = "Baixo (0 a 2)";
+      else if (total <= 4) cat = "Intermediário (3 a 4)";
+      else cat = "Elevado (≥ 5)";
+
+      pewsResult.textContent = `PEWS total: ${total} (Comportamento ${b}, Cardiovascular ${c}, Respiratório ${r})\nClassificação (orientação geral): ${cat}\nObservação: em muitas instituições, pontuação ≥ 3 exige reavaliação e possível escalonamento conforme protocolo local.`;
+    }
+    [pewsBehavior, pewsCardio, pewsResp].forEach(el => el && el.addEventListener("change", calcPEWS));
+    calcPEWS();
 
 
 </script>
