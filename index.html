@@ -1719,14 +1719,14 @@
     <div id="woundCard" class="module-card">
       <h2>Curativos e feridas</h2>
       <p class="mini-status" style="margin-top: 0;">
-        Use o botão para fotografar a lesão. O sistema irá descrever apenas o que for visível na imagem e sugerir cuidados de enfermagem e prescrição de curativo de forma segura, sem inventar dados.
+        Use o botão para fotografar a lesão. O sistema irá descrever a ferida em linguagem técnica, apenas com base no que estiver visível, e sugerir condutas locais, cuidados não medicamentosos e, quando aplicável, opções de tratamento medicamentoso, além de sinais de alarme e critérios de encaminhamento, sem inventar dados.
       </p>
 
       <div class="prescription-actions">
         <label for="woundCameraInput" class="photo-btn">Tirar foto</label>
         <label for="woundFileInput" class="photo-btn">Escolher arquivo</label>
-        <button id="copyWoundBtn" class="btn-copy hidden">Copiar prescrição e cuidados</button>
-        <button id="printWoundBtn" class="btn-print hidden">Imprimir prescrição e cuidados</button>
+        <button id="copyWoundBtn" class="btn-copy hidden">Copiar descrição e conduta</button>
+        <button id="printWoundBtn" class="btn-print hidden">Imprimir descrição e conduta</button>
       </div>
 
       <div id="presentationsMaxDoseStatus" class="mini-status"></div>
@@ -1740,14 +1740,14 @@
     <div id="examInterpretationCard" class="module-card">
       <h2>Interpretação de resultados de exames (laboratoriais, de imagem, etc)</h2>
       <p class="mini-status" style="margin-top: 0;">
-        Use os botões para fotografar o resultado do exame (ex.: laudo, tabela de laboratório, impressão do sistema). O sistema irá transcrever somente o que estiver legível, organizar os principais achados e sugerir uma interpretação prudente com alertas e próximos passos, sem inventar dados.
+        Use os botões para fotografar o resultado do exame (ex.: laudo, tabela de laboratório, impressão do sistema). O sistema irá transcrever somente o que estiver legível, organizar achados relevantes e oferecer uma interpretação clínica didática, com hipóteses possíveis, limitações, próximos passos e sinais de alarme, sem inventar dados.
       </p>
 
       <div class="prescription-actions">
         <label for="examCameraInput" class="photo-btn">Tirar foto</label>
         <label for="examFileInput" class="photo-btn">Escolher arquivo</label>
-        <button id="copyExamBtn" class="btn-copy hidden">Copiar interpretação</button>
-        <button id="printExamBtn" class="btn-print hidden">Imprimir interpretação</button>
+        <button id="copyExamBtn" class="btn-copy hidden">Copiar análise</button>
+        <button id="printExamBtn" class="btn-print hidden">Imprimir análise</button>
       </div>
 
       <div id="examInterpretationStatus" class="mini-status"></div>
@@ -1758,9 +1758,9 @@
     </div>
 
 <div id="medicalDoubtsCard" class="module-card">
-      <h2>Dúvidas de Enfermagem</h2>
-      <p class="mini-status" style="margin-top: 0;">Digite sua dúvida e pressione Enter ou clique em Enviar.</p><div class="inline-input-row" style="gap: 10px; align-items: stretch;">
-  <input id="medicalDoubtInput" class="text-input" type="text" placeholder="Digite aqui sua dúvida e pressione Enter" autocomplete="off" style="flex: 1 1 auto; margin: 0;" />
+      <h2>Dúvidas em Saúde</h2>
+      <p class="mini-status" style="margin-top: 0;">Faça qualquer pergunta sobre saúde. Pressione Enter ou clique em Enviar.</p><div class="inline-input-row" style="gap: 10px; align-items: stretch;">
+  <input id="medicalDoubtInput" class="text-input" type="text" placeholder="Digite sua dúvida sobre saúde e pressione Enter" autocomplete="off" style="flex: 1 1 auto; margin: 0;" />
   <button id="medicalDoubtSendBtn" class="btn-print" type="button" style="white-space: nowrap;">Enviar</button>
 </div>
       <div id="medicalDoubtStatus" class="mini-status"></div>
@@ -4991,7 +4991,7 @@ async function addFilesToTarget(files, targetKey, mode) {
       medicalDoubtAnswer.textContent = "";
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/duvidas-enfermagem", {
+        const resp = await fetch(BACKEND_URL + "/api/duvidas-medicas", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ duvida: q })
@@ -5017,7 +5017,7 @@ async function addFilesToTarget(files, targetKey, mode) {
       }
     }
 
-    // Dúvidas de Enfermagem: Enter e botão Enviar
+    // Dúvidas em Saúde: Enter e botão Enviar
 if (medicalDoubtInput) {
   medicalDoubtInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {

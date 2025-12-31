@@ -218,7 +218,19 @@ function normalizeImageDataUrl(input, maxLen) {
 
 function getImageDataUrlFromBody(body) {
   const b = body || {};
-  // Aceita tanto o padrão interno (imagem_data_url) quanto o usado no frontend (image_data_url).
+  // Aceita:
+  // - images_data_url (array) (frontend)
+  // - imagens_data_url (array)
+  // - imagem_data_url (string)
+  // - image_data_url (string)
+  const arr = Array.isArray(b.images_data_url) ? b.images_data_url
+    : (Array.isArray(b.imagens_data_url) ? b.imagens_data_url : null);
+
+  if (arr && arr.length) {
+    const first = arr.find((x) => typeof x === "string" && x.trim());
+    if (first) return first.trim();
+  }
+
   return (typeof b.imagem_data_url === "string" && b.imagem_data_url.trim())
     ? b.imagem_data_url.trim()
     : (typeof b.image_data_url === "string" && b.image_data_url.trim())
@@ -1905,41 +1917,47 @@ Contexto:
 
 async function analisarLesaoPorImagem(safeImage) {
   const prompt = `
-Você é um enfermeiro humano elaborando um REGISTRO DE CURATIVOS E FERIDAS com base em uma foto de lesão.
+Você é um médico e educador clínico com experiência em feridas e curativos. A partir de uma foto de lesão, descreva e oriente de forma técnica e prudente.
 
-Tarefa:
-1) Descrever somente características VISÍVEIS e com linguagem prudente (sem inventar).
-2) Recomendar prescrição e cuidados de enfermagem de forma objetiva e segura, aplicável no dia a dia.
-3) Informar sinais de alerta e critérios objetivos para encaminhamento/avaliação médica.
+Tarefas:
+1) Descrever somente características VISÍVEIS, com linguagem técnica e prudente (sem inventar).
+2) Sugerir conduta e cuidados locais, separando:
+   - Tratamento não medicamentoso (limpeza, cobertura, frequência de troca, proteção da pele perilesional, alívio de pressão, compressão quando indicada, elevação, educação e monitorização).
+   - Tratamento medicamentoso quando fizer sentido (por exemplo: analgesia, necessidade de profilaxia do tétano conforme história vacinal, e quando considerar antibiótico tópico ou sistêmico com critérios clínicos). Não prescrever antibiótico sistêmico sem critérios; se houver suspeita, orientar avaliação médica e seguir protocolo local.
+3) Informar sinais de alarme e critérios objetivos para encaminhamento/avaliação urgente.
+4) Incluir observações importantes (limitações da foto, necessidade de medidas/escala, tempo de evolução, comorbidades relevantes como diabetes/vasculopatia).
 
 Regras obrigatórias:
 - Não fazer diagnóstico médico definitivo.
+- Não inventar tamanho/profundidade/temperatura/dor/odor ou achados que não estejam visualmente sustentados.
 - Se a imagem estiver insuficiente (iluminação, foco, ângulo), diga "não informado" nos itens que não forem confiáveis.
 - Evitar afirmações absolutas quando houver incerteza.
 - Sem emojis e sem símbolos gráficos.
 
 Formato de saída: JSON estrito:
 {
-  "caracteristicas": "string",
-  "prescricao_cuidados": "string",
-  "sinais_alarme": "string"
+  "descricao_tecnica": "string",
+  "tratamento_nao_medicamentoso": "string",
+  "tratamento_medicamentoso": "string",
+  "sinais_alarme": "string",
+  "observacoes": "string"
 }
-
-Orientações esperadas:
-- Incluir higiene/limpeza, cobertura, frequência de troca, proteção da pele perilesional, controle de dor, prevenção de infecção quando aplicável.
-- Se houver suspeita visual de gravidade (necrose extensa, sangramento ativo importante, exposição de estruturas profundas, sinais compatíveis com infecção importante), orientar priorização de avaliação médica.
 `;
 
   const data = await callOpenAIVisionJson(prompt, safeImage);
 
-  const caracteristicas = typeof data?.caracteristicas === "string" ? data.caracteristicas.trim() : "";
-  const prescricao_cuidados = typeof data?.prescricao_cuidados === "string" ? data.prescricao_cuidados.trim() : "";
+  const descricao_tecnica = typeof data?.descricao_tecnica === "string" ? data.descricao_tecnica.trim() : "";
+  const tratamento_nao_medicamentoso = typeof data?.tratamento_nao_medicamentoso === "string" ? data.tratamento_nao_medicamentoso.trim() : "";
+  const tratamento_medicamentoso = typeof data?.tratamento_medicamentoso === "string" ? data.tratamento_medicamentoso.trim() : "";
   const sinais_alarme = typeof data?.sinais_alarme === "string" ? data.sinais_alarme.trim() : "";
+  const observacoes = typeof data?.observacoes === "string" ? data.observacoes.trim() : "";
 
   return {
-    caracteristicas: caracteristicas || "não informado",
-    prescricao_cuidados: prescricao_cuidados || "não informado",
+    descricao_tecnica: descricao_tecnica || "não informado",
+    tratamento_nao_medicamentoso: tratamento_nao_medicamentoso || "não informado",
+    tratamento_medicamentoso: tratamento_medicamentoso || "não informado",
     sinais_alarme: sinais_alarme || "não informado",
+    observacoes: observacoes || "não informado"
   };
 }
 
@@ -1974,9 +1992,11 @@ app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
 
     const out = await analisarLesaoPorImagem(safeImage);
     const texto =
-      "Características visíveis:\n" + out.caracteristicas +
-      "\n\nPrescrição e cuidados de enfermagem:\n" + out.prescricao_cuidados +
-      "\n\nSinais de alarme e encaminhamento:\n" + out.sinais_alarme;
+      "Descrição técnica:\n" + out.descricao_tecnica +
+      "\n\nTratamento não medicamentoso:\n" + out.tratamento_nao_medicamentoso +
+      "\n\nTratamento medicamentoso:\n" + out.tratamento_medicamentoso +
+      "\n\nSinais de alarme e encaminhamento:\n" + out.sinais_alarme +
+      "\n\nObservações:\n" + out.observacoes;
 
     return res.json({ texto });
   } catch (e) {
@@ -1985,6 +2005,87 @@ app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
   }
 });
 
+
+
+// ======================================================================
+// ROTA 4.6 – INTERPRETAÇÃO DE EXAME POR FOTO (NOVA)
+// ======================================================================
+
+async function interpretarExamePorImagem(safeImage) {
+  const prompt = `
+Você é um médico e educador clínico interpretando um resultado de exame fotografado (laboratorial, laudo de imagem, tabela, impressão de sistema, etc).
+
+Tarefas:
+1) Transcrever somente o que estiver legível. Quando algo não estiver legível, usar "não informado".
+2) Identificar achados principais e valores que chamem atenção (quando estiverem legíveis).
+3) Oferecer interpretação clínica didática: o que pode significar, hipóteses possíveis e como correlacionar com sintomas e exame físico.
+4) Recomendar próximos passos: que informações faltam, quando repetir/confirmar, exames complementares possíveis, e critérios de encaminhamento.
+5) Incluir sinais de alarme e situações em que a avaliação deve ser urgente.
+
+Regras obrigatórias:
+- Não inventar dados ou resultados.
+- Se a imagem estiver insuficiente (iluminação, foco, ângulo), dizer "não informado" no que não for confiável.
+- Evitar diagnóstico definitivo sem contexto clínico.
+- Sem emojis e sem símbolos gráficos.
+
+Formato de saída: JSON estrito:
+{
+  "transcricao_legivel": "string",
+  "achados_principais": "string",
+  "interpretacao": "string",
+  "hipoteses": "string",
+  "proximos_passos": "string",
+  "sinais_alarme": "string",
+  "limitacoes": "string"
+}
+`;
+
+  const data = await callOpenAIVisionJson(prompt, safeImage);
+
+  const transcricao_legivel = typeof data?.transcricao_legivel === "string" ? data.transcricao_legivel.trim() : "";
+  const achados_principais = typeof data?.achados_principais === "string" ? data.achados_principais.trim() : "";
+  const interpretacao = typeof data?.interpretacao === "string" ? data.interpretacao.trim() : "";
+  const hipoteses = typeof data?.hipoteses === "string" ? data.hipoteses.trim() : "";
+  const proximos_passos = typeof data?.proximos_passos === "string" ? data.proximos_passos.trim() : "";
+  const sinais_alarme = typeof data?.sinais_alarme === "string" ? data.sinais_alarme.trim() : "";
+  const limitacoes = typeof data?.limitacoes === "string" ? data.limitacoes.trim() : "";
+
+  return {
+    transcricao_legivel: transcricao_legivel || "não informado",
+    achados_principais: achados_principais || "não informado",
+    interpretacao: interpretacao || "não informado",
+    hipoteses: hipoteses || "não informado",
+    proximos_passos: proximos_passos || "não informado",
+    sinais_alarme: sinais_alarme || "não informado",
+    limitacoes: limitacoes || "não informado"
+  };
+}
+
+app.post("/api/interpretar-exame-imagem", requirePaidOrAdmin, async(req, res) => {
+  try {
+    const imagemDataUrl = getImageDataUrlFromBody(req.body);
+    const safeImage = normalizeImageDataUrl(imagemDataUrl, 4_000_000);
+
+    if (!safeImage) {
+      return res.status(400).json({ error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente." });
+    }
+
+    const out = await interpretarExamePorImagem(safeImage);
+    const texto =
+      "Transcrição legível:\n" + out.transcricao_legivel +
+      "\n\nAchados principais:\n" + out.achados_principais +
+      "\n\nInterpretação:\n" + out.interpretacao +
+      "\n\nHipóteses possíveis:\n" + out.hipoteses +
+      "\n\nPróximos passos:\n" + out.proximos_passos +
+      "\n\nSinais de alarme:\n" + out.sinais_alarme +
+      "\n\nLimitações:\n" + out.limitacoes;
+
+    return res.json({ texto });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao interpretar o exame." });
+  }
+});
 
 // ======================================================================
 // ROTA 4.5 – ANÁLISE DE PRESCRIÇÃO POR FOTO (ADMINISTRAÇÃO SEGURA) (NOVA)
@@ -2117,20 +2218,27 @@ async function responderDuvidaEnfermagem(duvida) {
 
   const safeQ = normalizeText(q, 2000);
 
+  
   const prompt = `
-Você é um enfermeiro humano respondendo uma dúvida de enfermagem de forma objetiva e operacional.
-O objetivo é orientar conduta, técnica, procedimento, educação em saúde e critérios de encaminhamento/escalação.
+Você é um médico e educador clínico respondendo perguntas sobre saúde para profissionais da área.
+Responda de forma completa e didática, em português do Brasil, com linguagem técnica quando necessário e explicações claras.
+
+Objetivo:
+- Ajudar no estudo e na tomada de decisão clínica, com raciocínio e condutas baseadas em boas práticas.
+- Quando a pergunta for aberta ou faltar informação, diga quais dados faltam e proponha como coletá-los.
 
 Regras:
-- Resposta curta, prática, em português do Brasil.
+- Não invente dados. Se algo for incerto, diga "não informado" ou explicite a limitação.
 - Sem emojis e sem símbolos gráficos.
-- Se houver risco de gravidade, inclua sinais de alarme e orientação de procurar serviço.
-- Não prescreva medicamentos fora do escopo; foque em ações de enfermagem.
+- Não faça diagnóstico definitivo sem dados suficientes; trabalhe com hipóteses e raciocínio.
+- Sempre incluir, quando pertinente: sinais de alarme e quando encaminhar/avaliar com urgência.
+- Se houver recomendação de tratamento, separar em medidas não medicamentosas e medicamentosas quando fizer sentido.
+- Se mencionar medicamentos, seja prudente: cite opções e pontos de segurança (contraindicações, interações relevantes, ajuste renal/hepático quando aplicável) e ressalte que deve seguir protocolos locais e avaliação clínica.
 
 Formato de saída: JSON estrito:
 { "resposta": "..." }
 
-Dúvida:
+Pergunta:
 """${safeQ}"""
 `;
 
