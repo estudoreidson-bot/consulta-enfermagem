@@ -143,7 +143,119 @@
     #recordBtn:active {
       transform: scale(0.97);
     }
-    #startNotice {
+    
+    /* Triagem hospitalar: botão e separador */
+    .module-divider {
+      width: 100%;
+      height: 1px;
+      background: #e7e7e7;
+      margin: 18px 0 14px 0;
+    }
+    .module-title {
+      margin: 0 0 10px 0;
+      font-size: 16px;
+      font-weight: bold;
+      color: #1f2937;
+      text-align: center;
+      width: 100%;
+    }
+    .module-subtitle {
+      font-size: 12px;
+      color: #555;
+      text-align: center;
+      margin: 0 0 12px 0;
+      width: 100%;
+    }
+
+    #triageRecordBtn {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+      margin-top: 6px;
+      margin-bottom: 10px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    #triageRecordBtn.start { background: #007bff; }
+    #triageRecordBtn.recording { background: #dc3545; }
+    #triageRecordBtn:active { transform: scale(0.97); }
+
+    #triagePauseBtn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      background: #6c757d;
+      color: #fff;
+      font-size: 13px;
+      display: none;
+    }
+    #triageTimer {
+      font-size: 26px;
+      margin-top: 10px;
+      font-family: "Courier New", monospace;
+    }
+    #triageMicStatus {
+      margin-top: 8px;
+      font-size: 14px;
+      text-align: center;
+      color: #333;
+      min-height: 20px;
+    }
+
+    #triagePauseLabel {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #555;
+      text-align: center;
+    }
+    #triageFinishHint {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #333;
+      text-align: center;
+    }
+
+    .triage-report-panel {
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 14px;
+      background: #ffffff;
+      margin-bottom: 18px;
+    }
+    .triage-report-panel h2 {
+      margin: 0 0 10px 0;
+    }
+    .triage-report-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .triage-report-grid h3 {
+      margin: 0 0 6px 0;
+      font-size: 14px;
+    }
+    .triage-small-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    #triageCopyFullBtn, #triagePrintFullBtn {
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: 1px solid #0c5460;
+      background: #ffffff;
+      color: #0c5460;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    #triageCopyFullBtn:hover, #triagePrintFullBtn:hover { background: #e6f2f5; }
+#startNotice {
       font-size: 13px;
       color: #555;
       text-align: center;
@@ -1592,6 +1704,40 @@
       </div>
 
       <div id="soapError" class="error"></div>
+
+      <div class="module-divider"></div>
+      <p class="module-title">Triagem hospitalar</p>
+      <p class="module-subtitle">
+        Use este módulo para triagem na porta do hospital. Fale identificação do paciente, queixa principal, sinais vitais, achados do ABCDE, comorbidades, alergias e medicações em uso. Ao encerrar, será gerado um relatório técnico de triagem, condutas iniciais e passagem rápida ao médico.
+      </p>
+
+      <div id="triageLiveGuidance" class="live-guidance">
+        <div class="live-guidance-header">
+          <p class="live-guidance-title">Perguntas e procedimentos essenciais da triagem</p>
+          <p id="triageLiveGuidanceContext" class="live-guidance-context"></p>
+        </div>
+        <p id="triageLiveGuidanceStatus" class="live-guidance-status">Inicie a triagem para receber perguntas e procedimentos necessários em tempo real.</p>
+        <div id="triageLiveGuidanceList" class="live-guidance-list">
+          <div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>
+        </div>
+      </div>
+
+      <button id="triageRecordBtn" class="start" type="button">Iniciar triagem hospitalar</button>
+
+      <div id="triageTimer">00:00</div>
+      <div id="triageMicStatus">Clique em "Iniciar triagem hospitalar" para começar.</div>
+
+      <div class="controls-row">
+        <button id="triagePauseBtn" type="button">Pausar</button>
+      </div>
+      <div id="triagePauseLabel">Use o botão pequeno para pausar e retomar a gravação da triagem.</div>
+
+      <div id="triageFinishHint">
+        Para encerrar e gerar o relatório de triagem, clique novamente no botão grande vermelho.
+      </div>
+
+      <div id="triageError" class="error"></div>
+
     </div>
 
     <div id="resultsCard" class="results-card hidden">
@@ -1605,6 +1751,82 @@
         <div id="patientInfoSummary" class="patient-summary"></div>
       </div>
 
+
+
+      <div id="triageReportPanel" class="triage-report-panel hidden">
+        <div class="section-header-row">
+          <div class="soap-title-actions">
+            <h2>Relatório de triagem hospitalar</h2>
+            <button id="triageCopyFullBtn" class="btn-copy" type="button">Copiar relatório</button>
+            <button id="triagePrintFullBtn" class="btn-print" type="button">Imprimir relatório</button>
+          </div>
+        </div>
+
+        <div class="risk-triage-box" style="margin-bottom: 12px;">
+          <div class="risk-triage-current">
+            <span id="triageRiskBadge" class="risk-badge risk-none">Não informado</span>
+            <div id="triageRiskMeaning" class="risk-meaning">Nenhum conteúdo disponível.</div>
+          </div>
+          <div id="triageRiskLegend" class="risk-legend"></div>
+        </div>
+
+        <div class="triage-report-grid">
+          <div>
+            <h3>Texto para prontuário</h3>
+            <textarea id="triageProntuario" class="prescription-textarea"></textarea>
+            <div class="prescription-actions">
+              <button id="triageCopyProntuarioBtn" class="btn-copy" type="button">Copiar prontuário</button>
+              <button id="triagePrintProntuarioBtn" class="btn-print" type="button">Imprimir prontuário</button>
+            </div>
+          </div>
+
+          <div>
+            <h3>Passagem rápida ao médico</h3>
+            <textarea id="triagePassagemMedico" class="prescription-textarea"></textarea>
+            <div class="prescription-actions">
+              <button id="triageCopyPassagemBtn" class="btn-copy" type="button">Copiar passagem</button>
+              <button id="triagePrintPassagemBtn" class="btn-print" type="button">Imprimir passagem</button>
+            </div>
+          </div>
+
+          <div>
+            <h3>Alertas e sinais de gravidade</h3>
+            <textarea id="triageAlertas" class="prescription-textarea"></textarea>
+          </div>
+
+          <div>
+            <h3>Tratamento não medicamentoso e cuidados</h3>
+            <textarea id="triageCondutasNaoMed" class="prescription-textarea"></textarea>
+          </div>
+
+          <div>
+            <h3>Tratamento medicamentoso sugerido (se aplicável)</h3>
+            <textarea id="triageCondutasMed" class="prescription-textarea"></textarea>
+          </div>
+
+          <div>
+            <h3>Medidas e exames imediatos sugeridos</h3>
+            <textarea id="triageMedidasExames" class="prescription-textarea"></textarea>
+          </div>
+
+          <div>
+            <h3>Pendências a checar antes de liberar ou encaminhar</h3>
+            <textarea id="triagePendencias" class="prescription-textarea"></textarea>
+          </div>
+
+          <div>
+            <h3>Checagem de qualidade (o que está faltando na triagem)</h3>
+            <textarea id="triageQualidade" class="prescription-textarea"></textarea>
+          </div>
+
+          <div>
+            <h3>Relatório completo</h3>
+            <textarea id="triageFullReport" class="prescription-textarea"></textarea>
+          </div>
+        </div>
+
+        <div id="triageReportStatus" class="mini-status"></div>
+      </div>
 
       <div class="section-header-row">
         <div class="soap-title-actions">
@@ -2581,6 +2803,38 @@
     let guidanceChunkStartLen = 0;
     let guidanceSilenceTimer = null;
     let guidanceLastChunkTs = 0;
+
+    // ============================
+    // MÓDULO: Triagem hospitalar (gravação + guia em tempo real)
+    // ============================
+    let triageRecognition = null;
+    let triageIsRecording = false;
+    let triageIsPaused = false;
+    let triageFinalTranscript = "";
+    let triageInterimTranscript = "";
+
+    let triageStartTime = null;
+    let triageAccumulatedSeconds = 0;
+    let triageTimerInterval = null;
+
+    // Guia em tempo real da triagem (até 3 itens por vez)
+    let triageGuidanceEnabled = false;
+    let triageGuidanceStage = "aguardando_motivo";
+    let triageGuidancePending = [];
+    let triageGuidanceContextLabel = "";
+    let triageGuidanceHypothesis = "";
+    let triageGuidanceConfidence = 0;
+
+    let triageGuidanceInFlight = false;
+    let triageGuidanceAskedQuestion = "";
+    let triageGuidanceAskedAtLen = 0;
+    let triageGuidanceAskedAtTs = 0;
+    let triageGuidanceLastPayloadHash = "";
+    let triageGuidanceTurnState = "aguardando_pergunta";
+    let triageGuidanceChunkStartLen = 0;
+    let triageGuidanceSilenceTimer = null;
+    let triageGuidanceLastChunkTs = 0;
+
 const recordBtn = document.getElementById("recordBtn");
     const pauseBtn = document.getElementById("pauseBtn");
     const timerEl = document.getElementById("timer");
@@ -2588,6 +2842,40 @@ const recordBtn = document.getElementById("recordBtn");
     const resultsCard = document.getElementById("resultsCard");
     const soapError = document.getElementById("soapError");
     const printBtn = document.getElementById("printBtn");
+
+    const triageRecordBtn = document.getElementById("triageRecordBtn");
+    const triagePauseBtn = document.getElementById("triagePauseBtn");
+    const triageTimerEl = document.getElementById("triageTimer");
+    const triageMicStatus = document.getElementById("triageMicStatus");
+    const triageError = document.getElementById("triageError");
+
+    const triageLiveGuidance = document.getElementById("triageLiveGuidance");
+    const triageLiveGuidanceContext = document.getElementById("triageLiveGuidanceContext");
+    const triageLiveGuidanceStatus = document.getElementById("triageLiveGuidanceStatus");
+    const triageLiveGuidanceList = document.getElementById("triageLiveGuidanceList");
+
+    const triageReportPanel = document.getElementById("triageReportPanel");
+    const triageRiskBadge = document.getElementById("triageRiskBadge");
+    const triageRiskMeaning = document.getElementById("triageRiskMeaning");
+    const triageRiskLegend = document.getElementById("triageRiskLegend");
+
+    const triageProntuario = document.getElementById("triageProntuario");
+    const triagePassagemMedico = document.getElementById("triagePassagemMedico");
+    const triageAlertas = document.getElementById("triageAlertas");
+    const triageCondutasNaoMed = document.getElementById("triageCondutasNaoMed");
+    const triageCondutasMed = document.getElementById("triageCondutasMed");
+    const triageMedidasExames = document.getElementById("triageMedidasExames");
+    const triagePendencias = document.getElementById("triagePendencias");
+    const triageQualidade = document.getElementById("triageQualidade");
+    const triageFullReport = document.getElementById("triageFullReport");
+    const triageReportStatus = document.getElementById("triageReportStatus");
+
+    const triageCopyFullBtn = document.getElementById("triageCopyFullBtn");
+    const triagePrintFullBtn = document.getElementById("triagePrintFullBtn");
+    const triageCopyProntuarioBtn = document.getElementById("triageCopyProntuarioBtn");
+    const triagePrintProntuarioBtn = document.getElementById("triagePrintProntuarioBtn");
+    const triageCopyPassagemBtn = document.getElementById("triageCopyPassagemBtn");
+    const triagePrintPassagemBtn = document.getElementById("triagePrintPassagemBtn");
 
     const liveGuidance = document.getElementById("liveGuidance");
     const liveGuidanceContext = document.getElementById("liveGuidanceContext");
@@ -3332,6 +3620,581 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       guidanceSilenceTimer && clearTimeout(guidanceSilenceTimer);
       guidanceSilenceTimer = null;
       renderLiveGuidance();
+    }
+
+    function triageRenderLiveGuidance() {
+      if (!triageLiveGuidance || !triageLiveGuidanceStatus || !triageLiveGuidanceList || !triageLiveGuidanceContext) return;
+
+      if (!triageGuidanceEnabled || !triageIsRecording) {
+        triageLiveGuidanceContext.textContent = "";
+        triageLiveGuidanceStatus.textContent = "Inicie a triagem para receber perguntas e procedimentos necessários em tempo real.";
+        triageLiveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma sugestão por enquanto.</div>";
+        return;
+      }
+
+      const ctx = (triageGuidanceContextLabel || "").trim();
+      triageLiveGuidanceContext.textContent = ctx ? ("Triagem: " + ctx) : "";
+
+      if (triageGuidanceStage === "aguardando_motivo") {
+        triageLiveGuidanceStatus.textContent = "Aguardando a queixa principal. Após o paciente informar o motivo, serão sugeridas perguntas e procedimentos essenciais para classificar risco e iniciar condutas.";
+        triageLiveGuidanceList.innerHTML = `
+          <div class="live-guidance-empty">
+            Oriente: acolha e registre a queixa principal. Em seguida, descreva sinais vitais e achados do ABCDE.
+            <div style="margin-top:10px;">
+              <button id="triageForceStartGuidanceBtn" class="mini-red-btn" style="background:#b00020;">Queixa já foi informada</button>
+            </div>
+          </div>
+        `;
+        const btn = document.getElementById("triageForceStartGuidanceBtn");
+        if (btn) {
+          btn.onclick = () => {
+            if (triageGuidanceStage !== "aguardando_motivo") return;
+            triageGuidanceStage = "perguntas";
+            triageGuidanceTurnState = "aguardando_pergunta";
+            triageGuidanceAskedQuestion = "";
+            triageGuidanceAskedAtLen = triageGetCombinedTranscript().length;
+            triageGuidanceAskedAtTs = Date.now();
+            triageGuidanceChunkStartLen = triageGetCombinedTranscript().length;
+            triageRequestGuidanceFromBackend({ evento: "inicial" });
+          };
+        }
+        return;
+      }
+
+      const confTxt = (typeof triageGuidanceConfidence === "number" && triageGuidanceConfidence > 0)
+        ? ("Nível de confiança do cenário principal: " + Math.round(triageGuidanceConfidence) + "% (não chega a 100%).")
+        : "";
+
+      const hypo = (triageGuidanceHypothesis || "").trim();
+      const hypoTxt = hypo ? ("Cenário principal: " + hypo + ". " + confTxt) : confTxt;
+
+      if (triageGuidanceTurnState === "aguardando_resposta") {
+        triageLiveGuidanceStatus.textContent = "Item em andamento. Aguardando informação do paciente para atualizar os próximos itens...";
+      } else if (triageGuidanceInFlight) {
+        triageLiveGuidanceStatus.textContent = "Atualizando itens essenciais da triagem...";
+      } else {
+        triageLiveGuidanceStatus.textContent = hypoTxt || "Itens essenciais sugeridos. Execute um item e aguarde a resposta para atualizar.";
+      }
+
+      if (!triageGuidancePending || !triageGuidancePending.length) {
+        triageLiveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhum item essencial no momento.</div>";
+        return;
+      }
+
+      triageLiveGuidanceList.innerHTML = "";
+      triageGuidancePending.slice(0, 3).forEach((q, idx) => {
+        const safeQ = escapeHtml(String(q || ""));
+        const askedMark = (triageGuidanceAskedQuestion && triageGuidanceAskedQuestion.toLowerCase() === String(q || "").toLowerCase())
+          ? " (item executado)"
+          : "";
+        const el = document.createElement("div");
+        el.className = "live-guidance-item";
+        el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${safeQ}${askedMark}</div>`;
+        triageLiveGuidanceList.appendChild(el);
+      });
+    }
+
+    function triageGetCombinedTranscript() {
+      const combined = ((triageFinalTranscript || "") + " " + (triageInterimTranscript || "")).trim();
+      if (!combined) return "";
+      const MAX = 8000;
+      return combined.length > MAX ? combined.slice(combined.length - MAX) : combined;
+    }
+
+    function triageResetLiveGuidanceState() {
+      triageGuidanceEnabled = true;
+      triageGuidanceStage = "aguardando_motivo";
+      triageGuidancePending = [];
+      triageGuidanceContextLabel = "";
+      triageGuidanceHypothesis = "";
+      triageGuidanceConfidence = 0;
+
+      triageGuidanceInFlight = false;
+
+      triageGuidanceTurnState = "aguardando_pergunta";
+      triageGuidanceAskedQuestion = "";
+      triageGuidanceAskedAtLen = 0;
+      triageGuidanceAskedAtTs = 0;
+
+      triageGuidanceChunkStartLen = 0;
+      triageGuidanceSilenceTimer && clearTimeout(triageGuidanceSilenceTimer);
+      triageGuidanceSilenceTimer = null;
+
+      triageGuidanceLastPayloadHash = "";
+      triageGuidanceLastChunkTs = 0;
+
+      triageRenderLiveGuidance();
+    }
+
+    function triageStartGuidanceLoop() {
+      triageGuidanceEnabled = true;
+      triageRenderLiveGuidance();
+      triageMaybeStartInitialGuidance(false);
+    }
+
+    function triageStopGuidanceLoop() {
+      triageGuidanceEnabled = false;
+      triageGuidanceInFlight = false;
+      triageGuidanceTurnState = "aguardando_pergunta";
+      triageGuidanceAskedQuestion = "";
+      triageGuidanceSilenceTimer && clearTimeout(triageGuidanceSilenceTimer);
+      triageGuidanceSilenceTimer = null;
+      triageRenderLiveGuidance();
+    }
+
+    function triageMaybeStartInitialGuidance(force) {
+      if (!triageGuidanceEnabled || !triageIsRecording || triageIsPaused) return;
+      if (triageGuidanceStage !== "aguardando_motivo") return;
+
+      const combined = triageGetCombinedTranscript();
+      if (!combined || combined.length < 120) return;
+
+      if (!force && !hasLikelyChiefComplaint(combined)) return;
+
+      triageGuidanceStage = "perguntas";
+      triageGuidanceTurnState = "aguardando_pergunta";
+      triageGuidanceAskedQuestion = "";
+      triageGuidanceAskedAtLen = combined.length;
+      triageGuidanceAskedAtTs = Date.now();
+      triageGuidanceChunkStartLen = combined.length;
+
+      triageRequestGuidanceFromBackend({ evento: "inicial" });
+    }
+
+    function triageOnTranscriptUpdateForGuidance() {
+      if (!triageGuidanceEnabled || !triageIsRecording || triageIsPaused) return;
+
+      if (triageGuidanceStage === "aguardando_motivo") {
+        triageMaybeStartInitialGuidance(false);
+        return;
+      }
+
+      triageScheduleGuidanceSilenceFinalize();
+    }
+
+    function triageScheduleGuidanceSilenceFinalize() {
+      if (!triageGuidanceEnabled || !triageIsRecording || triageIsPaused) return;
+
+      if (triageGuidanceSilenceTimer) clearTimeout(triageGuidanceSilenceTimer);
+      triageGuidanceSilenceTimer = setTimeout(() => {
+        triageFinalizeGuidanceChunk();
+      }, 1400);
+    }
+
+    function triageFinalizeGuidanceChunk() {
+      if (!triageGuidanceEnabled || !triageIsRecording || triageIsPaused) return;
+
+      const combined = triageGetCombinedTranscript();
+      if (!combined) return;
+
+      if (triageGuidanceChunkStartLen <= 0) {
+        triageGuidanceChunkStartLen = combined.length;
+        return;
+      }
+
+      const chunk = combined.slice(triageGuidanceChunkStartLen).trim();
+      triageGuidanceChunkStartLen = combined.length;
+
+      if (!chunk || chunk.length < 10) return;
+
+      const now = Date.now();
+      if (triageGuidanceLastChunkTs && (now - triageGuidanceLastChunkTs) < 900) return;
+      triageGuidanceLastChunkTs = now;
+
+      triageHandleGuidanceUtteranceChunk(chunk);
+    }
+
+    function triageHandleGuidanceUtteranceChunk(chunkText) {
+      if (!chunkText) return;
+      if (!triageGuidancePending || !triageGuidancePending.length) return;
+      if (triageGuidanceInFlight) return;
+
+      if (triageGuidanceTurnState === "aguardando_pergunta") {
+        const matched = matchQuestionFromUtterance(chunkText, triageGuidancePending);
+
+        triageGuidanceAskedQuestion = matched ? matched : "";
+        triageGuidanceAskedAtTs = Date.now();
+        triageGuidanceAskedAtLen = triageGetCombinedTranscript().length;
+
+        triageGuidanceTurnState = "aguardando_resposta";
+        triageRenderLiveGuidance();
+        return;
+      }
+
+      if (triageGuidanceTurnState === "aguardando_resposta") {
+        const dt = Date.now() - (triageGuidanceAskedAtTs || 0);
+        if (dt < 900) return;
+
+        triageRequestGuidanceFromBackend({ evento: "resposta", ultima_fala: chunkText });
+        return;
+      }
+    }
+
+    async function triageRequestGuidanceFromBackend({ evento, ultima_fala }) {
+      if (triageGuidanceInFlight) return;
+      if (!triageGuidanceEnabled || !triageIsRecording || triageIsPaused) return;
+
+      const combined = triageGetCombinedTranscript();
+      if (!combined || combined.length < 50) {
+        triageRenderLiveGuidance();
+        return;
+      }
+
+      const payload = {
+        modo: "triagem_hospitalar",
+        transcricao: combined,
+        estado: triageGuidanceStage,
+        evento: evento || "stream",
+        pergunta_feita: triageGuidanceAskedQuestion || "",
+        perguntas_pendentes: Array.isArray(triageGuidancePending) ? triageGuidancePending.slice(0, 3) : [],
+        confianca_atual: typeof triageGuidanceConfidence === "number" ? triageGuidanceConfidence : 0,
+        hipotese_atual: triageGuidanceHypothesis || "",
+        ultima_fala: typeof ultima_fala === "string" ? ultima_fala.slice(0, 800) : ""
+      };
+
+      const h = hashForGuidancePayload(payload);
+      if (h === triageGuidanceLastPayloadHash && evento !== "inicial" && evento !== "resposta") return;
+      triageGuidanceLastPayloadHash = h;
+
+      triageGuidanceInFlight = true;
+      triageRenderLiveGuidance();
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/guia-tempo-real", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text();
+          console.error("Erro HTTP do backend (guia triagem):", resp.status, txt);
+          return;
+        }
+
+        const data = await resp.json();
+        triageGuidanceContextLabel = data.contexto || triageGuidanceContextLabel || "";
+        triageGuidanceHypothesis = data.hipotese_principal || triageGuidanceHypothesis || "";
+        if (typeof data.confianca === "number") triageGuidanceConfidence = data.confianca;
+
+        const itens = Array.isArray(data.perguntas) ? data.perguntas : (Array.isArray(data.itens) ? data.itens : []);
+        const normalized = itens.map(x => String(x || "").trim()).filter(Boolean);
+
+        triageGuidancePending = normalized.slice(0, 3);
+
+        if (evento === "resposta" || evento === "inicial") {
+          triageGuidanceTurnState = "aguardando_pergunta";
+          triageGuidanceAskedQuestion = "";
+          triageGuidanceAskedAtLen = combined.length;
+          triageGuidanceAskedAtTs = Date.now();
+          triageGuidanceChunkStartLen = combined.length;
+        }
+      } catch (err) {
+        console.error("Falha ao buscar guia triagem:", err);
+      } finally {
+        triageGuidanceInFlight = false;
+        triageRenderLiveGuidance();
+      }
+    }
+
+    function initTriageSpeech() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        if (triageMicStatus) triageMicStatus.innerText = "Seu navegador não suporta reconhecimento de voz. Use Google Chrome em um computador.";
+        return;
+      }
+      triageRecognition = new SR();
+      triageRecognition.lang = "pt-BR";
+      triageRecognition.continuous = true;
+      triageRecognition.interimResults = true;
+
+      triageRecognition.onresult = (event) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            triageFinalTranscript += transcript + " ";
+          } else {
+            interim += transcript;
+          }
+        }
+        triageInterimTranscript = interim.trim();
+        triageOnTranscriptUpdateForGuidance();
+      };
+
+      triageRecognition.onerror = (event) => {
+        console.error("Erro no reconhecimento de voz (triagem):", event.error);
+        if (triageMicStatus) {
+          if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+            triageMicStatus.innerText = "Permita o acesso ao microfone nas configurações do navegador e tente novamente.";
+          } else {
+            triageMicStatus.innerText = "Ocorreu um erro no reconhecimento de voz. Tente novamente.";
+          }
+        }
+      };
+
+      triageRecognition.onend = () => {
+        if (triageIsRecording && !triageIsPaused) {
+          try { triageRecognition.start(); } catch (err) {}
+        }
+      };
+    }
+
+    function triageUpdateTimer() {
+      const now = Date.now();
+      const seconds = triageAccumulatedSeconds + Math.floor((now - triageStartTime) / 1000);
+      const m = ("0" + Math.floor(seconds / 60)).slice(-2);
+      const s = ("0" + (seconds % 60)).slice(-2);
+      if (triageTimerEl) triageTimerEl.innerText = `${m}:${s}`;
+    }
+
+    function triageStartTimer() {
+      triageStartTime = Date.now();
+      if (triageTimerInterval) clearInterval(triageTimerInterval);
+      triageTimerInterval = setInterval(triageUpdateTimer, 500);
+    }
+
+    function triagePauseTimer() {
+      if (!triageStartTime) return;
+      const now = Date.now();
+      triageAccumulatedSeconds += Math.floor((now - triageStartTime) / 1000);
+      if (triageTimerInterval) clearInterval(triageTimerInterval);
+      triageTimerInterval = null;
+    }
+
+    function triageResetTimer() {
+      if (triageTimerInterval) clearInterval(triageTimerInterval);
+      triageTimerInterval = null;
+      triageStartTime = null;
+      triageAccumulatedSeconds = 0;
+      if (triageTimerEl) triageTimerEl.innerText = "00:00";
+    }
+
+    function applyRiskBadgeColorTo(el, cor) {
+      if (!el) return;
+      el.classList.remove("risk-none", "risk-vermelho", "risk-laranja", "risk-amarelo", "risk-verde", "risk-azul");
+      const c = normalizeRiskColorLabel(cor);
+      if (c === "Vermelho") el.classList.add("risk-vermelho");
+      else if (c === "Laranja") el.classList.add("risk-laranja");
+      else if (c === "Amarelo") el.classList.add("risk-amarelo");
+      else if (c === "Verde") el.classList.add("risk-verde");
+      else if (c === "Azul") el.classList.add("risk-azul");
+      else el.classList.add("risk-none");
+    }
+
+    function renderRiskLegendInto(container, legendArr) {
+      if (!container) return;
+      const legend = Array.isArray(legendArr) && legendArr.length ? legendArr : RISK_LEGEND_DEFAULT;
+      container.innerHTML = "";
+      legend.slice(0, 5).forEach((item) => {
+        const cor = normalizeRiskColorLabel(item?.cor || "");
+        const tempo = String(item?.tempo || "").trim();
+        const label = String(item?.descricao || "").trim();
+        const row = document.createElement("div");
+        row.className = "risk-legend-row";
+        const badge = document.createElement("span");
+        badge.className = "risk-badge";
+        applyRiskBadgeColorTo(badge, cor);
+        badge.textContent = cor || "Não informado";
+        const txt = document.createElement("div");
+        txt.className = "risk-legend-text";
+        txt.textContent = (tempo ? (tempo + " - ") : "") + (label || "");
+        row.appendChild(badge);
+        row.appendChild(txt);
+        container.appendChild(row);
+      });
+    }
+
+    function triageClearReportUI() {
+      if (triageReportPanel) triageReportPanel.classList.add("hidden");
+      if (triageReportStatus) triageReportStatus.textContent = "";
+      if (triageRiskBadge) { triageRiskBadge.textContent = "Não informado"; applyRiskBadgeColorTo(triageRiskBadge, "Não informado"); }
+      if (triageRiskMeaning) { triageRiskMeaning.textContent = "Nenhum conteúdo disponível."; triageRiskMeaning.dataset.printText = ""; }
+      if (triageRiskLegend) renderRiskLegendInto(triageRiskLegend, RISK_LEGEND_DEFAULT);
+
+      if (triageProntuario) triageProntuario.value = "";
+      if (triagePassagemMedico) triagePassagemMedico.value = "";
+      if (triageAlertas) triageAlertas.value = "";
+      if (triageCondutasNaoMed) triageCondutasNaoMed.value = "";
+      if (triageCondutasMed) triageCondutasMed.value = "";
+      if (triageMedidasExames) triageMedidasExames.value = "";
+      if (triagePendencias) triagePendencias.value = "";
+      if (triageQualidade) triageQualidade.value = "";
+      if (triageFullReport) triageFullReport.value = "";
+    }
+
+    function startTriageRecording() {
+      if (isRecording) {
+        alert("Finalize a consulta antes de iniciar a triagem hospitalar.");
+        return;
+      }
+      if (!triageRecognition) {
+        initTriageSpeech();
+        if (!triageRecognition) return;
+      }
+
+      triageIsRecording = true;
+      triageIsPaused = false;
+      triageFinalTranscript = "";
+      triageInterimTranscript = "";
+
+      if (triageError) triageError.textContent = "";
+      triageClearReportUI();
+
+      if (triagePauseBtn) {
+        triagePauseBtn.style.display = "inline-block";
+        triagePauseBtn.innerText = "Pausar";
+      }
+
+      if (triageRecordBtn) {
+        triageRecordBtn.className = "recording";
+        triageRecordBtn.innerText = "Encerrar triagem";
+      }
+
+      if (triageMicStatus) triageMicStatus.innerText = "Gravando triagem...";
+      if (recordBtn) recordBtn.disabled = true;
+
+      triageResetLiveGuidanceState();
+      triageRenderLiveGuidance();
+      triageStartGuidanceLoop();
+
+      triageResetTimer();
+      triageStartTimer();
+
+      try { triageRecognition.start(); } catch (e) {}
+    }
+
+    function stopTriageRecording() {
+      triageIsRecording = false;
+      triageIsPaused = false;
+
+      triageStopGuidanceLoop();
+      triageInterimTranscript = "";
+      triageRenderLiveGuidance();
+
+      if (triageRecognition) {
+        try { triageRecognition.stop(); } catch (e) {}
+      }
+      triagePauseTimer();
+
+      if (triageRecordBtn) {
+        triageRecordBtn.className = "start";
+        triageRecordBtn.innerText = "Iniciar triagem hospitalar";
+      }
+
+      if (triagePauseBtn) triagePauseBtn.style.display = "none";
+      if (recordBtn) recordBtn.disabled = false;
+    }
+
+    function pauseTriageRecording() {
+      if (!triageIsRecording || triageIsPaused) return;
+      triageIsPaused = true;
+
+      triageStopGuidanceLoop();
+      if (triageLiveGuidanceStatus) triageLiveGuidanceStatus.textContent = "Triagem pausada. As sugestões em tempo real serão retomadas ao retomar a gravação.";
+
+      if (triageRecognition) {
+        try { triageRecognition.stop(); } catch (e) {}
+      }
+      triagePauseTimer();
+
+      if (triagePauseBtn) triagePauseBtn.innerText = "Retomar";
+      if (triageMicStatus) triageMicStatus.innerText = "Triagem pausada.";
+    }
+
+    function resumeTriageRecording() {
+      if (!triageIsRecording || !triageIsPaused) return;
+      triageIsPaused = false;
+
+      triageStartGuidanceLoop();
+
+      if (triageRecognition) {
+        try { triageRecognition.start(); } catch (e) {}
+      }
+      triageStartTimer();
+
+      if (triagePauseBtn) triagePauseBtn.innerText = "Pausar";
+      if (triageMicStatus) triageMicStatus.innerText = "Gravando triagem...";
+    }
+
+    async function finalizarTriagemHospitalar() {
+      const combined = triageGetCombinedTranscript();
+      const txt = (combined || "").trim();
+
+      if (!txt || txt.length < 40) {
+        if (triageError) triageError.textContent = "A transcrição da triagem ficou muito curta. Tente novamente, falando mais próximo ao microfone.";
+        return;
+      }
+
+      if (resultsCard) resultsCard.classList.remove("hidden");
+      if (triageReportPanel) triageReportPanel.classList.remove("hidden");
+      if (triageReportStatus) {
+        triageReportStatus.textContent = "Gerando relatório de triagem...";
+        triageReportStatus.classList.add("loading-dot");
+      }
+
+      triageClearReportUI();
+      if (triageReportPanel) triageReportPanel.classList.remove("hidden");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/gerar-triagem-hospitalar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcricao: txt })
+        });
+
+        if (!resp.ok) {
+          const t = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (triagem):", resp.status, t);
+          if (triageReportStatus) {
+            triageReportStatus.textContent = "Não foi possível gerar a triagem.";
+            triageReportStatus.classList.remove("loading-dot");
+          }
+          return;
+        }
+
+        const data = await resp.json();
+
+        const nivel = (data?.nivel_risco || "").trim() || "Não informado";
+        const tempo = (data?.tempo_maximo || "").trim();
+        const just = (data?.justificativa_risco || "").trim();
+        const meaning = (tempo ? ("Tempo máximo: " + tempo + ". ") : "") + (just || "");
+
+        if (triageRiskBadge) {
+          triageRiskBadge.textContent = normalizeRiskColorLabel(nivel) || nivel || "Não informado";
+          applyRiskBadgeColorTo(triageRiskBadge, nivel);
+        }
+        if (triageRiskMeaning) {
+          triageRiskMeaning.textContent = meaning || "Nenhum conteúdo disponível.";
+          triageRiskMeaning.dataset.printText = [
+            "Classificação de risco: " + (normalizeRiskColorLabel(nivel) || nivel || "Não informado"),
+            tempo ? ("Tempo máximo: " + tempo) : "",
+            just ? ("Justificativa: " + just) : ""
+          ].filter(Boolean).join("\n");
+        }
+        renderRiskLegendInto(triageRiskLegend, RISK_LEGEND_DEFAULT);
+
+        if (triageProntuario) triageProntuario.value = (data?.texto_prontuario || "").trim();
+        if (triagePassagemMedico) triagePassagemMedico.value = (data?.passagem_medico || "").trim();
+        if (triageAlertas) triageAlertas.value = (data?.alertas_red_flags || "").trim();
+        if (triageCondutasNaoMed) triageCondutasNaoMed.value = (data?.condutas_nao_medicamentosas || "").trim();
+        if (triageCondutasMed) triageCondutasMed.value = (data?.condutas_medicamentosas || "").trim();
+        if (triageMedidasExames) triageMedidasExames.value = (data?.medidas_exames_imediatos || "").trim();
+        if (triagePendencias) triagePendencias.value = (data?.pendencias_checar || "").trim();
+        if (triageQualidade) triageQualidade.value = (data?.checagem_qualidade || "").trim();
+        if (triageFullReport) triageFullReport.value = (data?.relatorio_completo || "").trim();
+
+        if (triageReportStatus) {
+          triageReportStatus.textContent = "Triagem gerada.";
+          triageReportStatus.classList.remove("loading-dot");
+        }
+      } catch (e) {
+        console.error("Erro ao gerar triagem:", e);
+        if (triageReportStatus) {
+          triageReportStatus.textContent = "Erro ao gerar triagem.";
+          triageReportStatus.classList.remove("loading-dot");
+        }
+      }
     }
 
     function hasLikelyChiefComplaint(text) {
@@ -4207,6 +5070,10 @@ function initSpeech() {
     }
 
     function startRecording() {
+      if (triageIsRecording) {
+        alert("Finalize a triagem hospitalar antes de iniciar a consulta.");
+        return;
+      }
       if (!recognition) {
         initSpeech();
         if (!recognition) {
@@ -4216,6 +5083,7 @@ function initSpeech() {
 
       isRecording = true;
       isPaused = false;
+      if (triageRecordBtn) triageRecordBtn.disabled = true;
       finalTranscript = "";
       baseTranscript = "";
       resultsCard.classList.add("hidden");
@@ -4265,9 +5133,10 @@ function initSpeech() {
         }
       }
       pauseTimer();
-      recordBtn.className = "start";
-      recordBtn.innerText = "Iniciar atendimento";
-      pauseBtn.style.display = "none";
+      recordBtn.className = \"start\";
+      recordBtn.innerText = \"Iniciar atendimento\";
+      pauseBtn.style.display = \"none\";
+      if (triageRecordBtn) triageRecordBtn.disabled = false;
     }
 
     function pauseRecording() {
@@ -5030,6 +5899,80 @@ if (medicalDoubtInput) {
 if (medicalDoubtSendBtn) {
   medicalDoubtSendBtn.addEventListener("click", () => {
     submitMedicalDoubt();
+  });
+}
+
+
+if (triageRecordBtn) {
+  triageRecordBtn.onclick = () => {
+    if (!triageIsRecording) {
+      startTriageRecording();
+    } else {
+      stopTriageRecording();
+      finalizarTriagemHospitalar();
+    }
+  };
+}
+
+if (triagePauseBtn) {
+  triagePauseBtn.onclick = () => {
+    if (!triageIsRecording) return;
+    if (!triageIsPaused) pauseTriageRecording();
+    else resumeTriageRecording();
+  };
+}
+
+if (triageCopyFullBtn) {
+  triageCopyFullBtn.addEventListener("click", () => {
+    const text = (triageFullReport && triageFullReport.value) ? triageFullReport.value.trim() : "";
+    if (!text) {
+      alert("Não há relatório de triagem para copiar.");
+      return;
+    }
+    copyToClipboard(text);
+  });
+}
+
+if (triagePrintFullBtn) {
+  triagePrintFullBtn.addEventListener("click", () => {
+    const text = (triageFullReport && triageFullReport.value) ? triageFullReport.value : "";
+    openPrintWindow("Relatório de triagem hospitalar", text);
+  });
+}
+
+if (triageCopyProntuarioBtn) {
+  triageCopyProntuarioBtn.addEventListener("click", () => {
+    const text = (triageProntuario && triageProntuario.value) ? triageProntuario.value.trim() : "";
+    if (!text) {
+      alert("Não há texto de prontuário para copiar.");
+      return;
+    }
+    copyToClipboard(text);
+  });
+}
+
+if (triagePrintProntuarioBtn) {
+  triagePrintProntuarioBtn.addEventListener("click", () => {
+    const text = (triageProntuario && triageProntuario.value) ? triageProntuario.value : "";
+    openPrintWindow("Texto para prontuário - Triagem", text);
+  });
+}
+
+if (triageCopyPassagemBtn) {
+  triageCopyPassagemBtn.addEventListener("click", () => {
+    const text = (triagePassagemMedico && triagePassagemMedico.value) ? triagePassagemMedico.value.trim() : "";
+    if (!text) {
+      alert("Não há passagem ao médico para copiar.");
+      return;
+    }
+    copyToClipboard(text);
+  });
+}
+
+if (triagePrintPassagemBtn) {
+  triagePrintPassagemBtn.addEventListener("click", () => {
+    const text = (triagePassagemMedico && triagePassagemMedico.value) ? triagePassagemMedico.value : "";
+    openPrintWindow("Passagem rápida ao médico - Triagem", text);
   });
 }
 

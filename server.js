@@ -1471,6 +1471,106 @@ Transcrição:
 });
 
 
+// ======================================================================
+// ROTA EXTRA – GERAR RELATÓRIO DE TRIAGEM HOSPITALAR A PARTIR DA TRANSCRIÇÃO
+// ======================================================================
+
+app.post("/api/gerar-triagem-hospitalar", requirePaidOrAdmin, async(req, res) => {
+  try {
+    const { transcricao } = req.body || {};
+
+    const t = normalizeText(transcricao || "", 12000);
+    if (!t || t.length < 30) {
+      return res.json({
+        nivel_risco: "não informado",
+        tempo_maximo: "",
+        justificativa_risco: "",
+        alertas_red_flags: "",
+        condutas_nao_medicamentosas: "",
+        condutas_medicamentosas: "",
+        medidas_exames_imediatos: "",
+        passagem_medico: "",
+        texto_prontuario: "",
+        pendencias_checar: "",
+        checagem_qualidade: "",
+        relatorio_completo: ""
+      });
+    }
+
+    const prompt = `
+Você é um enfermeiro preceptor especializado em triagem hospitalar (porta de urgência/emergência).
+Tarefa: a partir da transcrição de uma triagem gravada, gere um relatório técnico completo e acionável para uso imediato.
+
+Regras:
+- Não invente dados. Se uma informação não estiver presente, escreva "não informado" ou descreva o que precisa ser checado.
+- Use linguagem técnica, objetiva e organizada.
+- Inclua tratamento não medicamentoso e, quando fizer sentido, tratamento medicamentoso sugerido (sempre com ressalva de que depende de protocolos locais e prescrição médica quando aplicável).
+- Classifique risco por cores (Vermelho, Laranja, Amarelo, Verde, Azul) e indique tempo máximo de atendimento.
+- Foque em segurança: identificar red flags, ABCDE, dor, sangramento, dispneia, rebaixamento de consciência, sinais de sepse, choque, AVC, SCA, anafilaxia, trauma, gestação, pediatria, intoxicação quando pertinente.
+
+Formato de saída: JSON estrito, exatamente com as chaves abaixo:
+{
+  "nivel_risco": "Vermelho|Laranja|Amarelo|Verde|Azul|não informado",
+  "tempo_maximo": "string curta",
+  "justificativa_risco": "string",
+  "alertas_red_flags": "string",
+  "condutas_nao_medicamentosas": "string",
+  "condutas_medicamentosas": "string",
+  "medidas_exames_imediatos": "string",
+  "passagem_medico": "string",
+  "texto_prontuario": "string",
+  "pendencias_checar": "string",
+  "checagem_qualidade": "string",
+  "relatorio_completo": "string"
+}
+
+Transcrição:
+"""${t}"""
+`;
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.json({
+        nivel_risco: "não informado",
+        tempo_maximo: "",
+        justificativa_risco: "",
+        alertas_red_flags: "Sem chave OPENAI_API_KEY configurada no servidor.",
+        condutas_nao_medicamentosas: "",
+        condutas_medicamentosas: "",
+        medidas_exames_imediatos: "",
+        passagem_medico: "",
+        texto_prontuario: "",
+        pendencias_checar: "",
+        checagem_qualidade: "",
+        relatorio_completo: ""
+      });
+    }
+
+    const data = await callOpenAIJson(prompt);
+
+    const out = {
+      nivel_risco: normalizeText(data?.nivel_risco || "não informado", 40) || "não informado",
+      tempo_maximo: normalizeText(data?.tempo_maximo || "", 120),
+      justificativa_risco: normalizeText(data?.justificativa_risco || "", 1200),
+      alertas_red_flags: normalizeText(data?.alertas_red_flags || "", 2000),
+      condutas_nao_medicamentosas: normalizeText(data?.condutas_nao_medicamentosas || "", 2400),
+      condutas_medicamentosas: normalizeText(data?.condutas_medicamentosas || "", 2400),
+      medidas_exames_imediatos: normalizeText(data?.medidas_exames_imediatos || "", 2000),
+      passagem_medico: normalizeText(data?.passagem_medico || "", 1800),
+      texto_prontuario: normalizeText(data?.texto_prontuario || "", 2400),
+      pendencias_checar: normalizeText(data?.pendencias_checar || "", 1600),
+      checagem_qualidade: normalizeText(data?.checagem_qualidade || "", 1600),
+      relatorio_completo: normalizeText(data?.relatorio_completo || "", 6000)
+    };
+
+    return res.json(out);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao gerar triagem hospitalar." });
+  }
+});
+
+
+
 
 
 // ======================================================================
@@ -2527,7 +2627,7 @@ function guessContextAndHypothesis(t) {
   return { contexto: "Atendimento geral", hipotese: "" };
 }
 
-function heuristicQuestions(transcricao) {
+function heuristicQuestions(transcricao, isTriage) {
   const t = String(transcricao || "").toLowerCase();
   const { contexto, hipotese } = guessContextAndHypothesis(t);
 
@@ -2540,6 +2640,15 @@ function heuristicQuestions(transcricao) {
 
   push("Confirmar início e evolução do quadro (quando começou e como piorou/melhorou).");
   push("Aferir sinais vitais e saturação; verificar sinais de alarme relevantes ao quadro.");
+
+if (isTriage) {
+  push("Aferir sinais vitais completos (PA, FC, FR, Temp, SpO2) e reavaliar após intervenções; glicemia capilar quando indicado.");
+  push("Realizar avaliação ABCDE e nível de consciência (AVPU/Glasgow); quantificar dor (escala 0–10) e caracterizar dor/sangramento.");
+  push("Checar red flags do quadro: dispneia importante, dor torácica, déficit neurológico, rebaixamento de consciência, convulsão, choque, anafilaxia, sinais de sepse, sangramento ativo.");
+  push("Confirmar alergias, comorbidades relevantes, medicações em uso (incluindo anticoagulantes), gestação/puerpério quando aplicável.");
+  push("Definir necessidade de medidas imediatas conforme protocolo local (oxigênio, acesso venoso, monitorização, posição, jejum, isolamento) e encaminhamento prioritário.");
+  return { contexto, hipotese, sugestoes: q };
+}
 
   if (t.includes("febre") || t.includes("calafrio")) {
     push("Perguntar pico da febre, padrão (contínua/intermitente) e uso/resposta a antitérmicos.");
@@ -2635,22 +2744,24 @@ app.post("/api/guia-tempo-real", requirePaidOrAdmin, async(req, res) => {
     const hipoteseAtual = String(body.hipotese_atual || "").trim();
     const ultimaFala = normalizeText(body.ultima_fala || "", 800);
 
+    const modo = String(body.modo || "").trim().toLowerCase();
+    const isTriage = (modo === "triagem_hospitalar" || modo === "triagem" || modo === "hospital_triage" || modo === "triagem_hospital");
+
     let contexto = "";
     let hipotese = "";
     let confianca = 0;
     let sugestoes = [];
 
     if (process.env.OPENAI_API_KEY) {
-      const prompt = `
+            const promptConsulta = `
 Você está auxiliando um enfermeiro durante uma consulta.
 Objetivo: sugerir no máximo 3 perguntas essenciais por vez para chegar a um diagnóstico provável com eficiência.
-
 Regras:
-- Nunca gere mais de 3 perguntas.
-- Se houver perguntas pendentes úteis, você pode mantê-las.
-- Se uma pergunta ficou sem sentido após a resposta do paciente, substitua.
-- Use linguagem objetiva e prática.
-- Retorne também uma hipótese principal (curta) e um nível de confiança (0 a 95; nunca 100).
+- Não dê diagnóstico final, apenas hipótese principal.
+- Não escreva emojis.
+- As perguntas devem ser curtas e objetivas.
+- Use contexto do que já foi dito; não repita perguntas já respondidas.
+- Se for evento "resposta", atualize as perguntas com base na última fala do paciente.
 
 Retorne JSON estrito no formato:
 {
@@ -2666,20 +2777,52 @@ Dados atuais:
 - Hipótese atual: ${hipoteseAtual || "não informado"}
 - Confiança atual: ${confiancaAtual}
 - Pergunta feita (se houver): ${perguntaFeita || "nenhuma"}
-- Perguntas pendentes: ${pendentes.length ? pendentes.join(" | ") : "nenhuma"}
+- Perguntas pendentes (se houver): ${(pendentes && pendentes.length) ? pendentes.join(" | ") : "nenhuma"}
+- Última fala (se houver): ${ultimaFala || "nenhuma"}
 
-Última fala (trecho recente, pode estar vazio): ${ultimaFala || "não informado"}
-
-Transcrição:
-<<<${transcricao}>>>
+Transcrição (trecho):
+"""${transcricao}"""
 `;
+
+      const promptTriage = `
+Você está auxiliando um enfermeiro na triagem hospitalar (porta de urgência/emergência).
+Objetivo: sugerir no máximo 3 itens essenciais por vez (perguntas e/ou procedimentos) para classificar risco, detectar red flags e iniciar condutas imediatas com segurança.
+Regras:
+- Não invente dados. Se faltar informação, sugira como obter.
+- Não escreva emojis.
+- Itens devem ser curtos, objetivos e executáveis na triagem.
+- Priorize: sinais vitais, nível de consciência, via aérea/respiração/circulação (ABCDE), dor, sangramento, alergias, comorbidades, medicações em uso, início/evolução, sintomas de gravidade específicos do quadro.
+- Se for evento "resposta", atualize os próximos itens com base na última fala.
+
+Retorne JSON estrito no formato:
+{
+  "contexto": "texto curto",
+  "hipotese_principal": "cenário/síndrome principal (não diagnóstico definitivo)",
+  "confianca": 0,
+  "perguntas_sugeridas": ["item 1", "item 2", "item 3"]
+}
+
+Dados atuais:
+- Estado: ${estado}
+- Evento: ${evento}
+- Cenário atual: ${hipoteseAtual || "não informado"}
+- Confiança atual: ${confiancaAtual}
+- Item executado (se houver): ${perguntaFeita || "nenhum"}
+- Itens pendentes (se houver): ${(pendentes && pendentes.length) ? pendentes.join(" | ") : "nenhum"}
+- Última fala (se houver): ${ultimaFala || "nenhuma"}
+
+Transcrição (trecho):
+"""${transcricao}"""
+`;
+
+      const prompt = isTriage ? promptTriage : promptConsulta;
       const data = await callOpenAIJson(prompt);
       contexto = typeof data?.contexto === "string" ? data.contexto.trim() : "";
       hipotese = typeof data?.hipotese_principal === "string" ? data.hipotese_principal.trim() : "";
       confianca = clampNumber(data?.confianca, 0, 95);
       sugestoes = Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : [];
     } else {
-      const h = heuristicQuestions(transcricao);
+      const h = heuristicQuestions(transcricao, isTriage);
       contexto = h.contexto || "";
       hipotese = h.hipotese || "";
       sugestoes = h.sugestoes || [];
