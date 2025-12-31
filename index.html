@@ -2763,6 +2763,7 @@
 
     // Eventos de login/logout
     document.getElementById("loginBtn")?.addEventListener("click", doLogin);
+    document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
     document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
     document.getElementById("nurseLogoutBtn")?.addEventListener("click", logoutAll);
     document.getElementById("adminLogoutBtn")?.addEventListener("click", logoutAll);
@@ -5133,9 +5134,9 @@ function initSpeech() {
         }
       }
       pauseTimer();
-      recordBtn.className = \"start\";
-      recordBtn.innerText = \"Iniciar atendimento\";
-      pauseBtn.style.display = \"none\";
+      recordBtn.className = "start";
+      recordBtn.innerText = "Iniciar atendimento";
+      pauseBtn.style.display = "none";
       if (triageRecordBtn) triageRecordBtn.disabled = false;
     }
 
