@@ -902,26 +902,46 @@
     }
     .whatsapp-fab:active { transform: scale(0.98); }
     .whatsapp-fab svg { width: 28px; height: 28px; fill: #ffffff; }
+    
     .whatsapp-fab-label {
       position: fixed;
       right: 84px;
-      bottom: 28px;
+      bottom: 18px;
       background: #ffffff;
       border: 1px solid #e5e7eb;
-      border-radius: 999px;
-      padding: 8px 12px;
+      border-radius: 14px;
+      padding: 10px 12px;
       font-size: 12px;
       color: #111827;
       box-shadow: 0 6px 16px rgba(0,0,0,0.12);
       z-index: 2000;
       user-select: none;
+      max-width: 270px;
+      line-height: 1.2;
+    }
+    .whatsapp-fab-label .wa-label-title {
+      font-weight: 800;
+      font-size: 12px;
+      margin-bottom: 3px;
+    }
+    .whatsapp-fab-label .wa-label-sub {
+      font-weight: 600;
+      font-size: 11px;
+      color: #374151;
     }
     @media (max-width: 520px) {
-      .whatsapp-fab-label { display: none; }
+      .whatsapp-fab-label {
+        right: 72px;
+        bottom: 12px;
+        padding: 8px 10px;
+        max-width: 210px;
+      }
+      .whatsapp-fab-label .wa-label-sub {
+        font-size: 10px;
+      }
     }
 
-  
-    /* =========================
+/* =========================
        AUTENTICAÇÃO E ADMIN
        ========================= */
     .auth-shell {
@@ -1375,10 +1395,8 @@
           <table class="admin-table">
             <thead>
               <tr>
-                <th>Data/Hora</th>
-                <th>Ação</th>
-                <th>Alvo</th>
-                <th>Detalhes</th>
+                <th>Registro de pagamento</th>
+                <th>Recebido por (Admin)</th>
               </tr>
             </thead>
             <tbody id="auditTbody"></tbody>
@@ -4869,6 +4887,16 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
       try { return new Date(iso).toLocaleString("pt-BR"); } catch { return String(iso); }
     }
 
+    function fmtMoney(v) {
+      try {
+        const n = Number(v);
+        if (!Number.isFinite(n)) return String(v ?? "");
+        return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      } catch {
+        return String(v ?? "");
+      }
+    }
+
     function currentYYYYMM() {
       const d = new Date();
       const y = d.getFullYear();
@@ -4947,19 +4975,29 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
       const tbody = document.getElementById("auditTbody");
       if (!tbody) return;
       tbody.innerHTML = "";
+
       for (const a of ADMIN_CACHE_AUDIT.slice().reverse().slice(0, 200)) {
         const tr = document.createElement("tr");
-        const tdAt = document.createElement("td");
-        const tdAc = document.createElement("td");
-        const tdTa = document.createElement("td");
-        const tdDe = document.createElement("td");
-        tdAt.textContent = fmtDt(a.at);
-        tdAc.textContent = a.action || "";
-        tdTa.textContent = a.target || "";
-        tdDe.textContent = a.details || "";
-        tr.appendChild(tdAt); tr.appendChild(tdAc); tr.appendChild(tdTa); tr.appendChild(tdDe);
+        const tdReg = document.createElement("td");
+        const tdAdm = document.createElement("td");
+
+        const dt = fmtDt(a.at || a.paidAt);
+        const user = [a.userName, a.userLogin].filter(Boolean).join(" - ");
+        const parts = [];
+        if (dt && dt !== "-") parts.push(dt);
+        if (user) parts.push(user);
+        if (a.month) parts.push("Mês: " + a.month);
+        if (a.amount !== undefined && a.amount !== null && String(a.amount) !== "") parts.push("Valor: " + fmtMoney(a.amount));
+        if (a.method) parts.push("Método: " + a.method);
+        if (a.notes) parts.push("Obs: " + a.notes);
+
+        tdReg.textContent = parts.join(" / ");
+        tdAdm.textContent = a.receivedBy || a.admin || a.actor || "-";
+        tr.appendChild(tdReg);
+        tr.appendChild(tdAdm);
         tbody.appendChild(tr);
       }
+    }
     }
 
     function isOnline(lastSeenAt) {
@@ -5353,14 +5391,14 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
 </script>
 
-  <div class="whatsapp-fab-label">Entrar em contato</div>
+  <div class="whatsapp-fab-label"><div class="wa-label-title">WhatsApp</div><div class="wa-label-sub">Dúvidas, reportar erros, sugestões, melhorias</div></div>
   <a
     class="whatsapp-fab"
     href="https://wa.me/5575981457012?text=Ol%C3%A1%21%20Gostaria%20de%20reportar%20um%20erro%2C%20tirar%20uma%20d%C3%BAvida%20ou%20enviar%20uma%20sugest%C3%A3o."
     target="_blank"
     rel="noopener"
     aria-label="Entrar em contato pelo WhatsApp"
-    title="Reportar erros, dúvidas e sugestões"
+    title="Dúvidas, reportar erros, sugestões, melhorias"
   >
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M19.5 14.5c-.7 0-1.4-.1-2.1-.3a1 1 0 0 0-1 .2l-1.3 1.3a13.1 13.1 0 0 1-5.8-5.8l1.3-1.3a1 1 0 0 0 .2-1c-.2-.7-.3-1.4-.3-2.1a1 1 0 0 0-1-1H6.5a1 1 0 0 0-1 1c0 6.1 4.9 11 11 11a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1z"></path>
