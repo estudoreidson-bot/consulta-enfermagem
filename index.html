@@ -5894,12 +5894,12 @@ let interim = "";
               stopSbarTimer();
               if (sbarStatus) {
                 sbarStatus.textContent = "Não foi possível iniciar o microfone. Verifique permissão, selecione o microfone correto e tente novamente."; 
-                sbarStatus.classList.remove(\"loading-dot\");
+                sbarStatus.classList.remove("loading-dot");
               }
               if (sbarRecordBtn) {
-                sbarRecordBtn.classList.remove(\"recording\");
-                sbarRecordBtn.classList.add(\"start\");
-                sbarRecordBtn.textContent = \"Iniciar passagem de plantão (SBAR)\";
+                sbarRecordBtn.classList.remove("recording");
+                sbarRecordBtn.classList.add("start");
+                sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
                 sbarRecordBtn.disabled = false;
               }
             }
@@ -5972,7 +5972,7 @@ if (sbarOutput) sbarOutput.value = "";
 
           if (!transcricao) {
             if (sbarStatus) {
-              sbarStatus.textContent = (!sbarHasStarted ? "A gravação não iniciou. Verifique permissão do microfone e tente novamente." : "Nenhuma fala foi capturada. Tente novamente, falando mais próximo ao microfone (ou aguarde 1 a 2 segundos antes de começar a falar).";
+              sbarStatus.textContent = (!sbarHasStarted ? "A gravação não iniciou. Verifique permissão do microfone e tente novamente." : "Nenhuma fala foi capturada. Tente novamente, falando mais próximo ao microfone (ou aguarde 1 a 2 segundos antes de começar a falar).");
               sbarStatus.classList.remove("loading-dot");
             }
             if (sbarRecordBtn) {
