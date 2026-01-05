@@ -1876,19 +1876,7 @@
         <button id="copyPrescriptionBtn" class="btn-copy">Copiar plano de cuidados</button>
         <button id="printBtn" class="btn-print">Imprimir plano de cuidados</button>
       </div>
-
-      <h2>Passagem de Plantão (SBAR)</h2>
-      <textarea id="hospitalPrescriptionOutput" class="prescription-textarea"></textarea>
-
-      <div class="prescription-actions">
-        <button id="generateHospitalPrescriptionBtn">Gerar SBAR</button>
-        <button id="copyHospitalPrescriptionBtn" class="btn-copy">Copiar plano de cuidados hospitalar</button>
-        <button id="printHospitalPrescriptionBtn" class="btn-print">Imprimir plano de cuidados hospitalar</button>
-      </div>
-      <div id="hospitalPrescriptionStatus" class="mini-status"></div>
-
-
-      <h2>Classificação de risco por cores</h2>
+<h2>Classificação de risco por cores</h2>
       <div class="risk-triage-box">
         <div class="risk-triage-current">
           <span id="riskTriageBadge" class="risk-badge risk-none">Não informado</span>
@@ -2342,7 +2330,23 @@
                 <div id="patientReportCard" class="module-card">
       <h2>Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado de comparecimento ou permanência / ATA reunião / Registros de procedimentos</h2>
       <p class="mini-status" style="margin-top: 0;">
-        Grave em voz alta o conteúdo do documento. Diga claramente qual documento deseja produzir (por exemplo: declaração de comparecimento, relatório de curativo seriado, encaminhamento para CAPS, solicitação de insumos, comunicado para escola, ata de reunião). Ao encerrar, a gravação será usada para identificar o tipo de documento e gerar um texto padronizado pronto para colar no S.U.I.S.
+        Grave em voz alta o conteúdo do documento. Diga claramente qual documento deseja produzir (por exemplo: declaração de comparecimento, relatório de curativo seriado, encaminhamento para CAPS, solicitação de insumos, comunicado para escola, ata de reunião). Ao encerrar
+    <div id="sbarCard" class="module-card">
+      <h2>Passagem de Plantão (SBAR)</h2>
+      <p class="mini-status" style="margin-top: 0;">
+        Gere um resumo estruturado do caso no formato SBAR para repasse de plantão, com base apenas na transcrição disponível.
+      </p>
+      <textarea id="hospitalPrescriptionOutput" class="prescription-textarea"></textarea>
+
+      <div class="prescription-actions">
+        <button id="generateHospitalPrescriptionBtn" class="btn-print" type="button">Gerar SBAR</button>
+        <button id="copyHospitalPrescriptionBtn" class="btn-copy" type="button">Copiar SBAR</button>
+        <button id="printHospitalPrescriptionBtn" class="btn-print" type="button">Imprimir SBAR</button>
+      </div>
+      <div id="hospitalPrescriptionStatus" class="mini-status"></div>
+    </div>
+
+, a gravação será usada para identificar o tipo de documento e gerar um texto padronizado pronto para colar no S.U.I.S.
       </p>
 
       <div class="inline-input-row">
@@ -6749,7 +6753,278 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
 
 
+    
+
     // ============================
+    // MÓDULO: Guias de consulta (nurseView)
+    // ============================
+    (function initConsultGuides() {
+      const consultButtons = Array.from(document.querySelectorAll(".consult-type-btn"));
+      const drawer = document.getElementById("consultGuideDrawer");
+      const titleEl = document.getElementById("consultGuideTitle");
+      const subtitleEl = document.getElementById("consultGuideSubtitle");
+      const contentEl = document.getElementById("consultGuideContent");
+      const closeBtn = document.getElementById("closeConsultGuideBtn");
+      const prenatalTriRow = document.getElementById("prenatalTrimesterRow");
+      const triBtns = Array.from(document.querySelectorAll(".trimester-btn"));
+
+      if (!consultButtons.length || !drawer || !titleEl || !subtitleEl || !contentEl || !closeBtn || !prenatalTriRow) return;
+
+      function esc(s) {
+        return String(s ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      const GUIDE = {
+        prenatal: {
+          title: "Consulta pré-natal por trimestre",
+          subtitle: "Checklist prático para condução e registro. Ajuste conforme risco gestacional e protocolos locais.",
+          trimester: {
+            1: {
+              subtitle: "1º trimestre (até 13 semanas + 6 dias)",
+              html: `
+                <h4>Objetivos</h4>
+                <ul>
+                  <li>Confirmar gestação, datar, estratificar risco e iniciar plano de cuidado.</li>
+                  <li>Identificar sinais de alarme e fatores de risco (clínicos, obstétricos, sociais).</li>
+                </ul>
+                <h4>Anamnese e triagem</h4>
+                <ul>
+                  <li>DUM, ciclos, sintomas, sangramento, dor, febre, vômitos intensos.</li>
+                  <li>História obstétrica (gestações, partos, cesáreas, abortos, intercorrências).</li>
+                  <li>Comorbidades, uso de medicamentos, alergias, tabagismo/álcool/drogas.</li>
+                  <li>Violência, suporte familiar, condições socioeconômicas e acesso.</li>
+                </ul>
+                <h4>Exame e medidas</h4>
+                <ul>
+                  <li>PA, peso, altura/IMC, sinais vitais, avaliação clínica geral.</li>
+                  <li>Orientar sinais de alarme e quando procurar atendimento.</li>
+                </ul>
+                <h4>Planos e encaminhamentos</h4>
+                <ul>
+                  <li>Solicitar/registrar exames iniciais conforme rotina do serviço.</li>
+                  <li>Atualizar vacinas e suplementações conforme protocolo.</li>
+                  <li>Programar retorno e plano de acompanhamento.</li>
+                </ul>
+              `
+            },
+            2: {
+              subtitle: "2º trimestre (14 a 27 semanas + 6 dias)",
+              html: `
+                <h4>Objetivos</h4>
+                <ul>
+                  <li>Acompanhar crescimento fetal e sinais maternos, revisar exames e intercorrências.</li>
+                </ul>
+                <h4>Avaliação em cada consulta</h4>
+                <ul>
+                  <li>PA, peso/ganho ponderal, sintomas (cefaleia, escotomas, edema, dispneia).</li>
+                  <li>Altura uterina e BCF quando aplicável.</li>
+                  <li>Rastreamento de infecções e condições metabólicas conforme rotina.</li>
+                </ul>
+                <h4>Orientações</h4>
+                <ul>
+                  <li>Sinais de alarme (sangramento, perda de líquido, dor forte, diminuição de movimentos mais adiante).</li>
+                  <li>Planejamento do parto, rede de referência e vínculo.</li>
+                </ul>
+              `
+            },
+            3: {
+              subtitle: "3º trimestre (28 semanas até o parto)",
+              html: `
+                <h4>Objetivos</h4>
+                <ul>
+                  <li>Detectar precocemente pré-eclâmpsia, trabalho de parto prematuro e outras intercorrências.</li>
+                  <li>Preparar para parto e puerpério, organizar referência e plano de segurança.</li>
+                </ul>
+                <h4>Avaliação em cada consulta</h4>
+                <ul>
+                  <li>PA, sintomas neurológicos/visuais, edema, dor epigástrica, dispneia.</li>
+                  <li>Altura uterina, apresentação, BCF quando aplicável.</li>
+                  <li>Movimentos fetais: orientar contagem e condutas de alarme.</li>
+                </ul>
+                <h4>Parto e puerpério</h4>
+                <ul>
+                  <li>Revisar sinais de trabalho de parto, rotura de membranas, sangramento.</li>
+                  <li>Plano de transporte, acompanhante, documentos e local de referência.</li>
+                </ul>
+              `
+            }
+          }
+        },
+        puericultura: {
+          title: "Consulta puericultura",
+          subtitle: "Checklist prático para crescimento, desenvolvimento e prevenção.",
+          html: `
+            <h4>Medidas e sinais vitais</h4>
+            <ul>
+              <li>Peso, estatura/comprimento, perímetro cefálico (quando aplicável), IMC/curvas.</li>
+              <li>PA quando indicado, avaliação clínica geral.</li>
+            </ul>
+            <h4>Desenvolvimento e comportamento</h4>
+            <ul>
+              <li>Marcos do desenvolvimento, linguagem, interação social, sono.</li>
+              <li>Sinais de alerta e necessidade de encaminhamento.</li>
+            </ul>
+            <h4>Alimentação</h4>
+            <ul>
+              <li>Aleitamento, introdução alimentar, diversidade, ferro e segurança alimentar.</li>
+              <li>Orientações para hábitos saudáveis e prevenção de obesidade.</li>
+            </ul>
+            <h4>Prevenção</h4>
+            <ul>
+              <li>Vacinação, suplementações conforme protocolo, saúde bucal.</li>
+              <li>Segurança no domicílio (quedas, queimaduras, intoxicações).</li>
+            </ul>
+          `
+        },
+        planejamento: {
+          title: "Consulta planejamento familiar",
+          subtitle: "Avaliação de elegibilidade, escolha informada e seguimento.",
+          html: `
+            <h4>Estratificação inicial</h4>
+            <ul>
+              <li>Desejo reprodutivo, histórico obstétrico, ISTs, comorbidades e medicamentos.</li>
+              <li>PA, IMC e fatores de risco cardiovascular/trombótico quando relevante.</li>
+            </ul>
+            <h4>Opções contraceptivas</h4>
+            <ul>
+              <li>Métodos de barreira, hormonais, DIU, injetáveis, implante, definitivo (quando aplicável).</li>
+              <li>Contraindicações, efeitos adversos, manejo de sangramento e retorno.</li>
+            </ul>
+            <h4>ISTs</h4>
+            <ul>
+              <li>Prevenção combinada, testagem quando indicada e orientação de sinais de alarme.</li>
+            </ul>
+          `
+        },
+        hiperdia: {
+          title: "Consulta hiperdia",
+          subtitle: "Acompanhamento de hipertensão/diabetes e redução de risco.",
+          html: `
+            <h4>Avaliação</h4>
+            <ul>
+              <li>PA (técnica adequada), FC, peso/IMC, sintomas e adesão ao tratamento.</li>
+              <li>Revisar complicações: dor torácica, dispneia, edema, neuropatia, visão, pés.</li>
+            </ul>
+            <h4>Cuidados e prevenção</h4>
+            <ul>
+              <li>Educação em saúde: dieta, atividade física, cessação do tabagismo, álcool.</li>
+              <li>Metas e acompanhamento conforme estratificação de risco e protocolos do serviço.</li>
+            </ul>
+            <h4>Exames e rastreios</h4>
+            <ul>
+              <li>Revisar resultados e pendências (rim, lipídios, glicemia, microalbuminúria quando aplicável).</li>
+              <li>Avaliação dos pés, orientações de autocuidado.</li>
+            </ul>
+          `
+        },
+        puerperio: {
+          title: "Consulta de puerpério",
+          subtitle: "Avaliação materna e do vínculo, amamentação e planejamento reprodutivo.",
+          html: `
+            <h4>Triagem de sinais de alarme</h4>
+            <ul>
+              <li>Febre, sangramento intenso, dor pélvica importante, mal-estar, cefaleia/visão turva, dispneia.</li>
+            </ul>
+            <h4>Avaliação materna</h4>
+            <ul>
+              <li>PA, estado geral, loquiação, ferida operatória (se houver), dor e funcionamento intestinal/urinário.</li>
+              <li>Saúde mental: humor, ansiedade, suporte, risco de depressão pós-parto.</li>
+            </ul>
+            <h4>Amamentação</h4>
+            <ul>
+              <li>Pega, fissuras, dor, ingurgitamento/mastite, orientação de manejo.</li>
+            </ul>
+            <h4>Planejamento familiar</h4>
+            <ul>
+              <li>Orientar método contraceptivo e retorno, conforme elegibilidade e preferência.</li>
+            </ul>
+          `
+        }
+      };
+
+      let currentConsultKey = null;
+      let currentTri = 1;
+
+      function setActive(btn) {
+        consultButtons.forEach(b => b.classList.remove("active"));
+        if (btn) btn.classList.add("active");
+      }
+
+      function renderGuide(key) {
+        const g = GUIDE[key];
+        if (!g) return;
+
+        titleEl.textContent = g.title || "";
+        subtitleEl.textContent = g.subtitle || "";
+        drawer.classList.remove("hidden");
+
+        if (key === "prenatal") {
+          prenatalTriRow.classList.remove("hidden");
+          // Seleciona trimestre atual
+          triBtns.forEach(b => {
+            const tri = Number(b.getAttribute("data-tri"));
+            if (tri === currentTri) b.classList.add("active");
+            else b.classList.remove("active");
+          });
+          const triData = g.trimester?.[currentTri] || g.trimester?.[1];
+          if (triData) {
+            subtitleEl.textContent = triData.subtitle || g.subtitle || "";
+            contentEl.innerHTML = triData.html || "";
+          } else {
+            contentEl.textContent = "Conteúdo indisponível.";
+          }
+        } else {
+          prenatalTriRow.classList.add("hidden");
+          contentEl.innerHTML = g.html || "";
+        }
+      }
+
+      function openGuide(key, btn) {
+        currentConsultKey = key;
+        currentTri = 1;
+        setActive(btn);
+        renderGuide(key);
+      }
+
+      function closeGuide() {
+        drawer.classList.add("hidden");
+        prenatalTriRow.classList.add("hidden");
+        contentEl.innerHTML = "";
+        currentConsultKey = null;
+        consultButtons.forEach(b => b.classList.remove("active"));
+      }
+
+      consultButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const key = btn.getAttribute("data-consult");
+          if (!key) return;
+          openGuide(key, btn);
+        });
+      });
+
+      triBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const tri = Number(btn.getAttribute("data-tri"));
+          if (!Number.isFinite(tri) || tri < 1 || tri > 3) return;
+          currentTri = tri;
+          if (currentConsultKey === "prenatal") renderGuide("prenatal");
+        });
+      });
+
+      closeBtn.addEventListener("click", closeGuide);
+
+      // Fecha com ESC quando o drawer estiver aberto
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape" && drawer && !drawer.classList.contains("hidden")) closeGuide();
+      });
+    })();
+
+// ============================
     // MÓDULO: Calculadoras Clínicas
     // ============================
     const calculatorsCard = document.getElementById("calculatorsCard");
