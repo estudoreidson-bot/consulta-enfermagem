@@ -2459,9 +2459,9 @@
         <p><strong>Dica prática:</strong> se faltar alguma informação, pergunte e registre durante a própria gravação do SBAR. Quanto mais completo o relato, melhor a passagem de plantão.</p>
       </div>
 
-      <button id="generateHospitalPrescriptionBtn" class="start" type="button">Gerar SBAR</button>
+      <button id="generateHospitalPrescriptionBtn" class="start" type="button">Iniciar passagem de plantão (SBAR)</button>
       <div id="sbarTimer" class="mini-timer hidden">00:00</div>
-      <div id="hospitalPrescriptionStatus" class="mini-status"></div>
+      <div id="hospitalPrescriptionStatus" class="mini-status">Clique em "Iniciar passagem de plantão (SBAR)" para começar.</div>
 
       <textarea id="hospitalPrescriptionOutput" class="output-textarea" placeholder="O SBAR gerado aparecerá aqui..." spellcheck="false"></textarea>
 
@@ -2549,7 +2549,7 @@
       </div>
 
       <div class="inline-input-row">
-        <button id="reportRecordBtn" class="small-record-btn start">Gravar documento</button>
+        <button id="reportRecordBtn" class="small-record-btn start" type="button">Gravar documento</button>
         <button id="copyReportBtn" class="btn-copy hidden" type="button">Copiar documento</button>
         <button id="printReportBtn" class="btn-print hidden" type="button">Imprimir documento</button>
       </div>
@@ -5732,6 +5732,10 @@ async function addFilesToTarget(files, targetKey, mode) {
         let sbarIsRecording = false;
         let sbarFinalTranscript = "";
         let sbarInterimTranscript = "";
+        let sbarHasStarted = false;
+        let sbarHasAnyResult = false;
+        let sbarStartAttemptId = 0;
+
 
         function startSbarTimer() {
           if (!sbarTimer) return;
@@ -5746,7 +5750,7 @@ async function addFilesToTarget(files, targetKey, mode) {
             const ss = String(totalSec % 60).padStart(2, "0");
             sbarTimer.textContent = `${mm}:${ss}`;
             if (sbarIsRecording && hospitalPrescriptionStatus) {
-              hospitalPrescriptionStatus.textContent = `Gravando SBAR... ${mm}:${ss} (clique novamente em "Encerrar gravação" quando terminar)`;
+              hospitalPrescriptionStatus.textContent = `Gravando passagem de plantão (SBAR)... ${mm}:${ss} (clique novamente em "Encerrar e gerar SBAR" quando terminar)`;
             }
           }, 500);
         }
@@ -5772,8 +5776,20 @@ async function addFilesToTarget(files, targetKey, mode) {
           sbarRecognition.continuous = true;
           sbarRecognition.interimResults = true;
 
-          sbarRecognition.onresult = (event) => {
-            let interim = "";
+          
+          sbarRecognition.onstart = () => {
+            sbarHasStarted = true;
+            if (hospitalPrescriptionStatus) {
+              hospitalPrescriptionStatus.textContent = "Gravando passagem de plantão (SBAR)... Quando terminar, clique em \"Encerrar e gerar SBAR\".";
+              hospitalPrescriptionStatus.classList.remove("loading-dot");
+            }
+            startSbarTimer();
+          };
+
+sbarRecognition.onresult = (event) => {
+            
+            sbarHasAnyResult = true;
+let interim = "";
             for (let i = event.resultIndex; i < event.results.length; i++) {
               const transcript = event.results[i][0].transcript;
               if (event.results[i].isFinal) {
@@ -5828,7 +5844,7 @@ async function addFilesToTarget(files, targetKey, mode) {
         }
 
 
-        function startSbarRecording() {
+        async function startSbarRecording() {
           if (hasAnyOtherRecordingActive()) {
             alert("Finalize a gravação atual (consulta/triagem/relatórios) antes de iniciar o SBAR.");
             return;
@@ -5843,22 +5859,61 @@ async function addFilesToTarget(files, targetKey, mode) {
           sbarIsRecording = true;
           sbarFinalTranscript = "";
           sbarInterimTranscript = "";
-          if (hospitalPrescriptionOutput) hospitalPrescriptionOutput.value = "";
+          
+
+          sbarHasStarted = false;
+          sbarHasAnyResult = false;
+          const myAttempt = ++sbarStartAttemptId;
+          // Se o reconhecimento não iniciar em ~2.5s, aborta e orienta o usuário.
+          setTimeout(() => {
+            if (sbarIsRecording && !sbarHasStarted && myAttempt === sbarStartAttemptId) {
+              try { if (sbarRecognition) sbarRecognition.stop(); } catch (e) {}
+              sbarIsRecording = false;
+              stopSbarTimer();
+              if (hospitalPrescriptionStatus) {
+                hospitalPrescriptionStatus.textContent = "Não foi possível iniciar a gravação. Verifique permissão do microfone e tente novamente.";
+                hospitalPrescriptionStatus.classList.remove("loading-dot");
+              }
+              if (generateHospitalPrescriptionBtn) {
+                generateHospitalPrescriptionBtn.classList.remove("recording");
+                generateHospitalPrescriptionBtn.classList.add("start");
+                generateHospitalPrescriptionBtn.textContent = "Iniciar passagem de plantão (SBAR)";
+                generateHospitalPrescriptionBtn.disabled = false;
+              }
+            }
+          }, 2500);
+
+if (hospitalPrescriptionOutput) hospitalPrescriptionOutput.value = "";
           if (hospitalPrescriptionStatus) {
-            hospitalPrescriptionStatus.textContent = "Gravando SBAR. Fale em voz alta, de preferência próximo ao microfone. Clique novamente em \"Encerrar gravação\" quando terminar.";
+            hospitalPrescriptionStatus.textContent = "Gravando SBAR. Fale em voz alta, de preferência próximo ao microfone. Clique novamente em \"Encerrar e gerar SBAR\" quando terminar.";
             hospitalPrescriptionStatus.classList.remove("loading-dot");
           }
 
           if (generateHospitalPrescriptionBtn) {
             generateHospitalPrescriptionBtn.classList.remove("start");
             generateHospitalPrescriptionBtn.classList.add("recording");
-            generateHospitalPrescriptionBtn.textContent = "Encerrar gravação";
+            generateHospitalPrescriptionBtn.textContent = "Encerrar e gerar SBAR";
             generateHospitalPrescriptionBtn.disabled = false;
           }
 
-          startSbarTimer();
+          // Garante permissão do microfone (reduz falhas silenciosas em alguns navegadores)
+          try {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+              // libera imediatamente (SpeechRecognition usa o próprio pipeline)
+              stream.getTracks().forEach(t => t.stop());
+            }
+          } catch (e) {
+            if (hospitalPrescriptionStatus) {
+              hospitalPrescriptionStatus.textContent = "Iniciando microfone para passagem de plantão (SBAR)... Aguarde a mensagem de gravação antes de começar a falar.";
+            hospitalPrescriptionStatus.classList.add("loading-dot");
+              hospitalPrescriptionStatus.classList.remove("loading-dot");
+            }
+          }
 
           try {
+            // Evita erro 'recognition has already started'
+            try { sbarRecognition.abort(); } catch (e) {}
             sbarRecognition.start();
           } catch (err) {
             console.error("Falha ao iniciar reconhecimento (SBAR):", err);
@@ -5867,7 +5922,7 @@ async function addFilesToTarget(files, targetKey, mode) {
             if (generateHospitalPrescriptionBtn) {
               generateHospitalPrescriptionBtn.classList.remove("recording");
               generateHospitalPrescriptionBtn.classList.add("start");
-              generateHospitalPrescriptionBtn.textContent = "Gerar SBAR";
+              generateHospitalPrescriptionBtn.textContent = "Iniciar passagem de plantão (SBAR)";
             }
             stopSbarTimer();
           }
@@ -5877,6 +5932,8 @@ async function addFilesToTarget(files, targetKey, mode) {
           if (!sbarIsRecording) return;
 
           sbarIsRecording = false;
+
+          stopSbarTimer();
 
           if (generateHospitalPrescriptionBtn) {
             generateHospitalPrescriptionBtn.disabled = true;
@@ -5895,14 +5952,14 @@ async function addFilesToTarget(files, targetKey, mode) {
 
           if (!transcricao) {
             if (hospitalPrescriptionStatus) {
-              hospitalPrescriptionStatus.textContent = "Nenhuma fala foi capturada. Tente novamente, falando mais próximo ao microfone (ou aguarde 1 a 2 segundos antes de começar a falar).";
+              hospitalPrescriptionStatus.textContent = (sbarHasStarted ? "Nenhuma fala foi capturada. Tente novamente, falando mais próximo ao microfone (ou aguarde 1 a 2 segundos antes de começar a falar)." : "A gravação não iniciou. Verifique permissão do microfone e tente novamente.");
               hospitalPrescriptionStatus.classList.remove("loading-dot");
             }
             if (generateHospitalPrescriptionBtn) {
               generateHospitalPrescriptionBtn.disabled = false;
               generateHospitalPrescriptionBtn.classList.remove("recording");
               generateHospitalPrescriptionBtn.classList.add("start");
-              generateHospitalPrescriptionBtn.textContent = "Gerar SBAR";
+              generateHospitalPrescriptionBtn.textContent = "Iniciar passagem de plantão (SBAR)";
             }
             stopSbarTimer();
             return;
@@ -5967,7 +6024,7 @@ async function addFilesToTarget(files, targetKey, mode) {
               generateHospitalPrescriptionBtn.classList.remove("generating");
               generateHospitalPrescriptionBtn.classList.remove("recording");
               generateHospitalPrescriptionBtn.classList.add("start");
-              generateHospitalPrescriptionBtn.textContent = "Gerar SBAR";
+              generateHospitalPrescriptionBtn.textContent = "Iniciar passagem de plantão (SBAR)";
               generateHospitalPrescriptionBtn.disabled = false;
             }
           }
@@ -6400,16 +6457,52 @@ recordBtn.onclick = () => {
       }
       copyToClipboard(text);
     });
+    if (generateHospitalPrescriptionBtn) {
+      generateHospitalPrescriptionBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        if (!sbarIsRecording) {
+          await startSbarRecording();
+        } else {
+          await stopSbarRecordingAndGenerate();
+        }
+      });
+    }
 
-    
-    generateHospitalPrescriptionBtn.addEventListener("click", async () => {
-      if (!sbarIsRecording) {
-        startSbarRecording();
-      } else {
-        await stopSbarRecordingAndGenerate();
-      }
-    });
+    // Relatórios de Enfermagem / Encaminhamentos etc.
+    if (reportRecordBtn) {
+      reportRecordBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        if (!reportIsRecording) {
+          startReportRecording();
+        } else {
+          await stopReportRecordingAndGenerate();
+        }
+      });
+    }
 
+    if (copyReportBtn) {
+      copyReportBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const t = reportOutput && reportOutput.value ? reportOutput.value.trim() : "";
+        if (!t) {
+          alert("Não há documento para copiar.");
+          return;
+        }
+        copyToClipboard(t);
+      });
+    }
+
+    if (printReportBtn) {
+      printReportBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const t = reportOutput && reportOutput.value ? reportOutput.value.trim() : "";
+        if (!t) {
+          alert("Não há documento para imprimir.");
+          return;
+        }
+        openPrintWindow("Documento", t);
+      });
+    }
     copyHospitalPrescriptionBtn.addEventListener("click", () => {
       const text = hospitalPrescriptionOutput.value.trim();
       if (!text) {
