@@ -1675,86 +1675,36 @@ Novas perguntas e respostas:
 
 
 // ======================================================================
-// ROTA 3 – GERAR PASSAGEM DE PLANTÃO (SBAR) A PARTIR DA TRANSCRIÇÃO (NOVO)
+// ROTA 3 – GERAR PRESCRIÇÃO HOSPITALAR A PARTIR DA TRANSCRIÇÃO (NOVA)
 // ======================================================================
 
-async function generateSbarTextFromTranscript(transcricao) {
-  const safeTranscricao = normalizeText(transcricao || "", 25000);
-  if (!safeTranscricao || safeTranscricao.length < 30) return "";
+app.post("/api/prescricao-hospitalar", requirePaidOrAdmin, async(req, res) => {
+  try {
+    const { transcricao } = req.body || {};
+    if (!transcricao || !String(transcricao).trim()) {
+      return res.json({ prescricao_hospitalar: "" });
+    }
 
-  const prompt = `
-Você é um enfermeiro humano experiente em passagem de plantão hospitalar.
-Tarefa: a partir da transcrição completa (perguntas e respostas) de uma coleta verbal para passagem de plantão, gere uma PASSAGEM DE PLANTÃO no padrão SBAR, com máxima completude e qualidade.
+    const safeTranscricao = normalizeText(transcricao, 25000);
 
-Regras obrigatórias:
-- Não invente dados. Se uma informação crítica não estiver presente, escreva "não informado".
-- Linguagem técnica, direta e operacional.
+    const prompt = `
+Você é um enfermeiro humano. Gere uma PASSAGEM DE PLANTÃO no formato SBAR a partir da transcrição.
+
+Regras:
 - Sem emojis e sem símbolos gráficos.
-- Priorize segurança do paciente: dispositivos, antibióticos, alergias, isolamentos, riscos (queda, LPP, broncoaspiração), sinais de alarme, pendências e tarefas do próximo turno.
-- Se houver medicações com horário (especialmente antibióticos, insulinoterapia, anticoagulação, vasoativos, analgesia), registre a próxima dose se estiver no texto; caso contrário, "não informado".
-- Se houver exames pendentes, registre o que está pendente e o que fazer com o resultado.
-- Se houver parâmetros de monitorização e metas, registre.
-- Se houver deterioração clínica, destaque com clareza.
-
-Saída:
-- Retorne JSON estrito com a chave "sbar" contendo um texto pronto para copiar e imprimir.
-- Estruture o texto exatamente nesta ordem de seções (uma por linha, com dois-pontos):
-  Identificação:
-  Situação:
-  Background:
-  Avaliação:
-  Recomendação:
-  Itens críticos não informados:
+- Seja objetivo e operacional.
+- Não invente sinais vitais ou exames; use "não informado" quando faltar.
 
 Formato de saída: JSON estrito:
-{ "sbar": "Identificação: ...\nSituação: ...\nBackground: ...\nAvaliação: ...\nRecomendação: ...\nItens críticos não informados: ..." }
+{ "prescricao_hospitalar": "Situação: ...\nBackground: ...\nAvaliação: ...\nRecomendação: ..." }
 
 Transcrição:
 """${safeTranscricao}"""
 `;
 
-  const data = await callOpenAIJson(prompt);
-  const sbar = typeof data?.sbar === "string" ? data.sbar.trim() : "";
-  return sbar;
-}
-
-app.post("/api/gerar-sbar", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const { transcricao } = req.body || {};
-    const t = normalizeText(transcricao || "", 25000);
-
-    if (!t || t.length < 30) {
-      return res.json({ sbar: "" });
-    }
-
-    if (!process.env.OPENAI_API_KEY) {
-      return res.json({ sbar: "Identificação: não informado\nSituação: não informado\nBackground: não informado\nAvaliação: não informado\nRecomendação: não informado\nItens críticos não informados: Sem chave OPENAI_API_KEY configurada no servidor." });
-    }
-
-    const sbar = await generateSbarTextFromTranscript(t);
-    return res.json({ sbar });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar SBAR." });
-  }
-});
-
-// Rota legada (mantida por compatibilidade). Retorna no campo antigo "prescricao_hospitalar".
-app.post("/api/prescricao-hospitalar", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const { transcricao } = req.body || {};
-    const t = normalizeText(transcricao || "", 25000);
-
-    if (!t || t.length < 30) {
-      return res.json({ prescricao_hospitalar: "" });
-    }
-
-    if (!process.env.OPENAI_API_KEY) {
-      return res.json({ prescricao_hospitalar: "Identificação: não informado\nSituação: não informado\nBackground: não informado\nAvaliação: não informado\nRecomendação: não informado\nItens críticos não informados: Sem chave OPENAI_API_KEY configurada no servidor." });
-    }
-
-    const sbar = await generateSbarTextFromTranscript(t);
-    return res.json({ prescricao_hospitalar: sbar, sbar });
+    const data = await callOpenAIJson(prompt);
+    const sbar = typeof data?.prescricao_hospitalar === "string" ? data.prescricao_hospitalar.trim() : "";
+    return res.json({ prescricao_hospitalar: sbar });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "Falha interna ao gerar SBAR." });
