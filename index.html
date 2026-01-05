@@ -2614,7 +2614,22 @@
 
   <script>
 
-    const BACKEND_URL = ""; // usa /api via Netlify redirects (ver netlify.toml)
+    const DEFAULT_BACKEND_URL = "https://consulta-enfermagem-1.onrender.com";
+    // Backend principal (Render). Pode ser sobrescrito por:
+    // 1) Querystring ?backend=https://...  (útil para testes)
+    // 2) localStorage BACKEND_URL_OVERRIDE
+    // Se estiver rodando localmente, usa http://localhost:3000
+    const BACKEND_URL = (() => {
+      const qp = new URLSearchParams(window.location.search);
+      const fromQuery = (qp.get("backend") || "").trim();
+      const fromStorage = (localStorage.getItem("BACKEND_URL_OVERRIDE") || "").trim();
+      const raw = (fromQuery || fromStorage || "").trim();
+      const norm = (v) => String(v || "").trim().replace(/\/+$/g, "");
+      if (raw) return norm(raw);
+      const host = String(window.location.hostname || "");
+      if (host === "localhost" || host === "127.0.0.1") return "http://localhost:3000";
+      return norm(DEFAULT_BACKEND_URL);
+    })();
 
     // =========================
     // IMAGENS (Curativos e Prescrição) - estado por módulo (até 4 fotos)
@@ -2777,7 +2792,14 @@
     window.fetch = async function(input, init) {
       try {
         const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
-        const isApi = typeof url === "string" && url.startsWith(BACKEND_URL + "/api/");
+        const isApi = (() => {
+        if (typeof url !== "string") return false;
+        const u = url;
+        const p1 = BACKEND_URL + "/api/";
+        const p2 = "/api/";
+        const p3 = window.location.origin + "/api/";
+        return u.startsWith(p1) || u.startsWith(p2) || u.startsWith(p3);
+      })();
         if (!isApi) return nativeFetch(input, init);
 
         const headers = Object.assign({}, (init && init.headers) ? init.headers : {});
