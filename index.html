@@ -392,9 +392,9 @@
       gap: 8px;
     }
     #copyPrescriptionBtn,
-    #copyHospitalPrescriptionBtn,
-    #printHospitalPrescriptionBtn,
-    #generateHospitalPrescriptionBtn,
+    #copySbarBtn,
+    #printSbarBtn,
+    #sbarRecordBtn,
     #copySaeBtn,
     #printPregnancyBtn,
     #printLactationBtn,
@@ -412,9 +412,9 @@
       cursor: pointer;
     }
     #copyPrescriptionBtn:hover,
-    #copyHospitalPrescriptionBtn:hover,
-    #printHospitalPrescriptionBtn:hover,
-    #generateHospitalPrescriptionBtn:hover,
+    #copySbarBtn:hover,
+    #printSbarBtn:hover,
+    #sbarRecordBtn:hover,
     #copySaeBtn:hover,
     #printPregnancyBtn:hover,
     #printLactationBtn:hover,
@@ -454,12 +454,12 @@
     }
 
     
-    #generateHospitalPrescriptionBtn {
+    #sbarRecordBtn {
       border: 1px solid #dc3545;
       background: #dc3545;
       color: #fff;
     }
-    #generateHospitalPrescriptionBtn:hover {
+    #sbarRecordBtn:hover {
       background: #c82333;
       border-color: #c82333;
     }
@@ -721,7 +721,36 @@
       }
     }
 
-    .hidden {
+    
+    .guide-inline {
+      margin: 10px 0 12px;
+      padding: 12px;
+      border: 1px solid #e6e6e6;
+      border-radius: 12px;
+      background: #fafafa;
+      color: #1f1f1f;
+    }
+    .guide-inline h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+    .guide-inline h4 {
+      margin: 10px 0 6px;
+      font-size: 14px;
+    }
+    .guide-inline p {
+      margin: 8px 0;
+    }
+    .guide-inline ul {
+      margin: 0 0 8px 18px;
+    }
+    .sbar-guide-btn {
+      border-color: #0c5460;
+      color: #0c5460;
+      background: #ffffff;
+    }
+
+.hidden {
       display: none !important;
     }
   
@@ -1452,7 +1481,64 @@
       line-height: 1.35;
     }
 
-  </style>
+  
+
+    .module-title-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:6px;
+    }
+    .mini-consult-btn{
+      padding:7px 12px;
+      font-size:12px;
+      border-radius:12px;
+      white-space:nowrap;
+    }
+
+    #sbarRecordBtn{
+      width:180px;
+      height:180px;
+      border-radius:50%;
+      border:none;
+      cursor:pointer;
+      font-size:18px;
+      font-weight:800;
+      color:#fff;
+      margin:10px auto 6px auto;
+      display:block;
+      transition:transform 0.15s ease, background-color 0.15s ease;
+    }
+    #sbarRecordBtn:active{
+      transform:scale(0.97);
+    }
+    
+    #sbarRecordBtn.start{
+      background:#28a745;
+    }
+    #sbarRecordBtn.recording{
+      background:#dc3545;
+    }
+    #sbarRecordBtn:disabled{
+      opacity:0.72;
+      cursor:not-allowed;
+    }
+
+#sbarRecordBtn.generating{
+      background:#dc3545 !important;
+    }
+
+    .mini-timer{
+      text-align:center;
+      font-size:18px;
+      font-weight:700;
+      margin:6px 0 10px 0;
+      color:#fff;
+      opacity:0.92;
+    }
+
+</style>
 </head>
 <body>
 
@@ -1876,19 +1962,7 @@
         <button id="copyPrescriptionBtn" class="btn-copy">Copiar plano de cuidados</button>
         <button id="printBtn" class="btn-print">Imprimir plano de cuidados</button>
       </div>
-
-      <h2>Passagem de Plantão (SBAR)</h2>
-      <textarea id="hospitalPrescriptionOutput" class="prescription-textarea"></textarea>
-
-      <div class="prescription-actions">
-        <button id="generateHospitalPrescriptionBtn">Gerar SBAR</button>
-        <button id="copyHospitalPrescriptionBtn" class="btn-copy">Copiar plano de cuidados hospitalar</button>
-        <button id="printHospitalPrescriptionBtn" class="btn-print">Imprimir plano de cuidados hospitalar</button>
-      </div>
-      <div id="hospitalPrescriptionStatus" class="mini-status"></div>
-
-
-      <h2>Classificação de risco por cores</h2>
+<h2>Classificação de risco por cores</h2>
       <div class="risk-triage-box">
         <div class="risk-triage-current">
           <span id="riskTriageBadge" class="risk-badge risk-none">Não informado</span>
@@ -2338,11 +2412,75 @@
 
     </div>
 
+    <div id="sbarCard" class="module-card">
+      <div class="module-title-row">
+        <h2>Passagem de Plantão (SBAR)</h2>
+        <button id="openSbarGuideBtn" class="mini-consult-btn sbar-guide-btn" type="button">Guia</button>
+      </div>
+      <p class="module-subtitle">Use este módulo para gravar rapidamente (no momento do plantão) e gerar uma passagem de plantão no padrão SBAR (Situação, Background, Avaliação, Recomendação).</p>
+
+      <div id="sbarGuidePanel" class="guide-inline hidden">
+        <h3>Guia rápido para Passagem de Plantão (SBAR)</h3>
+        <p>Use este roteiro para lembrar as perguntas essenciais. Você pode seguir na ordem SBAR, mas adapte ao caso.</p>
+
+        <h4>Situação (S)</h4>
+        <ul>
+          <li>Quem é o paciente (nome/idade/leito) e por que está internado/atendido agora?</li>
+          <li>Qual é o problema principal neste momento? O que mudou nas últimas horas?</li>
+          <li>Há alguma urgência imediata (via aérea, respiração, circulação, sangramento, dor intensa, rebaixamento)?</li>
+        </ul>
+
+        <h4>Background (B)</h4>
+        <ul>
+          <li>Diagnóstico(s) principal(is) e tempo de evolução/internação.</li>
+          <li>Comorbidades relevantes (HAS, DM, DPOC/asma, IRC, cardiopatia, anticoagulação, etc.).</li>
+          <li>Alergias, medicamentos em uso e antibióticos (dose/horário da próxima dose).</li>
+          <li>Procedimentos/dispositivos: acesso venoso, sonda vesical, SNG, drenos, oxigênio, ventilação, curativos.</li>
+          <li>Isolamento/precauções, histórico recente de febre, quedas, delirium, convulsões.</li>
+        </ul>
+
+        <h4>Avaliação (A)</h4>
+        <ul>
+          <li>Sinais vitais atuais e tendência (PA, FC, FR, SpO2, temperatura), diurese e balanço hídrico quando aplicável.</li>
+          <li>Estado geral e exame dirigido (consciência, perfusão, dispneia, dor, sangramentos, feridas, edema).</li>
+          <li>Resultados relevantes: glicemias, hemograma, eletrólitos, função renal, gasometria, culturas, imagem recente.</li>
+          <li>Risco e segurança: risco de queda/lesão por pressão, risco de broncoaspiração, escala de dor, sedação.</li>
+        </ul>
+
+        <h4>Recomendação (R)</h4>
+        <ul>
+          <li>O que precisa ser feito no próximo turno? Liste tarefas e prioridades.</li>
+          <li>Metas e monitorização: parâmetros-alvo, frequência de checagens, quando reavaliar.</li>
+          <li>Exames pendentes e o que fazer com o resultado (conduta se alterar).</li>
+          <li>Sinais de alarme e quando acionar o médico/plantonista.</li>
+          <li>Plano de alta/transferência se aplicável.</li>
+        </ul>
+
+        <p><strong>Dica prática:</strong> se faltar alguma informação, pergunte e registre durante a própria gravação do SBAR. Quanto mais completo o relato, melhor a passagem de plantão.</p>
+      </div>
+
+      <button id="sbarRecordBtn" class="start" type="button">Iniciar passagem de plantão (SBAR)</button>
+      <div id="sbarTimer" class="mini-timer hidden">00:00</div>
+      <div id="sbarStatus" class="mini-status">Clique em "Iniciar passagem de plantão (SBAR)" para começar.</div>
+
+      <textarea id="sbarOutput" class="output-textarea" placeholder="O SBAR gerado aparecerá aqui..." spellcheck="false"></textarea>
+
+      <div class="prescription-actions">
+        <button id="copySbarBtn" class="btn-copy" type="button">Copiar</button>
+        <button id="printSbarBtn" class="btn-print" type="button">Imprimir</button>
+      </div>
+    </div>
+
+
+
 
                 <div id="patientReportCard" class="module-card">
       <h2>Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado de comparecimento ou permanência / ATA reunião / Registros de procedimentos</h2>
       <p class="mini-status" style="margin-top: 0;">
-        Grave em voz alta o conteúdo do documento. Diga claramente qual documento deseja produzir (por exemplo: declaração de comparecimento, relatório de curativo seriado, encaminhamento para CAPS, solicitação de insumos, comunicado para escola, ata de reunião). Ao encerrar, a gravação será usada para identificar o tipo de documento e gerar um texto padronizado pronto para colar no S.U.I.S.
+        Grave em voz alta o conteúdo do documento. Diga claramente qual documento deseja produzir (por exemplo: declaração de comparecimento, relatório de curativo seriado, encaminhamento para CAPS, solicitação de insumos, comunicado para escola, ata de reunião). Ao encerrar
+    
+
+, a gravação será usada para identificar o tipo de documento e gerar um texto padronizado pronto para colar no S.U.I.S.
       </p>
 
       <div class="inline-input-row">
@@ -2411,7 +2549,7 @@
       </div>
 
       <div class="inline-input-row">
-        <button id="reportRecordBtn" class="small-record-btn start">Gravar documento</button>
+        <button id="reportRecordBtn" class="small-record-btn start" type="button">Gravar documento</button>
         <button id="copyReportBtn" class="btn-copy hidden" type="button">Copiar documento</button>
         <button id="printReportBtn" class="btn-print hidden" type="button">Imprimir documento</button>
       </div>
@@ -2890,11 +3028,15 @@ const recordBtn = document.getElementById("recordBtn");
 
     const prescriptionOutput = document.getElementById("prescriptionOutput");
 
-    const hospitalPrescriptionOutput = document.getElementById("hospitalPrescriptionOutput");
-    const generateHospitalPrescriptionBtn = document.getElementById("generateHospitalPrescriptionBtn");
-    const copyHospitalPrescriptionBtn = document.getElementById("copyHospitalPrescriptionBtn");
-    const printHospitalPrescriptionBtn = document.getElementById("printHospitalPrescriptionBtn");
-    const hospitalPrescriptionStatus = document.getElementById("hospitalPrescriptionStatus");
+    const sbarOutput = document.getElementById("sbarOutput");
+    const sbarRecordBtn = document.getElementById("sbarRecordBtn");
+    const copySbarBtn = document.getElementById("copySbarBtn");
+    const printSbarBtn = document.getElementById("printSbarBtn");
+    const sbarStatus = document.getElementById("sbarStatus");
+    const sbarTimer = document.getElementById("sbarTimer");
+    const openSbarGuideBtn = document.getElementById("openSbarGuideBtn");
+    const sbarGuidePanel = document.getElementById("sbarGuidePanel");
+
 
     const pregnancyBox = document.getElementById("pregnancyBox");
     const lactationBox = document.getElementById("lactationBox");
@@ -3128,7 +3270,7 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       const a = (soapA?.value || "").trim();
       const p = (soapP?.value || "").trim();
       const plano = (prescriptionOutput?.value || "").trim();
-      const sbar = (hospitalPrescriptionOutput?.value || "").trim();
+      const sbar = (sbarOutput?.value || "").trim();
       const parts = [];
       if (t) parts.push("TRANSCRIÇÃO:\n" + t);
       if (s || o || a || p) parts.push("EVOLUÇÃO (SOAP):\nS: " + s + "\nO: " + o + "\nA: " + a + "\nP: " + p);
@@ -4519,8 +4661,8 @@ function initSpeech() {
     }
 
     function resetNewModulesUI() {
-      hospitalPrescriptionOutput.value = "";
-      hospitalPrescriptionStatus.textContent = "";
+      sbarOutput.value = "";
+      sbarStatus.textContent = "";
       classificationsStatus.textContent = "";
       pregnancyBox.textContent = "Nenhum conteúdo disponível.";
       lactationBox.textContent = "Nenhum conteúdo disponível.";
@@ -5566,7 +5708,7 @@ async function addFilesToTarget(files, targetKey, mode) {
 
     function getAllPrescribedMedications() {
       const amb = prescriptionOutput.value || "";
-      const hosp = hospitalPrescriptionOutput.value || "";
+      const hosp = sbarOutput.value || "";
       const meds = [
         ...extractMedicationsFromPrescriptionText(amb),
         ...extractMedicationsFromPrescriptionText(hosp)
@@ -5583,48 +5725,308 @@ async function addFilesToTarget(files, targetKey, mode) {
       return unique.slice(0, 60);
     }
 
-    async function generateHospitalPrescription() {
-      hospitalPrescriptionStatus.textContent = "";
-      const transcricao = (baseTranscript || finalTranscript || "").trim();
+                let sbarTimerInterval = null;
+        let sbarStartTs = 0;
 
-      if (!transcricao) {
-        hospitalPrescriptionStatus.textContent = "Não há transcrição disponível para gerar o SBAR.";
-        return;
-      }
+        let sbarRecognition = null;
+        let sbarIsRecording = false;
+        
 
-      hospitalPrescriptionStatus.textContent = "Gerando SBAR...";
-      hospitalPrescriptionStatus.classList.add("loading-dot");
+          stopSbarTimer();
+let sbarFinalTranscript = "";
+        let sbarInterimTranscript = "";
+        let sbarHasStarted = false;
+        let sbarHasAnyResult = false;
+        let sbarStartAttemptId = 0;
 
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/prescricao-hospitalar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao, tipo_documento: (reportDocTypeSelect && reportDocTypeSelect.value && reportDocTypeSelect.value !== "auto") ? reportDocTypeSelect.value : null })
-        });
 
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (SBAR):", resp.status, txt);
-          hospitalPrescriptionStatus.textContent = "Não foi possível gerar a SBAR.";
-          hospitalPrescriptionStatus.classList.remove("loading-dot");
-          return;
+        function startSbarTimer() {
+          if (!sbarTimer) return;
+          sbarStartTs = Date.now();
+          sbarTimer.textContent = "00:00";
+          sbarTimer.classList.remove("hidden");
+          if (sbarTimerInterval) clearInterval(sbarTimerInterval);
+          sbarTimerInterval = setInterval(() => {
+            const elapsed = Math.max(0, Date.now() - sbarStartTs);
+            const totalSec = Math.floor(elapsed / 1000);
+            const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
+            const ss = String(totalSec % 60).padStart(2, "0");
+            sbarTimer.textContent = `${mm}:${ss}`;
+            if (sbarIsRecording && sbarStatus) {
+              sbarStatus.textContent = `Gravando passagem de plantão (SBAR)... ${mm}:${ss} (clique novamente em "Encerrar e gerar SBAR" quando terminar)`;
+            }
+          }, 500);
         }
 
-        const data = await resp.json();
-        const presc = data.prescricao_hospitalar || "";
+        function stopSbarTimer() {
+          if (sbarTimerInterval) clearInterval(sbarTimerInterval);
+          sbarTimerInterval = null;
+          if (!sbarTimer) return;
+          sbarTimer.classList.add("hidden");
+        }
 
-        hospitalPrescriptionOutput.value = presc;
-        hospitalPrescriptionStatus.textContent = presc ? "Prescrição hospitalar gerada." : "Não foi possível gerar a SBAR.";
-        hospitalPrescriptionStatus.classList.remove("loading-dot");
+        function initSbarSpeech() {
+          const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+          if (!SR) {
+            if (sbarStatus) {
+              sbarStatus.textContent = "Seu navegador não suporta reconhecimento de voz. Use Google Chrome.";
+            }
+            return;
+          }
 
-        await updateClassifications();
-        await updateRiskTriage();
-      } catch (err) {
-        console.error("Erro ao gerar SBAR:", err);
-        hospitalPrescriptionStatus.textContent = "Erro ao gerar SBAR.";
-        hospitalPrescriptionStatus.classList.remove("loading-dot");
-      }
-    }
+          sbarRecognition = new SR();
+          sbarRecognition.lang = "pt-BR";
+          sbarRecognition.continuous = true;
+          sbarRecognition.interimResults = true;
+
+          
+          sbarRecognition.onstart = () => {
+            sbarHasStarted = true;
+            if (sbarStatus) {
+              sbarStatus.textContent = "Gravando passagem de plantão (SBAR)... Quando terminar, clique em \"Encerrar e gerar SBAR\".";
+              sbarStatus.classList.remove("loading-dot");
+            }
+          };
+sbarRecognition.onresult = (event) => {
+            
+            sbarHasAnyResult = true;
+let interim = "";
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              const transcript = event.results[i][0].transcript;
+              if (event.results[i].isFinal) {
+                sbarFinalTranscript += transcript + " ";
+              } else {
+                interim += transcript;
+              }
+            }
+            sbarInterimTranscript = interim.trim();
+          };
+
+          sbarRecognition.onerror = (event) => {
+            console.error("Erro no reconhecimento de voz (SBAR):", event.error);
+            if (sbarStatus) {
+              if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+                sbarStatus.textContent = "Permita o acesso ao microfone nas configurações do navegador e tente novamente.";
+              } else {
+                sbarStatus.textContent = "Ocorreu um erro no reconhecimento de voz. Tente novamente.";
+              }
+            }
+          };
+
+          sbarRecognition.onend = () => {
+            if (sbarIsRecording) {
+              try {
+                sbarRecognition.start();
+              } catch (err) {
+                console.warn("Não foi possível retomar reconhecimento (SBAR):", err);
+              }
+            }
+          };
+        }
+
+        function hasAnyOtherRecordingActive() {
+          // isRecording: consulta SOAP
+          // triageIsRecording: triagem
+          // reportIsRecording: relatórios
+          // questionsIsRecording: perguntas adicionais
+          return !!(isRecording || triageIsRecording || reportIsRecording || questionsIsRecording);
+        }
+
+        // Guia do SBAR (inline, dentro do próprio módulo)
+        if (openSbarGuideBtn && sbarGuidePanel) {
+          openSbarGuideBtn.addEventListener("click", () => {
+            const willOpen = sbarGuidePanel.classList.contains("hidden");
+            sbarGuidePanel.classList.toggle("hidden");
+            if (willOpen) {
+              // Mantém o usuário no módulo SBAR (sem rolar para o topo)
+              sbarGuidePanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+          });
+        }
+
+
+        async function startSbarRecording() {
+          if (hasAnyOtherRecordingActive()) {
+            alert("Finalize a gravação atual (consulta/triagem/relatórios) antes de iniciar o SBAR.");
+            return;
+          }
+
+          if (!sbarRecognition) {
+            initSbarSpeech();
+            if (!sbarRecognition) return;
+          }
+
+          // Reset de estado
+          sbarIsRecording = true;
+          sbarFinalTranscript = "";
+          sbarInterimTranscript = "";
+          
+          sbarHasStarted = false;
+          sbarHasAnyResult = false;
+          const myAttempt = ++sbarStartAttemptId;
+          // Se o reconhecimento não iniciar em ~2.5s, aborta e orienta o usuário.
+          setTimeout(() => {
+            if (sbarIsRecording && !sbarHasStarted && myAttempt === sbarStartAttemptId) {
+              try { if (sbarRecognition) sbarRecognition.stop(); } catch (e) {}
+              sbarIsRecording = false;
+              stopSbarTimer();
+              if (sbarStatus) {
+                sbarStatus.textContent = "Não foi possível iniciar o microfone. Verifique permissão, selecione o microfone correto e tente novamente."; 
+                sbarStatus.classList.remove(\"loading-dot\");
+              }
+              if (sbarRecordBtn) {
+                sbarRecordBtn.classList.remove(\"recording\");
+                sbarRecordBtn.classList.add(\"start\");
+                sbarRecordBtn.textContent = \"Iniciar passagem de plantão (SBAR)\";
+                sbarRecordBtn.disabled = false;
+              }
+            }
+          }, 2500);
+if (sbarOutput) sbarOutput.value = "";
+          if (sbarStatus) {
+            sbarStatus.textContent = "Gravando SBAR. Fale em voz alta, de preferência próximo ao microfone. Clique novamente em \"Encerrar e gerar SBAR\" quando terminar.";
+            sbarStatus.classList.remove("loading-dot");
+          }
+
+          if (sbarRecordBtn) {
+            sbarRecordBtn.classList.remove("start");
+            sbarRecordBtn.classList.add("recording");
+            sbarRecordBtn.textContent = "Encerrar e gerar SBAR";
+            sbarRecordBtn.disabled = false;
+          }
+
+          startSbarTimer();
+
+          // Garante permissão do microfone (reduz falhas silenciosas em alguns navegadores)
+          try {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+              // libera imediatamente (SpeechRecognition usa o próprio pipeline)
+              stream.getTracks().forEach(t => t.stop());
+            }
+          } catch (e) {
+            if (sbarStatus) {
+              sbarStatus.textContent = "Permissão de microfone negada ou indisponível.";
+              sbarStatus.classList.remove("loading-dot");
+            }
+          }
+
+          try {
+            // Evita erro 'recognition has already started'
+            try { sbarRecognition.abort(); } catch (e) {}
+            sbarRecognition.start();
+          } catch (err) {
+            console.error("Falha ao iniciar reconhecimento (SBAR):", err);
+            if (sbarStatus) sbarStatus.textContent = "Não foi possível iniciar a gravação do SBAR.";
+            sbarIsRecording = false;
+            if (sbarRecordBtn) {
+              sbarRecordBtn.classList.remove("recording");
+              sbarRecordBtn.classList.add("start");
+              sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
+            }
+            stopSbarTimer();
+          }
+        }
+
+        async function stopSbarRecordingAndGenerate() {
+          if (!sbarIsRecording) return;
+
+          sbarIsRecording = false;
+
+          if (sbarRecordBtn) {
+            sbarRecordBtn.disabled = true;
+          }
+
+          try {
+            if (sbarRecognition) sbarRecognition.stop();
+          } catch (e) {
+            console.warn("Erro ao parar reconhecimento (SBAR):", e);
+          }
+
+          // pequena espera para capturar os últimos resultados finais
+          await new Promise(r => setTimeout(r, 900));
+
+          const transcricao = String(((sbarFinalTranscript || "") + " " + (sbarInterimTranscript || ""))).trim();
+
+          if (!transcricao) {
+            if (sbarStatus) {
+              sbarStatus.textContent = (!sbarHasStarted ? "A gravação não iniciou. Verifique permissão do microfone e tente novamente." : "Nenhuma fala foi capturada. Tente novamente, falando mais próximo ao microfone (ou aguarde 1 a 2 segundos antes de começar a falar).";
+              sbarStatus.classList.remove("loading-dot");
+            }
+            if (sbarRecordBtn) {
+              sbarRecordBtn.disabled = false;
+              sbarRecordBtn.classList.remove("recording");
+              sbarRecordBtn.classList.add("start");
+              sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
+            }
+            stopSbarTimer();
+            return;
+          }
+
+          await generateHospitalPrescriptionFromTranscript(transcricao);
+        }
+
+        async function generateHospitalPrescriptionFromTranscript(transcricao) {
+          if (!sbarRecordBtn) return;
+
+          sbarRecordBtn.classList.add("generating");
+          sbarRecordBtn.disabled = true;
+
+          if (sbarStatus) {
+            sbarStatus.textContent = "Gerando SBAR...";
+            sbarStatus.classList.add("loading-dot");
+          }
+
+          try {
+            const resp = await fetch(BACKEND_URL + "/api/gerar-sbar", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ transcricao })
+            });
+
+            if (!resp.ok) {
+              const txt = await resp.text().catch(() => "");
+              console.error("Erro HTTP do backend (SBAR):", resp.status, txt);
+              if (sbarStatus) {
+                sbarStatus.textContent = "Não foi possível gerar o SBAR.";
+                sbarStatus.classList.remove("loading-dot");
+              }
+              return;
+            }
+
+            const data = await resp.json().catch(() => null);
+            const texto = (data && (data.sbar || data.passagem_plantao || data.passagem_plantao_sbar || data.prescricao_hospitalar || data.texto)) ? String(data.sbar || data.passagem_plantao || data.passagem_plantao_sbar || data.prescricao_hospitalar || data.texto).trim() : "";
+            if (!texto) {
+              console.error("Resposta inválida do backend (SBAR):", data);
+              if (sbarStatus) {
+                sbarStatus.textContent = "Resposta inválida ao gerar o SBAR.";
+                sbarStatus.classList.remove("loading-dot");
+              }
+              return;
+            }
+
+            if (sbarOutput) sbarOutput.value = texto;
+            if (sbarStatus) {
+              sbarStatus.textContent = "SBAR gerado.";
+              sbarStatus.classList.remove("loading-dot");
+            }
+          } catch (err) {
+            console.error("Erro ao gerar SBAR:", err);
+            if (sbarStatus) {
+              sbarStatus.textContent = "Erro ao gerar SBAR.";
+              sbarStatus.classList.remove("loading-dot");
+            }
+          } finally {
+            stopSbarTimer();
+            if (sbarRecordBtn) {
+              sbarRecordBtn.classList.remove("generating");
+              sbarRecordBtn.classList.remove("recording");
+              sbarRecordBtn.classList.add("start");
+              sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
+              sbarRecordBtn.disabled = false;
+            }
+          }
+        }
 
     function formatClassificationList(items) {
       if (!Array.isArray(items) || !items.length) {
@@ -6053,13 +6455,54 @@ recordBtn.onclick = () => {
       }
       copyToClipboard(text);
     });
+    if (sbarRecordBtn) {
+      sbarRecordBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        if (!sbarIsRecording) {
+          await startSbarRecording();
+        } else {
+          await stopSbarRecordingAndGenerate();
+        }
+      });
+    }
 
-    generateHospitalPrescriptionBtn.addEventListener("click", () => {
-      generateHospitalPrescription();
-    });
+    // Relatórios de Enfermagem / Encaminhamentos etc.
+    if (reportRecordBtn) {
+      reportRecordBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        if (!reportIsRecording) {
+          startReportRecording();
+        } else {
+          await stopReportRecordingAndGenerate();
+        }
+      });
+    }
 
-    copyHospitalPrescriptionBtn.addEventListener("click", () => {
-      const text = hospitalPrescriptionOutput.value.trim();
+    if (copyReportBtn) {
+      copyReportBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const t = reportOutput && reportOutput.value ? reportOutput.value.trim() : "";
+        if (!t) {
+          alert("Não há documento para copiar.");
+          return;
+        }
+        copyToClipboard(t);
+      });
+    }
+
+    if (printReportBtn) {
+      printReportBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const t = reportOutput && reportOutput.value ? reportOutput.value.trim() : "";
+        if (!t) {
+          alert("Não há documento para imprimir.");
+          return;
+        }
+        openPrintWindow("Documento", t);
+      });
+    }
+    copySbarBtn.addEventListener("click", () => {
+      const text = sbarOutput.value.trim();
       if (!text) {
         alert("Não há SBAR para copiar.");
         return;
@@ -6067,8 +6510,8 @@ recordBtn.onclick = () => {
       copyToClipboard(text);
     });
 
-    printHospitalPrescriptionBtn.addEventListener("click", () => {
-      openPrintWindow("Passagem de Plantão (SBAR)", hospitalPrescriptionOutput.value);
+    printSbarBtn.addEventListener("click", () => {
+      openPrintWindow("Passagem de Plantão (SBAR)", sbarOutput.value);
     });
 
     if (printRiskTriageBtn) {
@@ -6749,7 +7192,421 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
 
 
+    
+
     // ============================
+    // MÓDULO: Guias de consulta (nurseView)
+    // ============================
+    (function initConsultGuides() {
+      const consultButtons = Array.from(document.querySelectorAll(".consult-type-btn"));
+      const drawer = document.getElementById("consultGuideDrawer");
+      const titleEl = document.getElementById("consultGuideTitle");
+      const subtitleEl = document.getElementById("consultGuideSubtitle");
+      const contentEl = document.getElementById("consultGuideContent");
+      const closeBtn = document.getElementById("closeConsultGuideBtn");
+      const prenatalTriRow = document.getElementById("prenatalTrimesterRow");
+      const triBtns = Array.from(document.querySelectorAll(".trimester-btn"));
+
+      if (!consultButtons.length || !drawer || !titleEl || !subtitleEl || !contentEl || !closeBtn || !prenatalTriRow) return;
+
+      function esc(s) {
+        return String(s ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      const GUIDE = {
+        prenatal: {
+          title: "Consulta pré-natal por trimestre",
+          subtitle: "Roteiro prático com linguagem direta e detalhada, baseado nas recomendações do Ministério da Saúde. Ajuste conforme risco gestacional e protocolos locais.",
+          trimester: {
+            1: {
+              subtitle: "1º trimestre (até 13 semanas + 6 dias)",
+              html: `
+                <h4>Objetivos</h4>
+                <ul>
+                  <li>Confirmar gestação, estimar idade gestacional, identificar riscos e organizar o plano de pré-natal.</li>
+                  <li>Garantir que a gestante entenda como será o acompanhamento, quais exames serão feitos e quando retornar.</li>
+                </ul>
+
+                <h4>Perguntas essenciais (anamnese)</h4>
+                <ul>
+                  <li>Data da última menstruação (DUM) e regularidade do ciclo; dúvidas sobre a data.</li>
+                  <li>Gestas/partos/abortos anteriores, cesáreas, complicações (preeclâmpsia, hemorragia, prematuridade, DMG, infecções).</li>
+                  <li>Doenças prévias: hipertensão, diabetes, tireoide, epilepsia, cardiopatias, trombose, asma, doenças renais.</li>
+                  <li>Uso de medicamentos, álcool, tabaco, outras drogas; alergias.</li>
+                  <li>Sintomas atuais: náuseas/vômitos intensos, dor abdominal, febre, sangramento, corrimento, disúria.</li>
+                  <li>Condições sociais e de segurança: suporte familiar, trabalho, violência, acesso ao serviço.</li>
+                </ul>
+
+                <h4>Exame físico e obstétrico (passo a passo)</h4>
+                <ul>
+                  <li>Pressão arterial, peso, altura, IMC e ganho de peso esperado.</li>
+                  <li>Avaliar edema, sinais de anemia, tireoide, mamas e cavidade oral conforme necessidade.</li>
+                  <li>Exame obstétrico conforme idade gestacional: altura uterina (quando aplicável) e ausculta de BCF (quando possível).</li>
+                </ul>
+
+                <h4>Exames recomendados (rotina mínima do MS)</h4>
+                <ul>
+                  <li>ABO-Rh e hemoglobina/hematócrito na primeira consulta.</li>
+                  <li>Glicemia de jejum na primeira consulta.</li>
+                  <li>VDRL (sífilis) na primeira consulta.</li>
+                  <li>Urina tipo 1 na primeira consulta.</li>
+                  <li>Teste anti-HIV na primeira consulta.</li>
+                  <li>Sorologia para toxoplasmose na primeira consulta (se disponível).</li>
+                </ul>
+
+                <h4>O que explicar para quem não entende nada</h4>
+                <ul>
+                  <li><b>Por que tantos exames?</b> Eles servem para descobrir cedo problemas que podem não dar sintoma (anemia, diabetes, sífilis, HIV, infecção urinária).</li>
+                  <li><b>O que acontece se der alterado?</b> A equipe orienta o tratamento e faz acompanhamento mais de perto para proteger mãe e bebê.</li>
+                </ul>
+              `
+            },
+            2: {
+              subtitle: "2º trimestre (14 a 27 semanas + 6 dias)",
+              html: `
+                <h4>Objetivos</h4>
+                <ul>
+                  <li>Acompanhar crescimento do bebê e saúde da gestante.</li>
+                  <li>Rastrear diabetes gestacional no período recomendado.</li>
+                </ul>
+
+                <h4>O que perguntar e registrar</h4>
+                <ul>
+                  <li>Sintomas de alarme: sangramento, perda de líquido, febre, dor forte, redução de movimentos fetais (quando já perceptíveis).</li>
+                  <li>Sintomas urinários (ardor ao urinar, urgência, dor lombar), cefaleia importante, alteração visual, dor no “boca do estômago”.</li>
+                  <li>Adesão a ferro/ácido fólico (se prescritos), alimentação e atividade física.</li>
+                </ul>
+
+                <h4>Exame físico e obstétrico (rotina)</h4>
+                <ul>
+                  <li>Pressão arterial e peso em toda consulta.</li>
+                  <li>Altura uterina, ausculta de BCF e avaliação de edema conforme evolução.</li>
+                </ul>
+
+                <h4>Exames recomendados</h4>
+                <ul>
+                  <li>Se a glicemia de jejum do início estiver normal, realizar entre 24 e 28 semanas o Teste Oral de Tolerância à Glicose (TOTG) para investigar diabetes gestacional.</li>
+                  <li>Manter atenção para sinais e sintomas que indiquem necessidade de repetir urina e investigar infecção urinária.</li>
+                </ul>
+
+                <h4>Como explicar o TOTG (bem simples)</h4>
+                <ul>
+                  <li>É um exame para ver como o corpo “lida com açúcar”. A gestante fica em jejum, colhe sangue, toma uma solução doce e faz novas coletas.</li>
+                  <li>Ele é feito nesse período porque é quando a gravidez pode “desencadear” diabetes gestacional, mesmo em quem nunca teve.</li>
+                </ul>
+              `
+            },
+            3: {
+              subtitle: "3º trimestre (28 semanas até o parto)",
+              html: `
+                <h4>Objetivos</h4>
+                <ul>
+                  <li>Reforçar segurança materno-fetal, planejar parto e identificar precocemente complicações.</li>
+                  <li>Repetir exames de rastreio no momento recomendado pelo MS.</li>
+                </ul>
+
+                <h4>Exames recomendados (rotina mínima do MS)</h4>
+                <ul>
+                  <li>Glicemia de jejum próxima à 30ª semana.</li>
+                  <li>VDRL (sífilis) próximo à 30ª semana.</li>
+                  <li>Urina tipo 1 próxima à 30ª semana.</li>
+                  <li>Teste anti-HIV próximo à 30ª semana (sempre que possível).</li>
+                  <li>HBsAg (hepatite B) de preferência próximo à 30ª semana (se disponível).</li>
+                </ul>
+
+                <h4>O que perguntar e orientar</h4>
+                <ul>
+                  <li>Movimentos fetais, contrações, sangramento, perda de líquido, febre.</li>
+                  <li>Sinais de gravidade: dor de cabeça forte, visão embaçada, falta de ar, dor intensa no abdome superior, inchaço importante.</li>
+                  <li>Plano de parto: local de referência, documentos, sinais para ir à maternidade, transporte.</li>
+                </ul>
+
+                <h4>Explicação simples para a paciente</h4>
+                <ul>
+                  <li>“Vamos repetir alguns exames porque, mesmo que antes estivesse tudo normal, algumas infecções e alterações podem aparecer mais tarde e precisam ser tratadas a tempo.”</li>
+                </ul>
+              `
+            }
+          }
+        },
+
+        puericultura: {
+          title: "Consulta puericultura",
+          subtitle: "Roteiro prático com o que observar, perguntar e quais testes/triagens devem estar em dia.",
+          html: `
+            <h4>Quando acompanhar (consultas de rotina)</h4>
+            <ul>
+              <li>Consulta na primeira semana de vida (muito importante para avaliar mãe e bebê).</li>
+              <li>Consultas de rotina: 1, 2, 4, 6, 9, 12, 18 e 24 meses; após 2 anos, pelo menos 1 vez ao ano (ou mais, se necessário).</li>
+            </ul>
+
+            <h4>Triagens (testes) que devem estar registrados</h4>
+            <ul>
+              <li>Teste do pezinho: idealmente entre o 3º e 5º dia de vida.</li>
+              <li>Teste da orelhinha: entre 24 e 48 horas após o nascimento e, no máximo, durante o 1º mês.</li>
+              <li>Teste do coraçãozinho: oximetria de pulso após 24 horas de vida (geralmente na maternidade).</li>
+              <li>Teste do olhinho: triagem ocular no recém-nascido (registrar resultado e encaminhar se alterado).</li>
+            </ul>
+
+            <h4>O que fazer na consulta (bem detalhado)</h4>
+            <ul>
+              <li>Medir peso, comprimento/estatura e perímetro cefálico (quando aplicável), e comparar com as curvas.</li>
+              <li>Perguntar sobre alimentação: aleitamento materno (exclusivo ou não), dificuldades para mamar, vômitos, diarreia, constipação.</li>
+              <li>Checar vacinação: comparar com o Calendário Nacional e orientar próximas doses.</li>
+              <li>Avaliar desenvolvimento: olhar, sorriso, controle de cabeça, sentar, engatinhar, andar, fala e interação, conforme a idade.</li>
+              <li>Exame físico: pele, respiração, coração, abdome, quadril (quando indicado), olhos, ouvidos, boca, genitália, coluna, tônus.</li>
+              <li>Orientar sinais de alarme: febre em recém-nascido, dificuldade para respirar, recusa alimentar persistente, sonolência excessiva, vômitos em jato, sangue nas fezes, icterícia intensa.</li>
+            </ul>
+          `
+        },
+
+        planejamento: {
+          title: "Consulta planejamento familiar",
+          subtitle: "Roteiro para orientar escolha do método contraceptivo com segurança e linguagem simples.",
+          html: `
+            <h4>Passo 1: entender o objetivo da pessoa</h4>
+            <ul>
+              <li>Quer evitar gravidez agora? Por quanto tempo? Quer engravidar em breve?</li>
+              <li>Tem parceiro(a)? Usa preservativo? Há risco de IST?</li>
+              <li>Já usou algum método? Teve efeitos colaterais? Está satisfeita?</li>
+            </ul>
+
+            <h4>Passo 2: checagem de segurança (antes de indicar um método)</h4>
+            <ul>
+              <li>Medir pressão arterial e peso/IMC.</li>
+              <li>Perguntar sobre enxaqueca com aura, trombose, câncer de mama, hepatopatias, sangramento uterino inexplicado, tabagismo (principalmente &gt; 35 anos).</li>
+              <li>Se houver chance de gravidez, orientar teste de gravidez e/ou critérios clínicos para excluir gestação.</li>
+            </ul>
+
+            <h4>Exames: o que é rotina e o que é por indicação</h4>
+            <ul>
+              <li>Em geral, a consulta se baseia em história e exame físico (especialmente pressão). Exames laboratoriais não são exigência “para todo mundo” e devem ser solicitados quando houver indicação clínica.</li>
+              <li>Para DIU, deve haver avaliação clínica e ginecológica conforme protocolos do serviço; se houver risco de IST, orientar investigação e manejo.</li>
+              <li>Citopatológico (preventivo) deve seguir o protocolo do rastreamento do colo do útero; não é “obrigatório” para iniciar todos os métodos, mas deve estar em dia conforme idade/intervalo.</li>
+            </ul>
+
+            <h4>Explicação simples dos métodos (para leigos)</h4>
+            <ul>
+              <li><b>Preservativo:</b> protege contra gravidez e IST. Precisa usar em todas as relações.</li>
+              <li><b>Pílula/adesivo/anel (com hormônio):</b> muito eficaz se usado certo; pode ter restrições em quem tem risco de trombose ou pressão alta descontrolada.</li>
+              <li><b>Injetável:</b> aplicação mensal ou trimestral; pode alterar o sangramento.</li>
+              <li><b>DIU:</b> longa duração; a pessoa não precisa lembrar todo dia. Pode ser de cobre ou hormonal (quando disponível).</li>
+              <li><b>Laqueadura/vasectomia:</b> métodos definitivos; exige decisão muito segura.</li>
+            </ul>
+
+            <h4>Fechamento</h4>
+            <ul>
+              <li>Confirmar que a pessoa entendeu como usar o método e o que fazer se esquecer.</li>
+              <li>Orientar retorno (efeitos colaterais, adaptação, revisão) e sinais de alerta (dor forte, sangramento intenso, falta de ar, dor na perna, desmaio).</li>
+            </ul>
+          `
+        },
+
+        hiperdia: {
+          title: "Consulta hiperdia",
+          subtitle: "Checklist de consulta para hipertensão e diabetes, com monitoramento e exames recomendados pelo Ministério da Saúde (PCDT).",
+          html: `
+            <h4>1) Perguntas essenciais (o que não pode faltar)</h4>
+            <ul>
+              <li>Quais remédios está usando (nome, dose, horário)? Está tomando todos os dias?</li>
+              <li>Teve efeitos colaterais? Teve hipoglicemia (tremor, suor frio, confusão, desmaio)?</li>
+              <li>Teve dor no peito, falta de ar, inchaço, fraqueza em um lado do corpo, alteração de visão?</li>
+              <li>Como está a alimentação, atividade física, sono, tabagismo e álcool?</li>
+            </ul>
+
+            <h4>2) Exame físico (rotina em toda consulta)</h4>
+            <ul>
+              <li>Pressão arterial, peso/IMC e circunferência abdominal.</li>
+              <li>Avaliar edema, ausculta cardíaca, pulsos periféricos e sinais de insuficiência cardíaca.</li>
+              <li>Para diabetes: examinar os pés (pele, unhas, feridas, sensibilidade e pulsos) e orientar cuidados diários.</li>
+            </ul>
+
+            <h4>3) Monitoramento e periodicidade (HAS)</h4>
+            <ul>
+              <li><b>Reavaliação inicial:</b> mensal até alcançar a meta de pressão; depois, a cada 3–6 meses no primeiro ano e, após controle, pode ser semestral.</li>
+              <li><b>Exames laboratoriais:</b> perfil lipídico, glicemia de jejum ou HbA1c, creatinina, potássio (e sódio se em diurético tiazídico), urinálise; solicitar anualmente ou pelo menos a cada 2 anos, conforme o caso.</li>
+              <li><b>Eletrocardiograma:</b> solicitar para avaliação e acompanhamento conforme necessidade clínica.</li>
+            </ul>
+
+            <h4>4) Monitoramento e periodicidade (DM2)</h4>
+            <ul>
+              <li><b>Consultas:</b> reavaliar no máximo a cada 3 a 6 meses, ajustando o tratamento conforme metas e risco.</li>
+              <li><b>Em cada consulta:</b> peso, pressão arterial e estratificação de risco cardiovascular.</li>
+              <li><b>Ao diagnóstico e anualmente:</b> perfil lipídico, creatinina/albuminúria (nefropatia), fundoscopia (retinopatia), avaliação do pé diabético (monofilamento e pulsos podais).</li>
+              <li><b>Ao diagnóstico e a cada 6 meses:</b> glicemia de jejum e hemoglobina glicada (HbA1c).</li>
+            </ul>
+
+            <h4>5) Orientações em linguagem simples (para o paciente entender)</h4>
+            <ul>
+              <li><b>Pressão alta</b> costuma não dar sintoma. Mesmo “se sentindo bem”, precisa tratar para evitar AVC, infarto e problemas no rim.</li>
+              <li><b>Diabetes</b> pode machucar olhos, rins e pés “por dentro”. Os exames e o exame do pé servem para detectar cedo.</li>
+              <li><b>Procure urgência se</b>: dor no peito, falta de ar forte, desmaio, confusão, fraqueza em um lado do corpo, glicemia muito baixa com rebaixamento.</li>
+            </ul>
+          `
+        },puerperio: {
+          title: "Consulta de puerpério",
+          subtitle: "Roteiro para a consulta pós-parto com foco em segurança, amamentação, saúde mental e planejamento reprodutivo.",
+          html: `
+            <h4>Quando fazer</h4>
+            <ul>
+              <li>Atenção à mulher e ao recém-nascido na primeira semana após o parto.</li>
+              <li>Consulta puerperal até o 42º dia pós-parto (6 semanas).</li>
+            </ul>
+
+            <h4>O que perguntar (bem detalhado)</h4>
+            <ul>
+              <li>Sangramento: quantidade, odor, coágulos; febre; dor pélvica; secreção na ferida (cesárea/episiotomia).</li>
+              <li>Sintomas urinários e intestinais; dor intensa; tontura; falta de ar.</li>
+              <li>Amamentação: pega, dor, fissuras, ingurgitamento, mastite; ganho de peso do bebê.</li>
+              <li>Humor: tristeza persistente, ansiedade intensa, insônia grave, pensamentos de autoagressão (avaliar risco).</li>
+              <li>Contracepção e retorno da atividade sexual.</li>
+            </ul>
+
+            <h4>Exame físico</h4>
+            <ul>
+              <li>Pressão arterial, estado geral e sinais de anemia/desidratação.</li>
+              <li>Mamas (se dor, febre, fissuras), abdome e avaliação uterina conforme queixa e período.</li>
+              <li>Ferida operatória/episiotomia: sinais de infecção.</li>
+            </ul>
+
+            <h4>Exames e condutas lembradas pelo MS</h4>
+            <ul>
+              <li>Se não foi feito durante o pré-natal, ofertar teste anti-HIV e VDRL no puerpério, considerando o risco e a disponibilidade.</li>
+              <li>Reposição de ferro se anemia/situações de risco e orientação alimentar para recuperação.</li>
+              <li>Planejamento reprodutivo: orientar método seguro no puerpério conforme condição clínica e amamentação.</li>
+            </ul>
+
+            <h4>Explicação simples para a paciente</h4>
+            <ul>
+              <li>“Essa consulta serve para garantir que você está se recuperando bem do parto, que o bebê está bem, e para evitar problemas que podem aparecer depois que você já foi para casa.”</li>
+            </ul>
+          `
+        },
+
+        sbar: {
+          title: "Perguntas para Passagem de Plantão (SBAR)",
+          subtitle: "Use este roteiro para coletar rapidamente informações e montar um SBAR claro para o próximo profissional.",
+          html: `
+            <h4>S (Situação) – o que está acontecendo agora</h4>
+            <ul>
+              <li>Quem é o paciente (nome, idade, identificação) e onde está (sala/leito/consultório)?</li>
+              <li>Qual é o problema principal neste momento?</li>
+              <li>Há instabilidade? (queda de pressão, falta de ar, rebaixamento de consciência, dor intensa, sangramento)</li>
+              <li>Sinais vitais atuais e tendência (melhorou/piorou)?</li>
+            </ul>
+
+            <h4>B (Background) – contexto e histórico relevante</h4>
+            <ul>
+              <li>Diagnósticos principais e comorbidades importantes.</li>
+              <li>Motivo de internação/atendimento e evolução até aqui (em 2–3 frases).</li>
+              <li>Alergias, medicamentos em uso e intervenções recentes (antibiótico, soro, oxigênio, procedimentos).</li>
+              <li>Resultados relevantes já disponíveis (exames, imagem) e pendências (o que ainda falta sair).</li>
+            </ul>
+
+            <h4>A (Avaliação) – interpretação e o que você acha que é</h4>
+            <ul>
+              <li>Como você interpreta o quadro agora? (ex.: “piora respiratória com provável pneumonia”, “hipotensão possivelmente por desidratação”)</li>
+              <li>Principais riscos nas próximas horas (choque, rebaixamento, sangramento, hipoglicemia, crise hipertensiva).</li>
+              <li>Resposta ao que foi feito até agora (melhorou com medicação? persistiu?).</li>
+            </ul>
+
+            <h4>R (Recomendação) – o que precisa ser feito a seguir</h4>
+            <ul>
+              <li>O que você precisa que o próximo profissional faça (objetivo e claro).</li>
+              <li>Monitorização: frequência de sinais vitais, controle de glicemia, diurese, dor, saturação.</li>
+              <li>Condutas pendentes: exames a coletar, medicações a administrar, reavaliação em X minutos/horas.</li>
+              <li>Quando chamar médico imediatamente (critérios objetivos).</li>
+            </ul>
+          `
+        }
+      };
+
+      let currentConsultKey = null;
+      let currentTri = 1;
+
+      function setActive(btn) {
+        consultButtons.forEach(b => b.classList.remove("active"));
+        if (btn) btn.classList.add("active");
+      }
+
+      function renderGuide(key) {
+        const g = GUIDE[key];
+        if (!g) return;
+
+        titleEl.textContent = g.title || "";
+        subtitleEl.textContent = g.subtitle || "";
+        drawer.classList.remove("hidden");
+
+        if (key === "prenatal") {
+          prenatalTriRow.classList.remove("hidden");
+          // Seleciona trimestre atual
+          triBtns.forEach(b => {
+            const tri = Number(b.getAttribute("data-tri"));
+            if (tri === currentTri) b.classList.add("active");
+            else b.classList.remove("active");
+          });
+          const triData = g.trimester?.[currentTri] || g.trimester?.[1];
+          if (triData) {
+            subtitleEl.textContent = triData.subtitle || g.subtitle || "";
+            contentEl.innerHTML = triData.html || "";
+          } else {
+            contentEl.textContent = "Conteúdo indisponível.";
+          }
+        } else {
+          prenatalTriRow.classList.add("hidden");
+          contentEl.innerHTML = g.html || "";
+        }
+      }
+
+      function openGuide(key, btn) {
+        currentConsultKey = key;
+        currentTri = 1;
+        setActive(btn);
+        renderGuide(key);
+        try {
+          drawer.scrollIntoView({ behavior: "smooth", block: "start" });
+        } catch (e) {}
+      }
+
+      function closeGuide() {
+        drawer.classList.add("hidden");
+        prenatalTriRow.classList.add("hidden");
+        contentEl.innerHTML = "";
+        currentConsultKey = null;
+        consultButtons.forEach(b => b.classList.remove("active"));
+      }
+
+      consultButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const key = btn.getAttribute("data-consult");
+          if (!key) return;
+          openGuide(key, btn);
+        });
+      });
+
+      triBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const tri = Number(btn.getAttribute("data-tri"));
+          if (!Number.isFinite(tri) || tri < 1 || tri > 3) return;
+          currentTri = tri;
+          if (currentConsultKey === "prenatal") renderGuide("prenatal");
+        });
+      });
+
+      closeBtn.addEventListener("click", closeGuide);
+
+      // Fecha com ESC quando o drawer estiver aberto
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape" && drawer && !drawer.classList.contains("hidden")) closeGuide();
+      });
+    })();
+
+// ============================
     // MÓDULO: Calculadoras Clínicas
     // ============================
     const calculatorsCard = document.getElementById("calculatorsCard");
