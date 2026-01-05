@@ -1718,6 +1718,63 @@ Transcrição:
   return sbar;
 }
 
+
+
+// ======================================================================
+// ROTA – TRANSCRIÇÃO DE ÁUDIO (SBAR)
+// - Recebe áudio bruto (Blob) do navegador e devolve texto
+// - A rota é usada pelo módulo Passagem de Plantão para evitar falhas do
+//   SpeechRecognition (especialmente em iOS/Safari/Chrome iOS)
+// ======================================================================
+
+app.post(
+  "/api/transcrever-audio",
+  requirePaidOrAdmin,
+  express.raw({ type: ["audio/*", "video/webm", "application/octet-stream"], limit: "25mb" }),
+  async (req, res) => {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        return res.json({ text: "" });
+      }
+
+      const buf = req.body;
+      if (!buf || !Buffer.isBuffer(buf) || buf.length < 1024) {
+        return res.json({ text: "" });
+      }
+
+      const ctRaw = String(req.headers["content-type"] || "audio/webm");
+      const ct = ctRaw.split(";")[0].trim().toLowerCase();
+
+      let ext = "webm";
+      if (ct.includes("mpeg") || ct.includes("mp3")) ext = "mp3";
+      else if (ct.includes("wav")) ext = "wav";
+      else if (ct.includes("m4a") || ct.includes("mp4")) ext = "m4a";
+      else if (ct.includes("ogg")) ext = "ogg";
+      else if (ct.includes("webm")) ext = "webm";
+
+      const tmpName = "tmp_audio_" + crypto.randomBytes(12).toString("hex") + "." + ext;
+      const tmpPath = path.join(__dirname, tmpName);
+
+      fs.writeFileSync(tmpPath, buf);
+
+      try {
+        const transcript = await openai.audio.transcriptions.create({
+          model: "gpt-4o-mini-transcribe",
+          file: fs.createReadStream(tmpPath),
+          language: "pt"
+        });
+
+        const textOut = (transcript && transcript.text) ? String(transcript.text).trim() : "";
+        return res.json({ text: textOut });
+      } finally {
+        try { fs.unlinkSync(tmpPath); } catch (e) {}
+      }
+    } catch (e) {
+      console.error("Falha ao transcrever áudio:", e);
+      return res.status(500).json({ error: "Falha interna ao transcrever áudio." });
+    }
+  }
+);
 app.post("/api/gerar-sbar", requirePaidOrAdmin, async (req, res) => {
   try {
     const { transcricao } = req.body || {};

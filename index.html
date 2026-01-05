@@ -5752,8 +5752,12 @@ async function addFilesToTarget(files, targetKey, mode) {
 
         let sbarRecognition = null;
         let sbarIsRecording = false;
-        
 
+        // SBAR: gravação de áudio via MediaRecorder (mais estável que SpeechRecognition, especialmente no iOS/Safari)
+        let sbarMediaStream = null;
+        let sbarMediaRecorder = null;
+        let sbarAudioChunks = [];
+        let sbarAudioMimeType = "";
           stopSbarTimer();
 let sbarFinalTranscript = "";
         let sbarInterimTranscript = "";
@@ -5867,46 +5871,70 @@ let interim = "";
         }
 
 
+        
+        // SBAR – gravação de áudio (MediaRecorder) + transcrição no backend (OpenAI)
+        function pickSbarAudioMimeType() {
+          try {
+            if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) return "";
+            const candidates = [
+              "audio/webm;codecs=opus",
+              "audio/webm",
+              "audio/ogg;codecs=opus",
+              "audio/ogg",
+              "audio/mp4",
+              "audio/aac"
+            ];
+            for (const c of candidates) {
+              if (MediaRecorder.isTypeSupported(c)) return c;
+            }
+          } catch (e) {}
+          return "";
+        }
+
+        async function transcribeSbarAudioBlob(blob) {
+          const contentType = (blob && blob.type) ? blob.type : "application/octet-stream";
+          const resp = await fetch(BACKEND_URL + "/api/transcrever-audio", {
+            method: "POST",
+            headers: { "Content-Type": contentType },
+            body: blob
+          });
+
+          if (!resp.ok) {
+            const txt = await resp.text().catch(() => "");
+            throw new Error("Falha na transcrição (HTTP " + resp.status + "): " + txt);
+          }
+
+          const data = await resp.json().catch(() => ({}));
+          const text = (data && (data.text || data.transcricao || data.transcript))
+            ? String(data.text || data.transcricao || data.transcript).trim()
+            : "";
+          return text;
+        }
+
         async function startSbarRecording() {
           if (hasAnyOtherRecordingActive()) {
             alert("Finalize a gravação atual (consulta/triagem/relatórios) antes de iniciar o SBAR.");
             return;
           }
 
-          if (!sbarRecognition) {
-            initSbarSpeech();
-            if (!sbarRecognition) return;
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            if (sbarStatus) {
+              sbarStatus.textContent = "Seu navegador não permite gravação de áudio. Use Chrome/Edge ou Safari atualizado.";
+              sbarStatus.classList.remove("loading-dot");
+            }
+            return;
           }
 
           // Reset de estado
           sbarIsRecording = true;
-          sbarFinalTranscript = "";
-          sbarInterimTranscript = "";
-          
+          sbarAudioChunks = [];
+          sbarAudioMimeType = pickSbarAudioMimeType();
           sbarHasStarted = false;
-          sbarHasAnyResult = false;
-          const myAttempt = ++sbarStartAttemptId;
-          // Se o reconhecimento não iniciar em ~2.5s, aborta e orienta o usuário.
-          setTimeout(() => {
-            if (sbarIsRecording && !sbarHasStarted && myAttempt === sbarStartAttemptId) {
-              try { if (sbarRecognition) sbarRecognition.stop(); } catch (e) {}
-              sbarIsRecording = false;
-              stopSbarTimer();
-              if (sbarStatus) {
-                sbarStatus.textContent = "Não foi possível iniciar o microfone. Verifique permissão, selecione o microfone correto e tente novamente."; 
-                sbarStatus.classList.remove("loading-dot");
-              }
-              if (sbarRecordBtn) {
-                sbarRecordBtn.classList.remove("recording");
-                sbarRecordBtn.classList.add("start");
-                sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
-                sbarRecordBtn.disabled = false;
-              }
-            }
-          }, 2500);
-if (sbarOutput) sbarOutput.value = "";
+
+          if (sbarOutput) sbarOutput.value = "";
+
           if (sbarStatus) {
-            sbarStatus.textContent = "Gravando SBAR. Fale em voz alta, de preferência próximo ao microfone. Clique novamente em \"Encerrar e gerar SBAR\" quando terminar.";
+            sbarStatus.textContent = "Solicitando acesso ao microfone...";
             sbarStatus.classList.remove("loading-dot");
           }
 
@@ -5914,39 +5942,122 @@ if (sbarOutput) sbarOutput.value = "";
             sbarRecordBtn.classList.remove("start");
             sbarRecordBtn.classList.add("recording");
             sbarRecordBtn.textContent = "Encerrar e gerar SBAR";
-            sbarRecordBtn.disabled = false;
+            sbarRecordBtn.disabled = true;
           }
 
-          startSbarTimer();
-
-          // Garante permissão do microfone (reduz falhas silenciosas em alguns navegadores)
           try {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-              // libera imediatamente (SpeechRecognition usa o próprio pipeline)
-              stream.getTracks().forEach(t => t.stop());
+            sbarMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            try {
+              sbarMediaRecorder = sbarAudioMimeType
+                ? new MediaRecorder(sbarMediaStream, { mimeType: sbarAudioMimeType })
+                : new MediaRecorder(sbarMediaStream);
+            } catch (e) {
+              // fallback sem mimeType
+              sbarMediaRecorder = new MediaRecorder(sbarMediaStream);
             }
-          } catch (e) {
+
+            sbarMediaRecorder.onstart = () => {
+              sbarHasStarted = true;
+              if (sbarStatus) {
+                sbarStatus.textContent = 'Gravando passagem de plantão (SBAR)... Quando terminar, clique em "Encerrar e gerar SBAR".';
+                sbarStatus.classList.remove("loading-dot");
+              }
+              if (sbarRecordBtn) sbarRecordBtn.disabled = false;
+              startSbarTimer();
+            };
+
+            sbarMediaRecorder.ondataavailable = (ev) => {
+              if (ev && ev.data && ev.data.size > 0) {
+                sbarAudioChunks.push(ev.data);
+              }
+            };
+
+            sbarMediaRecorder.onerror = (ev) => {
+              console.error("Erro no MediaRecorder (SBAR):", ev);
+              if (sbarStatus) {
+                sbarStatus.textContent = "Ocorreu um erro ao capturar áudio. Verifique o microfone e tente novamente.";
+                sbarStatus.classList.remove("loading-dot");
+              }
+            };
+
+            sbarMediaRecorder.onstop = async () => {
+              const resetUi = (msg) => {
+                stopSbarTimer();
+                if (sbarRecordBtn) {
+                  sbarRecordBtn.classList.remove("generating");
+                  sbarRecordBtn.classList.remove("recording");
+                  sbarRecordBtn.classList.add("start");
+                  sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
+                  sbarRecordBtn.disabled = false;
+                }
+                if (sbarStatus) {
+                  sbarStatus.textContent = msg || "";
+                  sbarStatus.classList.remove("loading-dot");
+                }
+              };
+
+              try {
+                const mime = (sbarMediaRecorder && sbarMediaRecorder.mimeType)
+                  ? sbarMediaRecorder.mimeType
+                  : (sbarAudioMimeType || "audio/webm");
+                const audioBlob = new Blob(sbarAudioChunks || [], { type: mime });
+                sbarAudioChunks = [];
+
+                // encerra o stream (libera microfone)
+                try {
+                  if (sbarMediaStream) sbarMediaStream.getTracks().forEach(t => t.stop());
+                } catch (e) {}
+                sbarMediaStream = null;
+
+                if (!audioBlob || audioBlob.size < 1024) {
+                  resetUi(!sbarHasStarted
+                    ? "A gravação não iniciou. Verifique permissão do microfone e tente novamente."
+                    : "Nenhuma fala foi capturada. Tente novamente, falando mais próximo ao microfone.");
+                  return;
+                }
+
+                if (sbarStatus) {
+                  sbarStatus.textContent = "Transcrevendo áudio...";
+                  sbarStatus.classList.add("loading-dot");
+                }
+
+                const transcricao = await transcribeSbarAudioBlob(audioBlob);
+
+                if (!transcricao || transcricao.length < 5) {
+                  resetUi("Não foi possível transcrever o áudio. Tente novamente.");
+                  return;
+                }
+
+                await generateHospitalPrescriptionFromTranscript(transcricao);
+              } catch (err) {
+                console.error("Falha ao transcrever/gerar SBAR:", err);
+                resetUi("Erro ao gerar SBAR.");
+              }
+            };
+
+            // timeslice evita buffers gigantes em gravações longas
+            sbarMediaRecorder.start(1000);
+          } catch (err) {
+            console.error("Falha ao iniciar gravação (SBAR):", err);
+            sbarIsRecording = false;
+            stopSbarTimer();
+
+            try {
+              if (sbarMediaStream) sbarMediaStream.getTracks().forEach(t => t.stop());
+            } catch (e) {}
+            sbarMediaStream = null;
+
             if (sbarStatus) {
               sbarStatus.textContent = "Permissão de microfone negada ou indisponível.";
               sbarStatus.classList.remove("loading-dot");
             }
-          }
-
-          try {
-            // Evita erro 'recognition has already started'
-            try { sbarRecognition.abort(); } catch (e) {}
-            sbarRecognition.start();
-          } catch (err) {
-            console.error("Falha ao iniciar reconhecimento (SBAR):", err);
-            if (sbarStatus) sbarStatus.textContent = "Não foi possível iniciar a gravação do SBAR.";
-            sbarIsRecording = false;
             if (sbarRecordBtn) {
               sbarRecordBtn.classList.remove("recording");
               sbarRecordBtn.classList.add("start");
               sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
+              sbarRecordBtn.disabled = false;
             }
-            stopSbarTimer();
           }
         }
 
@@ -5959,36 +6070,36 @@ if (sbarOutput) sbarOutput.value = "";
             sbarRecordBtn.disabled = true;
           }
 
+          if (sbarStatus) {
+            sbarStatus.textContent = "Processando...";
+            sbarStatus.classList.add("loading-dot");
+          }
+
           try {
-            if (sbarRecognition) sbarRecognition.stop();
+            if (sbarMediaRecorder && sbarMediaRecorder.state !== "inactive") {
+              sbarMediaRecorder.stop();
+              return; // o restante acontece em onstop
+            }
           } catch (e) {
-            console.warn("Erro ao parar reconhecimento (SBAR):", e);
+            console.warn("Erro ao parar MediaRecorder (SBAR):", e);
           }
 
-          // pequena espera para capturar os últimos resultados finais
-          await new Promise(r => setTimeout(r, 900));
-
-          const transcricao = String(((sbarFinalTranscript || "") + " " + (sbarInterimTranscript || ""))).trim();
-
-          if (!transcricao) {
-            if (sbarStatus) {
-              sbarStatus.textContent = (!sbarHasStarted ? "A gravação não iniciou. Verifique permissão do microfone e tente novamente." : "Nenhuma fala foi capturada. Tente novamente, falando mais próximo ao microfone (ou aguarde 1 a 2 segundos antes de começar a falar).");
-              sbarStatus.classList.remove("loading-dot");
-            }
-            if (sbarRecordBtn) {
-              sbarRecordBtn.disabled = false;
-              sbarRecordBtn.classList.remove("recording");
-              sbarRecordBtn.classList.add("start");
-              sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
-            }
-            stopSbarTimer();
-            return;
+          // Fallback: reseta UI
+          stopSbarTimer();
+          if (sbarRecordBtn) {
+            sbarRecordBtn.classList.remove("generating");
+            sbarRecordBtn.classList.remove("recording");
+            sbarRecordBtn.classList.add("start");
+            sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
+            sbarRecordBtn.disabled = false;
           }
-
-          await generateHospitalPrescriptionFromTranscript(transcricao);
+          if (sbarStatus) {
+            sbarStatus.textContent = "Nenhum áudio foi capturado. Tente novamente.";
+            sbarStatus.classList.remove("loading-dot");
+          }
         }
 
-        async function generateHospitalPrescriptionFromTranscript(transcricao) {
+async function generateHospitalPrescriptionFromTranscript(transcricao) {
           if (!sbarRecordBtn) return;
 
           sbarRecordBtn.classList.add("generating");
