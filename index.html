@@ -721,7 +721,36 @@
       }
     }
 
-    .hidden {
+    
+    .guide-inline {
+      margin: 10px 0 12px;
+      padding: 12px;
+      border: 1px solid #e6e6e6;
+      border-radius: 12px;
+      background: #fafafa;
+      color: #1f1f1f;
+    }
+    .guide-inline h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+    .guide-inline h4 {
+      margin: 10px 0 6px;
+      font-size: 14px;
+    }
+    .guide-inline p {
+      margin: 8px 0;
+    }
+    .guide-inline ul {
+      margin: 0 0 8px 18px;
+    }
+    .sbar-guide-btn {
+      border-color: #0c5460;
+      color: #0c5460;
+      background: #ffffff;
+    }
+
+.hidden {
       display: none !important;
     }
   
@@ -2386,9 +2415,49 @@
     <div id="sbarCard" class="module-card">
       <div class="module-title-row">
         <h2>Passagem de Plantão (SBAR)</h2>
-        <button id="openSbarGuideBtn" class="consult-type-btn mini-consult-btn" type="button" data-consult="sbar">Guia</button>
+        <button id="openSbarGuideBtn" class="mini-consult-btn sbar-guide-btn" type="button">Guia</button>
       </div>
       <p class="module-subtitle">Use este módulo para gravar rapidamente (no momento do plantão) e gerar uma passagem de plantão no padrão SBAR (Situação, Background, Avaliação, Recomendação).</p>
+
+      <div id="sbarGuidePanel" class="guide-inline hidden">
+        <h3>Guia rápido para Passagem de Plantão (SBAR)</h3>
+        <p>Use este roteiro para lembrar as perguntas essenciais. Você pode seguir na ordem SBAR, mas adapte ao caso.</p>
+
+        <h4>Situação (S)</h4>
+        <ul>
+          <li>Quem é o paciente (nome/idade/leito) e por que está internado/atendido agora?</li>
+          <li>Qual é o problema principal neste momento? O que mudou nas últimas horas?</li>
+          <li>Há alguma urgência imediata (via aérea, respiração, circulação, sangramento, dor intensa, rebaixamento)?</li>
+        </ul>
+
+        <h4>Background (B)</h4>
+        <ul>
+          <li>Diagnóstico(s) principal(is) e tempo de evolução/internação.</li>
+          <li>Comorbidades relevantes (HAS, DM, DPOC/asma, IRC, cardiopatia, anticoagulação, etc.).</li>
+          <li>Alergias, medicamentos em uso e antibióticos (dose/horário da próxima dose).</li>
+          <li>Procedimentos/dispositivos: acesso venoso, sonda vesical, SNG, drenos, oxigênio, ventilação, curativos.</li>
+          <li>Isolamento/precauções, histórico recente de febre, quedas, delirium, convulsões.</li>
+        </ul>
+
+        <h4>Avaliação (A)</h4>
+        <ul>
+          <li>Sinais vitais atuais e tendência (PA, FC, FR, SpO2, temperatura), diurese e balanço hídrico quando aplicável.</li>
+          <li>Estado geral e exame dirigido (consciência, perfusão, dispneia, dor, sangramentos, feridas, edema).</li>
+          <li>Resultados relevantes: glicemias, hemograma, eletrólitos, função renal, gasometria, culturas, imagem recente.</li>
+          <li>Risco e segurança: risco de queda/lesão por pressão, risco de broncoaspiração, escala de dor, sedação.</li>
+        </ul>
+
+        <h4>Recomendação (R)</h4>
+        <ul>
+          <li>O que precisa ser feito no próximo turno? Liste tarefas e prioridades.</li>
+          <li>Metas e monitorização: parâmetros-alvo, frequência de checagens, quando reavaliar.</li>
+          <li>Exames pendentes e o que fazer com o resultado (conduta se alterar).</li>
+          <li>Sinais de alarme e quando acionar o médico/plantonista.</li>
+          <li>Plano de alta/transferência se aplicável.</li>
+        </ul>
+
+        <p><strong>Dica prática:</strong> se faltar alguma informação, pergunte e registre durante a própria gravação do SBAR. Quanto mais completo o relato, melhor a passagem de plantão.</p>
+      </div>
 
       <button id="generateHospitalPrescriptionBtn" class="start" type="button">Gerar SBAR</button>
       <div id="sbarTimer" class="mini-timer hidden">00:00</div>
@@ -2966,6 +3035,8 @@ const recordBtn = document.getElementById("recordBtn");
     const hospitalPrescriptionStatus = document.getElementById("hospitalPrescriptionStatus");
     const sbarTimer = document.getElementById("sbarTimer");
     const openSbarGuideBtn = document.getElementById("openSbarGuideBtn");
+    const sbarGuidePanel = document.getElementById("sbarGuidePanel");
+
 
     const pregnancyBox = document.getElementById("pregnancyBox");
     const lactationBox = document.getElementById("lactationBox");
@@ -5674,6 +5745,9 @@ async function addFilesToTarget(files, targetKey, mode) {
             const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
             const ss = String(totalSec % 60).padStart(2, "0");
             sbarTimer.textContent = `${mm}:${ss}`;
+            if (sbarIsRecording && hospitalPrescriptionStatus) {
+              hospitalPrescriptionStatus.textContent = `Gravando SBAR... ${mm}:${ss} (clique novamente em "Encerrar gravação" quando terminar)`;
+            }
           }, 500);
         }
 
@@ -5741,6 +5815,19 @@ async function addFilesToTarget(files, targetKey, mode) {
           return !!(isRecording || triageIsRecording || reportIsRecording || questionsIsRecording);
         }
 
+        // Guia do SBAR (inline, dentro do próprio módulo)
+        if (openSbarGuideBtn && sbarGuidePanel) {
+          openSbarGuideBtn.addEventListener("click", () => {
+            const willOpen = sbarGuidePanel.classList.contains("hidden");
+            sbarGuidePanel.classList.toggle("hidden");
+            if (willOpen) {
+              // Mantém o usuário no módulo SBAR (sem rolar para o topo)
+              sbarGuidePanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+          });
+        }
+
+
         function startSbarRecording() {
           if (hasAnyOtherRecordingActive()) {
             alert("Finalize a gravação atual (consulta/triagem/relatórios) antes de iniciar o SBAR.");
@@ -5758,7 +5845,7 @@ async function addFilesToTarget(files, targetKey, mode) {
           sbarInterimTranscript = "";
           if (hospitalPrescriptionOutput) hospitalPrescriptionOutput.value = "";
           if (hospitalPrescriptionStatus) {
-            hospitalPrescriptionStatus.textContent = "Gravando para SBAR. Fale de forma objetiva: situação, histórico, avaliação e o que precisa ser feito a seguir.";
+            hospitalPrescriptionStatus.textContent = "Gravando SBAR. Fale em voz alta, de preferência próximo ao microfone. Clique novamente em \"Encerrar gravação\" quando terminar.";
             hospitalPrescriptionStatus.classList.remove("loading-dot");
           }
 
@@ -5802,13 +5889,13 @@ async function addFilesToTarget(files, targetKey, mode) {
           }
 
           // pequena espera para capturar os últimos resultados finais
-          await new Promise(r => setTimeout(r, 250));
+          await new Promise(r => setTimeout(r, 900));
 
-          const transcricao = String(sbarFinalTranscript || "").trim();
+          const transcricao = String(((sbarFinalTranscript || "") + " " + (sbarInterimTranscript || ""))).trim();
 
           if (!transcricao) {
             if (hospitalPrescriptionStatus) {
-              hospitalPrescriptionStatus.textContent = "Nenhuma fala foi capturada. Tente novamente, falando mais próximo ao microfone.";
+              hospitalPrescriptionStatus.textContent = "Nenhuma fala foi capturada. Tente novamente, falando mais próximo ao microfone (ou aguarde 1 a 2 segundos antes de começar a falar).";
               hospitalPrescriptionStatus.classList.remove("loading-dot");
             }
             if (generateHospitalPrescriptionBtn) {
