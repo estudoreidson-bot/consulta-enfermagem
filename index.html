@@ -1452,7 +1452,52 @@
       line-height: 1.35;
     }
 
-  </style>
+  
+
+    .module-title-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:6px;
+    }
+    .mini-consult-btn{
+      padding:7px 12px;
+      font-size:12px;
+      border-radius:12px;
+      white-space:nowrap;
+    }
+
+    #generateHospitalPrescriptionBtn{
+      width:180px;
+      height:180px;
+      border-radius:50%;
+      border:none;
+      cursor:pointer;
+      font-size:18px;
+      font-weight:800;
+      color:#fff;
+      margin:10px auto 6px auto;
+      display:block;
+      transition:transform 0.15s ease, background-color 0.15s ease;
+    }
+    #generateHospitalPrescriptionBtn:active{
+      transform:scale(0.97);
+    }
+    #generateHospitalPrescriptionBtn.generating{
+      background:#dc3545 !important;
+    }
+
+    .mini-timer{
+      text-align:center;
+      font-size:18px;
+      font-weight:700;
+      margin:6px 0 10px 0;
+      color:#fff;
+      opacity:0.92;
+    }
+
+</style>
 </head>
 <body>
 
@@ -2326,25 +2371,33 @@
 
     </div>
 
+    <div id="sbarCard" class="module-card">
+      <div class="module-title-row">
+        <h2>Passagem de Plantão (SBAR)</h2>
+        <button id="openSbarGuideBtn" class="consult-type-btn mini-consult-btn" type="button" data-consult="sbar">Guia</button>
+      </div>
+      <p class="module-subtitle">Use este módulo para gerar automaticamente uma passagem de plantão no padrão SBAR (Situação, Background, Avaliação, Recomendação) a partir das informações já registradas no atendimento.</p>
+
+      <button id="generateHospitalPrescriptionBtn" class="start" type="button">Gerar SBAR</button>
+      <div id="sbarTimer" class="mini-timer hidden">00:00</div>
+      <div id="hospitalPrescriptionStatus" class="mini-status"></div>
+
+      <textarea id="hospitalPrescriptionOutput" class="output-textarea" placeholder="O SBAR gerado aparecerá aqui..." spellcheck="false"></textarea>
+
+      <div class="prescription-actions">
+        <button id="copyHospitalPrescriptionBtn" class="btn-copy" type="button">Copiar</button>
+        <button id="printHospitalPrescriptionBtn" class="btn-print" type="button">Imprimir</button>
+      </div>
+    </div>
+
+
+
 
                 <div id="patientReportCard" class="module-card">
       <h2>Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado de comparecimento ou permanência / ATA reunião / Registros de procedimentos</h2>
       <p class="mini-status" style="margin-top: 0;">
         Grave em voz alta o conteúdo do documento. Diga claramente qual documento deseja produzir (por exemplo: declaração de comparecimento, relatório de curativo seriado, encaminhamento para CAPS, solicitação de insumos, comunicado para escola, ata de reunião). Ao encerrar
-    <div id="sbarCard" class="module-card">
-      <h2>Passagem de Plantão (SBAR)</h2>
-      <p class="mini-status" style="margin-top: 0;">
-        Gere um resumo estruturado do caso no formato SBAR para repasse de plantão, com base apenas na transcrição disponível.
-      </p>
-      <textarea id="hospitalPrescriptionOutput" class="prescription-textarea"></textarea>
-
-      <div class="prescription-actions">
-        <button id="generateHospitalPrescriptionBtn" class="btn-print" type="button">Gerar SBAR</button>
-        <button id="copyHospitalPrescriptionBtn" class="btn-copy" type="button">Copiar SBAR</button>
-        <button id="printHospitalPrescriptionBtn" class="btn-print" type="button">Imprimir SBAR</button>
-      </div>
-      <div id="hospitalPrescriptionStatus" class="mini-status"></div>
-    </div>
+    
 
 , a gravação será usada para identificar o tipo de documento e gerar um texto padronizado pronto para colar no S.U.I.S.
       </p>
@@ -2899,6 +2952,8 @@ const recordBtn = document.getElementById("recordBtn");
     const copyHospitalPrescriptionBtn = document.getElementById("copyHospitalPrescriptionBtn");
     const printHospitalPrescriptionBtn = document.getElementById("printHospitalPrescriptionBtn");
     const hospitalPrescriptionStatus = document.getElementById("hospitalPrescriptionStatus");
+    const sbarTimer = document.getElementById("sbarTimer");
+    const openSbarGuideBtn = document.getElementById("openSbarGuideBtn");
 
     const pregnancyBox = document.getElementById("pregnancyBox");
     const lactationBox = document.getElementById("lactationBox");
@@ -5587,48 +5642,87 @@ async function addFilesToTarget(files, targetKey, mode) {
       return unique.slice(0, 60);
     }
 
-    async function generateHospitalPrescription() {
-      hospitalPrescriptionStatus.textContent = "";
-      const transcricao = (baseTranscript || finalTranscript || "").trim();
+        let sbarTimerInterval = null;
+        let sbarStartTs = 0;
 
-      if (!transcricao) {
-        hospitalPrescriptionStatus.textContent = "Não há transcrição disponível para gerar o SBAR.";
-        return;
-      }
-
-      hospitalPrescriptionStatus.textContent = "Gerando SBAR...";
-      hospitalPrescriptionStatus.classList.add("loading-dot");
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/prescricao-hospitalar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao, tipo_documento: (reportDocTypeSelect && reportDocTypeSelect.value && reportDocTypeSelect.value !== "auto") ? reportDocTypeSelect.value : null })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (SBAR):", resp.status, txt);
-          hospitalPrescriptionStatus.textContent = "Não foi possível gerar a SBAR.";
-          hospitalPrescriptionStatus.classList.remove("loading-dot");
-          return;
+        function startSbarTimer() {
+          if (!sbarTimer) return;
+          sbarStartTs = Date.now();
+          sbarTimer.textContent = "00:00";
+          sbarTimer.classList.remove("hidden");
+          if (sbarTimerInterval) clearInterval(sbarTimerInterval);
+          sbarTimerInterval = setInterval(() => {
+            const elapsed = Math.max(0, Date.now() - sbarStartTs);
+            const totalSec = Math.floor(elapsed / 1000);
+            const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
+            const ss = String(totalSec % 60).padStart(2, "0");
+            sbarTimer.textContent = `${mm}:${ss}`;
+          }, 500);
         }
 
-        const data = await resp.json();
-        const presc = data.prescricao_hospitalar || "";
+        function stopSbarTimer() {
+          if (sbarTimerInterval) clearInterval(sbarTimerInterval);
+          sbarTimerInterval = null;
+          if (!sbarTimer) return;
+          sbarTimer.classList.add("hidden");
+        }
 
-        hospitalPrescriptionOutput.value = presc;
-        hospitalPrescriptionStatus.textContent = presc ? "Prescrição hospitalar gerada." : "Não foi possível gerar a SBAR.";
-        hospitalPrescriptionStatus.classList.remove("loading-dot");
+        async function generateHospitalPrescription() {
+          hospitalPrescriptionStatus.textContent = "";
+          const transcricao = (baseTranscript || finalTranscript || "").trim();
 
-        await updateClassifications();
-        await updateRiskTriage();
-      } catch (err) {
-        console.error("Erro ao gerar SBAR:", err);
-        hospitalPrescriptionStatus.textContent = "Erro ao gerar SBAR.";
-        hospitalPrescriptionStatus.classList.remove("loading-dot");
-      }
-    }
+          if (!transcricao) {
+            hospitalPrescriptionStatus.textContent = "Não há transcrição disponível para gerar o SBAR.";
+            return;
+          }
+
+          generateHospitalPrescriptionBtn.classList.add("generating");
+          generateHospitalPrescriptionBtn.disabled = true;
+          startSbarTimer();
+
+          hospitalPrescriptionStatus.textContent = "Gerando SBAR...";
+          hospitalPrescriptionStatus.classList.add("loading-dot");
+
+          try {
+            const resp = await fetch(BACKEND_URL + "/api/prescricao-hospitalar", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                transcricao,
+                tipo_documento: (reportDocTypeSelect.value !== "auto") ? reportDocTypeSelect.value : null
+              })
+            });
+
+            if (!resp.ok) {
+              const txt = await resp.text().catch(() => "");
+              console.error("Erro HTTP do backend (SBAR):", resp.status, txt);
+              hospitalPrescriptionStatus.textContent = "Não foi possível gerar o SBAR.";
+              hospitalPrescriptionStatus.classList.remove("loading-dot");
+              return;
+            }
+
+            const data = await resp.json().catch(() => null);
+            const texto = (data && (data.prescricao_hospitalar || data.texto)) ? String(data.prescricao_hospitalar || data.texto).trim() : "";
+            if (!texto) {
+              console.error("Resposta inválida do backend (SBAR):", data);
+              hospitalPrescriptionStatus.textContent = "Resposta inválida ao gerar o SBAR.";
+              hospitalPrescriptionStatus.classList.remove("loading-dot");
+              return;
+            }
+
+            hospitalPrescriptionOutput.value = texto;
+            hospitalPrescriptionStatus.textContent = "SBAR gerado.";
+            hospitalPrescriptionStatus.classList.remove("loading-dot");
+          } catch (err) {
+            console.error("Erro ao gerar SBAR:", err);
+            hospitalPrescriptionStatus.textContent = "Erro ao gerar SBAR.";
+            hospitalPrescriptionStatus.classList.remove("loading-dot");
+          } finally {
+            stopSbarTimer();
+            generateHospitalPrescriptionBtn.classList.remove("generating");
+            generateHospitalPrescriptionBtn.disabled = false;
+          }
+        }
 
     function formatClassificationList(items) {
       if (!Array.isArray(items) || !items.length) {
@@ -6782,33 +6876,48 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       const GUIDE = {
         prenatal: {
           title: "Consulta pré-natal por trimestre",
-          subtitle: "Checklist prático para condução e registro. Ajuste conforme risco gestacional e protocolos locais.",
+          subtitle: "Roteiro prático com linguagem direta e detalhada, baseado nas recomendações do Ministério da Saúde. Ajuste conforme risco gestacional e protocolos locais.",
           trimester: {
             1: {
               subtitle: "1º trimestre (até 13 semanas + 6 dias)",
               html: `
                 <h4>Objetivos</h4>
                 <ul>
-                  <li>Confirmar gestação, datar, estratificar risco e iniciar plano de cuidado.</li>
-                  <li>Identificar sinais de alarme e fatores de risco (clínicos, obstétricos, sociais).</li>
+                  <li>Confirmar gestação, estimar idade gestacional, identificar riscos e organizar o plano de pré-natal.</li>
+                  <li>Garantir que a gestante entenda como será o acompanhamento, quais exames serão feitos e quando retornar.</li>
                 </ul>
-                <h4>Anamnese e triagem</h4>
+
+                <h4>Perguntas essenciais (anamnese)</h4>
                 <ul>
-                  <li>DUM, ciclos, sintomas, sangramento, dor, febre, vômitos intensos.</li>
-                  <li>História obstétrica (gestações, partos, cesáreas, abortos, intercorrências).</li>
-                  <li>Comorbidades, uso de medicamentos, alergias, tabagismo/álcool/drogas.</li>
-                  <li>Violência, suporte familiar, condições socioeconômicas e acesso.</li>
+                  <li>Data da última menstruação (DUM) e regularidade do ciclo; dúvidas sobre a data.</li>
+                  <li>Gestas/partos/abortos anteriores, cesáreas, complicações (preeclâmpsia, hemorragia, prematuridade, DMG, infecções).</li>
+                  <li>Doenças prévias: hipertensão, diabetes, tireoide, epilepsia, cardiopatias, trombose, asma, doenças renais.</li>
+                  <li>Uso de medicamentos, álcool, tabaco, outras drogas; alergias.</li>
+                  <li>Sintomas atuais: náuseas/vômitos intensos, dor abdominal, febre, sangramento, corrimento, disúria.</li>
+                  <li>Condições sociais e de segurança: suporte familiar, trabalho, violência, acesso ao serviço.</li>
                 </ul>
-                <h4>Exame e medidas</h4>
+
+                <h4>Exame físico e obstétrico (passo a passo)</h4>
                 <ul>
-                  <li>PA, peso, altura/IMC, sinais vitais, avaliação clínica geral.</li>
-                  <li>Orientar sinais de alarme e quando procurar atendimento.</li>
+                  <li>Pressão arterial, peso, altura, IMC e ganho de peso esperado.</li>
+                  <li>Avaliar edema, sinais de anemia, tireoide, mamas e cavidade oral conforme necessidade.</li>
+                  <li>Exame obstétrico conforme idade gestacional: altura uterina (quando aplicável) e ausculta de BCF (quando possível).</li>
                 </ul>
-                <h4>Planos e encaminhamentos</h4>
+
+                <h4>Exames recomendados (rotina mínima do MS)</h4>
                 <ul>
-                  <li>Solicitar/registrar exames iniciais conforme rotina do serviço.</li>
-                  <li>Atualizar vacinas e suplementações conforme protocolo.</li>
-                  <li>Programar retorno e plano de acompanhamento.</li>
+                  <li>ABO-Rh e hemoglobina/hematócrito na primeira consulta.</li>
+                  <li>Glicemia de jejum na primeira consulta.</li>
+                  <li>VDRL (sífilis) na primeira consulta.</li>
+                  <li>Urina tipo 1 na primeira consulta.</li>
+                  <li>Teste anti-HIV na primeira consulta.</li>
+                  <li>Sorologia para toxoplasmose na primeira consulta (se disponível).</li>
+                </ul>
+
+                <h4>O que explicar para quem não entende nada</h4>
+                <ul>
+                  <li><b>Por que tantos exames?</b> Eles servem para descobrir cedo problemas que podem não dar sintoma (anemia, diabetes, sífilis, HIV, infecção urinária).</li>
+                  <li><b>O que acontece se der alterado?</b> A equipe orienta o tratamento e faz acompanhamento mais de perto para proteger mãe e bebê.</li>
                 </ul>
               `
             },
@@ -6817,18 +6926,33 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
               html: `
                 <h4>Objetivos</h4>
                 <ul>
-                  <li>Acompanhar crescimento fetal e sinais maternos, revisar exames e intercorrências.</li>
+                  <li>Acompanhar crescimento do bebê e saúde da gestante.</li>
+                  <li>Rastrear diabetes gestacional no período recomendado.</li>
                 </ul>
-                <h4>Avaliação em cada consulta</h4>
+
+                <h4>O que perguntar e registrar</h4>
                 <ul>
-                  <li>PA, peso/ganho ponderal, sintomas (cefaleia, escotomas, edema, dispneia).</li>
-                  <li>Altura uterina e BCF quando aplicável.</li>
-                  <li>Rastreamento de infecções e condições metabólicas conforme rotina.</li>
+                  <li>Sintomas de alarme: sangramento, perda de líquido, febre, dor forte, redução de movimentos fetais (quando já perceptíveis).</li>
+                  <li>Sintomas urinários (ardor ao urinar, urgência, dor lombar), cefaleia importante, alteração visual, dor no “boca do estômago”.</li>
+                  <li>Adesão a ferro/ácido fólico (se prescritos), alimentação e atividade física.</li>
                 </ul>
-                <h4>Orientações</h4>
+
+                <h4>Exame físico e obstétrico (rotina)</h4>
                 <ul>
-                  <li>Sinais de alarme (sangramento, perda de líquido, dor forte, diminuição de movimentos mais adiante).</li>
-                  <li>Planejamento do parto, rede de referência e vínculo.</li>
+                  <li>Pressão arterial e peso em toda consulta.</li>
+                  <li>Altura uterina, ausculta de BCF e avaliação de edema conforme evolução.</li>
+                </ul>
+
+                <h4>Exames recomendados</h4>
+                <ul>
+                  <li>Se a glicemia de jejum do início estiver normal, realizar entre 24 e 28 semanas o Teste Oral de Tolerância à Glicose (TOTG) para investigar diabetes gestacional.</li>
+                  <li>Manter atenção para sinais e sintomas que indiquem necessidade de repetir urina e investigar infecção urinária.</li>
+                </ul>
+
+                <h4>Como explicar o TOTG (bem simples)</h4>
+                <ul>
+                  <li>É um exame para ver como o corpo “lida com açúcar”. A gestante fica em jejum, colhe sangue, toma uma solução doce e faz novas coletas.</li>
+                  <li>Ele é feito nesse período porque é quando a gravidez pode “desencadear” diabetes gestacional, mesmo em quem nunca teve.</li>
                 </ul>
               `
             },
@@ -6837,111 +6961,221 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
               html: `
                 <h4>Objetivos</h4>
                 <ul>
-                  <li>Detectar precocemente pré-eclâmpsia, trabalho de parto prematuro e outras intercorrências.</li>
-                  <li>Preparar para parto e puerpério, organizar referência e plano de segurança.</li>
+                  <li>Reforçar segurança materno-fetal, planejar parto e identificar precocemente complicações.</li>
+                  <li>Repetir exames de rastreio no momento recomendado pelo MS.</li>
                 </ul>
-                <h4>Avaliação em cada consulta</h4>
+
+                <h4>Exames recomendados (rotina mínima do MS)</h4>
                 <ul>
-                  <li>PA, sintomas neurológicos/visuais, edema, dor epigástrica, dispneia.</li>
-                  <li>Altura uterina, apresentação, BCF quando aplicável.</li>
-                  <li>Movimentos fetais: orientar contagem e condutas de alarme.</li>
+                  <li>Glicemia de jejum próxima à 30ª semana.</li>
+                  <li>VDRL (sífilis) próximo à 30ª semana.</li>
+                  <li>Urina tipo 1 próxima à 30ª semana.</li>
+                  <li>Teste anti-HIV próximo à 30ª semana (sempre que possível).</li>
+                  <li>HBsAg (hepatite B) de preferência próximo à 30ª semana (se disponível).</li>
                 </ul>
-                <h4>Parto e puerpério</h4>
+
+                <h4>O que perguntar e orientar</h4>
                 <ul>
-                  <li>Revisar sinais de trabalho de parto, rotura de membranas, sangramento.</li>
-                  <li>Plano de transporte, acompanhante, documentos e local de referência.</li>
+                  <li>Movimentos fetais, contrações, sangramento, perda de líquido, febre.</li>
+                  <li>Sinais de gravidade: dor de cabeça forte, visão embaçada, falta de ar, dor intensa no abdome superior, inchaço importante.</li>
+                  <li>Plano de parto: local de referência, documentos, sinais para ir à maternidade, transporte.</li>
+                </ul>
+
+                <h4>Explicação simples para a paciente</h4>
+                <ul>
+                  <li>“Vamos repetir alguns exames porque, mesmo que antes estivesse tudo normal, algumas infecções e alterações podem aparecer mais tarde e precisam ser tratadas a tempo.”</li>
                 </ul>
               `
             }
           }
         },
+
         puericultura: {
           title: "Consulta puericultura",
-          subtitle: "Checklist prático para crescimento, desenvolvimento e prevenção.",
+          subtitle: "Roteiro prático com o que observar, perguntar e quais testes/triagens devem estar em dia.",
           html: `
-            <h4>Medidas e sinais vitais</h4>
+            <h4>Quando acompanhar (consultas de rotina)</h4>
             <ul>
-              <li>Peso, estatura/comprimento, perímetro cefálico (quando aplicável), IMC/curvas.</li>
-              <li>PA quando indicado, avaliação clínica geral.</li>
+              <li>Consulta na primeira semana de vida (muito importante para avaliar mãe e bebê).</li>
+              <li>Consultas de rotina: 1, 2, 4, 6, 9, 12, 18 e 24 meses; após 2 anos, pelo menos 1 vez ao ano (ou mais, se necessário).</li>
             </ul>
-            <h4>Desenvolvimento e comportamento</h4>
+
+            <h4>Triagens (testes) que devem estar registrados</h4>
             <ul>
-              <li>Marcos do desenvolvimento, linguagem, interação social, sono.</li>
-              <li>Sinais de alerta e necessidade de encaminhamento.</li>
+              <li>Teste do pezinho: idealmente entre o 3º e 5º dia de vida.</li>
+              <li>Teste da orelhinha: entre 24 e 48 horas após o nascimento e, no máximo, durante o 1º mês.</li>
+              <li>Teste do coraçãozinho: oximetria de pulso após 24 horas de vida (geralmente na maternidade).</li>
+              <li>Teste do olhinho: triagem ocular no recém-nascido (registrar resultado e encaminhar se alterado).</li>
             </ul>
-            <h4>Alimentação</h4>
+
+            <h4>O que fazer na consulta (bem detalhado)</h4>
             <ul>
-              <li>Aleitamento, introdução alimentar, diversidade, ferro e segurança alimentar.</li>
-              <li>Orientações para hábitos saudáveis e prevenção de obesidade.</li>
-            </ul>
-            <h4>Prevenção</h4>
-            <ul>
-              <li>Vacinação, suplementações conforme protocolo, saúde bucal.</li>
-              <li>Segurança no domicílio (quedas, queimaduras, intoxicações).</li>
+              <li>Medir peso, comprimento/estatura e perímetro cefálico (quando aplicável), e comparar com as curvas.</li>
+              <li>Perguntar sobre alimentação: aleitamento materno (exclusivo ou não), dificuldades para mamar, vômitos, diarreia, constipação.</li>
+              <li>Checar vacinação: comparar com o Calendário Nacional e orientar próximas doses.</li>
+              <li>Avaliar desenvolvimento: olhar, sorriso, controle de cabeça, sentar, engatinhar, andar, fala e interação, conforme a idade.</li>
+              <li>Exame físico: pele, respiração, coração, abdome, quadril (quando indicado), olhos, ouvidos, boca, genitália, coluna, tônus.</li>
+              <li>Orientar sinais de alarme: febre em recém-nascido, dificuldade para respirar, recusa alimentar persistente, sonolência excessiva, vômitos em jato, sangue nas fezes, icterícia intensa.</li>
             </ul>
           `
         },
+
         planejamento: {
           title: "Consulta planejamento familiar",
-          subtitle: "Avaliação de elegibilidade, escolha informada e seguimento.",
+          subtitle: "Roteiro para orientar escolha do método contraceptivo com segurança e linguagem simples.",
           html: `
-            <h4>Estratificação inicial</h4>
+            <h4>Passo 1: entender o objetivo da pessoa</h4>
             <ul>
-              <li>Desejo reprodutivo, histórico obstétrico, ISTs, comorbidades e medicamentos.</li>
-              <li>PA, IMC e fatores de risco cardiovascular/trombótico quando relevante.</li>
+              <li>Quer evitar gravidez agora? Por quanto tempo? Quer engravidar em breve?</li>
+              <li>Tem parceiro(a)? Usa preservativo? Há risco de IST?</li>
+              <li>Já usou algum método? Teve efeitos colaterais? Está satisfeita?</li>
             </ul>
-            <h4>Opções contraceptivas</h4>
+
+            <h4>Passo 2: checagem de segurança (antes de indicar um método)</h4>
             <ul>
-              <li>Métodos de barreira, hormonais, DIU, injetáveis, implante, definitivo (quando aplicável).</li>
-              <li>Contraindicações, efeitos adversos, manejo de sangramento e retorno.</li>
+              <li>Medir pressão arterial e peso/IMC.</li>
+              <li>Perguntar sobre enxaqueca com aura, trombose, câncer de mama, hepatopatias, sangramento uterino inexplicado, tabagismo (principalmente &gt; 35 anos).</li>
+              <li>Se houver chance de gravidez, orientar teste de gravidez e/ou critérios clínicos para excluir gestação.</li>
             </ul>
-            <h4>ISTs</h4>
+
+            <h4>Exames: o que é rotina e o que é por indicação</h4>
             <ul>
-              <li>Prevenção combinada, testagem quando indicada e orientação de sinais de alarme.</li>
+              <li>Em geral, a consulta se baseia em história e exame físico (especialmente pressão). Exames laboratoriais não são exigência “para todo mundo” e devem ser solicitados quando houver indicação clínica.</li>
+              <li>Para DIU, deve haver avaliação clínica e ginecológica conforme protocolos do serviço; se houver risco de IST, orientar investigação e manejo.</li>
+              <li>Citopatológico (preventivo) deve seguir o protocolo do rastreamento do colo do útero; não é “obrigatório” para iniciar todos os métodos, mas deve estar em dia conforme idade/intervalo.</li>
+            </ul>
+
+            <h4>Explicação simples dos métodos (para leigos)</h4>
+            <ul>
+              <li><b>Preservativo:</b> protege contra gravidez e IST. Precisa usar em todas as relações.</li>
+              <li><b>Pílula/adesivo/anel (com hormônio):</b> muito eficaz se usado certo; pode ter restrições em quem tem risco de trombose ou pressão alta descontrolada.</li>
+              <li><b>Injetável:</b> aplicação mensal ou trimestral; pode alterar o sangramento.</li>
+              <li><b>DIU:</b> longa duração; a pessoa não precisa lembrar todo dia. Pode ser de cobre ou hormonal (quando disponível).</li>
+              <li><b>Laqueadura/vasectomia:</b> métodos definitivos; exige decisão muito segura.</li>
+            </ul>
+
+            <h4>Fechamento</h4>
+            <ul>
+              <li>Confirmar que a pessoa entendeu como usar o método e o que fazer se esquecer.</li>
+              <li>Orientar retorno (efeitos colaterais, adaptação, revisão) e sinais de alerta (dor forte, sangramento intenso, falta de ar, dor na perna, desmaio).</li>
             </ul>
           `
         },
+
         hiperdia: {
           title: "Consulta hiperdia",
-          subtitle: "Acompanhamento de hipertensão/diabetes e redução de risco.",
+          subtitle: "Checklist de consulta para hipertensão e diabetes, com monitoramento e exames recomendados pelo Ministério da Saúde (PCDT).",
           html: `
-            <h4>Avaliação</h4>
+            <h4>1) Perguntas essenciais (o que não pode faltar)</h4>
             <ul>
-              <li>PA (técnica adequada), FC, peso/IMC, sintomas e adesão ao tratamento.</li>
-              <li>Revisar complicações: dor torácica, dispneia, edema, neuropatia, visão, pés.</li>
+              <li>Quais remédios está usando (nome, dose, horário)? Está tomando todos os dias?</li>
+              <li>Teve efeitos colaterais? Teve hipoglicemia (tremor, suor frio, confusão, desmaio)?</li>
+              <li>Teve dor no peito, falta de ar, inchaço, fraqueza em um lado do corpo, alteração de visão?</li>
+              <li>Como está a alimentação, atividade física, sono, tabagismo e álcool?</li>
             </ul>
-            <h4>Cuidados e prevenção</h4>
+
+            <h4>2) Exame físico (rotina em toda consulta)</h4>
             <ul>
-              <li>Educação em saúde: dieta, atividade física, cessação do tabagismo, álcool.</li>
-              <li>Metas e acompanhamento conforme estratificação de risco e protocolos do serviço.</li>
+              <li>Pressão arterial, peso/IMC e circunferência abdominal.</li>
+              <li>Avaliar edema, ausculta cardíaca, pulsos periféricos e sinais de insuficiência cardíaca.</li>
+              <li>Para diabetes: examinar os pés (pele, unhas, feridas, sensibilidade e pulsos) e orientar cuidados diários.</li>
             </ul>
-            <h4>Exames e rastreios</h4>
+
+            <h4>3) Monitoramento e periodicidade (HAS)</h4>
             <ul>
-              <li>Revisar resultados e pendências (rim, lipídios, glicemia, microalbuminúria quando aplicável).</li>
-              <li>Avaliação dos pés, orientações de autocuidado.</li>
+              <li><b>Reavaliação inicial:</b> mensal até alcançar a meta de pressão; depois, a cada 3–6 meses no primeiro ano e, após controle, pode ser semestral.</li>
+              <li><b>Exames laboratoriais:</b> perfil lipídico, glicemia de jejum ou HbA1c, creatinina, potássio (e sódio se em diurético tiazídico), urinálise; solicitar anualmente ou pelo menos a cada 2 anos, conforme o caso.</li>
+              <li><b>Eletrocardiograma:</b> solicitar para avaliação e acompanhamento conforme necessidade clínica.</li>
+            </ul>
+
+            <h4>4) Monitoramento e periodicidade (DM2)</h4>
+            <ul>
+              <li><b>Consultas:</b> reavaliar no máximo a cada 3 a 6 meses, ajustando o tratamento conforme metas e risco.</li>
+              <li><b>Em cada consulta:</b> peso, pressão arterial e estratificação de risco cardiovascular.</li>
+              <li><b>Ao diagnóstico e anualmente:</b> perfil lipídico, creatinina/albuminúria (nefropatia), fundoscopia (retinopatia), avaliação do pé diabético (monofilamento e pulsos podais).</li>
+              <li><b>Ao diagnóstico e a cada 6 meses:</b> glicemia de jejum e hemoglobina glicada (HbA1c).</li>
+            </ul>
+
+            <h4>5) Orientações em linguagem simples (para o paciente entender)</h4>
+            <ul>
+              <li><b>Pressão alta</b> costuma não dar sintoma. Mesmo “se sentindo bem”, precisa tratar para evitar AVC, infarto e problemas no rim.</li>
+              <li><b>Diabetes</b> pode machucar olhos, rins e pés “por dentro”. Os exames e o exame do pé servem para detectar cedo.</li>
+              <li><b>Procure urgência se</b>: dor no peito, falta de ar forte, desmaio, confusão, fraqueza em um lado do corpo, glicemia muito baixa com rebaixamento.</li>
+            </ul>
+          `
+        },puerperio: {
+          title: "Consulta de puerpério",
+          subtitle: "Roteiro para a consulta pós-parto com foco em segurança, amamentação, saúde mental e planejamento reprodutivo.",
+          html: `
+            <h4>Quando fazer</h4>
+            <ul>
+              <li>Atenção à mulher e ao recém-nascido na primeira semana após o parto.</li>
+              <li>Consulta puerperal até o 42º dia pós-parto (6 semanas).</li>
+            </ul>
+
+            <h4>O que perguntar (bem detalhado)</h4>
+            <ul>
+              <li>Sangramento: quantidade, odor, coágulos; febre; dor pélvica; secreção na ferida (cesárea/episiotomia).</li>
+              <li>Sintomas urinários e intestinais; dor intensa; tontura; falta de ar.</li>
+              <li>Amamentação: pega, dor, fissuras, ingurgitamento, mastite; ganho de peso do bebê.</li>
+              <li>Humor: tristeza persistente, ansiedade intensa, insônia grave, pensamentos de autoagressão (avaliar risco).</li>
+              <li>Contracepção e retorno da atividade sexual.</li>
+            </ul>
+
+            <h4>Exame físico</h4>
+            <ul>
+              <li>Pressão arterial, estado geral e sinais de anemia/desidratação.</li>
+              <li>Mamas (se dor, febre, fissuras), abdome e avaliação uterina conforme queixa e período.</li>
+              <li>Ferida operatória/episiotomia: sinais de infecção.</li>
+            </ul>
+
+            <h4>Exames e condutas lembradas pelo MS</h4>
+            <ul>
+              <li>Se não foi feito durante o pré-natal, ofertar teste anti-HIV e VDRL no puerpério, considerando o risco e a disponibilidade.</li>
+              <li>Reposição de ferro se anemia/situações de risco e orientação alimentar para recuperação.</li>
+              <li>Planejamento reprodutivo: orientar método seguro no puerpério conforme condição clínica e amamentação.</li>
+            </ul>
+
+            <h4>Explicação simples para a paciente</h4>
+            <ul>
+              <li>“Essa consulta serve para garantir que você está se recuperando bem do parto, que o bebê está bem, e para evitar problemas que podem aparecer depois que você já foi para casa.”</li>
             </ul>
           `
         },
-        puerperio: {
-          title: "Consulta de puerpério",
-          subtitle: "Avaliação materna e do vínculo, amamentação e planejamento reprodutivo.",
+
+        sbar: {
+          title: "Perguntas para Passagem de Plantão (SBAR)",
+          subtitle: "Use este roteiro para coletar rapidamente informações e montar um SBAR claro para o próximo profissional.",
           html: `
-            <h4>Triagem de sinais de alarme</h4>
+            <h4>S (Situação) – o que está acontecendo agora</h4>
             <ul>
-              <li>Febre, sangramento intenso, dor pélvica importante, mal-estar, cefaleia/visão turva, dispneia.</li>
+              <li>Quem é o paciente (nome, idade, identificação) e onde está (sala/leito/consultório)?</li>
+              <li>Qual é o problema principal neste momento?</li>
+              <li>Há instabilidade? (queda de pressão, falta de ar, rebaixamento de consciência, dor intensa, sangramento)</li>
+              <li>Sinais vitais atuais e tendência (melhorou/piorou)?</li>
             </ul>
-            <h4>Avaliação materna</h4>
+
+            <h4>B (Background) – contexto e histórico relevante</h4>
             <ul>
-              <li>PA, estado geral, loquiação, ferida operatória (se houver), dor e funcionamento intestinal/urinário.</li>
-              <li>Saúde mental: humor, ansiedade, suporte, risco de depressão pós-parto.</li>
+              <li>Diagnósticos principais e comorbidades importantes.</li>
+              <li>Motivo de internação/atendimento e evolução até aqui (em 2–3 frases).</li>
+              <li>Alergias, medicamentos em uso e intervenções recentes (antibiótico, soro, oxigênio, procedimentos).</li>
+              <li>Resultados relevantes já disponíveis (exames, imagem) e pendências (o que ainda falta sair).</li>
             </ul>
-            <h4>Amamentação</h4>
+
+            <h4>A (Avaliação) – interpretação e o que você acha que é</h4>
             <ul>
-              <li>Pega, fissuras, dor, ingurgitamento/mastite, orientação de manejo.</li>
+              <li>Como você interpreta o quadro agora? (ex.: “piora respiratória com provável pneumonia”, “hipotensão possivelmente por desidratação”)</li>
+              <li>Principais riscos nas próximas horas (choque, rebaixamento, sangramento, hipoglicemia, crise hipertensiva).</li>
+              <li>Resposta ao que foi feito até agora (melhorou com medicação? persistiu?).</li>
             </ul>
-            <h4>Planejamento familiar</h4>
+
+            <h4>R (Recomendação) – o que precisa ser feito a seguir</h4>
             <ul>
-              <li>Orientar método contraceptivo e retorno, conforme elegibilidade e preferência.</li>
+              <li>O que você precisa que o próximo profissional faça (objetivo e claro).</li>
+              <li>Monitorização: frequência de sinais vitais, controle de glicemia, diurese, dor, saturação.</li>
+              <li>Condutas pendentes: exames a coletar, medicações a administrar, reavaliação em X minutos/horas.</li>
+              <li>Quando chamar médico imediatamente (critérios objetivos).</li>
             </ul>
           `
         }
