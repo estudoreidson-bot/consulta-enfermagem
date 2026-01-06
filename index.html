@@ -1546,9 +1546,10 @@
     <div class="auth-card">
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
+      <p class="auth-subtitle" id="backendInfo" style="font-size:12px; opacity:0.8;"></p>
 
       <label class="auth-label" for="loginField">Login</label>
-      <input id="loginField" class="auth-input" type="text" autocomplete="username" inputmode="text" />
+      <input id="loginField" class="auth-input" autocomplete="username" inputmode="text" />
 
       <label class="auth-label" for="passwordField">Senha</label>
       <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
@@ -2412,6 +2413,64 @@
 
     </div>
 
+    <div id="sbarCard" class="module-card">
+      <div class="module-title-row">
+        <h2>Passagem de Plantão (SBAR)</h2>
+        <button id="openSbarGuideBtn" class="mini-consult-btn sbar-guide-btn" type="button">Guia</button>
+      </div>
+      <p class="module-subtitle">Use este módulo para gravar rapidamente (no momento do plantão) e gerar uma passagem de plantão no padrão SBAR (Situação, Background, Avaliação, Recomendação).</p>
+
+      <div id="sbarGuidePanel" class="guide-inline hidden">
+        <h3>Guia rápido para Passagem de Plantão (SBAR)</h3>
+        <p>Use este roteiro para lembrar as perguntas essenciais. Você pode seguir na ordem SBAR, mas adapte ao caso.</p>
+
+        <h4>Situação (S)</h4>
+        <ul>
+          <li>Quem é o paciente (nome/idade/leito) e por que está internado/atendido agora?</li>
+          <li>Qual é o problema principal neste momento? O que mudou nas últimas horas?</li>
+          <li>Há alguma urgência imediata (via aérea, respiração, circulação, sangramento, dor intensa, rebaixamento)?</li>
+        </ul>
+
+        <h4>Background (B)</h4>
+        <ul>
+          <li>Diagnóstico(s) principal(is) e tempo de evolução/internação.</li>
+          <li>Comorbidades relevantes (HAS, DM, DPOC/asma, IRC, cardiopatia, anticoagulação, etc.).</li>
+          <li>Alergias, medicamentos em uso e antibióticos (dose/horário da próxima dose).</li>
+          <li>Procedimentos/dispositivos: acesso venoso, sonda vesical, SNG, drenos, oxigênio, ventilação, curativos.</li>
+          <li>Isolamento/precauções, histórico recente de febre, quedas, delirium, convulsões.</li>
+        </ul>
+
+        <h4>Avaliação (A)</h4>
+        <ul>
+          <li>Sinais vitais atuais e tendência (PA, FC, FR, SpO2, temperatura), diurese e balanço hídrico quando aplicável.</li>
+          <li>Estado geral e exame dirigido (consciência, perfusão, dispneia, dor, sangramentos, feridas, edema).</li>
+          <li>Resultados relevantes: glicemias, hemograma, eletrólitos, função renal, gasometria, culturas, imagem recente.</li>
+          <li>Risco e segurança: risco de queda/lesão por pressão, risco de broncoaspiração, escala de dor, sedação.</li>
+        </ul>
+
+        <h4>Recomendação (R)</h4>
+        <ul>
+          <li>O que precisa ser feito no próximo turno? Liste tarefas e prioridades.</li>
+          <li>Metas e monitorização: parâmetros-alvo, frequência de checagens, quando reavaliar.</li>
+          <li>Exames pendentes e o que fazer com o resultado (conduta se alterar).</li>
+          <li>Sinais de alarme e quando acionar o médico/plantonista.</li>
+          <li>Plano de alta/transferência se aplicável.</li>
+        </ul>
+
+        <p><strong>Dica prática:</strong> se faltar alguma informação, pergunte e registre durante a própria gravação do SBAR. Quanto mais completo o relato, melhor a passagem de plantão.</p>
+      </div>
+
+      <button id="sbarRecordBtn" class="start" type="button">Iniciar passagem de plantão (SBAR)</button>
+      <div id="sbarTimer" class="mini-timer hidden">00:00</div>
+      <div id="sbarStatus" class="mini-status">Clique em "Iniciar passagem de plantão (SBAR)" para começar.</div>
+
+      <textarea id="sbarOutput" class="output-textarea" placeholder="O SBAR gerado aparecerá aqui..." spellcheck="false"></textarea>
+
+      <div class="prescription-actions">
+        <button id="copySbarBtn" class="btn-copy" type="button">Copiar</button>
+        <button id="printSbarBtn" class="btn-print" type="button">Imprimir</button>
+      </div>
+    </div>
 
 
 
@@ -2556,8 +2615,8 @@
 
   <script>
 
-    const DEFAULT_BACKEND_URL = "";
-    // Backend padrão: usa o proxy /api do Netlify. Pode ser sobrescrito por:
+    const DEFAULT_BACKEND_URL = "https://consulta-enfermagem-1.onrender.com";
+    // Backend principal (Render). Pode ser sobrescrito por:
     // 1) Querystring ?backend=https://...  (útil para testes)
     // 2) localStorage BACKEND_URL_OVERRIDE
     // Se estiver rodando localmente, usa http://localhost:3000
@@ -2572,6 +2631,12 @@
       if (host === "localhost" || host === "127.0.0.1") return "http://localhost:3000";
       return norm(DEFAULT_BACKEND_URL);
     })();
+
+    // Mostrar em tela qual servidor está sendo usado (ajuda no diagnóstico)
+    try {
+      const bi = document.getElementById("backendInfo");
+      if (bi) bi.textContent = "Servidor: " + (BACKEND_URL || "(não configurado)");
+    } catch {}
 
     // =========================
     // IMAGENS (Curativos e Prescrição) - estado por módulo (até 4 fotos)
@@ -2713,29 +2778,11 @@
       } catch {}
     }
 
-    async function checkBackendHealth() {
-      try {
-        const errEl = document.getElementById("loginError");
-        // Não sobrescreve mensagens do login em andamento
-        if (errEl && errEl.textContent && String(errEl.textContent).toLowerCase().includes("conectando")) return;
-
-        const resp = await nativeFetch(BACKEND_URL + "/api/health", { method: "GET" });
-        if (!resp.ok) throw new Error("status " + resp.status);
-        // Se estiver ok, não exibe nada (evita poluir a tela)
-        return;
-      } catch (e) {
-        const errEl = document.getElementById("loginError");
-        if (errEl) errEl.textContent = "Servidor indisponível. O backend não está respondendo em /api/health.";
-      }
-    }
-
     function showLogin() {
       document.getElementById("loginView")?.classList.remove("hidden");
       document.getElementById("adminView")?.classList.add("hidden");
       document.getElementById("nurseView")?.classList.add("hidden");
       document.getElementById("paymentsModal")?.classList.add("hidden");
-      // Diagnóstico simples: testa se o backend está respondendo
-      checkBackendHealth();
     }
     function showAdmin() {
       document.getElementById("loginView")?.classList.add("hidden");
@@ -2883,8 +2930,7 @@
 
     // Eventos de login/logout
     document.getElementById("loginBtn")?.addEventListener("click", doLogin);
-    document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); doLogin(); } });
-    document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); doLogin(); } });
+    document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
     document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
     document.getElementById("nurseLogoutBtn")?.addEventListener("click", logoutAll);
     document.getElementById("adminLogoutBtn")?.addEventListener("click", logoutAll);
@@ -4644,11 +4690,11 @@ function initSpeech() {
     }
 
     function resetNewModulesUI() {
-      if (sbarOutput) sbarOutput.value = "";
-      if (sbarStatus) sbarStatus.textContent = "";
-      if (classificationsStatus) classificationsStatus.textContent = "";
-      if (pregnancyBox) pregnancyBox.textContent = "Nenhum conteúdo disponível.";
-      if (lactationBox) lactationBox.textContent = "Nenhum conteúdo disponível.";
+      sbarOutput.value = "";
+      sbarStatus.textContent = "";
+      classificationsStatus.textContent = "";
+      pregnancyBox.textContent = "Nenhum conteúdo disponível.";
+      lactationBox.textContent = "Nenhum conteúdo disponível.";
       if (interactionsBox) interactionsBox.textContent = "Nenhum conteúdo disponível.";
       if (interactionsStatus) interactionsStatus.textContent = "";
       if (presentationsMaxDoseBox) presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
@@ -5691,7 +5737,7 @@ async function addFilesToTarget(files, targetKey, mode) {
 
     function getAllPrescribedMedications() {
       const amb = prescriptionOutput.value || "";
-      const hosp = (sbarOutput && sbarOutput.value) ? sbarOutput.value : "";
+      const hosp = sbarOutput.value || "";
       const meds = [
         ...extractMedicationsFromPrescriptionText(amb),
         ...extractMedicationsFromPrescriptionText(hosp)
@@ -5708,6 +5754,308 @@ async function addFilesToTarget(files, targetKey, mode) {
       return unique.slice(0, 60);
     }
 
+                let sbarTimerInterval = null;
+        let sbarStartTs = 0;
+
+        let sbarRecognition = null;
+        let sbarIsRecording = false;
+        
+
+          stopSbarTimer();
+let sbarFinalTranscript = "";
+        let sbarInterimTranscript = "";
+        let sbarHasStarted = false;
+        let sbarHasAnyResult = false;
+        let sbarStartAttemptId = 0;
+
+
+        function startSbarTimer() {
+          if (!sbarTimer) return;
+          sbarStartTs = Date.now();
+          sbarTimer.textContent = "00:00";
+          sbarTimer.classList.remove("hidden");
+          if (sbarTimerInterval) clearInterval(sbarTimerInterval);
+          sbarTimerInterval = setInterval(() => {
+            const elapsed = Math.max(0, Date.now() - sbarStartTs);
+            const totalSec = Math.floor(elapsed / 1000);
+            const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
+            const ss = String(totalSec % 60).padStart(2, "0");
+            sbarTimer.textContent = `${mm}:${ss}`;
+            if (sbarIsRecording && sbarStatus) {
+              sbarStatus.textContent = `Gravando passagem de plantão (SBAR)... ${mm}:${ss} (clique novamente em "Encerrar e gerar SBAR" quando terminar)`;
+            }
+          }, 500);
+        }
+
+        function stopSbarTimer() {
+          if (sbarTimerInterval) clearInterval(sbarTimerInterval);
+          sbarTimerInterval = null;
+          if (!sbarTimer) return;
+          sbarTimer.classList.add("hidden");
+        }
+
+        function initSbarSpeech() {
+          const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+          if (!SR) {
+            if (sbarStatus) {
+              sbarStatus.textContent = "Seu navegador não suporta reconhecimento de voz. Use Google Chrome.";
+            }
+            return;
+          }
+
+          sbarRecognition = new SR();
+          sbarRecognition.lang = "pt-BR";
+          sbarRecognition.continuous = true;
+          sbarRecognition.interimResults = true;
+
+          
+          sbarRecognition.onstart = () => {
+            sbarHasStarted = true;
+            if (sbarStatus) {
+              sbarStatus.textContent = "Gravando passagem de plantão (SBAR)... Quando terminar, clique em \"Encerrar e gerar SBAR\".";
+              sbarStatus.classList.remove("loading-dot");
+            }
+          };
+sbarRecognition.onresult = (event) => {
+            
+            sbarHasAnyResult = true;
+let interim = "";
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              const transcript = event.results[i][0].transcript;
+              if (event.results[i].isFinal) {
+                sbarFinalTranscript += transcript + " ";
+              } else {
+                interim += transcript;
+              }
+            }
+            sbarInterimTranscript = interim.trim();
+          };
+
+          sbarRecognition.onerror = (event) => {
+            console.error("Erro no reconhecimento de voz (SBAR):", event.error);
+            if (sbarStatus) {
+              if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+                sbarStatus.textContent = "Permita o acesso ao microfone nas configurações do navegador e tente novamente.";
+              } else {
+                sbarStatus.textContent = "Ocorreu um erro no reconhecimento de voz. Tente novamente.";
+              }
+            }
+          };
+
+          sbarRecognition.onend = () => {
+            if (sbarIsRecording) {
+              try {
+                sbarRecognition.start();
+              } catch (err) {
+                console.warn("Não foi possível retomar reconhecimento (SBAR):", err);
+              }
+            }
+          };
+        }
+
+        function hasAnyOtherRecordingActive() {
+          // isRecording: consulta SOAP
+          // triageIsRecording: triagem
+          // reportIsRecording: relatórios
+          // questionsIsRecording: perguntas adicionais
+          return !!(isRecording || triageIsRecording || reportIsRecording || questionsIsRecording);
+        }
+
+        // Guia do SBAR (inline, dentro do próprio módulo)
+        if (openSbarGuideBtn && sbarGuidePanel) {
+          openSbarGuideBtn.addEventListener("click", () => {
+            const willOpen = sbarGuidePanel.classList.contains("hidden");
+            sbarGuidePanel.classList.toggle("hidden");
+            if (willOpen) {
+              // Mantém o usuário no módulo SBAR (sem rolar para o topo)
+              sbarGuidePanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+          });
+        }
+
+
+        async function startSbarRecording() {
+          if (hasAnyOtherRecordingActive()) {
+            alert("Finalize a gravação atual (consulta/triagem/relatórios) antes de iniciar o SBAR.");
+            return;
+          }
+
+          if (!sbarRecognition) {
+            initSbarSpeech();
+            if (!sbarRecognition) return;
+          }
+
+          // Reset de estado
+          sbarIsRecording = true;
+          sbarFinalTranscript = "";
+          sbarInterimTranscript = "";
+          
+          sbarHasStarted = false;
+          sbarHasAnyResult = false;
+          const myAttempt = ++sbarStartAttemptId;
+          // Se o reconhecimento não iniciar em ~2.5s, aborta e orienta o usuário.
+          setTimeout(() => {
+            if (sbarIsRecording && !sbarHasStarted && myAttempt === sbarStartAttemptId) {
+              try { if (sbarRecognition) sbarRecognition.stop(); } catch (e) {}
+              sbarIsRecording = false;
+              stopSbarTimer();
+              if (sbarStatus) {
+                sbarStatus.textContent = "Não foi possível iniciar o microfone. Verifique permissão, selecione o microfone correto e tente novamente."; 
+                sbarStatus.classList.remove("loading-dot");
+              }
+              if (sbarRecordBtn) {
+                sbarRecordBtn.classList.remove("recording");
+                sbarRecordBtn.classList.add("start");
+                sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
+                sbarRecordBtn.disabled = false;
+              }
+            }
+          }, 2500);
+if (sbarOutput) sbarOutput.value = "";
+          if (sbarStatus) {
+            sbarStatus.textContent = "Gravando SBAR. Fale em voz alta, de preferência próximo ao microfone. Clique novamente em \"Encerrar e gerar SBAR\" quando terminar.";
+            sbarStatus.classList.remove("loading-dot");
+          }
+
+          if (sbarRecordBtn) {
+            sbarRecordBtn.classList.remove("start");
+            sbarRecordBtn.classList.add("recording");
+            sbarRecordBtn.textContent = "Encerrar e gerar SBAR";
+            sbarRecordBtn.disabled = false;
+          }
+
+          startSbarTimer();
+
+          // Garante permissão do microfone (reduz falhas silenciosas em alguns navegadores)
+          try {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+              // libera imediatamente (SpeechRecognition usa o próprio pipeline)
+              stream.getTracks().forEach(t => t.stop());
+            }
+          } catch (e) {
+            if (sbarStatus) {
+              sbarStatus.textContent = "Permissão de microfone negada ou indisponível.";
+              sbarStatus.classList.remove("loading-dot");
+            }
+          }
+
+          try {
+            // Evita erro 'recognition has already started'
+            try { sbarRecognition.abort(); } catch (e) {}
+            sbarRecognition.start();
+          } catch (err) {
+            console.error("Falha ao iniciar reconhecimento (SBAR):", err);
+            if (sbarStatus) sbarStatus.textContent = "Não foi possível iniciar a gravação do SBAR.";
+            sbarIsRecording = false;
+            if (sbarRecordBtn) {
+              sbarRecordBtn.classList.remove("recording");
+              sbarRecordBtn.classList.add("start");
+              sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
+            }
+            stopSbarTimer();
+          }
+        }
+
+        async function stopSbarRecordingAndGenerate() {
+          if (!sbarIsRecording) return;
+
+          sbarIsRecording = false;
+
+          if (sbarRecordBtn) {
+            sbarRecordBtn.disabled = true;
+          }
+
+          try {
+            if (sbarRecognition) sbarRecognition.stop();
+          } catch (e) {
+            console.warn("Erro ao parar reconhecimento (SBAR):", e);
+          }
+
+          // pequena espera para capturar os últimos resultados finais
+          await new Promise(r => setTimeout(r, 900));
+
+          const transcricao = String(((sbarFinalTranscript || "") + " " + (sbarInterimTranscript || ""))).trim();
+
+          if (!transcricao) {
+            if (sbarStatus) {
+              sbarStatus.textContent = (!sbarHasStarted ? "A gravação não iniciou. Verifique permissão do microfone e tente novamente." : "Nenhuma fala foi capturada. Tente novamente, falando mais próximo ao microfone (ou aguarde 1 a 2 segundos antes de começar a falar).");
+              sbarStatus.classList.remove("loading-dot");
+            }
+            if (sbarRecordBtn) {
+              sbarRecordBtn.disabled = false;
+              sbarRecordBtn.classList.remove("recording");
+              sbarRecordBtn.classList.add("start");
+              sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
+            }
+            stopSbarTimer();
+            return;
+          }
+
+          await generateHospitalPrescriptionFromTranscript(transcricao);
+        }
+
+        async function generateHospitalPrescriptionFromTranscript(transcricao) {
+          if (!sbarRecordBtn) return;
+
+          sbarRecordBtn.classList.add("generating");
+          sbarRecordBtn.disabled = true;
+
+          if (sbarStatus) {
+            sbarStatus.textContent = "Gerando SBAR...";
+            sbarStatus.classList.add("loading-dot");
+          }
+
+          try {
+            const resp = await fetch(BACKEND_URL + "/api/gerar-sbar", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ transcricao })
+            });
+
+            if (!resp.ok) {
+              const txt = await resp.text().catch(() => "");
+              console.error("Erro HTTP do backend (SBAR):", resp.status, txt);
+              if (sbarStatus) {
+                sbarStatus.textContent = "Não foi possível gerar o SBAR.";
+                sbarStatus.classList.remove("loading-dot");
+              }
+              return;
+            }
+
+            const data = await resp.json().catch(() => null);
+            const texto = (data && (data.sbar || data.passagem_plantao || data.passagem_plantao_sbar || data.prescricao_hospitalar || data.texto)) ? String(data.sbar || data.passagem_plantao || data.passagem_plantao_sbar || data.prescricao_hospitalar || data.texto).trim() : "";
+            if (!texto) {
+              console.error("Resposta inválida do backend (SBAR):", data);
+              if (sbarStatus) {
+                sbarStatus.textContent = "Resposta inválida ao gerar o SBAR.";
+                sbarStatus.classList.remove("loading-dot");
+              }
+              return;
+            }
+
+            if (sbarOutput) sbarOutput.value = texto;
+            if (sbarStatus) {
+              sbarStatus.textContent = "SBAR gerado.";
+              sbarStatus.classList.remove("loading-dot");
+            }
+          } catch (err) {
+            console.error("Erro ao gerar SBAR:", err);
+            if (sbarStatus) {
+              sbarStatus.textContent = "Erro ao gerar SBAR.";
+              sbarStatus.classList.remove("loading-dot");
+            }
+          } finally {
+            stopSbarTimer();
+            if (sbarRecordBtn) {
+              sbarRecordBtn.classList.remove("generating");
+              sbarRecordBtn.classList.remove("recording");
+              sbarRecordBtn.classList.add("start");
+              sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
+              sbarRecordBtn.disabled = false;
+            }
+          }
+        }
 
     function formatClassificationList(items) {
       if (!Array.isArray(items) || !items.length) {
@@ -5728,12 +6076,12 @@ async function addFilesToTarget(files, targetKey, mode) {
     }
 
     async function updateClassifications() {
-      if (classificationsStatus) classificationsStatus.textContent = "";
+      classificationsStatus.textContent = "";
 
       const contexto = getNursingContext();
       if (!contexto) {
-        if (pregnancyBox) pregnancyBox.textContent = "Nenhum conteúdo disponível.";
-        if (lactationBox) lactationBox.textContent = "Nenhum conteúdo disponível.";
+        pregnancyBox.textContent = "Nenhum conteúdo disponível.";
+        lactationBox.textContent = "Nenhum conteúdo disponível.";
         return;
       }
 
@@ -5764,7 +6112,7 @@ async function addFilesToTarget(files, targetKey, mode) {
         lactationBox.textContent = "Falha ao gerar orientações (rede/backend).";
       } finally {
         classificationsStatus.classList.remove("loading-dot");
-        if (classificationsStatus) classificationsStatus.textContent = "";
+        classificationsStatus.textContent = "";
       }
     }
 
@@ -6136,6 +6484,14 @@ recordBtn.onclick = () => {
       }
       copyToClipboard(text);
     });
+    if (sbarRecordBtn) {
+      sbarRecordBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        if (!sbarIsRecording) {
+          await startSbarRecording();
+        } else {
+          await stopSbarRecordingAndGenerate();
+        }
       });
     }
 
@@ -6174,6 +6530,18 @@ recordBtn.onclick = () => {
         openPrintWindow("Documento", t);
       });
     }
+    copySbarBtn.addEventListener("click", () => {
+      const text = sbarOutput.value.trim();
+      if (!text) {
+        alert("Não há SBAR para copiar.");
+        return;
+      }
+      copyToClipboard(text);
+    });
+
+    printSbarBtn.addEventListener("click", () => {
+      openPrintWindow("Passagem de Plantão (SBAR)", sbarOutput.value);
+    });
 
     if (printRiskTriageBtn) {
       printRiskTriageBtn.addEventListener("click", () => {
@@ -7145,6 +7513,43 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
             <h4>Explicação simples para a paciente</h4>
             <ul>
               <li>“Essa consulta serve para garantir que você está se recuperando bem do parto, que o bebê está bem, e para evitar problemas que podem aparecer depois que você já foi para casa.”</li>
+            </ul>
+          `
+        },
+
+        sbar: {
+          title: "Perguntas para Passagem de Plantão (SBAR)",
+          subtitle: "Use este roteiro para coletar rapidamente informações e montar um SBAR claro para o próximo profissional.",
+          html: `
+            <h4>S (Situação) – o que está acontecendo agora</h4>
+            <ul>
+              <li>Quem é o paciente (nome, idade, identificação) e onde está (sala/leito/consultório)?</li>
+              <li>Qual é o problema principal neste momento?</li>
+              <li>Há instabilidade? (queda de pressão, falta de ar, rebaixamento de consciência, dor intensa, sangramento)</li>
+              <li>Sinais vitais atuais e tendência (melhorou/piorou)?</li>
+            </ul>
+
+            <h4>B (Background) – contexto e histórico relevante</h4>
+            <ul>
+              <li>Diagnósticos principais e comorbidades importantes.</li>
+              <li>Motivo de internação/atendimento e evolução até aqui (em 2–3 frases).</li>
+              <li>Alergias, medicamentos em uso e intervenções recentes (antibiótico, soro, oxigênio, procedimentos).</li>
+              <li>Resultados relevantes já disponíveis (exames, imagem) e pendências (o que ainda falta sair).</li>
+            </ul>
+
+            <h4>A (Avaliação) – interpretação e o que você acha que é</h4>
+            <ul>
+              <li>Como você interpreta o quadro agora? (ex.: “piora respiratória com provável pneumonia”, “hipotensão possivelmente por desidratação”)</li>
+              <li>Principais riscos nas próximas horas (choque, rebaixamento, sangramento, hipoglicemia, crise hipertensiva).</li>
+              <li>Resposta ao que foi feito até agora (melhorou com medicação? persistiu?).</li>
+            </ul>
+
+            <h4>R (Recomendação) – o que precisa ser feito a seguir</h4>
+            <ul>
+              <li>O que você precisa que o próximo profissional faça (objetivo e claro).</li>
+              <li>Monitorização: frequência de sinais vitais, controle de glicemia, diurese, dor, saturação.</li>
+              <li>Condutas pendentes: exames a coletar, medicações a administrar, reavaliação em X minutos/horas.</li>
+              <li>Quando chamar médico imediatamente (critérios objetivos).</li>
             </ul>
           `
         }

@@ -132,21 +132,17 @@ app.get("/", (req, res) => {
 // Servir o index.html (útil para testes locais)
 
 // Cliente OpenAI (inicialização preguiçosa)
-// Importante: não derrubar o servidor se OPENAI_API_KEY estiver ausente, porque
-// rotas como /api/auth/login precisam funcionar mesmo sem a chave.
-let _openaiClient = null;
-function getOpenAIClient() {
-  if (_openaiClient) return _openaiClient;
+// O servidor NÃO deve cair se a chave não estiver configurada; apenas as rotas que usam o OpenAI falharão com mensagem clara.
+let openaiClient = null;
+function getOpenAI() {
   const key = String(process.env.OPENAI_API_KEY || "").trim();
-  if (!key) {
-    throw new Error("OPENAI_API_KEY ausente ou vazia.");
-  }
-  _openaiClient = new OpenAI({ apiKey: key });
-  return _openaiClient;
+  if (!key) throw new Error("OPENAI_API_KEY ausente no ambiente.");
+  if (!openaiClient) openaiClient = new OpenAI({ apiKey: key });
+  return openaiClient;
 }
 // Função genérica para chamar o modelo e retornar o texto
 async function callOpenAI(prompt) {
-  const completion = await getOpenAIClient().chat.completions.create({
+  const completion = await getOpenAI().chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.2,
     messages: [
@@ -180,7 +176,7 @@ async function callOpenAIJson(prompt) {
 
 // Função para chamar o modelo com imagem (data URL) e retornar JSON
 async function callOpenAIVisionJson(prompt, imagemDataUrl) {
-  const completion = await getOpenAIClient().chat.completions.create({
+  const completion = await getOpenAI().chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.2,
     messages: [
