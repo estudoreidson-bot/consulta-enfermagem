@@ -2557,7 +2557,7 @@
   <script>
 
     const DEFAULT_BACKEND_URL = "";
-    // Backend principal (Render). Pode ser sobrescrito por:
+    // Backend padrão: usa o proxy /api do Netlify. Pode ser sobrescrito por:
     // 1) Querystring ?backend=https://...  (útil para testes)
     // 2) localStorage BACKEND_URL_OVERRIDE
     // Se estiver rodando localmente, usa http://localhost:3000
@@ -2570,8 +2570,7 @@
       if (raw) return norm(raw);
       const host = String(window.location.hostname || "");
       if (host === "localhost" || host === "127.0.0.1") return "http://localhost:3000";
-      if (DEFAULT_BACKEND_URL) return norm(DEFAULT_BACKEND_URL);
-      return "";
+      return norm(DEFAULT_BACKEND_URL);
     })();
 
     // =========================
@@ -2714,11 +2713,29 @@
       } catch {}
     }
 
+    async function checkBackendHealth() {
+      try {
+        const errEl = document.getElementById("loginError");
+        // Não sobrescreve mensagens do login em andamento
+        if (errEl && errEl.textContent && String(errEl.textContent).toLowerCase().includes("conectando")) return;
+
+        const resp = await nativeFetch(BACKEND_URL + "/api/health", { method: "GET" });
+        if (!resp.ok) throw new Error("status " + resp.status);
+        // Se estiver ok, não exibe nada (evita poluir a tela)
+        return;
+      } catch (e) {
+        const errEl = document.getElementById("loginError");
+        if (errEl) errEl.textContent = "Servidor indisponível. O backend não está respondendo em /api/health.";
+      }
+    }
+
     function showLogin() {
       document.getElementById("loginView")?.classList.remove("hidden");
       document.getElementById("adminView")?.classList.add("hidden");
       document.getElementById("nurseView")?.classList.add("hidden");
       document.getElementById("paymentsModal")?.classList.add("hidden");
+      // Diagnóstico simples: testa se o backend está respondendo
+      checkBackendHealth();
     }
     function showAdmin() {
       document.getElementById("loginView")?.classList.add("hidden");
