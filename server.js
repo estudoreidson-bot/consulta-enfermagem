@@ -131,18 +131,40 @@ app.get("/", (req, res) => {
 
 // Servir o index.html (útil para testes locais)
 
-// Cliente OpenAI (inicialização preguiçosa)
-// O servidor NÃO deve cair se a chave não estiver configurada; apenas as rotas que usam o OpenAI falharão com mensagem clara.
-let openaiClient = null;
-function getOpenAI() {
+// Cliente OpenAI (opcional).
+// IMPORTANTE: o servidor não deve cair se a chave estiver ausente.
+// Rotas que dependem do modelo retornam erro claro; login e demais rotas continuam funcionando.
+let openai = null;
+try {
   const key = String(process.env.OPENAI_API_KEY || "").trim();
-  if (!key) throw new Error("OPENAI_API_KEY ausente no ambiente.");
-  if (!openaiClient) openaiClient = new OpenAI({ apiKey: key });
-  return openaiClient;
+  if (key) {
+    openai = new OpenAI({ apiKey: key });
+  } else {
+    console.warn("[OPENAI] OPENAI_API_KEY ausente. Rotas de IA ficarão indisponíveis até configurar a chave.");
+  }
+} catch (e) {
+  console.error("[OPENAI] Falha ao inicializar cliente OpenAI:", e?.message || e);
+  openai = null;
+}
+
+function assertOpenAI() {
+  if (!openai) {
+    const err = new Error("Serviço de IA não configurado no servidor. Configure OPENAI_API_KEY nas variáveis de ambiente do Render.");
+    err.httpStatus = 503;
+    throw err;
+  }
+  return openai;
+}
+
+function sendError(res, e, fallbackMessage) {
+  const status = (e && typeof e.httpStatus === "number") ? e.httpStatus : 500;
+  const msg = (e && typeof e.httpStatus === "number" && e.message) ? e.message : (fallbackMessage || "Falha interna.");
+  return res.status(status).json({ error: msg });
 }
 // Função genérica para chamar o modelo e retornar o texto
 async function callOpenAI(prompt) {
-  const completion = await getOpenAI().chat.completions.create({
+  const client = assertOpenAI();
+  const completion = await client.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.2,
     messages: [
@@ -176,7 +198,8 @@ async function callOpenAIJson(prompt) {
 
 // Função para chamar o modelo com imagem (data URL) e retornar JSON
 async function callOpenAIVisionJson(prompt, imagemDataUrl) {
-  const completion = await getOpenAI().chat.completions.create({
+  const client = assertOpenAI();
+  const completion = await client.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.2,
     messages: [
@@ -951,7 +974,7 @@ app.post("/api/auth/signup", (req, res) => {
     return res.json({ ok: true, id: user.id });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha ao cadastrar usuário." });
+    return sendError(res, e, "Falha ao cadastrar usuário.");
   }
 });
 
@@ -1001,7 +1024,7 @@ app.post("/api/auth/login", (req, res) => {
     });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha no login." });
+    return sendError(res, e, "Falha no login.");
   }
 });
 
@@ -1100,7 +1123,7 @@ app.post("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
     return res.json({ ok: true, user: { id: user.id } });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha ao cadastrar usuário." });
+    return sendError(res, e, "Falha ao cadastrar usuário.");
   }
 });
 app.put("/api/admin/users/:id", requireAuth, requireAdmin, (req, res) => {
@@ -1140,7 +1163,7 @@ app.put("/api/admin/users/:id", requireAuth, requireAdmin, (req, res) => {
     return res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha ao editar usuário." });
+    return sendError(res, e, "Falha ao editar usuário.");
   }
 });
 
@@ -1161,7 +1184,7 @@ app.post("/api/admin/users/:id/reset-password", requireAuth, requireAdmin, (req,
     return res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha ao resetar senha." });
+    return sendError(res, e, "Falha ao resetar senha.");
   }
 });
 
@@ -1177,7 +1200,7 @@ app.post("/api/admin/users/:id/active", requireAuth, requireAdmin, (req, res) =>
     return res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha ao atualizar usuário." });
+    return sendError(res, e, "Falha ao atualizar usuário.");
   }
 });
 
@@ -1193,7 +1216,7 @@ app.delete("/api/admin/users/:id", requireAuth, requireAdmin, (req, res) => {
     return res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha ao excluir usuário." });
+    return sendError(res, e, "Falha ao excluir usuário.");
   }
 });
 
@@ -1231,7 +1254,7 @@ app.post("/api/admin/users/:id/pay", requireAuth, requireAdmin, (req, res) => {
     return res.json({ ok: true, payment: entry });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha ao registrar pagamento." });
+    return sendError(res, e, "Falha ao registrar pagamento.");
   }
 });
 
@@ -1350,7 +1373,7 @@ app.post("/api/admin/backup/import", requireAuth, requireAdmin, (req, res) => {
     });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha ao importar backup." });
+    return sendError(res, e, "Falha ao importar backup.");
   }
 });
 
@@ -1470,7 +1493,7 @@ Transcrição:
     return res.json({ soap, prescricao });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar evolução/plano de cuidados." });
+    return sendError(res, e, "Falha interna ao gerar evolução/plano de cuidados.");
   }
 });
 
@@ -1569,7 +1592,7 @@ Transcrição:
     return res.json(out);
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar triagem hospitalar." });
+    return sendError(res, e, "Falha interna ao gerar triagem hospitalar.");
   }
 });
 
@@ -1671,7 +1694,7 @@ Novas perguntas e respostas:
     return res.json({ soap, prescricao });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao atualizar evolução." });
+    return sendError(res, e, "Falha interna ao atualizar evolução.");
   }
 });
 
@@ -1739,7 +1762,7 @@ app.post("/api/gerar-sbar", requirePaidOrAdmin, async (req, res) => {
     return res.json({ sbar });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar SBAR." });
+    return sendError(res, e, "Falha interna ao gerar SBAR.");
   }
 });
 
@@ -1761,7 +1784,7 @@ app.post("/api/prescricao-hospitalar", requirePaidOrAdmin, async (req, res) => {
     return res.json({ prescricao_hospitalar: sbar, sbar });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar SBAR." });
+    return sendError(res, e, "Falha interna ao gerar SBAR.");
   }
 });
 
@@ -1807,7 +1830,7 @@ Contexto:
     return res.json({ sae, orientacoes });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar SAE/orientações." });
+    return sendError(res, e, "Falha interna ao gerar SAE/orientações.");
   }
 });
 
@@ -1857,7 +1880,7 @@ Contexto:
     return res.json({ registro });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar registro." });
+    return sendError(res, e, "Falha interna ao gerar registro.");
   }
 });
 
@@ -1908,7 +1931,7 @@ Contexto:
     return res.json({ curativos });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar curativos." });
+    return sendError(res, e, "Falha interna ao gerar curativos.");
   }
 });
 
@@ -2060,7 +2083,7 @@ Contexto:
     });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar a classificação de risco." });
+    return sendError(res, e, "Falha interna ao gerar a classificação de risco.");
   }
 });
 
@@ -2130,7 +2153,7 @@ app.post("/api/analisar-lesao", requirePaidOrAdmin, async(req, res) => {
     return res.json(out);
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao analisar a lesão." });
+    return sendError(res, e, "Falha interna ao analisar a lesão.");
   }
 });
 
@@ -2155,7 +2178,7 @@ app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
     return res.json({ texto });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao analisar a lesão." });
+    return sendError(res, e, "Falha interna ao analisar a lesão.");
   }
 });
 
@@ -2237,7 +2260,7 @@ app.post("/api/interpretar-exame-imagem", requirePaidOrAdmin, async(req, res) =>
     return res.json({ texto });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao interpretar o exame." });
+    return sendError(res, e, "Falha interna ao interpretar o exame.");
   }
 });
 
@@ -2356,7 +2379,7 @@ Formato de saída: JSON estrito:
     return res.json({ texto: lines.join("\n") });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao analisar a prescrição." });
+    return sendError(res, e, "Falha interna ao analisar a prescrição.");
   }
 });
 
@@ -2407,7 +2430,7 @@ app.post("/api/duvidas-medicas", requirePaidOrAdmin, async(req, res) => {
     return res.json({ resposta });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao responder a dúvida." });
+    return sendError(res, e, "Falha interna ao responder a dúvida.");
   }
 });
 
@@ -2418,7 +2441,7 @@ app.post("/api/duvidas-enfermagem", requirePaidOrAdmin, async(req, res) => {
     return res.json({ resposta });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao responder a dúvida." });
+    return sendError(res, e, "Falha interna ao responder a dúvida.");
   }
 });
 
@@ -2591,7 +2614,7 @@ Transcrição:
     });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar documento." });
+    return sendError(res, e, "Falha interna ao gerar documento.");
   }
 });
 
@@ -2921,7 +2944,7 @@ Transcrição (trecho):
     });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha interna no guia em tempo real." });
+    return sendError(res, e, "Falha interna no guia em tempo real.");
   }
 });
 
