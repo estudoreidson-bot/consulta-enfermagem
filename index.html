@@ -2556,7 +2556,7 @@
 
   <script>
 
-    const DEFAULT_BACKEND_URL = "https://consulta-enfermagem-1.onrender.com";
+    const DEFAULT_BACKEND_URL = "";
     // Backend principal (Render). Pode ser sobrescrito por:
     // 1) Querystring ?backend=https://...  (útil para testes)
     // 2) localStorage BACKEND_URL_OVERRIDE
@@ -2570,7 +2570,8 @@
       if (raw) return norm(raw);
       const host = String(window.location.hostname || "");
       if (host === "localhost" || host === "127.0.0.1") return "http://localhost:3000";
-      return norm(DEFAULT_BACKEND_URL);
+      if (DEFAULT_BACKEND_URL) return norm(DEFAULT_BACKEND_URL);
+      return "";
     })();
 
     // =========================
