@@ -1544,23 +1544,21 @@
 
   <div id="loginView" class="auth-shell">
     <div class="auth-card">
-      <form id="loginForm" autocomplete="on">
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
 
       <label class="auth-label" for="loginField">Login</label>
-      <input id="loginField" class="auth-input" autocomplete="username" inputmode="text" />
+      <input id="loginField" class="auth-input" type="text" autocomplete="username" inputmode="text" />
 
       <label class="auth-label" for="passwordField">Senha</label>
       <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
 
-      <button id="loginBtn" class="auth-btn" type="submit">Entrar</button>
+      <button id="loginBtn" class="auth-btn" type="button">Entrar</button>
       <div id="loginError" class="auth-error"></div>
 
       <div class="auth-help">
         Se não conseguir acessar, use o botão “Entrar em contato”.
       </div>
-      </form>
     </div>
   </div>
 
@@ -2865,10 +2863,10 @@
       }
     }
 
-        // Eventos de login/logout
-    document.getElementById("loginForm")?.addEventListener("submit", (e) => { e.preventDefault(); doLogin(); });
+    // Eventos de login/logout
     document.getElementById("loginBtn")?.addEventListener("click", doLogin);
-    document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); doLogin(); } });
+    document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); doLogin(); } });
     document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
     document.getElementById("nurseLogoutBtn")?.addEventListener("click", logoutAll);
     document.getElementById("adminLogoutBtn")?.addEventListener("click", logoutAll);
