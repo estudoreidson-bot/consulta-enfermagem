@@ -1538,6 +1538,160 @@
       opacity:0.92;
     }
 
+
+
+    /* Módulo de Documentos: triagem hospitalar (patientReportCard) */
+    .report-triage-shell {
+      width: 100%;
+      max-width: 620px;
+      margin: 14px auto 0 auto;
+      padding: 18px 14px 16px 14px;
+      border: 1px solid #e7e7e7;
+      border-radius: 16px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .report-triage-flow {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .report-triage-step {
+      font-size: 12px;
+      font-weight: 700;
+      color: #6b7280;
+      text-align: center;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid #e7e7e7;
+      background: #fafafa;
+    }
+
+    .report-triage-step.active {
+      color: #111827;
+      border-color: #cfd7e6;
+      background: #f2f6ff;
+    }
+
+    .report-triage-connector {
+      width: 44px;
+      height: 2px;
+      background: #e7e7e7;
+      border-radius: 2px;
+    }
+
+    .report-triage-btn {
+      width: 190px;
+      height: 190px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: 800;
+      color: #ffffff;
+      transition: transform 0.1s, background 0.2s, opacity 0.2s;
+      user-select: none;
+    }
+
+    .report-triage-btn.start { background: #007bff; }
+    .report-triage-btn.recording { background: #dc3545; }
+    .report-triage-btn.processing { background: #6c757d; }
+    .report-triage-btn:active { transform: scale(0.97); }
+    .report-triage-btn:disabled { opacity: 0.8; cursor: not-allowed; }
+
+    .report-triage-lines {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-height: 60px;
+    }
+
+    .report-triage-line {
+      width: 100%;
+      text-align: center;
+      font-size: 12px;
+      color: #374151;
+      line-height: 1.35;
+      min-height: 16px;
+      padding: 0 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .report-triage-mono {
+      font-family: "Courier New", monospace;
+      font-size: 22px;
+      color: #111827;
+      letter-spacing: 0.5px;
+    }
+
+    .report-triage-partial {
+      color: #6b7280;
+      font-size: 12px;
+      max-width: 100%;
+      white-space: nowrap;
+    }
+
+    .report-secondary {
+      width: 100%;
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid #e7e7e7;
+    }
+
+    .report-secondary-row {
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .report-secondary-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #111827;
+      min-width: 140px;
+    }
+
+    .report-secondary-select {
+      min-width: 220px;
+      max-width: 100%;
+    }
+
+    .report-results-row {
+      margin-top: 12px;
+    }
+
+    .report-result-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+
+    @media (max-width: 520px) {
+      .report-triage-btn {
+        width: 160px;
+        height: 160px;
+        font-size: 16px;
+      }
+      .report-triage-flow {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .report-triage-connector {
+        display: none;
+      }
+    }
+
 </style>
 </head>
 <body>
@@ -2474,100 +2628,118 @@
 
 
 
-                <div id="patientReportCard" class="module-card">
-      <h2>Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado de comparecimento ou permanência / ATA reunião / Registros de procedimentos</h2>
-      <p class="mini-status" style="margin-top: 0;">
-        Grave em voz alta o conteúdo do documento. Diga claramente qual documento deseja produzir (por exemplo: declaração de comparecimento, relatório de curativo seriado, encaminhamento para CAPS, solicitação de insumos, comunicado para escola, ata de reunião). Ao encerrar
-    
-
-, a gravação será usada para identificar o tipo de documento e gerar um texto padronizado pronto para colar no S.U.I.S.
+                                <div id="patientReportCard" class="module-card">
+      <h2>Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado / Ata / Registros</h2>
+      <p class="module-subtitle" style="margin-top: 6px;">
+        Grave em voz alta o conteúdo do documento. Diga, no início, qual documento deseja produzir e inclua os dados essenciais. Ao parar, o texto será padronizado para uso imediato.
       </p>
 
-      <div class="inline-input-row">
-        <label for="reportDocTypeSelect" style="font-size: 13px; color: #111827; font-weight: 600;">Tipo de documento:</label>
-        <select id="reportDocTypeSelect" class="text-input" style="min-width: 260px; max-width: 100%;">          <option value="auto" selected>Auto (identificar pela gravação)</option>
-          <option value="Declaração de comparecimento">Declaração de comparecimento</option>
-          <option value="Declaração de permanência">Declaração de permanência</option>
-          <option value="Declaração para acompanhante">Declaração para acompanhante</option>
-          <option value="Declaração de recebimento de orientações">Declaração de recebimento de orientações</option>
-          <option value="Declaração de recusa de procedimento/conduta">Declaração de recusa de procedimento/conduta</option>
-          <option value="Termo de consentimento informado (procedimento de enfermagem)">Termo de consentimento informado (procedimento de enfermagem)</option>
-          <option value="Termo de ciência e responsabilidade (orientações e riscos)">Termo de ciência e responsabilidade (orientações e riscos)</option>
-          <option value="Comunicado para escola">Comunicado para escola</option>
-          <option value="Relatório para escola (necessidades específicas)">Relatório para escola (necessidades específicas)</option>
-          <option value="Comunicado ao Conselho Tutelar">Comunicado ao Conselho Tutelar</option>
-          <option value="Relatório para Conselho Tutelar (proteção à criança/adolescente)">Relatório para Conselho Tutelar (proteção à criança/adolescente)</option>
-          <option value="Relatório de curativo seriado">Relatório de curativo seriado</option>
-          <option value="Registro de procedimento de curativo">Registro de procedimento de curativo</option>
-          <option value="Registro de retirada de pontos/suturas">Registro de retirada de pontos/suturas</option>
-          <option value="Registro de procedimento de vacinação">Registro de procedimento de vacinação</option>
-          <option value="Registro de evento adverso pós-vacinação (EAPV)">Registro de evento adverso pós-vacinação (EAPV)</option>
-          <option value="Registro de procedimento de administração de medicamentos">Registro de procedimento de administração de medicamentos</option>
-          <option value="Registro de administração de medicamento controlado (registro interno)">Registro de administração de medicamento controlado (registro interno)</option>
-          <option value="Registro de coleta de exames">Registro de coleta de exames</option>
-          <option value="Registro de nebulização/oxigenoterapia">Registro de nebulização/oxigenoterapia</option>
-          <option value="Registro de sondagem vesical">Registro de sondagem vesical</option>
-          <option value="Registro de troca de sonda/traqueostomia/gastrostomia">Registro de troca de sonda/traqueostomia/gastrostomia</option>
-          <option value="Registro de visita domiciliar">Registro de visita domiciliar</option>
-          <option value="Relatório de visita domiciliar">Relatório de visita domiciliar</option>
-          <option value="Relatório de adesão e educação em saúde (HAS/DM)">Relatório de adesão e educação em saúde (HAS/DM)</option>
-          <option value="Relatório de acompanhamento de hipertensão (HAS)">Relatório de acompanhamento de hipertensão (HAS)</option>
-          <option value="Relatório de acompanhamento de diabetes (DM)">Relatório de acompanhamento de diabetes (DM)</option>
-          <option value="Relatório de acompanhamento de asma/DPOC">Relatório de acompanhamento de asma/DPOC</option>
-          <option value="Relatório de acompanhamento de saúde da criança (puericultura)">Relatório de acompanhamento de saúde da criança (puericultura)</option>
-          <option value="Relatório de acompanhamento de pré-natal (enfermagem)">Relatório de acompanhamento de pré-natal (enfermagem)</option>
-          <option value="Relatório de puerpério (enfermagem)">Relatório de puerpério (enfermagem)</option>
-          <option value="Relatório para assistência social (vulnerabilidade e insumos)">Relatório para assistência social (vulnerabilidade e insumos)</option>
-          <option value="Solicitação de insumos (fraldas, curativos, suplementos)">Solicitação de insumos (fraldas, curativos, suplementos)</option>
-          <option value="Solicitação de fraldas (infantil/geriátrica)">Solicitação de fraldas (infantil/geriátrica)</option>
-          <option value="Solicitação de materiais para ostomia">Solicitação de materiais para ostomia</option>
-          <option value="Solicitação de dieta enteral/suplementação">Solicitação de dieta enteral/suplementação</option>
-          <option value="Solicitação de oxigenoterapia domiciliar">Solicitação de oxigenoterapia domiciliar</option>
-          <option value="Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)">Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)</option>
-          <option value="Solicitação de transporte sanitário">Solicitação de transporte sanitário</option>
-          <option value="Solicitação de avaliação médica">Solicitação de avaliação médica</option>
-          <option value="Encaminhamento para Médico (demanda espontânea)">Encaminhamento para Médico (demanda espontânea)</option>
-          <option value="Encaminhamento para sala de vacina">Encaminhamento para sala de vacina</option>
-          <option value="Encaminhamento para curativos/ambulatório de feridas">Encaminhamento para curativos/ambulatório de feridas</option>
-          <option value="Encaminhamento para CAPS / saúde mental">Encaminhamento para CAPS / saúde mental</option>
-          <option value="Relatório para CAPS / saúde mental (enfermagem)">Relatório para CAPS / saúde mental (enfermagem)</option>
-          <option value="Encaminhamento para Serviço Social">Encaminhamento para Serviço Social</option>
-          <option value="Encaminhamento para Psicologia">Encaminhamento para Psicologia</option>
-          <option value="Encaminhamento para Nutrição">Encaminhamento para Nutrição</option>
-          <option value="Encaminhamento para Fisioterapia">Encaminhamento para Fisioterapia</option>
-          <option value="Encaminhamento para Fonoaudiologia">Encaminhamento para Fonoaudiologia</option>
-          <option value="Encaminhamento para Odontologia">Encaminhamento para Odontologia</option>
-          <option value="Encaminhamento para especialista / rede">Encaminhamento para especialista / rede</option>
-          <option value="Encaminhamento para urgência/emergência">Encaminhamento para urgência/emergência</option>
-          <option value="Relatório de evolução de enfermagem">Relatório de evolução de enfermagem</option>
-          <option value="Relatório de intercorrência/ocorrência">Relatório de intercorrência/ocorrência</option>
-          <option value="Ata de reunião">Ata de reunião</option>
-          <option value="Registro de reunião de equipe (ATA breve)">Registro de reunião de equipe (ATA breve)</option>
-          <option value="Comunicado interno da equipe">Comunicado interno da equipe</option>
-          <option value="Outros">Outros</option>
-</select>
+      <div class="report-triage-shell" aria-label="Triagem de documentos">
+        <div class="report-triage-flow" aria-label="Fluxo de etapas">
+          <div id="reportFlowVoice" class="report-triage-step active">Coleta de voz</div>
+          <div class="report-triage-connector" aria-hidden="true"></div>
+          <div id="reportFlowIdentify" class="report-triage-step">Identificação</div>
+          <div class="report-triage-connector" aria-hidden="true"></div>
+          <div id="reportFlowDoc" class="report-triage-step">Documento</div>
+        </div>
+
+        <button id="reportRecordBtn" class="report-triage-btn start" type="button">Iniciar</button>
+
+        <div class="report-triage-lines" aria-live="polite">
+          <div id="reportStatus" class="report-triage-line">Pronto para gravar.</div>
+          <div id="reportTimer" class="report-triage-line report-triage-mono">00:00</div>
+          <div id="reportPartial" class="report-triage-line report-triage-partial hidden"></div>
+        </div>
+
+        <input id="reportAudioUpload" class="hidden" type="file" accept="audio/*" />
+        <textarea id="reportManualTranscription" class="text-input hidden" placeholder="Se necessário, digite ou cole a transcrição aqui para gerar o documento." spellcheck="false"></textarea>
       </div>
 
-      <div class="inline-input-row">
-        <button id="reportRecordBtn" class="small-record-btn start" type="button">Gravar documento</button>
-        <button id="copyReportBtn" class="btn-copy hidden" type="button">Copiar documento</button>
-        <button id="printReportBtn" class="btn-print hidden" type="button">Imprimir documento</button>
+      <div class="report-secondary">
+        <div class="inline-input-row report-secondary-row">
+          <label for="reportDocTypeSelect" class="report-secondary-label">Tipo de documento</label>
+          <select id="reportDocTypeSelect" class="text-input report-secondary-select">
+            <option value="auto" selected>Auto</option>
+            <option value="Declaração de comparecimento">Declaração de comparecimento</option>
+            <option value="Declaração de permanência">Declaração de permanência</option>
+            <option value="Declaração para acompanhante">Declaração para acompanhante</option>
+            <option value="Declaração de recebimento de orientações">Declaração de recebimento de orientações</option>
+            <option value="Declaração de recusa de procedimento/conduta">Declaração de recusa de procedimento/conduta</option>
+            <option value="Termo de consentimento informado (procedimento de enfermagem)">Termo de consentimento informado (procedimento de enfermagem)</option>
+            <option value="Termo de ciência e responsabilidade (orientações e riscos)">Termo de ciência e responsabilidade (orientações e riscos)</option>
+            <option value="Comunicado para escola">Comunicado para escola</option>
+            <option value="Relatório para escola (necessidades específicas)">Relatório para escola (necessidades específicas)</option>
+            <option value="Comunicado ao Conselho Tutelar">Comunicado ao Conselho Tutelar</option>
+            <option value="Relatório para Conselho Tutelar (proteção à criança/adolescente)">Relatório para Conselho Tutelar (proteção à criança/adolescente)</option>
+            <option value="Relatório de curativo seriado">Relatório de curativo seriado</option>
+            <option value="Registro de procedimento de curativo">Registro de procedimento de curativo</option>
+            <option value="Registro de retirada de pontos/suturas">Registro de retirada de pontos/suturas</option>
+            <option value="Registro de procedimento de vacinação">Registro de procedimento de vacinação</option>
+            <option value="Registro de evento adverso pós-vacinação (EAPV)">Registro de evento adverso pós-vacinação (EAPV)</option>
+            <option value="Registro de procedimento de administração de medicamentos">Registro de procedimento de administração de medicamentos</option>
+            <option value="Registro de administração de medicamento controlado (registro interno)">Registro de administração de medicamento controlado (registro interno)</option>
+            <option value="Registro de coleta de exames">Registro de coleta de exames</option>
+            <option value="Registro de nebulização/oxigenoterapia">Registro de nebulização/oxigenoterapia</option>
+            <option value="Registro de sondagem vesical">Registro de sondagem vesical</option>
+            <option value="Registro de troca de sonda/traqueostomia/gastrostomia">Registro de troca de sonda/traqueostomia/gastrostomia</option>
+            <option value="Registro de visita domiciliar">Registro de visita domiciliar</option>
+            <option value="Relatório de visita domiciliar">Relatório de visita domiciliar</option>
+            <option value="Relatório de adesão e educação em saúde (HAS/DM)">Relatório de adesão e educação em saúde (HAS/DM)</option>
+            <option value="Relatório de acompanhamento de hipertensão (HAS)">Relatório de acompanhamento de hipertensão (HAS)</option>
+            <option value="Relatório de acompanhamento de diabetes (DM)">Relatório de acompanhamento de diabetes (DM)</option>
+            <option value="Relatório de acompanhamento de asma/DPOC">Relatório de acompanhamento de asma/DPOC</option>
+            <option value="Relatório de acompanhamento de saúde da criança (puericultura)">Relatório de acompanhamento de saúde da criança (puericultura)</option>
+            <option value="Relatório de acompanhamento de pré-natal (enfermagem)">Relatório de acompanhamento de pré-natal (enfermagem)</option>
+            <option value="Relatório de puerpério (enfermagem)">Relatório de puerpério (enfermagem)</option>
+            <option value="Relatório para assistência social (vulnerabilidade e insumos)">Relatório para assistência social (vulnerabilidade e insumos)</option>
+            <option value="Solicitação de insumos (fraldas, curativos, suplementos)">Solicitação de insumos (fraldas, curativos, suplementos)</option>
+            <option value="Solicitação de fraldas (infantil/geriátrica)">Solicitação de fraldas (infantil/geriátrica)</option>
+            <option value="Solicitação de materiais para ostomia">Solicitação de materiais para ostomia</option>
+            <option value="Solicitação de dieta enteral/suplementação">Solicitação de dieta enteral/suplementação</option>
+            <option value="Solicitação de oxigenoterapia domiciliar">Solicitação de oxigenoterapia domiciliar</option>
+            <option value="Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)">Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)</option>
+            <option value="Solicitação de transporte sanitário">Solicitação de transporte sanitário</option>
+            <option value="Solicitação de avaliação médica">Solicitação de avaliação médica</option>
+            <option value="Encaminhamento para Médico (demanda espontânea)">Encaminhamento para Médico (demanda espontânea)</option>
+            <option value="Encaminhamento para sala de vacina">Encaminhamento para sala de vacina</option>
+            <option value="Encaminhamento para curativos/ambulatório de feridas">Encaminhamento para curativos/ambulatório de feridas</option>
+            <option value="Encaminhamento para CAPS / saúde mental">Encaminhamento para CAPS / saúde mental</option>
+            <option value="Relatório para CAPS / saúde mental (enfermagem)">Relatório para CAPS / saúde mental (enfermagem)</option>
+            <option value="Encaminhamento para Serviço Social">Encaminhamento para Serviço Social</option>
+            <option value="Encaminhamento para Psicologia">Encaminhamento para Psicologia</option>
+            <option value="Encaminhamento para Nutrição">Encaminhamento para Nutrição</option>
+            <option value="Encaminhamento para Fisioterapia">Encaminhamento para Fisioterapia</option>
+            <option value="Encaminhamento para Fonoaudiologia">Encaminhamento para Fonoaudiologia</option>
+            <option value="Encaminhamento para Odontologia">Encaminhamento para Odontologia</option>
+            <option value="Encaminhamento para especialista / rede">Encaminhamento para especialista / rede</option>
+            <option value="Encaminhamento para urgência/emergência">Encaminhamento para urgência/emergência</option>
+            <option value="Relatório de evolução de enfermagem">Relatório de evolução de enfermagem</option>
+            <option value="Relatório de intercorrência/ocorrência">Relatório de intercorrência/ocorrência</option>
+            <option value="Ata de reunião">Ata de reunião</option>
+            <option value="Registro de reunião de equipe (ATA breve)">Registro de reunião de equipe (ATA breve)</option>
+            <option value="Comunicado interno da equipe">Comunicado interno da equipe</option>
+            <option value="Outros">Outros</option>
+          </select>
+        </div>
       </div>
 
-      <div id="reportStatus" class="mini-status"></div>
-
-      <div class="inline-input-row" style="margin-top: 6px;">
+      <div class="inline-input-row report-results-row">
         <div style="flex: 1; min-width: 240px;">
-          <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Tipo identificado</div>
+          <div class="report-result-label">Tipo identificado</div>
           <div id="reportDocTypeDetected" class="answer-box" style="min-height: 44px;"></div>
         </div>
         <div style="flex: 1; min-width: 240px;">
-          <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Campos pendentes</div>
+          <div class="report-result-label">Campos pendentes</div>
           <div id="reportMissingFields" class="answer-box" style="min-height: 44px;"></div>
         </div>
       </div>
 
-      <textarea id="reportOutput" class="prescription-textarea" placeholder="O documento gerado aparecerá aqui." style="margin-top: 12px;"></textarea>
+      <textarea id="reportOutput" class="prescription-textarea" placeholder="O documento gerado aparecerá aqui." style="margin-top: 12px;" spellcheck="false"></textarea>
+
+      <div class="prescription-actions">
+        <button id="copyReportBtn" class="btn-copy hidden" type="button">Copiar</button>
+        <button id="printReportBtn" class="btn-print hidden" type="button">Imprimir</button>
+      </div>
     </div>
 
   </div>
@@ -3615,2666 +3787,841 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     const copyReportBtn = document.getElementById("copyReportBtn");
     const printReportBtn = document.getElementById("printReportBtn");
 
+
+    const reportTimerEl = document.getElementById("reportTimer");
+    const reportPartialEl = document.getElementById("reportPartial");
+    const reportAudioUpload = document.getElementById("reportAudioUpload");
+    const reportManualTranscription = document.getElementById("reportManualTranscription");
+    const reportFlowVoice = document.getElementById("reportFlowVoice");
+    const reportFlowIdentify = document.getElementById("reportFlowIdentify");
+    const reportFlowDoc = document.getElementById("reportFlowDoc");
+
     let reportRecognition = null;
+
+
+    let reportState = "idle"; // idle | recording | processing | done | error
+
+
     let reportIsRecording = false;
-    let reportIsPaused = false;
+
+
+
     let reportFinalTranscript = "";
 
-    // Rodada adicional de perguntas (aba lateral)
-    let questionsRecognition = null;
-    let questionsIsRecording = false;
-    let questionsFinalTranscript = "";
-    let questionsTimerInterval = null;
-    let questionsStartTime = null;
-    let questionsAccumulatedSeconds = 0;
 
-    function escapeHtml(text) {
-      return String(text || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-    }
+    let reportInterimTranscript = "";
 
-    function normalizeNumberedParagraphs(text) {
-      let t = String(text || "");
-      t = t.replace(/\r/g, "");
-      // Garante que cada item numerado comece em uma nova linha (melhora leitura no S.U.I.S.)
-      t = t.replace(/([^\n])\s+(\d+)\s*([\.)])\s+/g, "$1\n$2$3 ");
-      t = t.replace(/([^\n])\s+(\d+)\s*[-–—]\s+/g, "$1\n$2 - ");
-      t = t.replace(/\n{3,}/g, "\n\n");
-      return t.trim();
-    }
 
-
-    // ============================
-    // ============================
-    // Perguntas e procedimentos essenciais em tempo real (FLUXO CONTROLADO)
-    // ============================
-    function renderLiveGuidance() {
-      if (!liveGuidance || !liveGuidanceList || !liveGuidanceStatus || !liveGuidanceContext) return;
-
-      if (!isRecording) {
-        liveGuidanceContext.textContent = "";
-        liveGuidanceStatus.textContent = "Inicie o atendimento para receber perguntas e procedimentos necessários em tempo real.";
-        liveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma sugestão por enquanto.</div>";
-        return;
-      }
-
-      const ctx = (guidanceContextLabel || "").trim();
-      liveGuidanceContext.textContent = ctx ? ("Atendimento: " + ctx) : "";
-
-      if (guidanceStage === "aguardando_motivo") {
-        liveGuidanceStatus.textContent = "Aguardando o motivo da consulta. Após o paciente informar o motivo, as perguntas essenciais serão sugeridas.";
-        liveGuidanceList.innerHTML = `
-          <div class="live-guidance-empty">
-            Oriente: acolha e pergunte o motivo da consulta. Após a resposta do paciente, as perguntas essenciais serão sugeridas automaticamente.
-            <div style="margin-top:10px;">
-              <button id="forceStartGuidanceBtn" class="mini-red-btn" style="background:#b00020;">Motivo já foi informado</button>
-            </div>
-          </div>
-        `;
-        const btn = document.getElementById("forceStartGuidanceBtn");
-        if (btn) {
-          btn.onclick = () => {
-            if (guidanceStage !== "aguardando_motivo") return;
-            guidanceStage = "perguntas";
-            // reinicia detecção de turnos a partir do ponto atual
-            guidanceTurnState = "aguardando_pergunta";
-            guidanceAskedQuestion = "";
-            guidanceAskedAtLen = getCombinedTranscript().length;
-            guidanceAskedAtTs = Date.now();
-            guidanceChunkStartLen = getCombinedTranscript().length;
-            requestGuidanceFromBackend({ evento: "inicial" });
-          };
-        }
-        return;
-      }
-
-      // estágio perguntas (controle por turnos: pergunta -> resposta -> atualizar)
-      const confTxt = (typeof guidanceConfidence === "number" && guidanceConfidence > 0)
-        ? ("Nível de confiança da hipótese principal: " + Math.round(guidanceConfidence) + "% (não chega a 100%).")
-        : "";
-
-      const hypo = (guidanceHypothesis || "").trim();
-      const hypoTxt = hypo ? ("Hipótese principal: " + hypo + ". " + confTxt) : confTxt;
-
-      if (guidanceTurnState === "aguardando_resposta") {
-        liveGuidanceStatus.textContent = "Pergunta em andamento. Aguardando resposta do paciente para atualizar as próximas perguntas...";
-      } else if (guidanceInFlight) {
-        liveGuidanceStatus.textContent = "Atualizando perguntas essenciais...";
-      } else {
-        liveGuidanceStatus.textContent = hypoTxt || "Perguntas essenciais sugeridas. Faça uma das perguntas e aguarde a resposta do paciente.";
-      }
-
-      if (!guidancePending || !guidancePending.length) {
-        liveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma pergunta essencial no momento.</div>";
-        return;
-      }
-
-      liveGuidanceList.innerHTML = "";
-      guidancePending.slice(0, 3).forEach((q, idx) => {
-        const safeQ = escapeHtml(String(q || ""));
-        const askedMark = (guidanceAskedQuestion && guidanceAskedQuestion.toLowerCase() === String(q || "").toLowerCase())
-          ? " (pergunta feita)"
-          : "";
-        const el = document.createElement("div");
-        el.className = "live-guidance-item";
-        el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${safeQ}${askedMark}</div>`;
-        liveGuidanceList.appendChild(el);
-      });
-    }
-
-    function getCombinedTranscript() {
-      const combined = ((finalTranscript || "") + " " + (interimTranscript || "")).trim();
-      if (!combined) return "";
-      const MAX = 8000;
-      return combined.length > MAX ? combined.slice(combined.length - MAX) : combined;
-    }
-
-    function hashForGuidancePayload(obj) {
-      try {
-        const raw = JSON.stringify(obj || {});
-        let h = 0;
-        for (let i = 0; i < raw.length; i++) {
-          h = ((h << 5) - h) + raw.charCodeAt(i);
-          h |= 0;
-        }
-        return String(h);
-      } catch {
-        return String(Date.now());
-      }
-    }
-
-    function resetLiveGuidanceState() {
-      guidanceEnabled = true;
-      guidanceStage = "aguardando_motivo";
-      guidancePending = [];
-      guidanceContextLabel = "";
-      guidanceHypothesis = "";
-      guidanceConfidence = 0;
-
-      guidanceInFlight = false;
-
-      guidanceTurnState = "aguardando_pergunta";
-      guidanceAskedQuestion = "";
-      guidanceAskedAtLen = 0;
-      guidanceAskedAtTs = 0;
-
-      guidanceChunkStartLen = 0;
-      guidanceSilenceTimer && clearTimeout(guidanceSilenceTimer);
-      guidanceSilenceTimer = null;
-
-      guidanceLastPayloadHash = "";
-      guidanceLastChunkTs = 0;
-
-      renderLiveGuidance();
-    }
-
-    function startGuidanceLoop() {
-      // Sem polling: só reage a eventos (inicial após motivo e após cada resposta)
-      guidanceEnabled = true;
-      renderLiveGuidance();
-      maybeStartInitialGuidance(false);
-    }
-
-    function stopGuidanceLoop() {
-      guidanceEnabled = false;
-      guidanceInFlight = false;
-      guidanceTurnState = "aguardando_pergunta";
-      guidanceAskedQuestion = "";
-      guidanceSilenceTimer && clearTimeout(guidanceSilenceTimer);
-      guidanceSilenceTimer = null;
-      renderLiveGuidance();
-    }
-
-    function triageRenderLiveGuidance() {
-      if (!triageLiveGuidance || !triageLiveGuidanceStatus || !triageLiveGuidanceList || !triageLiveGuidanceContext) return;
-
-      if (!triageGuidanceEnabled || !triageIsRecording) {
-        triageLiveGuidanceContext.textContent = "";
-        triageLiveGuidanceStatus.textContent = "Inicie a triagem para receber perguntas e procedimentos necessários em tempo real.";
-        triageLiveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma sugestão por enquanto.</div>";
-        return;
-      }
-
-      const ctx = (triageGuidanceContextLabel || "").trim();
-      triageLiveGuidanceContext.textContent = ctx ? ("Triagem: " + ctx) : "";
-
-      if (triageGuidanceStage === "aguardando_motivo") {
-        triageLiveGuidanceStatus.textContent = "Aguardando a queixa principal. Após o paciente informar o motivo, serão sugeridas perguntas e procedimentos essenciais para classificar risco e iniciar condutas.";
-        triageLiveGuidanceList.innerHTML = `
-          <div class="live-guidance-empty">
-            Oriente: acolha e registre a queixa principal. Em seguida, descreva sinais vitais e achados do ABCDE.
-            <div style="margin-top:10px;">
-              <button id="triageForceStartGuidanceBtn" class="mini-red-btn" style="background:#b00020;">Queixa já foi informada</button>
-            </div>
-          </div>
-        `;
-        const btn = document.getElementById("triageForceStartGuidanceBtn");
-        if (btn) {
-          btn.onclick = () => {
-            if (triageGuidanceStage !== "aguardando_motivo") return;
-            triageGuidanceStage = "perguntas";
-            triageGuidanceTurnState = "aguardando_pergunta";
-            triageGuidanceAskedQuestion = "";
-            triageGuidanceAskedAtLen = triageGetCombinedTranscript().length;
-            triageGuidanceAskedAtTs = Date.now();
-            triageGuidanceChunkStartLen = triageGetCombinedTranscript().length;
-            triageRequestGuidanceFromBackend({ evento: "inicial" });
-          };
-        }
-        return;
-      }
-
-      const confTxt = (typeof triageGuidanceConfidence === "number" && triageGuidanceConfidence > 0)
-        ? ("Nível de confiança do cenário principal: " + Math.round(triageGuidanceConfidence) + "% (não chega a 100%).")
-        : "";
-
-      const hypo = (triageGuidanceHypothesis || "").trim();
-      const hypoTxt = hypo ? ("Cenário principal: " + hypo + ". " + confTxt) : confTxt;
-
-      if (triageGuidanceTurnState === "aguardando_resposta") {
-        triageLiveGuidanceStatus.textContent = "Item em andamento. Aguardando informação do paciente para atualizar os próximos itens...";
-      } else if (triageGuidanceInFlight) {
-        triageLiveGuidanceStatus.textContent = "Atualizando itens essenciais da triagem...";
-      } else {
-        triageLiveGuidanceStatus.textContent = hypoTxt || "Itens essenciais sugeridos. Execute um item e aguarde a resposta para atualizar.";
-      }
-
-      if (!triageGuidancePending || !triageGuidancePending.length) {
-        triageLiveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhum item essencial no momento.</div>";
-        return;
-      }
-
-      triageLiveGuidanceList.innerHTML = "";
-      triageGuidancePending.slice(0, 3).forEach((q, idx) => {
-        const safeQ = escapeHtml(String(q || ""));
-        const askedMark = (triageGuidanceAskedQuestion && triageGuidanceAskedQuestion.toLowerCase() === String(q || "").toLowerCase())
-          ? " (item executado)"
-          : "";
-        const el = document.createElement("div");
-        el.className = "live-guidance-item";
-        el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${safeQ}${askedMark}</div>`;
-        triageLiveGuidanceList.appendChild(el);
-      });
-    }
-
-    function triageGetCombinedTranscript() {
-      const combined = ((triageFinalTranscript || "") + " " + (triageInterimTranscript || "")).trim();
-      if (!combined) return "";
-      const MAX = 8000;
-      return combined.length > MAX ? combined.slice(combined.length - MAX) : combined;
-    }
-
-    function triageResetLiveGuidanceState() {
-      triageGuidanceEnabled = true;
-      triageGuidanceStage = "aguardando_motivo";
-      triageGuidancePending = [];
-      triageGuidanceContextLabel = "";
-      triageGuidanceHypothesis = "";
-      triageGuidanceConfidence = 0;
-
-      triageGuidanceInFlight = false;
-
-      triageGuidanceTurnState = "aguardando_pergunta";
-      triageGuidanceAskedQuestion = "";
-      triageGuidanceAskedAtLen = 0;
-      triageGuidanceAskedAtTs = 0;
-
-      triageGuidanceChunkStartLen = 0;
-      triageGuidanceSilenceTimer && clearTimeout(triageGuidanceSilenceTimer);
-      triageGuidanceSilenceTimer = null;
-
-      triageGuidanceLastPayloadHash = "";
-      triageGuidanceLastChunkTs = 0;
-
-      triageRenderLiveGuidance();
-    }
-
-    function triageStartGuidanceLoop() {
-      triageGuidanceEnabled = true;
-      triageRenderLiveGuidance();
-      triageMaybeStartInitialGuidance(false);
-    }
-
-    function triageStopGuidanceLoop() {
-      triageGuidanceEnabled = false;
-      triageGuidanceInFlight = false;
-      triageGuidanceTurnState = "aguardando_pergunta";
-      triageGuidanceAskedQuestion = "";
-      triageGuidanceSilenceTimer && clearTimeout(triageGuidanceSilenceTimer);
-      triageGuidanceSilenceTimer = null;
-      triageRenderLiveGuidance();
-    }
-
-    function triageMaybeStartInitialGuidance(force) {
-      if (!triageGuidanceEnabled || !triageIsRecording || triageIsPaused) return;
-      if (triageGuidanceStage !== "aguardando_motivo") return;
-
-      const combined = triageGetCombinedTranscript();
-      if (!combined || combined.length < 120) return;
-
-      if (!force && !hasLikelyChiefComplaint(combined)) return;
-
-      triageGuidanceStage = "perguntas";
-      triageGuidanceTurnState = "aguardando_pergunta";
-      triageGuidanceAskedQuestion = "";
-      triageGuidanceAskedAtLen = combined.length;
-      triageGuidanceAskedAtTs = Date.now();
-      triageGuidanceChunkStartLen = combined.length;
-
-      triageRequestGuidanceFromBackend({ evento: "inicial" });
-    }
-
-    function triageOnTranscriptUpdateForGuidance() {
-      if (!triageGuidanceEnabled || !triageIsRecording || triageIsPaused) return;
-
-      if (triageGuidanceStage === "aguardando_motivo") {
-        triageMaybeStartInitialGuidance(false);
-        return;
-      }
-
-      triageScheduleGuidanceSilenceFinalize();
-    }
-
-    function triageScheduleGuidanceSilenceFinalize() {
-      if (!triageGuidanceEnabled || !triageIsRecording || triageIsPaused) return;
-
-      if (triageGuidanceSilenceTimer) clearTimeout(triageGuidanceSilenceTimer);
-      triageGuidanceSilenceTimer = setTimeout(() => {
-        triageFinalizeGuidanceChunk();
-      }, 1400);
-    }
-
-    function triageFinalizeGuidanceChunk() {
-      if (!triageGuidanceEnabled || !triageIsRecording || triageIsPaused) return;
-
-      const combined = triageGetCombinedTranscript();
-      if (!combined) return;
-
-      if (triageGuidanceChunkStartLen <= 0) {
-        triageGuidanceChunkStartLen = combined.length;
-        return;
-      }
-
-      const chunk = combined.slice(triageGuidanceChunkStartLen).trim();
-      triageGuidanceChunkStartLen = combined.length;
-
-      if (!chunk || chunk.length < 10) return;
-
-      const now = Date.now();
-      if (triageGuidanceLastChunkTs && (now - triageGuidanceLastChunkTs) < 900) return;
-      triageGuidanceLastChunkTs = now;
-
-      triageHandleGuidanceUtteranceChunk(chunk);
-    }
-
-    function triageHandleGuidanceUtteranceChunk(chunkText) {
-      if (!chunkText) return;
-      if (!triageGuidancePending || !triageGuidancePending.length) return;
-      if (triageGuidanceInFlight) return;
-
-      if (triageGuidanceTurnState === "aguardando_pergunta") {
-        const matched = matchQuestionFromUtterance(chunkText, triageGuidancePending);
-
-        triageGuidanceAskedQuestion = matched ? matched : "";
-        triageGuidanceAskedAtTs = Date.now();
-        triageGuidanceAskedAtLen = triageGetCombinedTranscript().length;
-
-        triageGuidanceTurnState = "aguardando_resposta";
-        triageRenderLiveGuidance();
-        return;
-      }
-
-      if (triageGuidanceTurnState === "aguardando_resposta") {
-        const dt = Date.now() - (triageGuidanceAskedAtTs || 0);
-        if (dt < 900) return;
-
-        triageRequestGuidanceFromBackend({ evento: "resposta", ultima_fala: chunkText });
-        return;
-      }
-    }
-
-    async function triageRequestGuidanceFromBackend({ evento, ultima_fala }) {
-      if (triageGuidanceInFlight) return;
-      if (!triageGuidanceEnabled || !triageIsRecording || triageIsPaused) return;
-
-      const combined = triageGetCombinedTranscript();
-      if (!combined || combined.length < 50) {
-        triageRenderLiveGuidance();
-        return;
-      }
-
-      const payload = {
-        modo: "triagem_hospitalar",
-        transcricao: combined,
-        estado: triageGuidanceStage,
-        evento: evento || "stream",
-        pergunta_feita: triageGuidanceAskedQuestion || "",
-        perguntas_pendentes: Array.isArray(triageGuidancePending) ? triageGuidancePending.slice(0, 3) : [],
-        confianca_atual: typeof triageGuidanceConfidence === "number" ? triageGuidanceConfidence : 0,
-        hipotese_atual: triageGuidanceHypothesis || "",
-        ultima_fala: typeof ultima_fala === "string" ? ultima_fala.slice(0, 800) : ""
-      };
-
-      const h = hashForGuidancePayload(payload);
-      if (h === triageGuidanceLastPayloadHash && evento !== "inicial" && evento !== "resposta") return;
-      triageGuidanceLastPayloadHash = h;
-
-      triageGuidanceInFlight = true;
-      triageRenderLiveGuidance();
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/guia-tempo-real", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text();
-          console.error("Erro HTTP do backend (guia triagem):", resp.status, txt);
-          return;
-        }
-
-        const data = await resp.json();
-        triageGuidanceContextLabel = data.contexto || triageGuidanceContextLabel || "";
-        triageGuidanceHypothesis = data.hipotese_principal || triageGuidanceHypothesis || "";
-        if (typeof data.confianca === "number") triageGuidanceConfidence = data.confianca;
-
-        const itens = Array.isArray(data.perguntas) ? data.perguntas : (Array.isArray(data.itens) ? data.itens : []);
-        const normalized = itens.map(x => String(x || "").trim()).filter(Boolean);
-
-        triageGuidancePending = normalized.slice(0, 3);
-
-        if (evento === "resposta" || evento === "inicial") {
-          triageGuidanceTurnState = "aguardando_pergunta";
-          triageGuidanceAskedQuestion = "";
-          triageGuidanceAskedAtLen = combined.length;
-          triageGuidanceAskedAtTs = Date.now();
-          triageGuidanceChunkStartLen = combined.length;
-        }
-      } catch (err) {
-        console.error("Falha ao buscar guia triagem:", err);
-      } finally {
-        triageGuidanceInFlight = false;
-        triageRenderLiveGuidance();
-      }
-    }
-
-    function initTriageSpeech() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) {
-        if (triageMicStatus) triageMicStatus.innerText = "Seu navegador não suporta reconhecimento de voz. Use Google Chrome em um computador.";
-        return;
-      }
-      triageRecognition = new SR();
-      triageRecognition.lang = "pt-BR";
-      triageRecognition.continuous = true;
-      triageRecognition.interimResults = true;
-
-      triageRecognition.onresult = (event) => {
-        let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            triageFinalTranscript += transcript + " ";
-          } else {
-            interim += transcript;
-          }
-        }
-        triageInterimTranscript = interim.trim();
-        triageOnTranscriptUpdateForGuidance();
-      };
-
-      triageRecognition.onerror = (event) => {
-        console.error("Erro no reconhecimento de voz (triagem):", event.error);
-        if (triageMicStatus) {
-          if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-            triageMicStatus.innerText = "Permita o acesso ao microfone nas configurações do navegador e tente novamente.";
-          } else {
-            triageMicStatus.innerText = "Ocorreu um erro no reconhecimento de voz. Tente novamente.";
-          }
-        }
-      };
-
-      triageRecognition.onend = () => {
-        if (triageIsRecording && !triageIsPaused) {
-          try { triageRecognition.start(); } catch (err) {}
-        }
-      };
-    }
-
-    function triageUpdateTimer() {
-      const now = Date.now();
-      const seconds = triageAccumulatedSeconds + Math.floor((now - triageStartTime) / 1000);
-      const m = ("0" + Math.floor(seconds / 60)).slice(-2);
-      const s = ("0" + (seconds % 60)).slice(-2);
-      if (triageTimerEl) triageTimerEl.innerText = `${m}:${s}`;
-    }
-
-    function triageStartTimer() {
-      triageStartTime = Date.now();
-      if (triageTimerInterval) clearInterval(triageTimerInterval);
-      triageTimerInterval = setInterval(triageUpdateTimer, 500);
-    }
-
-    function triagePauseTimer() {
-      if (!triageStartTime) return;
-      const now = Date.now();
-      triageAccumulatedSeconds += Math.floor((now - triageStartTime) / 1000);
-      if (triageTimerInterval) clearInterval(triageTimerInterval);
-      triageTimerInterval = null;
-    }
-
-    function triageResetTimer() {
-      if (triageTimerInterval) clearInterval(triageTimerInterval);
-      triageTimerInterval = null;
-      triageStartTime = null;
-      triageAccumulatedSeconds = 0;
-      if (triageTimerEl) triageTimerEl.innerText = "00:00";
-    }
-
-    function applyRiskBadgeColorTo(el, cor) {
-      if (!el) return;
-      el.classList.remove("risk-none", "risk-vermelho", "risk-laranja", "risk-amarelo", "risk-verde", "risk-azul");
-      const c = normalizeRiskColorLabel(cor);
-      if (c === "Vermelho") el.classList.add("risk-vermelho");
-      else if (c === "Laranja") el.classList.add("risk-laranja");
-      else if (c === "Amarelo") el.classList.add("risk-amarelo");
-      else if (c === "Verde") el.classList.add("risk-verde");
-      else if (c === "Azul") el.classList.add("risk-azul");
-      else el.classList.add("risk-none");
-    }
-
-    function renderRiskLegendInto(container, legendArr) {
-      if (!container) return;
-      const legend = Array.isArray(legendArr) && legendArr.length ? legendArr : RISK_LEGEND_DEFAULT;
-      container.innerHTML = "";
-      legend.slice(0, 5).forEach((item) => {
-        const cor = normalizeRiskColorLabel(item?.cor || "");
-        const tempo = String(item?.tempo || "").trim();
-        const label = String(item?.descricao || "").trim();
-        const row = document.createElement("div");
-        row.className = "risk-legend-row";
-        const badge = document.createElement("span");
-        badge.className = "risk-badge";
-        applyRiskBadgeColorTo(badge, cor);
-        badge.textContent = cor || "Não informado";
-        const txt = document.createElement("div");
-        txt.className = "risk-legend-text";
-        txt.textContent = (tempo ? (tempo + " - ") : "") + (label || "");
-        row.appendChild(badge);
-        row.appendChild(txt);
-        container.appendChild(row);
-      });
-    }
-
-    function triageClearReportUI() {
-      if (triageReportPanel) triageReportPanel.classList.add("hidden");
-      if (triageReportStatus) triageReportStatus.textContent = "";
-      if (triageRiskBadge) { triageRiskBadge.textContent = "Não informado"; applyRiskBadgeColorTo(triageRiskBadge, "Não informado"); }
-      if (triageRiskMeaning) { triageRiskMeaning.textContent = "Nenhum conteúdo disponível."; triageRiskMeaning.dataset.printText = ""; }
-      if (triageRiskLegend) renderRiskLegendInto(triageRiskLegend, RISK_LEGEND_DEFAULT);
-
-      if (triageProntuario) triageProntuario.value = "";
-      if (triagePassagemMedico) triagePassagemMedico.value = "";
-      if (triageAlertas) triageAlertas.value = "";
-      if (triageCondutasNaoMed) triageCondutasNaoMed.value = "";
-      if (triageCondutasMed) triageCondutasMed.value = "";
-      if (triageMedidasExames) triageMedidasExames.value = "";
-      if (triagePendencias) triagePendencias.value = "";
-      if (triageQualidade) triageQualidade.value = "";
-      if (triageFullReport) triageFullReport.value = "";
-    }
-
-    function startTriageRecording() {
-      if (isRecording) {
-        alert("Finalize a consulta antes de iniciar a triagem hospitalar.");
-        return;
-      }
-      if (!triageRecognition) {
-        initTriageSpeech();
-        if (!triageRecognition) return;
-      }
-
-      triageIsRecording = true;
-      triageIsPaused = false;
-      triageFinalTranscript = "";
-      triageInterimTranscript = "";
-
-      if (triageError) triageError.textContent = "";
-      triageClearReportUI();
-
-      if (triagePauseBtn) {
-        triagePauseBtn.style.display = "inline-block";
-        triagePauseBtn.innerText = "Pausar";
-      }
-
-      if (triageRecordBtn) {
-        triageRecordBtn.className = "recording";
-        triageRecordBtn.innerText = "Encerrar triagem";
-      }
-
-      if (triageMicStatus) triageMicStatus.innerText = "Gravando triagem...";
-      if (recordBtn) recordBtn.disabled = true;
-
-      triageResetLiveGuidanceState();
-      triageRenderLiveGuidance();
-      triageStartGuidanceLoop();
-
-      triageResetTimer();
-      triageStartTimer();
-
-      try { triageRecognition.start(); } catch (e) {}
-    }
-
-    function stopTriageRecording() {
-      triageIsRecording = false;
-      triageIsPaused = false;
-
-      triageStopGuidanceLoop();
-      triageInterimTranscript = "";
-      triageRenderLiveGuidance();
-
-      if (triageRecognition) {
-        try { triageRecognition.stop(); } catch (e) {}
-      }
-      triagePauseTimer();
-
-      if (triageRecordBtn) {
-        triageRecordBtn.className = "start";
-        triageRecordBtn.innerText = "Iniciar triagem hospitalar";
-      }
-
-      if (triagePauseBtn) triagePauseBtn.style.display = "none";
-      if (recordBtn) recordBtn.disabled = false;
-    }
-
-    function pauseTriageRecording() {
-      if (!triageIsRecording || triageIsPaused) return;
-      triageIsPaused = true;
-
-      triageStopGuidanceLoop();
-      if (triageLiveGuidanceStatus) triageLiveGuidanceStatus.textContent = "Triagem pausada. As sugestões em tempo real serão retomadas ao retomar a gravação.";
-
-      if (triageRecognition) {
-        try { triageRecognition.stop(); } catch (e) {}
-      }
-      triagePauseTimer();
-
-      if (triagePauseBtn) triagePauseBtn.innerText = "Retomar";
-      if (triageMicStatus) triageMicStatus.innerText = "Triagem pausada.";
-    }
-
-    function resumeTriageRecording() {
-      if (!triageIsRecording || !triageIsPaused) return;
-      triageIsPaused = false;
-
-      triageStartGuidanceLoop();
-
-      if (triageRecognition) {
-        try { triageRecognition.start(); } catch (e) {}
-      }
-      triageStartTimer();
-
-      if (triagePauseBtn) triagePauseBtn.innerText = "Pausar";
-      if (triageMicStatus) triageMicStatus.innerText = "Gravando triagem...";
-    }
-
-    async function finalizarTriagemHospitalar() {
-      const combined = triageGetCombinedTranscript();
-      const txt = (combined || "").trim();
-
-      if (!txt || txt.length < 40) {
-        if (triageError) triageError.textContent = "A transcrição da triagem ficou muito curta. Tente novamente, falando mais próximo ao microfone.";
-        return;
-      }
-
-      if (resultsCard) resultsCard.classList.remove("hidden");
-      if (triageReportPanel) triageReportPanel.classList.remove("hidden");
-      if (triageReportStatus) {
-        triageReportStatus.textContent = "Gerando relatório de triagem...";
-        triageReportStatus.classList.add("loading-dot");
-      }
-
-      triageClearReportUI();
-      if (triageReportPanel) triageReportPanel.classList.remove("hidden");
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/gerar-triagem-hospitalar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao: txt })
-        });
-
-        if (!resp.ok) {
-          const t = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (triagem):", resp.status, t);
-          if (triageReportStatus) {
-            triageReportStatus.textContent = "Não foi possível gerar a triagem.";
-            triageReportStatus.classList.remove("loading-dot");
-          }
-          return;
-        }
-
-        const data = await resp.json();
-
-        const nivel = (data?.nivel_risco || "").trim() || "Não informado";
-        const tempo = (data?.tempo_maximo || "").trim();
-        const just = (data?.justificativa_risco || "").trim();
-        const meaning = (tempo ? ("Tempo máximo: " + tempo + ". ") : "") + (just || "");
-
-        if (triageRiskBadge) {
-          triageRiskBadge.textContent = normalizeRiskColorLabel(nivel) || nivel || "Não informado";
-          applyRiskBadgeColorTo(triageRiskBadge, nivel);
-        }
-        if (triageRiskMeaning) {
-          triageRiskMeaning.textContent = meaning || "Nenhum conteúdo disponível.";
-          triageRiskMeaning.dataset.printText = [
-            "Classificação de risco: " + (normalizeRiskColorLabel(nivel) || nivel || "Não informado"),
-            tempo ? ("Tempo máximo: " + tempo) : "",
-            just ? ("Justificativa: " + just) : ""
-          ].filter(Boolean).join("\n");
-        }
-        renderRiskLegendInto(triageRiskLegend, RISK_LEGEND_DEFAULT);
-
-        if (triageProntuario) triageProntuario.value = (data?.texto_prontuario || "").trim();
-        if (triagePassagemMedico) triagePassagemMedico.value = (data?.passagem_medico || "").trim();
-        if (triageAlertas) triageAlertas.value = (data?.alertas_red_flags || "").trim();
-        if (triageCondutasNaoMed) triageCondutasNaoMed.value = (data?.condutas_nao_medicamentosas || "").trim();
-        if (triageCondutasMed) triageCondutasMed.value = (data?.condutas_medicamentosas || "").trim();
-        if (triageMedidasExames) triageMedidasExames.value = (data?.medidas_exames_imediatos || "").trim();
-        if (triagePendencias) triagePendencias.value = (data?.pendencias_checar || "").trim();
-        if (triageQualidade) triageQualidade.value = (data?.checagem_qualidade || "").trim();
-        if (triageFullReport) triageFullReport.value = (data?.relatorio_completo || "").trim();
-
-        if (triageReportStatus) {
-          triageReportStatus.textContent = "Triagem gerada.";
-          triageReportStatus.classList.remove("loading-dot");
-        }
-      } catch (e) {
-        console.error("Erro ao gerar triagem:", e);
-        if (triageReportStatus) {
-          triageReportStatus.textContent = "Erro ao gerar triagem.";
-          triageReportStatus.classList.remove("loading-dot");
-        }
-      }
-    }
-
-    function hasLikelyChiefComplaint(text) {
-      const t = String(text || "").toLowerCase();
-      if (!t) return false;
-      const kw = [
-        "motivo", "queixa", "dor", "febre", "tosse", "falta de ar", "dispne", "diarre", "vômit",
-        "náuse", "enjoo", "garganta", "cefale", "tont", "desmai", "urina", "ardor",
-        "corrimento", "sangr", "pressão", "hipertens", "glic", "diabetes", "infec",
-        "ferida", "queda", "trauma", "alerg", "coceira", "mancha"
-      ];
-      return kw.some(k => t.includes(k));
-    }
-
-    function maybeStartInitialGuidance(force) {
-      if (!guidanceEnabled || !isRecording || isPaused) return;
-      if (guidanceStage !== "aguardando_motivo") return;
-
-      const combined = getCombinedTranscript();
-      if (!combined || combined.length < 120) return;
-
-      // Evita iniciar antes do paciente realmente falar algo clínico
-      if (!force && !hasLikelyChiefComplaint(combined)) return;
-
-      guidanceStage = "perguntas";
-      guidanceTurnState = "aguardando_pergunta";
-      guidanceAskedQuestion = "";
-      guidanceAskedAtLen = combined.length;
-      guidanceAskedAtTs = Date.now();
-      guidanceChunkStartLen = combined.length;
-
-      requestGuidanceFromBackend({ evento: "inicial" });
-    }
-
-    function onTranscriptUpdateForGuidance() {
-      if (!guidanceEnabled || !isRecording || isPaused) return;
-
-      // 1) Detecta automaticamente o momento de iniciar (após motivo)
-      if (guidanceStage === "aguardando_motivo") {
-        maybeStartInitialGuidance(false);
-        return;
-      }
-
-      // 2) A partir daqui: está em "perguntas". Controla por turnos usando silêncio.
-      scheduleGuidanceSilenceFinalize();
-    }
-
-    function scheduleGuidanceSilenceFinalize() {
-      if (!guidanceEnabled || !isRecording || isPaused) return;
-
-      if (guidanceSilenceTimer) clearTimeout(guidanceSilenceTimer);
-      guidanceSilenceTimer = setTimeout(() => {
-        finalizeGuidanceChunk();
-      }, 1400);
-    }
-
-    function finalizeGuidanceChunk() {
-      if (!guidanceEnabled || !isRecording || isPaused) return;
-
-      const combined = getCombinedTranscript();
-      if (!combined) return;
-
-      if (guidanceChunkStartLen <= 0) {
-        guidanceChunkStartLen = combined.length;
-        return;
-      }
-
-      // Captura apenas o que foi acrescentado desde o último “silêncio”
-      const chunk = combined.slice(guidanceChunkStartLen).trim();
-      guidanceChunkStartLen = combined.length;
-
-      if (!chunk || chunk.length < 10) return;
-
-      // Evita processar chunks colados em sequência que são só repetição do reconhecimento
-      const now = Date.now();
-      if (guidanceLastChunkTs && (now - guidanceLastChunkTs) < 900) return;
-      guidanceLastChunkTs = now;
-
-      handleGuidanceUtteranceChunk(chunk);
-    }
-
-    function stripAccents(s) {
-      return String(s || "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-    }
-
-    function tokenizePt(s) {
-      const t = stripAccents(String(s || "").toLowerCase())
-        .replace(/[^a-z0-9\s]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      if (!t) return [];
-
-      const stop = new Set([
-        "a","o","os","as","um","uma","uns","umas","de","do","da","dos","das","no","na","nos","nas",
-        "em","para","por","com","sem","e","ou","que","qual","quais","quando","como","onde","porque",
-        "ao","aos","à","às","se","já","não","sim","me","te","lhe","eles","elas","você","vocês",
-        "eu","tu","ele","ela","nós","vos","isso","isto","aquilo","essa","esse","este","esta",
-        "tem","tá","está","foi","era","são","ser","ter","há"
-      ]);
-
-      return t.split(" ").filter(w => w && w.length > 2 && !stop.has(w));
-    }
-
-    function jaccardSimilarity(aTokens, bTokens) {
-      const A = new Set(aTokens || []);
-      const B = new Set(bTokens || []);
-      if (!A.size || !B.size) return 0;
-      let inter = 0;
-      for (const w of A) if (B.has(w)) inter++;
-      const union = A.size + B.size - inter;
-      return union ? (inter / union) : 0;
-    }
-
-    function matchQuestionFromUtterance(utterance, questions) {
-      const qs = Array.isArray(questions) ? questions : [];
-      if (!qs.length) return "";
-      const uTok = tokenizePt(utterance);
-      if (!uTok.length) return "";
-
-      let bestQ = "";
-      let bestScore = 0;
-
-      for (const q of qs.slice(0, 3)) {
-        const score = jaccardSimilarity(uTok, tokenizePt(q));
-        if (score > bestScore) {
-          bestScore = score;
-          bestQ = q;
-        }
-      }
-
-      // Se a similaridade for baixa, não “chuta” qual foi, para não apagar/alterar errado.
-      if (bestScore < 0.18) return "";
-      return String(bestQ || "").trim();
-    }
-
-    function handleGuidanceUtteranceChunk(chunkText) {
-      if (!chunkText) return;
-      if (!guidancePending || !guidancePending.length) return;
-      if (guidanceInFlight) return;
-
-      // Turno 1: o enfermeiro faz uma pergunta (a partir das 3 sugeridas)
-      if (guidanceTurnState === "aguardando_pergunta") {
-        const matched = matchQuestionFromUtterance(chunkText, guidancePending);
-
-        guidanceAskedQuestion = matched ? matched : "";
-        guidanceAskedAtTs = Date.now();
-        guidanceAskedAtLen = getCombinedTranscript().length;
-
-        guidanceTurnState = "aguardando_resposta";
-        renderLiveGuidance();
-        return;
-      }
-
-      // Turno 2: o paciente responde -> atualiza as perguntas
-      if (guidanceTurnState === "aguardando_resposta") {
-        const dt = Date.now() - (guidanceAskedAtTs || 0);
-        if (dt < 900) return; // evita disparo imediato
-
-        // Atualiza com base no diálogo novo
-        requestGuidanceFromBackend({ evento: "resposta", ultima_fala: chunkText });
-        return;
-      }
-    }
-
-    async function requestGuidanceFromBackend({ evento, ultima_fala }) {
-      if (guidanceInFlight) return;
-      if (!guidanceEnabled || !isRecording || isPaused) return;
-
-      const combined = getCombinedTranscript();
-      if (!combined || combined.length < 50) {
-        renderLiveGuidance();
-        return;
-      }
-
-      const payload = {
-        transcricao: combined,
-        estado: guidanceStage,
-        evento: evento || "stream",
-        pergunta_feita: guidanceAskedQuestion || "",
-        perguntas_pendentes: Array.isArray(guidancePending) ? guidancePending.slice(0, 3) : [],
-        confianca_atual: typeof guidanceConfidence === "number" ? guidanceConfidence : 0,
-        hipotese_atual: guidanceHypothesis || "",
-        ultima_fala: typeof ultima_fala === "string" ? ultima_fala.slice(0, 800) : ""
-      };
-
-      const h = hashForGuidancePayload(payload);
-      if (h === guidanceLastPayloadHash && evento !== "inicial" && evento !== "resposta") return;
-      guidanceLastPayloadHash = h;
-
-      guidanceInFlight = true;
-      renderLiveGuidance();
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/guia-tempo-real", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text();
-          console.error("Erro HTTP do backend (guia em tempo real):", resp.status, txt);
-          return;
-        }
-
-        const data = await resp.json();
-        guidanceContextLabel = data.contexto || guidanceContextLabel || "";
-        guidanceHypothesis = data.hipotese_principal || guidanceHypothesis || "";
-        if (typeof data.confianca === "number") guidanceConfidence = data.confianca;
-
-        const itens = Array.isArray(data.perguntas) ? data.perguntas : (Array.isArray(data.itens) ? data.itens : []);
-        const normalized = itens.map(x => String(x || "").trim()).filter(Boolean);
-
-        guidancePending = normalized.slice(0, 3);
-
-        // Após atualizar, volta a aguardar a próxima pergunta do enfermeiro
-        if (evento === "resposta") {
-          guidanceTurnState = "aguardando_pergunta";
-          guidanceAskedQuestion = "";
-          guidanceAskedAtLen = combined.length;
-          guidanceAskedAtTs = Date.now();
-          guidanceChunkStartLen = combined.length;
-        }
-
-        // Após gerar as perguntas iniciais, aguarda a primeira pergunta do enfermeiro
-        if (evento === "inicial") {
-          guidanceTurnState = "aguardando_pergunta";
-          guidanceAskedQuestion = "";
-          guidanceAskedAtLen = combined.length;
-          guidanceAskedAtTs = Date.now();
-          guidanceChunkStartLen = combined.length;
-        }
-      } catch (err) {
-        console.error("Falha ao buscar guia em tempo real:", err);
-      } finally {
-        guidanceInFlight = false;
-        renderLiveGuidance();
-      }
-    }
-function initSpeech() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) {
-        micStatus.innerText =
-          "Seu navegador não suporta reconhecimento de voz. Use Google Chrome em um computador.";
-        return;
-      }
-      recognition = new SR();
-      recognition.lang = "pt-BR";
-      recognition.continuous = true;
-      recognition.interimResults = true;
-
-      recognition.onresult = (event) => {
-        let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript + " ";
-          } else {
-            interim += transcript;
-          }
-        }
-
-        interimTranscript = interim.trim();
-        // Atualiza o fluxo de perguntas/procedimentos (somente quando necessário)
-        onTranscriptUpdateForGuidance();
-      };
-
-      recognition.onerror = (event) => {
-        console.error("Erro no reconhecimento de voz:", event.error);
-        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-          micStatus.innerText =
-            "Permita o acesso ao microfone nas configurações do navegador e tente novamente.";
-        } else {
-          micStatus.innerText =
-            "Ocorreu um erro no reconhecimento de voz. Tente novamente.";
-        }
-      };
-
-      recognition.onend = () => {
-        if (isRecording && !isPaused) {
-          try {
-            recognition.start();
-          } catch (err) {
-            console.warn("Não foi possível retomar reconhecimento:", err);
-          }
-        }
-      };
-    }
-
-    function updateTimer() {
-      const now = Date.now();
-      const seconds = accumulatedSeconds + Math.floor((now - startTime) / 1000);
-      const m = ("0" + Math.floor(seconds / 60)).slice(-2);
-      const s = ("0" + (seconds % 60)).slice(-2);
-      timerEl.innerText = `${m}:${s}`;
-    }
-
-    function startTimer() {
-      startTime = Date.now();
-      if (timerInterval) clearInterval(timerInterval);
-      timerInterval = setInterval(updateTimer, 500);
-    }
-
-    function pauseTimer() {
-      if (!startTime) return;
-      const now = Date.now();
-      accumulatedSeconds += Math.floor((now - startTime) / 1000);
-      if (timerInterval) clearInterval(timerInterval);
-      timerInterval = null;
-    }
-
-    function resetTimer() {
-      if (timerInterval) clearInterval(timerInterval);
-      timerInterval = null;
-      startTime = null;
-      accumulatedSeconds = 0;
-      timerEl.innerText = "00:00";
-    }
-
-    function resetNewModulesUI() {
-      sbarOutput.value = "";
-      sbarStatus.textContent = "";
-      classificationsStatus.textContent = "";
-      pregnancyBox.textContent = "Nenhum conteúdo disponível.";
-      lactationBox.textContent = "Nenhum conteúdo disponível.";
-      if (interactionsBox) interactionsBox.textContent = "Nenhum conteúdo disponível.";
-      if (interactionsStatus) interactionsStatus.textContent = "";
-      if (presentationsMaxDoseBox) presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
-      if (presentationsMaxDoseStatus) presentationsMaxDoseStatus.textContent = "";
-    }
-
-    async function finalizarConsulta() {
-      soapError.textContent = "";
-      micStatus.innerText = "Gerando SOAP e prescrição com base na gravação...";
-      micStatus.classList.add("loading-dot");
-
-      if (recognition) {
-        try {
-          recognition.stop();
-        } catch (e) {
-          console.warn("Erro ao parar reconhecimento:", e);
-        }
-      }
-
-      pauseTimer();
-
-      const transcricao = finalTranscript.trim();
-      if (!transcricao) {
-        micStatus.classList.remove("loading-dot");
-        micStatus.innerText =
-          "Nenhuma fala foi capturada. Verifique o microfone e tente novamente.";
-        return;
-      }
-
-      baseTranscriptRaw = transcricao;
-
-      const transcricaoParaGeracao = buildTranscriptWithPatientContext(transcricao);
-      baseTranscript = transcricaoParaGeracao;
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao: transcricaoParaGeracao })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend:", resp.status, txt);
-          soapError.textContent =
-            "Erro ao gerar evolução/plano de cuidados. Verifique o backend e tente novamente.";
-          micStatus.innerText = "Falha ao gerar o resumo.";
-          micStatus.classList.remove("loading-dot");
-          return;
-        }
-
-        const data = await resp.json();
-        const soap = data.soap || "";
-        const prescricao = data.prescricao || "";
-
-        updateSoapFromString(soap);
-
-        prescriptionOutput.value = prescricao;
-        printBtn.style.display = prescricao ? "inline-block" : "none";
-
-        micStatus.innerText = "Consulta encerrada. SOAP e prescrição gerados.";
-        micStatus.classList.remove("loading-dot");
-
-        await updateClassifications();
-        await updateRiskTriage();
-        } catch (e) {
-        console.error(e);
-        soapError.textContent =
-          "Erro ao gerar evolução e plano de cuidados (falha de rede ou backend).";
-        micStatus.innerText = "Falha ao gerar o resumo.";
-        micStatus.classList.remove("loading-dot");
-      }
-    }
-
-    function splitSoap(soapText) {
-      const sections = { S: "", O: "", A: "", P: "" };
-      if (!soapText) return sections;
-
-      const regex = /\b([SOAP])\s*:\s*([\s\S]*?)(?=\b[SOAP]\s*:|$)/g;
-      let match;
-      while ((match = regex.exec(soapText)) !== null) {
-        const key = match[1].toUpperCase();
-        sections[key] = match[2].trim();
-      }
-      return sections;
-    }
-
-    function updateSoapFromString(soapText) {
-      currentSoapRaw = soapText || "";
-      const parts = splitSoap(currentSoapRaw);
-
-      soapS.value = parts.S || "";
-      soapO.value = parts.O || "";
-      soapA.value = parts.A || "";
-      soapP.value = parts.P || "";
-
-      resultsCard.classList.remove("hidden");
-    }
-
-    function getCombinedSoapFromFields() {
-      const s = soapS.value.trim();
-      const o = soapO.value.trim();
-      const a = soapA.value.trim();
-      const p = soapP.value.trim();
-
-      let combined = "";
-      if (s) combined += "S: " + s + "\n";
-      if (o) combined += "O: " + o + "\n";
-      if (a) combined += "A: " + a + "\n";
-      if (p) combined += "P: " + p;
-      currentSoapRaw = combined;
-      return combined;
-    }
-
-
-    function formatInteractionsList(interacoes, observacoes) {
-      const items = Array.isArray(interacoes) ? interacoes : [];
-      if (!items.length) {
-        const obs = (observacoes || "").trim();
-        return obs
-          ? ("Nenhuma interação clinicamente relevante identificada com segurança para os medicamentos prescritos.\n\nObservações:\n" + obs)
-          : "Nenhuma interação clinicamente relevante identificada com segurança para os medicamentos prescritos.";
-      }
-
-      const parts = [];
-      for (const it of items) {
-        const meds = Array.isArray(it?.medicamentos) ? it.medicamentos : [];
-        const a = meds[0] ? String(meds[0]) : "não informado";
-        const b = meds[1] ? String(meds[1]) : "não informado";
-        const grav = it?.gravidade ? String(it.gravidade) : "indeterminada";
-        const desc = it?.descricao ? String(it.descricao) : "";
-        const riscos = it?.riscos ? String(it.riscos) : "";
-        const conduta = it?.conduta ? String(it.conduta) : "";
-
-        let block = a + " + " + b + " (gravidade: " + grav + ")";
-        if (desc.trim()) block += "\nInteração: " + desc.trim();
-        if (riscos.trim()) block += "\nRiscos: " + riscos.trim();
-        if (conduta.trim()) block += "\nConduta: " + conduta.trim();
-        parts.push(block);
-      }
-
-      const obs = (observacoes || "").trim();
-      if (obs) {
-        parts.push("Observações:\n" + obs);
-      }
-      return parts.join("\n\n");
-    }
-
-
-    async function updateMedicationSafetyFromContext(contexto) {
-      if (!interactionsBox || !interactionsStatus) return;
-
-      interactionsStatus.textContent = "Gerando registro de administração segura...";
-      interactionsStatus.classList.add("loading-dot");
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/interacoes-medicamentosas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contexto })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP:", resp.status, txt);
-          interactionsBox.textContent = "Falha ao gerar registro.";
-          return;
-        }
-
-        const data = await resp.json().catch(() => ({}));
-        interactionsBox.textContent = (data.registro || "").trim() || "Nenhum conteúdo disponível.";
-      } catch (e) {
-        console.error(e);
-        interactionsBox.textContent = "Falha ao gerar registro (rede/backend).";
-      } finally {
-        interactionsStatus.classList.remove("loading-dot");
-        interactionsStatus.textContent = "";
-      }
-    }
-
-    function formatPresentationsMaxDoseList(itens) {
-      const items = Array.isArray(itens) ? itens : [];
-      if (!items.length) {
-        return "Nenhuma informação disponível para os medicamentos prescritos.";
-      }
-
-      const lines = [];
-      for (const it of items) {
-        const med = it?.medicamento ? String(it.medicamento).trim() : "não informado";
-        const a = it?.apresentacoes || {};
-        const doseMax = it?.dosagem_maxima_diaria ? String(it.dosagem_maxima_diaria).trim() : "";
-
-        lines.push("Medicamento: " + med);
-        lines.push("Apresentações disponíveis:");
-
-        const map = [
-          ["Comprimido simples", a.comprimido_simples],
-          ["Comprimido revestido", a.comprimido_revestido],
-          ["Cápsula", a.capsula],
-          ["Suspensão oral", a.suspensao_oral],
-          ["Gotas", a.gotas],
-          ["Solução oral", a.solucao_oral],
-          ["Solução injetável", a.solucao_injetavel],
-          ["Endovenosa", a.endovenosa],
-          ["Intramuscular", a.intramuscular]
-        ];
-
-        for (const [label, val] of map) {
-          const v = String(val || "").trim() || "não informado";
-          lines.push("- " + label + ": " + v);
-        }
-
-        lines.push("Dosagem máxima diária: " + (doseMax || "não informado"));
-        lines.push("");
-      }
-
-      return lines.join("\n").trim();
-    }
-
-
-    async function updateWoundCareFromContext(contexto) {
-      if (!presentationsMaxDoseBox || !presentationsMaxDoseStatus) return;
-
-      presentationsMaxDoseStatus.textContent = "Gerando registro de curativos e feridas...";
-      presentationsMaxDoseStatus.classList.add("loading-dot");
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/apresentacoes-dosagem-maxima", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contexto })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP:", resp.status, txt);
-          presentationsMaxDoseBox.textContent = "Falha ao gerar curativos.";
-          return;
-        }
-
-        const data = await resp.json().catch(() => ({}));
-        presentationsMaxDoseBox.textContent = (data.curativos || "").trim() || "Nenhum conteúdo disponível.";
-      } catch (e) {
-        console.error(e);
-        presentationsMaxDoseBox.textContent = "Falha ao gerar curativos (rede/backend).";
-      } finally {
-        presentationsMaxDoseStatus.classList.remove("loading-dot");
-        presentationsMaxDoseStatus.textContent = "";
-      }
-    }
-
-    function updateQuestionsTimer() {
-      const now = Date.now();
-      const seconds = questionsAccumulatedSeconds + Math.floor((now - questionsStartTime) / 1000);
-      const m = ("0" + Math.floor(seconds / 60)).slice(-2);
-      const s = ("0" + (seconds % 60)).slice(-2);
-      questionsTimerEl.innerText = `${m}:${s}`;
-    }
-
-    function startQuestionsTimer() {
-      questionsStartTime = Date.now();
-      if (questionsTimerInterval) clearInterval(questionsTimerInterval);
-      questionsTimerInterval = setInterval(updateQuestionsTimer, 500);
-    }
-
-    function pauseQuestionsTimer() {
-      if (!questionsStartTime) return;
-      const now = Date.now();
-      questionsAccumulatedSeconds += Math.floor((now - questionsStartTime) / 1000);
-      if (questionsTimerInterval) clearInterval(questionsTimerInterval);
-      questionsTimerInterval = null;
-    }
-
-    function resetQuestionsTimer() {
-      if (questionsTimerInterval) clearInterval(questionsTimerInterval);
-      questionsTimerInterval = null;
-      questionsStartTime = null;
-      questionsAccumulatedSeconds = 0;
-      questionsTimerEl.innerText = "00:00";
-    }
-
-    function initQuestionsSpeech() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) {
-        return null;
-      }
-
-      const rec = new SR();
-      rec.lang = "pt-BR";
-      rec.continuous = true;
-      rec.interimResults = true;
-
-      rec.onresult = (event) => {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            questionsFinalTranscript += transcript + " ";
-          }
-        }
-      };
-
-      rec.onerror = (event) => {
-        console.error("Erro no reconhecimento das perguntas:", event.error);
-        recommendationsStatus.textContent =
-          "Ocorreu um erro no reconhecimento de voz das perguntas. Tente novamente.";
-        recommendationsStatus.classList.remove("loading-dot");
-      };
-
-      rec.onend = () => {
-        if (questionsIsRecording) {
-          try {
-            rec.start();
-          } catch (err) {
-            console.warn("Não foi possível retomar reconhecimento das perguntas:", err);
-          }
-        }
-      };
-
-      return rec;
-    }
-
-    function startQuestionsRecording() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) {
-        recommendationsStatus.textContent =
-          "Seu navegador não suporta reconhecimento de voz. Use Google Chrome em um computador.";
-        return;
-      }
-
-      if (!questionsRecognition) {
-        questionsRecognition = initQuestionsSpeech();
-        if (!questionsRecognition) return;
-      }
-
-      questionsIsRecording = true;
-      questionsFinalTranscript = "";
-
-      questionsTimerEl.classList.remove("hidden");
-      resetQuestionsTimer();
-      startQuestionsTimer();
-
-      askQuestionsBtn.textContent = "Encerrar perguntas";
-      closeRecommendationsBtn.disabled = true;
-      closeRecommendationsBtn.style.opacity = "0.5";
-
-      recommendationsStatus.textContent =
-        "Gravando perguntas e respostas. Quando terminar, clique em \"Encerrar perguntas\".";
-      recommendationsStatus.classList.remove("loading-dot");
-
-      try {
-        questionsRecognition.start();
-      } catch (e) {
-        console.warn("Erro ao iniciar reconhecimento das perguntas:", e);
-      }
-    }
-
-    async function stopQuestionsRecordingAndUpdateSoap() {
-      questionsIsRecording = false;
-
-      if (questionsRecognition) {
-        try {
-          questionsRecognition.stop();
-        } catch (e) {
-          console.warn("Erro ao parar reconhecimento das perguntas:", e);
-        }
-      }
-
-      pauseQuestionsTimer();
-
-      const qa = (questionsFinalTranscript || "").trim();
-      if (!qa) {
-        recommendationsStatus.textContent = "Nenhuma fala foi capturada nesta rodada de perguntas.";
-        askQuestionsBtn.textContent = "Complementar avaliação";
-        closeRecommendationsBtn.disabled = false;
-        closeRecommendationsBtn.style.opacity = "1";
-        askQuestionsBtn.disabled = false;
-        resetQuestionsTimer();
-        questionsTimerEl.classList.add("hidden");
-        return;
-      }
-
-      const soapAtual = getCombinedSoapFromFields();
-      if (!soapAtual) {
-        recommendationsStatus.textContent = "Não há SOAP disponível para atualizar.";
-        askQuestionsBtn.textContent = "Complementar avaliação";
-        closeRecommendationsBtn.disabled = false;
-        closeRecommendationsBtn.style.opacity = "1";
-        askQuestionsBtn.disabled = false;
-        return;
-      }
-
-      askQuestionsBtn.disabled = true;
-      recommendationsStatus.textContent = "Atualizando SOAP e módulos com as novas respostas...";
-      recommendationsStatus.classList.add("loading-dot");
-
-      const transcricaoBase = (baseTranscript || finalTranscript || "").trim();
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/atualizar-soap-perguntas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            soap_atual: soapAtual,
-            perguntas_e_respostas: qa,
-            transcricao_base: transcricaoBase
-          })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (atualizar perguntas):", resp.status, txt);
-          recommendationsStatus.textContent = "Não foi possível atualizar o SOAP com as novas respostas.";
-          recommendationsStatus.classList.remove("loading-dot");
-          askQuestionsBtn.disabled = false;
-          return;
-        }
-
-        const data = await resp.json();
-        const soap = data.soap || "";
-        const prescricao = data.prescricao || "";
-
-        if (soap) {
-          updateSoapFromString(soap);
-        }
-        if (prescricao) {
-          prescriptionOutput.value = prescricao;
-          printBtn.style.display = "inline-block";
-        }
-
-        const appended =
-          (transcricaoBase ? transcricaoBase + "\n\n" : "") +
-          "RODADA ADICIONAL DE PERGUNTAS E RESPOSTAS:\n" +
-          qa +
-          "\n";
-        baseTranscript = appended;
-        finalTranscript = appended;
-
-        recommendationsStatus.textContent = "SOAP atualizado com as novas respostas.";
-        recommendationsStatus.classList.remove("loading-dot");
-
-        await updateClassifications();
-        await updateRiskTriage();
-      } catch (err) {
-        console.error("Erro geral ao atualizar SOAP com perguntas:", err);
-        recommendationsStatus.textContent = "Erro ao atualizar o SOAP com as novas respostas.";
-        recommendationsStatus.classList.remove("loading-dot");
-      } finally {
-        askQuestionsBtn.textContent = "Complementar avaliação";
-        askQuestionsBtn.disabled = false;
-        closeRecommendationsBtn.disabled = false;
-        closeRecommendationsBtn.style.opacity = "1";
-        resetQuestionsTimer();
-        questionsTimerEl.classList.add("hidden");
-        recommendationsPanel.classList.remove("visible");
-      }
-    }
-
-    async function fetchRecommendations() {
-      const combinedSoap = getCombinedSoapFromFields();
-      if (!combinedSoap) {
-        soapError.textContent =
-          "Não há SOAP gerado ainda para sugerir perguntas complementares.";
-        return;
-      }
-
-      // Reseta qualquer rodada anterior de perguntas
-      if (questionsIsRecording && questionsRecognition) {
-        try {
-          questionsIsRecording = false;
-          questionsRecognition.stop();
-        } catch (e) {}
-      }
-      askQuestionsBtn.textContent = "Complementar avaliação";
-      askQuestionsBtn.disabled = true;
-      closeRecommendationsBtn.disabled = false;
-      closeRecommendationsBtn.style.opacity = "1";
-      resetQuestionsTimer();
-      questionsTimerEl.classList.add("hidden");
-
-      recommendationsPanel.classList.add("visible");
-      recommendationsStatus.textContent =
-        "Gerando perguntas complementares essenciais com base na queixa e no SOAP...";
-      recommendationsStatus.classList.add("loading-dot");
-      recommendationsList.innerHTML = "";
-
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/recomendacoes-anamnese", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            soap: combinedSoap
-          })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error(
-            "Erro HTTP do backend (recomendações):",
-            resp.status,
-            txt
-          );
-          recommendationsStatus.textContent =
-            "Não foi possível gerar as recomendações de perguntas.";
-          recommendationsStatus.classList.remove("loading-dot");
-          return;
-        }
-
-        const data = await resp.json();
-        const perguntas = Array.isArray(data.perguntas) ? data.perguntas : [];
-
-        if (!perguntas.length) {
-          recommendationsStatus.textContent =
-            "Nenhuma pergunta complementar foi sugerida para este caso.";
-          recommendationsStatus.classList.remove("loading-dot");
-          return;
-        }
-
-        recommendationsList.innerHTML = "";
-        perguntas.forEach((q, index) => {
-          const item = document.createElement("div");
-          item.className = "recommendation-item";
-          item.textContent = (index + 1) + ". " + q;
-          recommendationsList.appendChild(item);
-        });
-
-        recommendationsStatus.textContent =
-          "Use estas perguntas para aprofundar a anamnese com o paciente.";
-        recommendationsStatus.classList.remove("loading-dot");
-        askQuestionsBtn.disabled = false;
-      } catch (err) {
-        console.error("Erro geral ao buscar recomendações:", err);
-        recommendationsStatus.textContent =
-          "Erro ao gerar recomendações de perguntas.";
-        recommendationsStatus.classList.remove("loading-dot");
-      }
-    }
-
-    async function handleAskQuestionsFromPanel() {
-      if (!questionsIsRecording) {
-        startQuestionsRecording();
-      } else {
-        await stopQuestionsRecordingAndUpdateSoap();
-      }
-    }
-
-    function startRecording() {
-      if (triageIsRecording) {
-        alert("Finalize a triagem hospitalar antes de iniciar a consulta.");
-        return;
-      }
-      if (!recognition) {
-        initSpeech();
-        if (!recognition) {
-          return;
-        }
-      }
-
-      isRecording = true;
-      isPaused = false;
-      if (triageRecordBtn) triageRecordBtn.disabled = true;
-      finalTranscript = "";
-      baseTranscript = "";
-      resultsCard.classList.add("hidden");
-      printBtn.style.display = "none";
-      prescriptionOutput.value = "";
-      soapS.value = "";
-      soapO.value = "";
-      soapA.value = "";
-      soapP.value = "";
-      resetNewModulesUI();
-
-      pauseBtn.style.display = "inline-block";
-      pauseBtn.innerText = "Pausar";
-      recordBtn.className = "recording";
-      recordBtn.innerText = "Encerrar consulta";
-      micStatus.innerText = "Gravando consulta...";
-      soapError.textContent = "";
-      resultsCard.classList.add("hidden");
-
-      resetLiveGuidanceState();
-      renderLiveGuidance();
-      startGuidanceLoop();
-
-      resetTimer();
-      startTimer();
-
-      try {
-        recognition.start();
-      } catch (e) {
-        console.warn("Erro ao iniciar reconhecimento:", e);
-      }
-    }
-
-    function stopRecording() {
-      isRecording = false;
-      isPaused = false;
-
-      stopGuidanceLoop();
-      interimTranscript = "";
-      renderLiveGuidance();
-
-      if (recognition) {
-        try {
-          recognition.stop();
-        } catch (e) {
-          console.warn("Erro ao parar reconhecimento:", e);
-        }
-      }
-      pauseTimer();
-      recordBtn.className = "start";
-      recordBtn.innerText = "Iniciar atendimento";
-      pauseBtn.style.display = "none";
-      if (triageRecordBtn) triageRecordBtn.disabled = false;
-    }
-
-    function pauseRecording() {
-      if (!isRecording || isPaused) return;
-      isPaused = true;
-
-      stopGuidanceLoop();
-      if (liveGuidanceStatus) liveGuidanceStatus.textContent = "Consulta pausada. As sugestões em tempo real serão retomadas ao retomar a gravação.";
-
-      if (recognition) {
-        try {
-          recognition.stop();
-        } catch (e) {
-          console.warn("Erro ao pausar reconhecimento:", e);
-        }
-      }
-      pauseTimer();
-      pauseBtn.innerText = "Retomar";
-      micStatus.innerText = "Consulta pausada.";
-    }
-
-    function resumeRecording() {
-      if (!isRecording || !isPaused) return;
-      isPaused = false;
-
-      startGuidanceLoop();
-
-      if (recognition) {
-        try {
-          recognition.start();
-        } catch (e) {
-          console.warn("Erro ao retomar reconhecimento:", e);
-        }
-      }
-      startTimer();
-      pauseBtn.innerText = "Pausar";
-      micStatus.innerText = "Gravando consulta...";
-    }
-
-    
-    function copyToClipboard(text) {
-      if (!text) return;
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).catch(() => {
-          alert("Não foi possível copiar o texto.");
-        });
-      } else {
-        const temp = document.createElement("textarea");
-        temp.value = text;
-        document.body.appendChild(temp);
-        temp.select();
-        try {
-          document.execCommand("copy");
-        } catch (e) {
-          alert("Não foi possível copiar o texto.");
-        }
-        document.body.removeChild(temp);
-      }
-    }
-
-        // =========================
-    // IMAGENS - compressão + análise automática (até 4 fotos por módulo)
-    // =========================
-    async function fileToCompressedDataUrl(file, maxDim = 1280, quality = 0.82) {
-  // Tenta converter para JPEG via canvas (reduz tamanho e evita estouro de limite).
-  // Se falhar (ex.: formatos não suportados), retorna string vazia para permitir fallback.
-  const f = file;
-  if (!f) return "";
-
-  const objectUrl = URL.createObjectURL(f);
-  try {
-    const img = await new Promise((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = () => reject(new Error("Falha ao carregar a imagem."));
-      i.src = objectUrl;
-    });
-
-    const w = img.naturalWidth || img.width || 0;
-    const h = img.naturalHeight || img.height || 0;
-    if (!w || !h) throw new Error("Dimensões inválidas.");
-
-    const scale = Math.min(1, maxDim / Math.max(w, h));
-    const outW = Math.max(1, Math.round(w * scale));
-    const outH = Math.max(1, Math.round(h * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = outW;
-    canvas.height = outH;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Falha ao preparar canvas.");
-    ctx.drawImage(img, 0, 0, outW, outH);
-
-    return canvas.toDataURL("image/jpeg", quality);
-  } catch (e) {
-    return "";
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
-
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    try {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(new Error("Falha ao ler arquivo."));
-      reader.readAsDataURL(file);
-    } catch (e) {
-      reject(e);
-    }
-  });
-}
-
-async function addFilesToTarget(files, targetKey, mode) {
-  const list = Array.from(files || []);
-  if (!list.length) return;
-
-  const key = (targetKey === "wound" || targetKey === "med" || targetKey === "exam") ? targetKey : "med";
-
-  const cfg = key === "wound"
-    ? { arr: woundImages, statusEl: presentationsMaxDoseStatus, boxEl: presentationsMaxDoseBox, update: updateWoundActions, schedule: scheduleWoundAnalysis }
-    : key === "exam"
-      ? { arr: examImages, statusEl: examInterpretationStatus, boxEl: examInterpretationBox, update: updateExamActions, schedule: scheduleExamAnalysis }
-      : { arr: medImages, statusEl: interactionsStatus, boxEl: interactionsBox, update: updateMedSafetyActions, schedule: scheduleMedAnalysis };
-
-  const arr = cfg.arr;
-  const statusEl = cfg.statusEl;
-  const boxEl = cfg.boxEl;
-
-  if (mode === "replace") {
-    arr.length = 0;
-  }
-
-  // Feedback imediato (para não parecer que "não aconteceu nada")
-  if (statusEl) statusEl.textContent = "Carregando imagem(ns).";
-  if (boxEl) boxEl.textContent = "Processando.";
-  if (cfg && cfg.update) cfg.update();
-
-  const remaining = Math.max(0, 4 - arr.length);
-  const slice = list.slice(0, remaining);
-
-  let added = 0;
-  let failed = 0;
-
-  for (const file of slice) {
-    try {
-      // 1) tenta canvas->JPEG (melhor para upload)
-      let dataUrl = await fileToCompressedDataUrl(file);
-      // 2) fallback: dataURL direto (quando canvas falha)
-      if (!dataUrl) dataUrl = await fileToDataUrl(file);
-
-      if (dataUrl && dataUrl.startsWith("data:image/")) {
-        arr.push(dataUrl);
-        added += 1;
-      } else {
-        failed += 1;
-      }
-    } catch (e) {
-      failed += 1;
-    }
-  }
-
-  if (!arr.length) {
-    const msg = "Não foi possível ler a imagem selecionada neste aparelho. Tente usar JPG/PNG (ou ajuste a câmera para modo mais compatível).";
-    if (statusEl) statusEl.textContent = msg;
-    if (boxEl) boxEl.textContent = "Nenhum conteúdo disponível.";
-    if (cfg && cfg.update) cfg.update();
-    return;
-  }
-
-  // Dispara análise automática
-  const countMsg = arr.length + " imagem(ns) selecionada(s). Enviando para análise.";
-  if (statusEl) statusEl.textContent = countMsg;
-
-  if (cfg && cfg.schedule) cfg.schedule();
-}
-    async function analyzeWoundWithImages(dataUrls) {
-  if (!presentationsMaxDoseStatus || !presentationsMaxDoseBox) return;
-
-  const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
-  if (!images.length) {
-    presentationsMaxDoseStatus.textContent = "Nenhuma imagem selecionada.";
-    presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
-    updateWoundActions();
-    return;
-  }
-
-  presentationsMaxDoseStatus.textContent = "Analisando imagem(ns) da lesão.";
-  presentationsMaxDoseBox.textContent = "Processando.";
-  updateWoundActions();
-
-  try {
-    const payload = {
-      images_data_url: images,
-      image_data_url: images[0] // compatibilidade
-    };
-
-    const resp = await fetch(BACKEND_URL + "/api/analisar-lesao-imagem", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) throw new Error(data?.error || "Falha ao analisar imagem.");
-
-    const texto = (data?.texto || "").trim();
-    presentationsMaxDoseBox.textContent = texto || "Nenhum conteúdo disponível.";
-    presentationsMaxDoseStatus.textContent = "Análise concluída.";
-    updateWoundActions();
-  } catch (e) {
-    presentationsMaxDoseStatus.textContent = "Falha ao analisar imagem. " + (e && e.message ? e.message : "");
-    presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
-    updateWoundActions();
-  }
-}
-
-
-    async function analyzePrescriptionWithImages(dataUrls) {
-  if (!interactionsStatus || !interactionsBox) return;
-
-  const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
-  if (!images.length) {
-    interactionsStatus.textContent = "Nenhuma imagem selecionada.";
-    interactionsBox.textContent = "Nenhum conteúdo disponível.";
-    updateMedSafetyActions();
-    return;
-  }
-
-  interactionsStatus.textContent = "Analisando prescrição (imagem(ns)).";
-  interactionsBox.textContent = "Processando.";
-  updateMedSafetyActions();
-
-  try {
-    const payload = {
-      images_data_url: images,
-      image_data_url: images[0] // compatibilidade
-    };
-
-    const resp = await fetch(BACKEND_URL + "/api/analisar-prescricao-imagem", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) throw new Error(data?.error || "Falha ao analisar prescrição.");
-
-    const texto = (data?.texto || "").trim();
-    interactionsBox.textContent = texto || "Nenhum conteúdo disponível.";
-    interactionsStatus.textContent = "Análise concluída.";
-    updateMedSafetyActions();
-  } catch (e) {
-    interactionsStatus.textContent = "Falha ao analisar prescrição. " + (e && e.message ? e.message : "");
-    interactionsBox.textContent = "Nenhum conteúdo disponível.";
-    updateMedSafetyActions();
-  }
-}
-
-
-
-    async function analyzeExamWithImages(dataUrls) {
-  if (!examInterpretationStatus || !examInterpretationBox) return;
-
-  const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
-  if (!images.length) {
-    examInterpretationStatus.textContent = "Nenhuma imagem selecionada.";
-    examInterpretationBox.textContent = "Nenhum conteúdo disponível.";
-    updateExamActions();
-    return;
-  }
-
-  examInterpretationStatus.textContent = "Analisando exame (imagem(ns)).";
-  examInterpretationBox.textContent = "Processando.";
-  updateExamActions();
-
-  try {
-    const payload = {
-      images_data_url: images,
-      image_data_url: images[0] // compatibilidade
-    };
-
-    const resp = await fetch(BACKEND_URL + "/api/interpretar-exame-imagem", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) throw new Error(data?.error || "Falha ao interpretar o exame.");
-
-    const texto = (data?.texto || "").trim();
-    examInterpretationBox.textContent = texto || "Nenhum conteúdo disponível.";
-    examInterpretationStatus.textContent = "Análise concluída.";
-    updateExamActions();
-  } catch (e) {
-    examInterpretationStatus.textContent = "Falha ao interpretar o exame. " + (e && e.message ? e.message : "");
-    examInterpretationBox.textContent = "Nenhum conteúdo disponível.";
-    updateExamActions();
-  }
-}
-
-    function getSoapSectionText(letter) {
-      switch (letter) {
-        case "S":
-          return soapS.value.trim();
-        case "O":
-          return soapO.value.trim();
-        case "A":
-          return soapA.value.trim();
-        case "P":
-          return soapP.value.trim();
-        default:
-          return "";
-      }
-    }
-
-    function openPrintWindow(title, text) {
-      const content = (text || "").trim();
-      if (!content) {
-        alert("Não há conteúdo para imprimir.");
-        return;
-      }
-
-      const w = window.open("", "_blank", "width=800,height=600");
-      if (!w) {
-        alert("Não foi possível abrir a janela de impressão.");
-        return;
-      }
-
-      w.document.write("<html><head><title>" + escapeHtml(title) + "</title></head><body>");
-      w.document.write("<pre style='font-family: Arial, sans-serif; white-space: pre-wrap;'>" +
-        escapeHtml(content) +
-        "</pre>");
-      w.document.write("</body></html>");
-      w.document.close();
-      w.focus();
-      w.print();
-    }
-
-    
-    function extractMedicationsFromPrescriptionText(text) {
-      const raw = String(text || "").replace(/\r/g, "").trim();
-      if (!raw) return [];
-
-      const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
-
-      const meds = [];
-
-      // Heurística principal:
-      // - Prescrição ambulatorial: medicamentos aparecem em lista numerada e a seção "Orientações:" deve ser ignorada.
-      // - Prescrição hospitalar: medicamentos aparecem em bullets dentro das seções
-      //   "Medicamentos contínuos:" e/ou "Medicamentos se necessário:".
-
-      const isHospital =
-        lines.some(l => /^medicamentos\s+cont[ií]nuos\s*:/i.test(l)) ||
-        lines.some(l => /^medicamentos\s+se\s+necess[aá]rio\s*:/i.test(l)) ||
-        lines.some(l => /^medicamentos\s+se\s+necessario\s*:/i.test(l));
-
-      if (!isHospital) {
-        for (const line of lines) {
-          const low = line.toLowerCase();
-
-          // Para de coletar ao entrar em orientações/assinatura
-          if (low.startsWith("orientações:") || low.startsWith("orientacoes:")) break;
-          if (low.startsWith("assinatura:")) break;
-          if (low.startsWith("médico") || low.startsWith("medico")) break;
-
-          const m = line.match(/^\s*\d+\s*[\.\)]\s*([^—–-]+?)\s*(?:[—–-].*)?$/);
-          if (m && m[1]) {
-            const name = m[1].trim();
-            if (name && name.length >= 2) meds.push(name);
-          }
-        }
-      } else {
-        let section = null; // "cont", "prn", "other"
-
-        for (const line of lines) {
-          const low = line.toLowerCase();
-
-          if (/^medicamentos\s+cont[ií]nuos\s*:/i.test(line) || /^medicamentos\s+continuos\s*:/i.test(line)) {
-            section = "cont";
-            continue;
-          }
-          if (/^medicamentos\s+se\s+necess[aá]rio\s*:/i.test(line) || /^medicamentos\s+se\s+necessario\s*:/i.test(line)) {
-            section = "prn";
-            continue;
-          }
-
-          // Qualquer outro cabeçalho em formato "X:" encerra a seção de medicamentos
-          if (/^[a-zA-ZÀ-ÿ].*:\s*$/.test(line) && !/^medicamentos\s+/i.test(line)) {
-            section = "other";
-            continue;
-          }
-
-          // Captura bullets apenas nas seções corretas
-          const isBullet = /^\s*[-•]\s+/.test(line);
-          if (!isBullet) continue;
-          if (section !== "cont" && section !== "prn") continue;
-
-          const m = line.match(/^\s*[-•]\s*([^—–-]+?)\s*(?:[—–-].*)?$/);
-          if (!m || !m[1]) continue;
-
-          const name = m[1].trim();
-          if (!name || name.length < 2) continue;
-          if (/^(n[aã]o informado)$/i.test(name)) continue;
-
-          meds.push(name);
-        }
-      }
-
-      // Deduplicação preservando ordem
-      const seen = new Set();
-      const unique = [];
-      for (const x of meds) {
-        const key = x.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        unique.push(x);
-      }
-
-      return unique.slice(0, 60);
-    }
-
-    function getAllPrescribedMedications() {
-      const amb = prescriptionOutput.value || "";
-      const hosp = sbarOutput.value || "";
-      const meds = [
-        ...extractMedicationsFromPrescriptionText(amb),
-        ...extractMedicationsFromPrescriptionText(hosp)
-      ];
-
-      const seen = new Set();
-      const unique = [];
-      for (const x of meds) {
-        const key = x.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        unique.push(x);
-      }
-      return unique.slice(0, 60);
-    }
-
-                let sbarTimerInterval = null;
-        let sbarStartTs = 0;
-
-        let sbarRecognition = null;
-        let sbarIsRecording = false;
-        
-
-          stopSbarTimer();
-let sbarFinalTranscript = "";
-        let sbarInterimTranscript = "";
-        let sbarHasStarted = false;
-        let sbarHasAnyResult = false;
-        let sbarStartAttemptId = 0;
-
-
-        function startSbarTimer() {
-          if (!sbarTimer) return;
-          sbarStartTs = Date.now();
-          sbarTimer.textContent = "00:00";
-          sbarTimer.classList.remove("hidden");
-          if (sbarTimerInterval) clearInterval(sbarTimerInterval);
-          sbarTimerInterval = setInterval(() => {
-            const elapsed = Math.max(0, Date.now() - sbarStartTs);
-            const totalSec = Math.floor(elapsed / 1000);
-            const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
-            const ss = String(totalSec % 60).padStart(2, "0");
-            sbarTimer.textContent = `${mm}:${ss}`;
-            if (sbarIsRecording && sbarStatus) {
-              sbarStatus.textContent = `Gravando passagem de plantão (SBAR)... ${mm}:${ss} (clique novamente em "Encerrar e gerar SBAR" quando terminar)`;
-            }
-          }, 500);
-        }
-
-        function stopSbarTimer() {
-          if (sbarTimerInterval) clearInterval(sbarTimerInterval);
-          sbarTimerInterval = null;
-          if (!sbarTimer) return;
-          sbarTimer.classList.add("hidden");
-        }
-
-        function initSbarSpeech() {
-          const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-          if (!SR) {
-            if (sbarStatus) {
-              sbarStatus.textContent = "Seu navegador não suporta reconhecimento de voz. Use Google Chrome.";
-            }
-            return;
-          }
-
-          sbarRecognition = new SR();
-          sbarRecognition.lang = "pt-BR";
-          sbarRecognition.continuous = true;
-          sbarRecognition.interimResults = true;
-
-          
-          sbarRecognition.onstart = () => {
-            sbarHasStarted = true;
-            if (sbarStatus) {
-              sbarStatus.textContent = "Gravando passagem de plantão (SBAR)... Quando terminar, clique em \"Encerrar e gerar SBAR\".";
-              sbarStatus.classList.remove("loading-dot");
-            }
-          };
-sbarRecognition.onresult = (event) => {
-            
-            sbarHasAnyResult = true;
-let interim = "";
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-              const transcript = event.results[i][0].transcript;
-              if (event.results[i].isFinal) {
-                sbarFinalTranscript += transcript + " ";
-              } else {
-                interim += transcript;
-              }
-            }
-            sbarInterimTranscript = interim.trim();
-          };
-
-          sbarRecognition.onerror = (event) => {
-            console.error("Erro no reconhecimento de voz (SBAR):", event.error);
-            if (sbarStatus) {
-              if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-                sbarStatus.textContent = "Permita o acesso ao microfone nas configurações do navegador e tente novamente.";
-              } else {
-                sbarStatus.textContent = "Ocorreu um erro no reconhecimento de voz. Tente novamente.";
-              }
-            }
-          };
-
-          sbarRecognition.onend = () => {
-            if (sbarIsRecording) {
-              try {
-                sbarRecognition.start();
-              } catch (err) {
-                console.warn("Não foi possível retomar reconhecimento (SBAR):", err);
-              }
-            }
-          };
-        }
-
-        function hasAnyOtherRecordingActive() {
-          // isRecording: consulta SOAP
-          // triageIsRecording: triagem
-          // reportIsRecording: relatórios
-          // questionsIsRecording: perguntas adicionais
-          return !!(isRecording || triageIsRecording || reportIsRecording || questionsIsRecording);
-        }
-
-        // Guia do SBAR (inline, dentro do próprio módulo)
-        if (openSbarGuideBtn && sbarGuidePanel) {
-          openSbarGuideBtn.addEventListener("click", () => {
-            const willOpen = sbarGuidePanel.classList.contains("hidden");
-            sbarGuidePanel.classList.toggle("hidden");
-            if (willOpen) {
-              // Mantém o usuário no módulo SBAR (sem rolar para o topo)
-              sbarGuidePanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
-            }
-          });
-        }
-
-
-        async function startSbarRecording() {
-          if (hasAnyOtherRecordingActive()) {
-            alert("Finalize a gravação atual (consulta/triagem/relatórios) antes de iniciar o SBAR.");
-            return;
-          }
-
-          if (!sbarRecognition) {
-            initSbarSpeech();
-            if (!sbarRecognition) return;
-          }
-
-          // Reset de estado
-          sbarIsRecording = true;
-          sbarFinalTranscript = "";
-          sbarInterimTranscript = "";
-          
-          sbarHasStarted = false;
-          sbarHasAnyResult = false;
-          const myAttempt = ++sbarStartAttemptId;
-          // Se o reconhecimento não iniciar em ~2.5s, aborta e orienta o usuário.
-          setTimeout(() => {
-            if (sbarIsRecording && !sbarHasStarted && myAttempt === sbarStartAttemptId) {
-              try { if (sbarRecognition) sbarRecognition.stop(); } catch (e) {}
-              sbarIsRecording = false;
-              stopSbarTimer();
-              if (sbarStatus) {
-                sbarStatus.textContent = "Não foi possível iniciar o microfone. Verifique permissão, selecione o microfone correto e tente novamente."; 
-                sbarStatus.classList.remove("loading-dot");
-              }
-              if (sbarRecordBtn) {
-                sbarRecordBtn.classList.remove("recording");
-                sbarRecordBtn.classList.add("start");
-                sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
-                sbarRecordBtn.disabled = false;
-              }
-            }
-          }, 2500);
-if (sbarOutput) sbarOutput.value = "";
-          if (sbarStatus) {
-            sbarStatus.textContent = "Gravando SBAR. Fale em voz alta, de preferência próximo ao microfone. Clique novamente em \"Encerrar e gerar SBAR\" quando terminar.";
-            sbarStatus.classList.remove("loading-dot");
-          }
-
-          if (sbarRecordBtn) {
-            sbarRecordBtn.classList.remove("start");
-            sbarRecordBtn.classList.add("recording");
-            sbarRecordBtn.textContent = "Encerrar e gerar SBAR";
-            sbarRecordBtn.disabled = false;
-          }
-
-          startSbarTimer();
-
-          // Garante permissão do microfone (reduz falhas silenciosas em alguns navegadores)
-          try {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-              // libera imediatamente (SpeechRecognition usa o próprio pipeline)
-              stream.getTracks().forEach(t => t.stop());
-            }
-          } catch (e) {
-            if (sbarStatus) {
-              sbarStatus.textContent = "Permissão de microfone negada ou indisponível.";
-              sbarStatus.classList.remove("loading-dot");
-            }
-          }
-
-          try {
-            // Evita erro 'recognition has already started'
-            try { sbarRecognition.abort(); } catch (e) {}
-            sbarRecognition.start();
-          } catch (err) {
-            console.error("Falha ao iniciar reconhecimento (SBAR):", err);
-            if (sbarStatus) sbarStatus.textContent = "Não foi possível iniciar a gravação do SBAR.";
-            sbarIsRecording = false;
-            if (sbarRecordBtn) {
-              sbarRecordBtn.classList.remove("recording");
-              sbarRecordBtn.classList.add("start");
-              sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
-            }
-            stopSbarTimer();
-          }
-        }
-
-        async function stopSbarRecordingAndGenerate() {
-          if (!sbarIsRecording) return;
-
-          sbarIsRecording = false;
-
-          if (sbarRecordBtn) {
-            sbarRecordBtn.disabled = true;
-          }
-
-          try {
-            if (sbarRecognition) sbarRecognition.stop();
-          } catch (e) {
-            console.warn("Erro ao parar reconhecimento (SBAR):", e);
-          }
-
-          // pequena espera para capturar os últimos resultados finais
-          await new Promise(r => setTimeout(r, 900));
-
-          const transcricao = String(((sbarFinalTranscript || "") + " " + (sbarInterimTranscript || ""))).trim();
-
-          if (!transcricao) {
-            if (sbarStatus) {
-              sbarStatus.textContent = (!sbarHasStarted ? "A gravação não iniciou. Verifique permissão do microfone e tente novamente." : "Nenhuma fala foi capturada. Tente novamente, falando mais próximo ao microfone (ou aguarde 1 a 2 segundos antes de começar a falar).");
-              sbarStatus.classList.remove("loading-dot");
-            }
-            if (sbarRecordBtn) {
-              sbarRecordBtn.disabled = false;
-              sbarRecordBtn.classList.remove("recording");
-              sbarRecordBtn.classList.add("start");
-              sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
-            }
-            stopSbarTimer();
-            return;
-          }
-
-          await generateHospitalPrescriptionFromTranscript(transcricao);
-        }
-
-        async function generateHospitalPrescriptionFromTranscript(transcricao) {
-          if (!sbarRecordBtn) return;
-
-          sbarRecordBtn.classList.add("generating");
-          sbarRecordBtn.disabled = true;
-
-          if (sbarStatus) {
-            sbarStatus.textContent = "Gerando SBAR...";
-            sbarStatus.classList.add("loading-dot");
-          }
-
-          try {
-            const resp = await fetch(BACKEND_URL + "/api/gerar-sbar", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ transcricao })
-            });
-
-            if (!resp.ok) {
-              const txt = await resp.text().catch(() => "");
-              console.error("Erro HTTP do backend (SBAR):", resp.status, txt);
-              if (sbarStatus) {
-                sbarStatus.textContent = "Não foi possível gerar o SBAR.";
-                sbarStatus.classList.remove("loading-dot");
-              }
-              return;
-            }
-
-            const data = await resp.json().catch(() => null);
-            const texto = (data && (data.sbar || data.passagem_plantao || data.passagem_plantao_sbar || data.prescricao_hospitalar || data.texto)) ? String(data.sbar || data.passagem_plantao || data.passagem_plantao_sbar || data.prescricao_hospitalar || data.texto).trim() : "";
-            if (!texto) {
-              console.error("Resposta inválida do backend (SBAR):", data);
-              if (sbarStatus) {
-                sbarStatus.textContent = "Resposta inválida ao gerar o SBAR.";
-                sbarStatus.classList.remove("loading-dot");
-              }
-              return;
-            }
-
-            if (sbarOutput) sbarOutput.value = texto;
-            if (sbarStatus) {
-              sbarStatus.textContent = "SBAR gerado.";
-              sbarStatus.classList.remove("loading-dot");
-            }
-          } catch (err) {
-            console.error("Erro ao gerar SBAR:", err);
-            if (sbarStatus) {
-              sbarStatus.textContent = "Erro ao gerar SBAR.";
-              sbarStatus.classList.remove("loading-dot");
-            }
-          } finally {
-            stopSbarTimer();
-            if (sbarRecordBtn) {
-              sbarRecordBtn.classList.remove("generating");
-              sbarRecordBtn.classList.remove("recording");
-              sbarRecordBtn.classList.add("start");
-              sbarRecordBtn.textContent = "Iniciar passagem de plantão (SBAR)";
-              sbarRecordBtn.disabled = false;
-            }
-          }
-        }
-
-    function formatClassificationList(items) {
-      if (!Array.isArray(items) || !items.length) {
-        return "Nenhum conteúdo disponível.";
-      }
-      const lines = [];
-      for (const it of items) {
-        const med = (it && it.medicamento) ? String(it.medicamento) : "não informado";
-        const cat = (it && it.categoria) ? String(it.categoria) : "NA";
-        const desc = (it && it.descricao) ? String(it.descricao) : "categoria não informada (dados insuficientes)";
-        if (cat === "NA") {
-          lines.push(med + ": categoria não informada (dados insuficientes)");
-        } else {
-          lines.push(med + ": " + cat + " (" + desc + ")");
-        }
-      }
-      return lines.join("\n");
-    }
-
-    async function updateClassifications() {
-      classificationsStatus.textContent = "";
-
-      const contexto = getNursingContext();
-      if (!contexto) {
-        pregnancyBox.textContent = "Nenhum conteúdo disponível.";
-        lactationBox.textContent = "Nenhum conteúdo disponível.";
-        return;
-      }
-
-      classificationsStatus.textContent = "Gerando SAE e orientações...";
-      classificationsStatus.classList.add("loading-dot");
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/classificar-gestacao-lactacao", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contexto })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP:", resp.status, txt);
-          pregnancyBox.textContent = "Falha ao gerar SAE.";
-          lactationBox.textContent = "Falha ao gerar orientações.";
-          return;
-        }
-
-        const data = await resp.json().catch(() => ({}));
-        pregnancyBox.textContent = (data.sae || "").trim() || "Nenhum conteúdo disponível.";
-        lactationBox.textContent = (data.orientacoes || "").trim() || "Nenhum conteúdo disponível.";
-      } catch (e) {
-        console.error(e);
-        pregnancyBox.textContent = "Falha ao gerar SAE (rede/backend).";
-        lactationBox.textContent = "Falha ao gerar orientações (rede/backend).";
-      } finally {
-        classificationsStatus.classList.remove("loading-dot");
-        classificationsStatus.textContent = "";
-      }
-    }
 
     let reportTimerInterval = null;
+
+
     let reportTimerSeconds = 0;
 
-    function formatSecondsMMSS(totalSeconds) {
-      const secs = Math.max(0, Number(totalSeconds) || 0);
-      const m = ("0" + Math.floor(secs / 60)).slice(-2);
-      const s = ("0" + (secs % 60)).slice(-2);
-      return `${m}:${s}`;
+
+
+    let reportSpeechAvailable = false;
+
+
+    let reportUseFallback = false;
+
+
+    let reportSelectedAudioFile = null;
+
+function formatSecondsMMSS(totalSeconds) {
+
+
+  const secs = Math.max(0, Number(totalSeconds) || 0);
+
+
+  const m = ("0" + Math.floor(secs / 60)).slice(-2);
+
+
+  const s = ("0" + (secs % 60)).slice(-2);
+
+
+  return `${m}:${s}`;
+
+
+}
+
+
+
+function setFlowStage(stage) {
+
+
+  if (reportFlowVoice) reportFlowVoice.classList.toggle("active", stage === "voice");
+
+
+  if (reportFlowIdentify) reportFlowIdentify.classList.toggle("active", stage === "identify");
+
+
+  if (reportFlowDoc) reportFlowDoc.classList.toggle("active", stage === "doc");
+
+
+}
+
+
+
+function updateReportTimerUI() {
+
+
+  if (!reportTimerEl) return;
+
+
+  reportTimerEl.textContent = formatSecondsMMSS(reportTimerSeconds);
+
+
+}
+
+
+
+function startReportTimer() {
+
+
+  reportTimerSeconds = 0;
+
+
+  if (reportTimerInterval) clearInterval(reportTimerInterval);
+
+
+  updateReportTimerUI();
+
+
+  reportTimerInterval = setInterval(() => {
+
+
+    reportTimerSeconds += 1;
+
+
+    updateReportTimerUI();
+
+
+  }, 1000);
+
+
+}
+
+
+
+function stopReportTimer(reset) {
+
+
+  if (reportTimerInterval) clearInterval(reportTimerInterval);
+
+
+  reportTimerInterval = null;
+
+
+  if (reset) {
+
+
+    reportTimerSeconds = 0;
+
+
+    updateReportTimerUI();
+
+
+  }
+
+
+}
+
+
+
+function clearReportOutputs() {
+
+
+  if (reportOutput) reportOutput.value = "";
+
+
+  if (reportDocTypeDetected) reportDocTypeDetected.textContent = "";
+
+
+  if (reportMissingFields) reportMissingFields.textContent = "";
+
+
+  reportFinalTranscript = "";
+
+
+  reportInterimTranscript = "";
+
+
+  if (reportPartialEl) {
+
+
+    reportPartialEl.textContent = "";
+
+
+    reportPartialEl.classList.add("hidden");
+
+
+  }
+
+
+  reportSelectedAudioFile = null;
+
+
+  if (reportManualTranscription) {
+
+
+    reportManualTranscription.value = "";
+
+
+    reportManualTranscription.classList.add("hidden");
+
+
+  }
+
+
+  updateReportActions();
+
+
+}
+
+
+
+function getSelectedReportDocType() {
+
+
+  const raw = reportDocTypeSelect ? String(reportDocTypeSelect.value || "auto") : "auto";
+
+
+  return raw === "auto" ? "auto" : raw;
+
+
+}
+
+
+
+function setReportState(nextState, message) {
+
+
+  reportState = nextState;
+
+
+  reportIsRecording = (reportState === "recording");
+
+
+
+  if (reportRecordBtn) {
+
+
+    reportRecordBtn.disabled = (reportState === "processing");
+
+
+    reportRecordBtn.classList.remove("start");
+
+
+    reportRecordBtn.classList.remove("recording");
+
+
+    reportRecordBtn.classList.remove("processing");
+
+
+    reportRecordBtn.classList.add(reportIsRecording ? "recording" : "start");
+
+
+    if (reportState === "processing") reportRecordBtn.classList.add("processing");
+
+
+  }
+
+
+
+  if (reportStatus) {
+
+
+    reportStatus.classList.remove("loading-dot");
+
+
+    if (reportState === "processing") reportStatus.classList.add("loading-dot");
+
+
+    reportStatus.textContent = String(message || "");
+
+
+  }
+
+
+
+  if (reportPartialEl && reportState !== "recording") {
+
+
+    reportPartialEl.textContent = "";
+
+
+    reportPartialEl.classList.add("hidden");
+
+
+  }
+
+
+
+  if (reportState === "recording") setFlowStage("voice");
+
+
+  else if (reportState === "processing") setFlowStage("identify");
+
+
+  else if (reportState === "done") setFlowStage("doc");
+
+
+  else setFlowStage("voice");
+
+
+
+  if (reportRecordBtn) {
+
+
+    if (reportState === "recording") reportRecordBtn.textContent = "Parar";
+
+
+    else if (reportState === "processing") reportRecordBtn.textContent = "Processando";
+
+
+    else if (reportUseFallback || !reportSpeechAvailable) {
+      const hasManual = reportManualTranscription && reportManualTranscription.value && reportManualTranscription.value.trim().length > 0;
+      reportRecordBtn.textContent = (reportSelectedAudioFile || hasManual) ? "Gerar" : "Selecionar";
     }
 
-    function updateReportStatusTimer() {
-      if (!reportIsRecording) return;
-      const mmss = formatSecondsMMSS(reportTimerSeconds);
-      reportStatus.textContent = `Gravando relatório... ${mmss}`;
+
+    else reportRecordBtn.textContent = "Iniciar";
+
+
+  }
+
+
+}
+
+
+
+function initReportSpeech() {
+
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+
+  reportSpeechAvailable = !!SR;
+
+
+  if (!SR) return null;
+
+
+
+  const rec = new SR();
+
+
+  rec.lang = "pt-BR";
+
+
+  rec.continuous = true;
+
+
+  rec.interimResults = true;
+
+
+
+  rec.onresult = (event) => {
+
+
+    let interim = "";
+
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+
+
+      const transcript = event.results[i][0].transcript;
+
+
+      if (event.results[i].isFinal) reportFinalTranscript += transcript + " ";
+
+
+      else interim += transcript;
+
+
     }
 
-    function startReportStatusTimer() {
-      reportTimerSeconds = 0;
-      if (reportTimerInterval) clearInterval(reportTimerInterval);
-      updateReportStatusTimer();
-      reportTimerInterval = setInterval(() => {
-        reportTimerSeconds += 1;
-        updateReportStatusTimer();
-      }, 1000);
+
+    reportInterimTranscript = interim;
+
+
+
+    if (reportPartialEl && reportState === "recording") {
+
+
+      const combined = (reportFinalTranscript + " " + reportInterimTranscript).trim();
+
+
+      const short = combined.length > 180 ? combined.slice(0, 180).trimEnd() + "..." : combined;
+
+
+      reportPartialEl.textContent = short ? ("Transcrição parcial: " + short) : "";
+
+
+      if (short) reportPartialEl.classList.remove("hidden");
+
+
+      else reportPartialEl.classList.add("hidden");
+
+
     }
 
-    function stopReportStatusTimer() {
-      if (reportTimerInterval) clearInterval(reportTimerInterval);
-      reportTimerInterval = null;
+
+  };
+
+
+
+  rec.onerror = (event) => {
+
+
+    console.error("Erro no reconhecimento do relatório:", event && event.error);
+
+
+    const err = (event && event.error) ? String(event.error) : "erro";
+
+
+    if (err === "not-allowed" || err === "service-not-allowed") {
+
+
+      reportUseFallback = true;
+
+
+      stopReportTimer(true);
+
+
+      setReportState("error", "Permissão negada. Selecione um áudio e use transcrição manual.");
+
+
+      if (reportManualTranscription) reportManualTranscription.classList.remove("hidden");
+
+
+      return;
+
+
     }
 
 
-    function initReportSpeech() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) {
-        reportStatus.textContent =
-          "Seu navegador não suporta reconhecimento de voz. Use Google Chrome em um computador.";
-        return null;
-      }
+    stopReportTimer(true);
 
-      const rec = new SR();
-      rec.lang = "pt-BR";
-      rec.continuous = true;
-      rec.interimResults = true;
 
-      rec.onresult = (event) => {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            reportFinalTranscript += transcript + " ";
-          }
-        }
-      };
+    setReportState("error", "Erro na captura de voz. Tente novamente.");
 
-      rec.onerror = (event) => {
-        console.error("Erro no reconhecimento do relatório:", event.error);
-        reportStatus.textContent =
-          "Ocorreu um erro no reconhecimento de voz do relatório. Tente novamente.";
-      };
 
-      rec.onend = () => {
-        if (reportIsRecording && !reportIsPaused) {
-          try {
-            rec.start();
-          } catch (err) {
-            console.warn("Não foi possível retomar reconhecimento do relatório:", err);
-          }
-        }
-      };
+  };
 
-      return rec;
+
+
+  rec.onend = () => {
+
+
+    if (reportState === "recording") {
+
+
+      try { rec.start(); } catch (e) { }
+
+
     }
 
-    async function startReportRecording() {
-      reportStatus.textContent = "";
-      reportOutput.value = "";
-      reportFinalTranscript = "";
+
+  };
+
+
+
+  return rec;
+
+
+}
+
+
+
+async function startReportRecording() {
+
+
+  clearReportOutputs();
+
+
+
+  if (!reportRecognition) reportRecognition = initReportSpeech();
+
+
+
+  if (!reportRecognition) {
+
+
+    reportUseFallback = true;
+
+
+    reportSpeechAvailable = false;
+
+
+    setReportState("idle", "Navegador sem suporte a captura de voz. Selecione um áudio e use transcrição manual.");
+
+
+    if (reportManualTranscription) reportManualTranscription.classList.remove("hidden");
+
+
+    return;
+
+
+  }
+
+
+
+  reportUseFallback = false;
+
+
+  setReportState("recording", "Gravando.");
+
+
+  startReportTimer();
+
+
+
+  try {
+
+
+    reportRecognition.start();
+
+
+  } catch (e) {
+
+
+    console.warn("Erro ao iniciar reconhecimento do relatório:", e);
+
+
+    stopReportTimer(true);
+
+
+    setReportState("error", "Falha ao iniciar a captura de voz.");
+
+
+  }
+
+
+}
+
+
+
+async function stopReportRecordingAndGenerate() {
+
+
+  if (reportRecognition) {
+
+
+    try { reportRecognition.stop(); } catch (e) { }
+
+
+  }
+
+
+
+  stopReportTimer(false);
+
+
+
+  const transcricao = (reportFinalTranscript + " " + reportInterimTranscript).trim();
+
+
+  if (!transcricao) {
+
+
+    stopReportTimer(true);
+
+
+    setReportState("error", "Áudio vazio. Nenhuma fala foi capturada.");
+
+
+    updateReportActions();
+
+
+    return;
+
+
+  }
+
+
+
+  setReportState("processing", "Processando.");
+
+
+
+  try {
+
+
+    const tipo_documento = getSelectedReportDocType();
+
+
+    const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
+
+
+      method: "POST",
+
+
+      headers: { "Content-Type": "application/json" },
+
+
+      body: JSON.stringify({ transcricao, tipo_documento })
+
+
+    });
+
+
+
+    if (!resp.ok) {
+
+
+      const txt = await resp.text().catch(() => "");
+
+
+      console.error("Erro HTTP do backend (relatório):", resp.status, txt);
+
+
+      stopReportTimer(true);
+
+
+      setReportState("error", "Falha ao gerar documento.");
+
+
       updateReportActions();
-      if (reportDocTypeDetected) reportDocTypeDetected.textContent = "";
-      if (reportMissingFields) reportMissingFields.textContent = "";
 
-      if (!reportRecognition) {
-        reportRecognition = initReportSpeech();
-        if (!reportRecognition) return;
-      }
 
-      reportIsRecording = true;
-      reportIsPaused = false;
+      return;
 
-      reportRecordBtn.className = "small-record-btn recording";
-      reportRecordBtn.innerText = "Encerrar gravação";
-      reportStatus.textContent = "Gravando documento...";
-      reportStatus.classList.remove("loading-dot");
-      reportStatus.classList.add("loading-dot");
 
-      startReportStatusTimer();
-
-      try {
-        reportRecognition.start();
-      } catch (e) {
-        console.warn("Erro ao iniciar reconhecimento do relatório:", e);
-      }
     }
 
-    async function stopReportRecordingAndGenerate() {
-      reportIsRecording = false;
-      reportIsPaused = false;
 
-      if (reportRecognition) {
-        try {
-          reportRecognition.stop();
-        } catch (e) {
-          console.warn("Erro ao parar reconhecimento do relatório:", e);
-        }
-      }
 
-      stopReportStatusTimer();
+    const data = await resp.json().catch(() => ({}));
 
-      reportRecordBtn.className = "small-record-btn start";
-      reportRecordBtn.innerText = "Gravar documento";
 
-      const transcricao = reportFinalTranscript.trim();
-      if (!transcricao) {
-        reportStatus.classList.remove("loading-dot");
-        reportStatus.textContent = "Nenhuma fala foi capturada no relatório.";
-        return;
-      }
+    const documento = (data && data.documento) ? String(data.documento) : "";
 
-      reportStatus.textContent = "Gerando documento...";
-      reportStatus.classList.add("loading-dot");
 
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao })
-        });
+    const tipoIdentificado = (data && data.tipo_documento) ? String(data.tipo_documento) : "";
 
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (relatório):", resp.status, txt);
-          reportStatus.textContent = "Não foi possível gerar o relatório.";
-          reportStatus.classList.remove("loading-dot");
-          return;
-        }
 
-        const data = await resp.json();
-        const documento = (data && (data.documento || data.relatorio)) ? String(data.documento || data.relatorio) : "";
-        const tipoIdentificado = (data && data.tipo_documento) ? String(data.tipo_documento) : "";
-        const pendentes = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : (Array.isArray(data?.campos_faltantes) ? data.campos_faltantes : []);
+    const pendentes = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : [];
 
-        if (reportDocTypeDetected) reportDocTypeDetected.textContent = tipoIdentificado ? tipoIdentificado : "não informado";
-        if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "Nenhum";
 
-        reportOutput.value = normalizeNumberedParagraphs(documento);
-        updateReportActions();
 
-        reportStatus.textContent = documento ? "Documento gerado." : "Não foi possível gerar o documento.";
-        reportStatus.classList.remove("loading-dot");
-      } catch (err) {
-        console.error("Erro ao gerar relatório:", err);
-        reportStatus.textContent = "Erro ao gerar relatório.";
-        reportStatus.classList.remove("loading-dot");
-        updateReportActions();
-      }
+    if (reportDocTypeDetected) reportDocTypeDetected.textContent = tipoIdentificado ? tipoIdentificado : "não informado";
+
+
+    if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "Nenhum";
+
+
+
+    if (reportOutput) reportOutput.value = normalizeNumberedParagraphs(documento);
+
+
+    updateReportActions();
+
+
+
+    stopReportTimer(true);
+
+
+    setReportState(documento ? "done" : "error", documento ? "Documento gerado." : "Falha ao gerar documento.");
+
+
+  } catch (err) {
+
+
+    console.error("Erro ao gerar relatório:", err);
+
+
+    stopReportTimer(true);
+
+
+    setReportState("error", "Falha de rede ao gerar documento.");
+
+
+    updateReportActions();
+
+
+  }
+
+
+}
+
+
+
+async function generateReportFromManualTranscription() {
+
+
+  const transcricao = (reportManualTranscription && reportManualTranscription.value) ? reportManualTranscription.value.trim() : "";
+
+
+  if (!transcricao) {
+
+
+    setReportState("error", "Transcrição vazia. Preencha a transcrição para gerar o documento.");
+
+
+    return;
+
+
+  }
+
+
+
+  setReportState("processing", "Processando.");
+
+
+
+  try {
+
+
+    const tipo_documento = getSelectedReportDocType();
+
+
+    const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
+
+
+      method: "POST",
+
+
+      headers: { "Content-Type": "application/json" },
+
+
+      body: JSON.stringify({ transcricao, tipo_documento })
+
+
+    });
+
+
+
+    if (!resp.ok) {
+
+
+      const txt = await resp.text().catch(() => "");
+
+
+      console.error("Erro HTTP do backend (relatório):", resp.status, txt);
+
+
+      setReportState("error", "Falha ao gerar documento.");
+
+
+      updateReportActions();
+
+
+      return;
+
+
     }
+
+
+
+    const data = await resp.json().catch(() => ({}));
+
+
+    const documento = (data && data.documento) ? String(data.documento) : "";
+
+
+    const tipoIdentificado = (data && data.tipo_documento) ? String(data.tipo_documento) : "";
+
+
+    const pendentes = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : [];
+
+
+
+    if (reportDocTypeDetected) reportDocTypeDetected.textContent = tipoIdentificado ? tipoIdentificado : "não informado";
+
+
+    if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "Nenhum";
+
+
+
+    if (reportOutput) reportOutput.value = normalizeNumberedParagraphs(documento);
+
+
+    updateReportActions();
+
+
+    setReportState(documento ? "done" : "error", documento ? "Documento gerado." : "Falha ao gerar documento.");
+
+
+  } catch (err) {
+
+
+    console.error("Erro ao gerar relatório (manual):", err);
+
+
+    setReportState("error", "Falha de rede ao gerar documento.");
+
+
+    updateReportActions();
+
+
+  }
+
+
+}
+
+
+
+async function handleReportPrimaryAction() {
+
+
+  if (reportState === "processing") return;
+
+
+
+  if (reportUseFallback || !reportSpeechAvailable) {
+
+    const manual = (reportManualTranscription && reportManualTranscription.value) ? reportManualTranscription.value.trim() : "";
+    if (manual) {
+      await generateReportFromManualTranscription();
+      return;
+    }
+
+    if (reportAudioUpload) {
+      reportAudioUpload.click();
+      setReportState("idle", "Selecione um áudio ou preencha a transcrição para gerar o documento.");
+      if (reportManualTranscription) reportManualTranscription.classList.remove("hidden");
+      return;
+    }
+
+    setReportState("error", "Recurso indisponível. Preencha a transcrição para gerar o documento.");
+    if (reportManualTranscription) reportManualTranscription.classList.remove("hidden");
+    return;
+  }
+
+
+
+  if (reportState === "recording") {
+
+
+    await stopReportRecordingAndGenerate();
+
+
+    return;
+
+
+  }
+
+
+
+  await startReportRecording();
+
+
+}
+
+
+
+// Estado inicial
+
+
+setReportState("idle", "Pronto para gravar.");
+
+
+stopReportTimer(true);
+
+
+
 
     async function submitMedicalDoubt() {
       const q = (medicalDoubtInput.value || "").trim();
@@ -6489,16 +4836,61 @@ recordBtn.onclick = () => {
     }
 
     // Relatórios de Enfermagem / Encaminhamentos etc.
-    if (reportRecordBtn) {
-      reportRecordBtn.addEventListener("click", async (e) => {
-        e.preventDefault();
-        if (!reportIsRecording) {
-          startReportRecording();
+
+    if (reportAudioUpload) {
+
+      reportAudioUpload.addEventListener("change", () => {
+
+        const files = reportAudioUpload.files;
+
+        reportSelectedAudioFile = (files && files.length) ? files[0] : null;
+
+        if (reportManualTranscription) reportManualTranscription.classList.remove("hidden");
+
+        if (reportSelectedAudioFile) {
+
+          setReportState("idle", "Áudio selecionado. Preencha a transcrição para gerar o documento.");
+
         } else {
-          await stopReportRecordingAndGenerate();
+
+          setReportState("idle", "Pronto para gravar.");
+
         }
+
       });
+
     }
+
+
+    if (reportManualTranscription) {
+
+      reportManualTranscription.addEventListener("input", () => {
+
+        if (reportUseFallback || !reportSpeechAvailable) {
+
+          const msg = reportStatus ? reportStatus.textContent : "Pronto para gravar.";
+
+          setReportState(reportState, msg);
+
+        }
+
+      });
+
+    }
+
+
+    if (reportRecordBtn) {
+
+      reportRecordBtn.addEventListener("click", async (e) => {
+
+        e.preventDefault();
+
+        await handleReportPrimaryAction();
+
+      });
+
+    }
+
 
     if (copyReportBtn) {
       copyReportBtn.addEventListener("click", (e) => {
