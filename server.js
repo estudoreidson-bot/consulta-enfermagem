@@ -1573,6 +1573,59 @@ Transcrição:
 
 
 
+
+// ======================================================================
+// ROTA EXTRA – GERAR PASSAGEM DE PLANTÃO (ENFERMAGEM) A PARTIR DA TRANSCRIÇÃO
+// ======================================================================
+
+app.post("/api/gerar-passagem-plantao", requirePaidOrAdmin, async(req, res) => {
+  try {
+    const { transcricao } = req.body || {};
+
+    const t = normalizeText(transcricao || "", 12000);
+    if (!t || t.length < 30) {
+      return res.json({ passagem_plantao: "" });
+    }
+
+    const prompt = `
+Você é um enfermeiro humano fazendo passagem de plantão (handoff) para outro colega, com linguagem técnica, objetiva e segura.
+Tarefa: a partir da transcrição abaixo, gere uma PASSAGEM DE PLANTÃO clara, enxuta e completa para uso imediato.
+
+Regras obrigatórias:
+- Não invente dados. Se faltar informação, escreva "não informado" e indique o que precisa ser checado.
+- Sem emojis, sem símbolos gráficos (como ✓, ❌).
+- Priorize segurança: riscos, sinais de alarme, dispositivos, medicações críticas, pendências e próximos passos.
+- Se houver vários pacientes, separe por paciente e identifique cada um.
+- Se houver apenas um paciente, produza um texto único e organizado.
+
+Formato de saída: JSON estrito, sem texto fora do JSON, com a chave:
+{
+  "passagem_plantao": "texto em português do Brasil"
+}
+
+Sugestão de estrutura (adapte ao que existir na transcrição):
+- Identificação: nome, idade, leito/setor, diagnóstico/hipótese, motivo.
+- Situação atual: estado geral/consciência, dor, sinais vitais recentes, oxigênio, diurese/balanço quando pertinente.
+- Evolução no turno: eventos, intercorrências, procedimentos e resposta.
+- Dispositivos e cuidados: acessos, sondas, drenos, curativos, precauções/isolamento, risco de queda/LPP.
+- Medicações/terapias em curso: itens e horários críticos (se citados).
+- Exames/resultados: principais achados e pendências.
+- Plano e pendências: o que fazer/monitorar no próximo turno e critérios de alarme.
+
+Transcrição:
+"""${t}"""
+`;
+
+    const data = await callOpenAIJson(prompt);
+    const passagem = typeof data?.passagem_plantao === "string" ? data.passagem_plantao.trim() : "";
+
+    return res.json({ passagem_plantao: passagem });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao gerar passagem de plantão." });
+  }
+});
+
 // ======================================================================
 // ROTA 2 – RECOMENDAÇÕES DE PERGUNTAS COMPLEMENTARES (ANAMNESE) (EXISTENTE)
 // ======================================================================

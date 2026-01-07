@@ -219,6 +219,62 @@
       color: #333;
       text-align: center;
     }
+    /* ============================
+       MÓDULO: Passagem de plantão
+       (mesma identidade do botão de triagem)
+       ============================ */
+    #handoffRecordBtn {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+      margin-top: 6px;
+      margin-bottom: 10px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    #handoffRecordBtn.start { background: #007bff; }
+    #handoffRecordBtn.recording { background: #dc3545; }
+    #handoffRecordBtn:active { transform: scale(0.97); }
+
+    #handoffPauseBtn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      background: #6c757d;
+      color: #fff;
+      font-size: 13px;
+      display: none;
+    }
+    #handoffTimer {
+      font-size: 26px;
+      margin-top: 10px;
+      font-family: "Courier New", monospace;
+    }
+    #handoffMicStatus {
+      margin-top: 8px;
+      font-size: 14px;
+      text-align: center;
+      color: #333;
+      min-height: 20px;
+    }
+    #handoffPauseLabel {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #555;
+      text-align: center;
+    }
+    #handoffFinishHint {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #333;
+      text-align: center;
+    }
+
 
     .triage-report-panel {
       border: 1px solid #ddd;
@@ -1824,6 +1880,36 @@
 
       <div id="triageError" class="error"></div>
 
+      <div class="module-divider"></div>
+
+      <div class="section-header-row" style="justify-content: center;">
+        <div class="soap-title-actions" style="justify-content: center;">
+          <p class="module-title" style="margin: 0;">Passagem de plantão</p>
+          <button id="handoffGuideBtn" class="btn-print" type="button" style="display:inline-block; margin-left: 8px;">Guia de Passagem de Plantão</button>
+        </div>
+      </div>
+
+      <p class="module-subtitle">
+        Use este módulo para registrar de forma objetiva a passagem de plantão. Fale identificação do paciente, situação atual, principais riscos, dispositivos, medicações em uso, exames pendentes e condutas/pendências para o próximo turno. Ao encerrar, será gerado um texto pronto para repassar ao colega e colar no prontuário.
+      </p>
+
+      <button id="handoffRecordBtn" class="start" type="button">Iniciar passagem de plantão</button>
+
+      <div id="handoffTimer">00:00</div>
+      <div id="handoffMicStatus">Clique em "Iniciar passagem de plantão" para começar.</div>
+
+      <div class="controls-row">
+        <button id="handoffPauseBtn" type="button">Pausar</button>
+      </div>
+      <div id="handoffPauseLabel">Use o botão pequeno para pausar e retomar a gravação.</div>
+
+      <div id="handoffFinishHint">
+        Para encerrar e gerar a passagem de plantão, clique novamente no botão grande vermelho.
+      </div>
+
+      <div id="handoffError" class="error"></div>
+
+
     </div>
 
     <div id="resultsCard" class="results-card hidden">
@@ -1913,6 +1999,19 @@
 
         <div id="triageReportStatus" class="mini-status"></div>
       </div>
+      <div id="handoffPanel" class="triage-report-panel hidden">
+        <div class="section-header-row">
+          <div class="soap-title-actions">
+            <h2>Passagem de plantão</h2>
+            <button id="handoffCopyBtn" class="btn-copy" type="button">Copiar passagem</button>
+            <button id="handoffPrintBtn" class="btn-print" type="button">Imprimir passagem</button>
+          </div>
+        </div>
+
+        <textarea id="handoffOutput" class="prescription-textarea" placeholder="A passagem de plantão gerada aparecerá aqui."></textarea>
+        <div id="handoffStatus" class="mini-status"></div>
+      </div>
+
 
       <div class="section-header-row">
         <div class="soap-title-actions">
@@ -2587,6 +2686,27 @@
       Ao clicar em "Complementar avaliação", uma nova gravação será iniciada para você aplicar essas perguntas diretamente ao paciente.
       As respostas serão usadas para atualizar automaticamente o SOAP e a conduta.
     </p>
+
+  <div id="handoffGuidePanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Guia de Passagem de Plantão</h3>
+      <button id="closeHandoffGuideBtn" class="close-panel-btn" aria-label="Fechar guia de passagem de plantão">X</button>
+    </div>
+
+    <div class="recommendations-status">
+      Use estas perguntas como roteiro. Quanto mais completo você responder, melhor será a passagem de plantão gerada.
+    </div>
+
+    <div id="handoffGuideContent" class="recommendations-list">
+      <div class="recommendation-item"><strong>1) Identificação</strong><br>Nome completo, idade, leito/setor, diagnóstico/hipótese e motivo da internação/atendimento.</div>
+      <div class="recommendation-item"><strong>2) Situação atual</strong><br>Nível de consciência, dor, sinais vitais mais recentes, oxigenação (ar ambiente/ O2), diurese e balanço hídrico quando pertinente.</div>
+      <div class="recommendation-item"><strong>3) Eventos e evolução no turno</strong><br>O que mudou desde o turno anterior, intercorrências, procedimentos realizados, resposta às condutas.</div>
+      <div class="recommendation-item"><strong>4) Dispositivos e cuidados</strong><br>Acessos (tipo/local), sondas/drenos, curativos (local/estado), risco de queda e LPP, precauções/isolamento.</div>
+      <div class="recommendation-item"><strong>5) Medicações e terapias em curso</strong><br>Antibióticos, drogas vasoativas, analgesia, insulinoterapia, nebulização, oxigenoterapia, dietas e horários críticos.</div>
+      <div class="recommendation-item"><strong>6) Exames e resultados</strong><br>Exames já coletados e principais resultados relevantes; exames pendentes (o que e quando).</div>
+      <div class="recommendation-item"><strong>7) Pendências e plano</strong><br>O que precisa ser feito/checado no próximo turno (prioridades), metas, monitorizações, critérios de alarme e quando acionar o médico.</div>
+    </div>
+  </div>
   </div>
 
 
@@ -2996,6 +3116,20 @@
     let triageGuidanceSilenceTimer = null;
     let triageGuidanceLastChunkTs = 0;
 
+
+    // ============================
+    // MÓDULO: Passagem de plantão (gravação + geração de texto)
+    // ============================
+    let handoffRecognition = null;
+    let handoffIsRecording = false;
+    let handoffIsPaused = false;
+    let handoffFinalTranscript = "";
+    let handoffInterimTranscript = "";
+
+    let handoffStartTime = null;
+    let handoffAccumulatedSeconds = 0;
+    let handoffTimerInterval = null;
+
 const recordBtn = document.getElementById("recordBtn");
     const pauseBtn = document.getElementById("pauseBtn");
     const timerEl = document.getElementById("timer");
@@ -3009,6 +3143,24 @@ const recordBtn = document.getElementById("recordBtn");
     const triageTimerEl = document.getElementById("triageTimer");
     const triageMicStatus = document.getElementById("triageMicStatus");
     const triageError = document.getElementById("triageError");
+
+
+    const handoffRecordBtn = document.getElementById("handoffRecordBtn");
+    const handoffPauseBtn = document.getElementById("handoffPauseBtn");
+    const handoffTimerEl = document.getElementById("handoffTimer");
+    const handoffMicStatus = document.getElementById("handoffMicStatus");
+    const handoffError = document.getElementById("handoffError");
+
+    const handoffPanel = document.getElementById("handoffPanel");
+    const handoffOutput = document.getElementById("handoffOutput");
+    const handoffStatus = document.getElementById("handoffStatus");
+    const handoffCopyBtn = document.getElementById("handoffCopyBtn");
+    const handoffPrintBtn = document.getElementById("handoffPrintBtn");
+
+    const handoffGuideBtn = document.getElementById("handoffGuideBtn");
+    const handoffGuidePanel = document.getElementById("handoffGuidePanel");
+    const closeHandoffGuideBtn = document.getElementById("closeHandoffGuideBtn");
+
 
     const triageLiveGuidance = document.getElementById("triageLiveGuidance");
     const triageLiveGuidanceContext = document.getElementById("triageLiveGuidanceContext");
@@ -4361,6 +4513,217 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         }
       }
     }
+
+
+
+    // ============================
+    // Passagem de plantão (gravação + geração)
+    // ============================
+
+    function handoffResetTimer() {
+      handoffStartTime = null;
+      handoffAccumulatedSeconds = 0;
+      if (handoffTimerInterval) clearInterval(handoffTimerInterval);
+      handoffTimerInterval = null;
+      if (handoffTimerEl) handoffTimerEl.textContent = "00:00";
+    }
+
+    function handoffStartTimer() {
+      if (handoffTimerInterval) clearInterval(handoffTimerInterval);
+      handoffStartTime = new Date();
+      handoffTimerInterval = setInterval(() => {
+        const now = new Date();
+        const delta = Math.floor((now - handoffStartTime) / 1000);
+        const total = handoffAccumulatedSeconds + delta;
+        const mm = String(Math.floor(total / 60)).padStart(2, "0");
+        const ss = String(total % 60).padStart(2, "0");
+        if (handoffTimerEl) handoffTimerEl.textContent = `${mm}:${ss}`;
+      }, 1000);
+    }
+
+    function handoffPauseTimer() {
+      if (!handoffStartTime) return;
+      const now = new Date();
+      const delta = Math.floor((now - handoffStartTime) / 1000);
+      handoffAccumulatedSeconds += delta;
+      handoffStartTime = null;
+      if (handoffTimerInterval) clearInterval(handoffTimerInterval);
+      handoffTimerInterval = null;
+    }
+
+    function handoffGetCombinedTranscript() {
+      const full = (handoffFinalTranscript || "").trim();
+      const inter = (handoffInterimTranscript || "").trim();
+      return [full, inter].filter(Boolean).join(" ").trim();
+    }
+
+    function handoffClearUI() {
+      if (handoffOutput) handoffOutput.value = "";
+      if (handoffStatus) handoffStatus.textContent = "";
+    }
+
+    function ensureHandoffRecognition() {
+      if (handoffRecognition) return true;
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        if (handoffError) handoffError.textContent = "Seu navegador não suporta reconhecimento de voz. Use Chrome no computador ou Android.";
+        return false;
+      }
+      handoffRecognition = new SR();
+      handoffRecognition.continuous = true;
+      handoffRecognition.interimResults = true;
+      handoffRecognition.lang = "pt-BR";
+
+      handoffRecognition.onresult = (event) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const res = event.results[i];
+          const transcript = (res[0] && res[0].transcript) ? res[0].transcript : "";
+          if (res.isFinal) {
+            handoffFinalTranscript += transcript + " ";
+          } else {
+            interim += transcript + " ";
+          }
+        }
+        handoffInterimTranscript = interim.trim();
+      };
+
+      handoffRecognition.onerror = (e) => {
+        console.error("Erro no reconhecimento (passagem):", e);
+      };
+
+      return true;
+    }
+
+    function startHandoffRecording() {
+      if (!ensureHandoffRecognition()) return;
+
+      handoffIsRecording = true;
+      handoffIsPaused = false;
+      handoffFinalTranscript = "";
+      handoffInterimTranscript = "";
+
+      if (handoffError) handoffError.textContent = "";
+      handoffClearUI();
+
+      if (handoffPauseBtn) {
+        handoffPauseBtn.style.display = "inline-block";
+        handoffPauseBtn.innerText = "Pausar";
+      }
+
+      if (handoffRecordBtn) {
+        handoffRecordBtn.className = "recording";
+        handoffRecordBtn.innerText = "Encerrar passagem";
+      }
+
+      if (handoffMicStatus) handoffMicStatus.innerText = "Gravando passagem de plantão...";
+      if (recordBtn) recordBtn.disabled = true;
+      if (triageRecordBtn) triageRecordBtn.disabled = true;
+
+      handoffResetTimer();
+      handoffStartTimer();
+
+      try { handoffRecognition.start(); } catch (e) {}
+    }
+
+    function stopHandoffRecording() {
+      handoffIsRecording = false;
+      handoffIsPaused = false;
+
+      if (handoffRecognition) {
+        try { handoffRecognition.stop(); } catch (e) {}
+      }
+      handoffPauseTimer();
+
+      if (handoffRecordBtn) {
+        handoffRecordBtn.className = "start";
+        handoffRecordBtn.innerText = "Iniciar passagem de plantão";
+      }
+
+      if (handoffPauseBtn) handoffPauseBtn.style.display = "none";
+      if (recordBtn) recordBtn.disabled = false;
+      if (triageRecordBtn) triageRecordBtn.disabled = false;
+    }
+
+    function pauseHandoffRecording() {
+      if (!handoffIsRecording || handoffIsPaused) return;
+      handoffIsPaused = true;
+
+      if (handoffRecognition) {
+        try { handoffRecognition.stop(); } catch (e) {}
+      }
+      handoffPauseTimer();
+
+      if (handoffPauseBtn) handoffPauseBtn.innerText = "Retomar";
+      if (handoffMicStatus) handoffMicStatus.innerText = "Passagem de plantão pausada.";
+    }
+
+    function resumeHandoffRecording() {
+      if (!handoffIsRecording || !handoffIsPaused) return;
+      handoffIsPaused = false;
+
+      if (handoffRecognition) {
+        try { handoffRecognition.start(); } catch (e) {}
+      }
+      handoffStartTimer();
+
+      if (handoffPauseBtn) handoffPauseBtn.innerText = "Pausar";
+      if (handoffMicStatus) handoffMicStatus.innerText = "Gravando passagem de plantão...";
+    }
+
+    async function finalizarPassagemPlantao() {
+      const combined = handoffGetCombinedTranscript();
+      const txt = (combined || "").trim();
+
+      if (!txt || txt.length < 40) {
+        if (handoffError) handoffError.textContent = "A transcrição ficou muito curta. Tente novamente, falando mais próximo ao microfone.";
+        return;
+      }
+
+      if (resultsCard) resultsCard.classList.remove("hidden");
+      if (handoffPanel) handoffPanel.classList.remove("hidden");
+
+      handoffClearUI();
+
+      if (handoffStatus) {
+        handoffStatus.textContent = "Gerando passagem de plantão...";
+        handoffStatus.classList.add("loading-dot");
+      }
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/gerar-passagem-plantao", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcricao: txt })
+        });
+
+        if (!resp.ok) {
+          const t = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (passagem):", resp.status, t);
+          if (handoffStatus) {
+            handoffStatus.textContent = "Não foi possível gerar a passagem de plantão.";
+            handoffStatus.classList.remove("loading-dot");
+          }
+          return;
+        }
+
+        const data = await resp.json();
+        const passagem = (data?.passagem_plantao || "").trim();
+
+        if (handoffOutput) handoffOutput.value = passagem || "";
+        if (handoffStatus) {
+          handoffStatus.textContent = passagem ? "Passagem de plantão gerada." : "Sem conteúdo disponível.";
+          handoffStatus.classList.remove("loading-dot");
+        }
+      } catch (e) {
+        console.error("Erro ao gerar passagem:", e);
+        if (handoffStatus) {
+          handoffStatus.textContent = "Erro ao gerar passagem de plantão.";
+          handoffStatus.classList.remove("loading-dot");
+        }
+      }
+    }
+
 
     function hasLikelyChiefComplaint(text) {
       const t = String(text || "").toLowerCase();
@@ -6345,6 +6708,61 @@ if (triagePauseBtn) {
     if (!triageIsPaused) pauseTriageRecording();
     else resumeTriageRecording();
   };
+}
+
+
+if (handoffRecordBtn) {
+  handoffRecordBtn.onclick = () => {
+    if (!handoffIsRecording) {
+      startHandoffRecording();
+    } else {
+      stopHandoffRecording();
+      finalizarPassagemPlantao();
+    }
+  };
+}
+
+if (handoffPauseBtn) {
+  handoffPauseBtn.onclick = () => {
+    if (!handoffIsRecording) return;
+    if (!handoffIsPaused) pauseHandoffRecording();
+    else resumeHandoffRecording();
+  };
+}
+
+if (handoffCopyBtn) {
+  handoffCopyBtn.addEventListener("click", () => {
+    const text = (handoffOutput && handoffOutput.value) ? handoffOutput.value.trim() : "";
+    if (!text) {
+      alert("Não há passagem de plantão para copiar.");
+      return;
+    }
+    copyToClipboard(text);
+  });
+}
+
+if (handoffPrintBtn) {
+  handoffPrintBtn.addEventListener("click", () => {
+    const text = (handoffOutput && handoffOutput.value) ? handoffOutput.value : "";
+    openPrintWindow("Passagem de plantão", text);
+  });
+}
+
+function setPanelVisible(panelEl, visible) {
+  if (!panelEl) return;
+  if (visible) panelEl.classList.add("visible");
+  else panelEl.classList.remove("visible");
+}
+
+if (handoffGuideBtn) {
+  handoffGuideBtn.addEventListener("click", () => {
+    setPanelVisible(handoffGuidePanel, true);
+  });
+}
+if (closeHandoffGuideBtn) {
+  closeHandoffGuideBtn.addEventListener("click", () => {
+    setPanelVisible(handoffGuidePanel, false);
+  });
 }
 
 if (triageCopyFullBtn) {
