@@ -663,7 +663,7 @@
     }
     .text-input {
       flex: 1;
-      min-width: 220px;
+      min-width: 180px;
       padding: 10px 12px;
       border-radius: 10px;
       border: 1px solid #ddd;
@@ -1584,8 +1584,8 @@
     }
 
     .report-triage-btn{
-      width: 220px;
-      height: 220px;
+      width: 180px;
+      height: 180px;
       border-radius: 50%;
       border: none;
       cursor: pointer;
@@ -1671,8 +1671,8 @@
 
     @media (max-width: 520px){
       .report-triage-btn{
-        width: 190px;
-        height: 190px;
+        width: 180px;
+        height: 180px;
       }
       .report-triage-step{
         min-width: 0;
@@ -3084,448 +3084,6 @@
     let accumulatedSeconds = 0;
     let currentSoapRaw = "";
 
-// ============================
-    // GRAVAÇÃO: Atendimento (SOAP) — captura de voz e geração automática
-    // ============================
-    let stopRequested = false;
-
-    function resetMainTimer() {
-      accumulatedSeconds = 0;
-      startTime = null;
-      if (timerInterval) clearInterval(timerInterval);
-      timerInterval = null;
-      if (timerEl) timerEl.textContent = "00:00";
-    }
-
-    function startMainTimer() {
-      resetMainTimer();
-      startTime = Date.now();
-      timerInterval = setInterval(() => {
-        if (!startTime) return;
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        const mmss = formatMMSS(elapsed);
-        if (timerEl) timerEl.textContent = mmss;
-        if (recordBtn && isRecording) recordBtn.textContent = "Encerrar " + mmss;
-      }, 250);
-    }
-
-    function stopMainTimer() {
-      if (timerInterval) clearInterval(timerInterval);
-      timerInterval = null;
-      startTime = null;
-    }
-
-    function setMainUiState(state, message) {
-      if (micStatus) micStatus.textContent = message || (state === "idle" ? "Pronto." : "");
-      if (recordBtn) {
-        recordBtn.disabled = (state === "processing");
-        recordBtn.classList.remove("recording");
-        if (state === "recording") {
-          recordBtn.classList.add("recording");
-          recordBtn.textContent = "Encerrar " + (timerEl ? timerEl.textContent : "00:00");
-        } else if (state === "processing") {
-          recordBtn.textContent = "Processando";
-        } else {
-          recordBtn.textContent = "Iniciar atendimento";
-        }
-      }
-      if (pauseBtn) {
-        pauseBtn.disabled = (!isRecording) || (state === "processing");
-        if (!isRecording) pauseBtn.textContent = "Pausar";
-      }
-    }
-
-    function initMainSpeech() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) return null;
-      const rec = new SR();
-      rec.lang = "pt-BR";
-      rec.continuous = true;
-      rec.interimResults = true;
-
-      rec.onstart = () => {
-        stopRequested = false;
-        isRecording = true;
-        isPaused = false;
-        finalTranscript = "";
-        interimTranscript = "";
-        baseTranscript = "";
-        baseTranscriptRaw = "";
-        if (soapError) soapError.textContent = "";
-        startMainTimer();
-        setMainUiState("recording", "Gravando.");
-      };
-
-      rec.onresult = (event) => {
-        let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const t = (event.results[i][0] && event.results[i][0].transcript) ? event.results[i][0].transcript : "";
-          if (event.results[i].isFinal) finalTranscript += t + " ";
-          else interim += t;
-        }
-        interimTranscript = interim.trim();
-      };
-
-      rec.onerror = (event) => {
-        console.error("Erro no reconhecimento (atendimento):", event && event.error);
-        stopMainTimer();
-        isRecording = false;
-        isPaused = false;
-        const msg = (event && (event.error === "not-allowed" || event.error === "service-not-allowed"))
-          ? "Permissão de microfone negada. Libere o microfone no navegador e tente novamente."
-          : (event && event.error === "no-speech")
-            ? "Nenhuma fala detectada. Tente novamente e fale mais próximo do microfone."
-            : "Falha ao iniciar a captura de voz.";
-        setMainUiState("error", msg);
-      };
-
-      rec.onend = () => {
-        if (isRecording && !stopRequested && !isPaused) {
-          try { rec.start(); } catch {}
-        }
-      };
-      return rec;
-    }
-
-    function getMainTranscriptForSubmit() {
-      const a = (finalTranscript || "").trim();
-      const b = (interimTranscript || "").trim();
-      return (a + " " + b).trim();
-    }
-
-    async function startRecording() {
-      if (!recordBtn) return;
-
-      if (!canUseSpeechRecognition()) {
-        setMainUiState("error", "Este navegador não suporta captura automática de voz. Use Google Chrome (computador ou Android).");
-        return;
-      }
-
-      setMainUiState("recording", "Solicitando microfone...");
-      const ok = await ensureMicrophonePermission();
-      if (!ok) {
-        isRecording = false;
-        setMainUiState("error", "Permissão de microfone negada. Libere o microfone no navegador e tente novamente.");
-        return;
-      }
-
-      if (!recognition) recognition = initMainSpeech();
-      if (!recognition) {
-        setMainUiState("error", "Este navegador não suporta captura automática de voz. Use Google Chrome (computador ou Android).");
-        return;
-      }
-
-      stopRequested = false;
-      try { recognition.start(); } catch (e) {
-        console.warn("Falha ao iniciar reconhecimento (atendimento):", e);
-        setMainUiState("error", "Falha ao iniciar a captura de voz.");
-      }
-    }
-
-    function stopRecording() {
-      stopRequested = true;
-      try { if (recognition) recognition.stop(); } catch {}
-      stopMainTimer();
-      isRecording = false;
-      isPaused = false;
-      if (pauseBtn) pauseBtn.textContent = "Pausar";
-    }
-
-    function pauseRecording() {
-      if (!isRecording) return;
-      isPaused = true;
-      try { if (recognition) recognition.stop(); } catch {}
-      stopMainTimer();
-      if (pauseBtn) pauseBtn.textContent = "Retomar";
-      if (micStatus) micStatus.textContent = "Pausado.";
-    }
-
-    function resumeRecording() {
-      if (!recognition) return;
-      isPaused = false;
-      stopRequested = false;
-      try { recognition.start(); } catch {}
-      startMainTimer();
-      if (pauseBtn) pauseBtn.textContent = "Pausar";
-      if (micStatus) micStatus.textContent = "Gravando.";
-    }
-
-    async function finalizarConsulta() {
-      const transcricao = getMainTranscriptForSubmit();
-      if (!transcricao) {
-        setMainUiState("error", "Nenhuma fala foi capturada.");
-        resetMainTimer();
-        return;
-      }
-
-      setMainUiState("processing", "Gerando SOAP e plano de cuidados.");
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP (SOAP):", resp.status, txt);
-          setMainUiState("error", "Falha ao gerar SOAP. Verifique a conexão e tente novamente.");
-          resetMainTimer();
-          return;
-        }
-
-        const data = await resp.json().catch(() => ({}));
-        const soap = (data && typeof data.soap === "string") ? data.soap.trim() : "";
-        const prescricao = (data && typeof data.prescricao === "string") ? data.prescricao.trim() : "";
-
-        if (!soap && !prescricao) {
-          setMainUiState("error", "Não foi possível gerar o SOAP.");
-          resetMainTimer();
-          return;
-        }
-
-        const extract = (label) => {
-          const r = new RegExp(label + "\\s*:\\s*([\\s\\S]*?)(?=\\n\\s*[SOAP]\\s*:|$)", "i");
-          const m = soap.match(r);
-          return (m && m[1]) ? m[1].trim() : "";
-        };
-
-        if (soapS) soapS.value = extract("S");
-        if (soapO) soapO.value = extract("O");
-        if (soapA) soapA.value = extract("A");
-        if (soapP) soapP.value = extract("P");
-
-        if (prescriptionOutput) prescriptionOutput.value = prescricao;
-
-        if (resultsCard) resultsCard.classList.remove("hidden");
-        setMainUiState("idle", "Pronto.");
-        resetMainTimer();
-      } catch (err) {
-        console.error("Erro ao gerar SOAP:", err);
-        setMainUiState("error", "Falha de rede ou servidor ao gerar SOAP.");
-        resetMainTimer();
-      }
-    }
-
-    // ============================
-    // GRAVAÇÃO: Triagem hospitalar — captura de voz e geração automática
-    // ============================
-    let triageStopRequested = false;
-
-    function resetTriageTimer() {
-      triageAccumulatedSeconds = 0;
-      triageStartTime = null;
-      if (triageTimerInterval) clearInterval(triageTimerInterval);
-      triageTimerInterval = null;
-      if (triageTimerEl) triageTimerEl.textContent = "00:00";
-    }
-
-    function startTriageTimer() {
-      resetTriageTimer();
-      triageStartTime = Date.now();
-      triageTimerInterval = setInterval(() => {
-        if (!triageStartTime) return;
-        const elapsed = Math.floor((Date.now() - triageStartTime) / 1000);
-        const mmss = formatMMSS(elapsed);
-        if (triageTimerEl) triageTimerEl.textContent = mmss;
-        if (triageRecordBtn && triageIsRecording) triageRecordBtn.textContent = "Encerrar " + mmss;
-      }, 250);
-    }
-
-    function stopTriageTimer() {
-      if (triageTimerInterval) clearInterval(triageTimerInterval);
-      triageTimerInterval = null;
-      triageStartTime = null;
-    }
-
-    function setTriageUiState(state, message) {
-      if (triageMicStatus) triageMicStatus.textContent = message || (state === "idle" ? "Pronto." : "");
-      if (triageRecordBtn) {
-        triageRecordBtn.disabled = (state === "processing");
-        triageRecordBtn.classList.remove("recording");
-        if (state === "recording") {
-          triageRecordBtn.classList.add("recording");
-          triageRecordBtn.textContent = "Encerrar " + (triageTimerEl ? triageTimerEl.textContent : "00:00");
-        } else if (state === "processing") {
-          triageRecordBtn.textContent = "Processando";
-        } else {
-          triageRecordBtn.textContent = "Iniciar triagem hospitalar";
-        }
-      }
-      if (triagePauseBtn) {
-        triagePauseBtn.disabled = (!triageIsRecording) || (state === "processing");
-        if (!triageIsRecording) triagePauseBtn.textContent = "Pausar";
-      }
-    }
-
-    function initTriageSpeech() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) return null;
-      const rec = new SR();
-      rec.lang = "pt-BR";
-      rec.continuous = true;
-      rec.interimResults = true;
-
-      rec.onstart = () => {
-        triageStopRequested = false;
-        triageIsRecording = true;
-        triageIsPaused = false;
-        triageFinalTranscript = "";
-        triageInterimTranscript = "";
-        if (triageError) triageError.textContent = "";
-        startTriageTimer();
-        setTriageUiState("recording", "Gravando.");
-      };
-
-      rec.onresult = (event) => {
-        let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const t = (event.results[i][0] && event.results[i][0].transcript) ? event.results[i][0].transcript : "";
-          if (event.results[i].isFinal) triageFinalTranscript += t + " ";
-          else interim += t;
-        }
-        triageInterimTranscript = interim.trim();
-      };
-
-      rec.onerror = (event) => {
-        console.error("Erro no reconhecimento (triagem):", event && event.error);
-        stopTriageTimer();
-        triageIsRecording = false;
-        triageIsPaused = false;
-        const msg = (event && (event.error === "not-allowed" || event.error === "service-not-allowed"))
-          ? "Permissão de microfone negada. Libere o microfone no navegador e tente novamente."
-          : (event && event.error === "no-speech")
-            ? "Nenhuma fala detectada. Tente novamente e fale mais próximo do microfone."
-            : "Falha ao iniciar a captura de voz.";
-        setTriageUiState("error", msg);
-      };
-
-      rec.onend = () => {
-        if (triageIsRecording && !triageStopRequested && !triageIsPaused) {
-          try { rec.start(); } catch {}
-        }
-      };
-      return rec;
-    }
-
-    function getTriageTranscriptForSubmit() {
-      const a = (triageFinalTranscript || "").trim();
-      const b = (triageInterimTranscript || "").trim();
-      return (a + " " + b).trim();
-    }
-
-    async function startTriageRecording() {
-      if (!triageRecordBtn) return;
-
-      if (!canUseSpeechRecognition()) {
-        setTriageUiState("error", "Este navegador não suporta captura automática de voz. Use Google Chrome (computador ou Android).");
-        return;
-      }
-
-      setTriageUiState("recording", "Solicitando microfone...");
-      const ok = await ensureMicrophonePermission();
-      if (!ok) {
-        triageIsRecording = false;
-        setTriageUiState("error", "Permissão de microfone negada. Libere o microfone no navegador e tente novamente.");
-        return;
-      }
-
-      if (!triageRecognition) triageRecognition = initTriageSpeech();
-      if (!triageRecognition) {
-        setTriageUiState("error", "Este navegador não suporta captura automática de voz. Use Google Chrome (computador ou Android).");
-        return;
-      }
-
-      triageStopRequested = false;
-      try { triageRecognition.start(); } catch (e) {
-        console.warn("Falha ao iniciar reconhecimento (triagem):", e);
-        setTriageUiState("error", "Falha ao iniciar a captura de voz.");
-      }
-    }
-
-    function stopTriageRecording() {
-      triageStopRequested = true;
-      try { if (triageRecognition) triageRecognition.stop(); } catch {}
-      stopTriageTimer();
-      triageIsRecording = false;
-      triageIsPaused = false;
-      if (triagePauseBtn) triagePauseBtn.textContent = "Pausar";
-    }
-
-    function pauseTriageRecording() {
-      if (!triageIsRecording) return;
-      triageIsPaused = true;
-      try { if (triageRecognition) triageRecognition.stop(); } catch {}
-      stopTriageTimer();
-      if (triagePauseBtn) triagePauseBtn.textContent = "Retomar";
-      if (triageMicStatus) triageMicStatus.textContent = "Pausado.";
-    }
-
-    function resumeTriageRecording() {
-      if (!triageRecognition) return;
-      triageIsPaused = false;
-      triageStopRequested = false;
-      try { triageRecognition.start(); } catch {}
-      startTriageTimer();
-      if (triagePauseBtn) triagePauseBtn.textContent = "Pausar";
-      if (triageMicStatus) triageMicStatus.textContent = "Gravando.";
-    }
-
-    async function finalizarTriagemHospitalar() {
-      const transcricao = getTriageTranscriptForSubmit();
-      if (!transcricao) {
-        setTriageUiState("error", "Nenhuma fala foi capturada.");
-        resetTriageTimer();
-        return;
-      }
-
-      setTriageUiState("processing", "Gerando triagem hospitalar.");
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/gerar-triagem-hospitalar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP (triagem):", resp.status, txt);
-          setTriageUiState("error", "Falha ao gerar triagem. Verifique a conexão e tente novamente.");
-          resetTriageTimer();
-          return;
-        }
-
-        const data = await resp.json().catch(() => ({}));
-
-        if (triageProntuario) triageProntuario.value = (data.texto_prontuario || "");
-        if (triagePassagemMedico) triagePassagemMedico.value = (data.passagem_medico || "");
-        if (triageAlertas) triageAlertas.value = (data.alertas_red_flags || "");
-        if (triageCondutasNaoMed) triageCondutasNaoMed.value = (data.condutas_nao_medicamentosas || "");
-        if (triageCondutasMed) triageCondutasMed.value = (data.condutas_medicamentosas || "");
-        if (triageMedidasExames) triageMedidasExames.value = (data.medidas_exames_imediatos || "");
-        if (triagePendencias) triagePendencias.value = (data.pendencias_checar || "");
-        if (triageQualidade) triageQualidade.value = (data.checagem_qualidade || "");
-        if (triageFullReport) triageFullReport.value = (data.relatorio_completo || "");
-
-        const risco = String(data.nivel_risco || "").trim();
-        const tempo = String(data.tempo_maximo || "").trim();
-        const just = String(data.justificativa_risco || "").trim();
-        if (triageRiskBadge) triageRiskBadge.textContent = risco || "não informado";
-        if (triageRiskMeaning) triageRiskMeaning.textContent = tempo ? (tempo + (just ? " — " + just : "")) : (just || "");
-        if (triageReportStatus) triageReportStatus.textContent = "Triagem gerada.";
-
-        setTriageUiState("idle", "Pronto.");
-        resetTriageTimer();
-      } catch (err) {
-        console.error("Erro ao gerar triagem:", err);
-        setTriageUiState("error", "Falha de rede ou servidor ao gerar triagem.");
-        resetTriageTimer();
-      }
-    }
-
-
-    
-
     // ============================
     // ============================
     // MÓDULO: Perguntas e procedimentos essenciais em tempo real (FLUXO CONTROLADO)
@@ -4207,7 +3765,9 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     const reportFlowDoc = document.getElementById("reportFlowDoc");
 
     let reportRecognition = null;
-    let reportState = "idle"; // idle | recording | processing | done | error
+    let reportState = "idle"; // idle | starting | recording | processing | done | error
+
+    let reportStartSeq = 0;
 
     // Compatibilidade: usado por bloqueios globais para evitar gravações simultâneas
     let reportIsRecording = false;
@@ -4239,13 +3799,13 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     }
 
     function setReportTimerText(mmss) {
-      // Mantém o texto interno do timer (agora oculto) e espelha o contador no próprio botão.
       if (reportTimerEl) reportTimerEl.textContent = mmss;
-      if (reportRecordBtn && reportState === "recording") {
-        reportRecordBtn.textContent = "Encerrar " + mmss;
+      if (reportRecordBtn && (reportState === "starting" || reportState === "recording")) {
+        reportRecordBtn.textContent = mmss;
       }
     }
-function resetReportTimer() {
+
+    function resetReportTimer() {
       if (reportTimerInterval) clearInterval(reportTimerInterval);
       reportTimerInterval = null;
       reportTimerStart = null;
@@ -4253,8 +3813,9 @@ function resetReportTimer() {
     }
 
     function startReportTimer() {
-      resetReportTimer();
+      if (reportTimerInterval) return;
       reportTimerStart = Date.now();
+      setReportTimerText("00:00");
       reportTimerInterval = setInterval(() => {
         if (!reportTimerStart) return;
         const elapsed = Math.floor((Date.now() - reportTimerStart) / 1000);
@@ -4279,7 +3840,7 @@ function resetReportTimer() {
 
     function setReportUIState(nextState, message) {
       reportState = nextState;
-      reportIsRecording = (reportState === "recording");
+      reportIsRecording = (reportState === "recording" || reportState === "starting");
 
       if (reportStatus) {
         reportStatus.textContent = (typeof message === "string" && message.trim())
@@ -4290,15 +3851,16 @@ function resetReportTimer() {
       if (reportRecordBtn) {
         reportRecordBtn.disabled = (reportState === "processing");
         reportRecordBtn.classList.remove("start", "recording", "processing");
-        if (reportState === "recording") {
+
+        if (reportState === "starting" || reportState === "recording") {
           reportRecordBtn.classList.add("recording");
-          reportRecordBtn.textContent = "Encerrar " + (reportTimerEl ? reportTimerEl.textContent : "00:00");
+          reportRecordBtn.textContent = "00:00";
         } else if (reportState === "processing") {
           reportRecordBtn.classList.add("processing");
           reportRecordBtn.textContent = "Processando";
         } else {
           reportRecordBtn.classList.add("start");
-          reportRecordBtn.textContent = "Gerar documento";
+          reportRecordBtn.textContent = "Gerar documentos";
         }
       }
 
@@ -4312,7 +3874,7 @@ function resetReportTimer() {
         else reportOutput.classList.add("hidden");
       }
 
-      if (reportState === "recording") setActiveReportStep("voice");
+      if (reportState === "starting" || reportState === "recording") setActiveReportStep("voice");
       else if (reportState === "processing") setActiveReportStep("identify");
       else if (reportState === "done") setActiveReportStep("doc");
       else setActiveReportStep("voice");
@@ -4351,7 +3913,7 @@ function resetReportTimer() {
         reportStopRequested = false;
         clearReportTranscripts();
         startReportTimer();
-        setReportUIState("recording", "Gravando.");
+        setReportUIState("recording", "Gravando. Clique novamente para finalizar.");
       };
 
       rec.onresult = (event) => {
@@ -4366,12 +3928,12 @@ function resetReportTimer() {
         }
         reportInterimTranscript = interim.trim();
 
+        // Não exibe transcrição na tela durante a gravação
         if (reportPartialEl) {
-          // Mantém a transcrição oculta durante a captura.
           reportPartialEl.textContent = "";
           reportPartialEl.classList.add("hidden");
         }
-};
+      };
 
       rec.onerror = (event) => {
         console.error("Erro no reconhecimento de voz (documentos):", event.error);
@@ -4432,30 +3994,46 @@ function resetReportTimer() {
     async function startReportRecording() {
       if (!reportRecordBtn || !reportStatus) return;
 
+      if (reportState === "starting" || reportState === "recording" || reportState === "processing") return;
+
       if (anyOtherRecordingActive()) {
         reportStatus.textContent = "Finalize a gravação atual antes de iniciar este módulo.";
         return;
       }
 
       if (!canUseSpeechRecognition()) {
-        setReportUIState("error", "Este navegador não suporta captura automática de voz. Use Google Chrome (computador ou Android)." );
+        setReportUIState("error", "Este navegador não suporta captura automática de voz. Use Google Chrome (computador ou Android).");
         return;
       }
+
+      reportStartSeq += 1;
+      const mySeq = reportStartSeq;
 
       if (reportOutput) reportOutput.value = "";
       updateReportActions();
       if (reportActionsRow) reportActionsRow.classList.add("hidden");
       if (reportOutput) reportOutput.classList.add("hidden");
+
       clearReportTranscripts();
       resetReportTimer();
-      setReportUIState("recording", "Solicitando microfone...");
+
+      reportStopRequested = false;
+      setReportUIState("starting", "Solicitando microfone...");
+      startReportTimer();
 
       const permissionOk = await ensureMicrophonePermission();
+
+      // Cancelado ou outro start iniciou
+      if (mySeq !== reportStartSeq || reportState !== "starting") return;
+
       if (!permissionOk) {
+        stopReportTimer();
         setReportUIState("error", "Permissão de microfone negada. Libere o microfone no navegador e tente novamente.");
+        resetReportTimer();
         return;
       }
 
+      // Para evitar conflito com outros módulos
       try { if (recognition) recognition.stop(); } catch {}
       try { if (triageRecognition) triageRecognition.stop(); } catch {}
       try { if (sbarRecognition) sbarRecognition.stop(); } catch {}
@@ -4464,29 +4042,57 @@ function resetReportTimer() {
       if (!reportRecognition) {
         reportRecognition = initReportSpeech();
         if (!reportRecognition) {
-          setReportUIState("error", "Este navegador não suporta captura automática de voz. Use Google Chrome (computador ou Android)." );
+          stopReportTimer();
+          setReportUIState("error", "Este navegador não suporta captura automática de voz. Use Google Chrome (computador ou Android).");
+          resetReportTimer();
           return;
         }
       }
 
-      reportStopRequested = false;
+      // Se foi cancelado entre a permissão e o start
+      if (mySeq !== reportStartSeq || reportState !== "starting") return;
+
       try {
+        try { reportRecognition.abort(); } catch {}
         reportRecognition.start();
+        // Estado "recording" será confirmado no onstart
       } catch (e) {
         console.warn("Erro ao iniciar reconhecimento (documentos):", e);
+        stopReportTimer();
         setReportUIState("error", "Falha ao iniciar a captura de voz.");
+        resetReportTimer();
       }
     }
 
     async function stopReportRecordingAndGenerate() {
       if (!reportRecordBtn || !reportStatus) return;
 
+      // Caso o usuário clique para cancelar ainda durante "starting"
+      if (reportState === "starting") {
+        reportStartSeq += 1; // invalida o start pendente
+        reportStopRequested = true;
+        try { if (reportRecognition) reportRecognition.abort(); } catch {}
+        stopReportTimer();
+        resetReportTimer();
+        clearReportTranscripts();
+        setReportUIState("idle", "Pronto para gravar.");
+        return;
+      }
+
+      if (reportState !== "recording") return;
+
       reportStopRequested = true;
+
+      // Já muda para processing para evitar cliques repetidos enquanto o onend acontece
+      setReportUIState("processing", "Processando.");
+      stopReportTimer();
 
       try { if (reportRecognition) reportRecognition.stop(); } catch {}
 
-      stopReportTimer();
-      if (reportPartialEl) reportPartialEl.classList.add("hidden");
+      if (reportPartialEl) {
+        reportPartialEl.textContent = "";
+        reportPartialEl.classList.add("hidden");
+      }
 
       const transcricao = getReportTranscriptForSubmit();
       if (!transcricao) {
@@ -4494,8 +4100,6 @@ function resetReportTimer() {
         resetReportTimer();
         return;
       }
-
-      setReportUIState("processing", "Processando.");
 
       const tipo_documento = getSelectedReportDocType();
 
@@ -4749,11 +4353,26 @@ recordBtn.onclick = () => {
     if (reportRecordBtn) {
       reportRecordBtn.addEventListener("click", async (e) => {
         e.preventDefault();
-        if (!reportIsRecording) {
-          startReportRecording();
-        } else {
-          await stopReportRecordingAndGenerate();
+
+        // Proteção contra duplo clique muito rápido
+        const now = Date.now();
+        if (reportRecordBtn.dataset && reportRecordBtn.dataset.lastClick) {
+          const last = Number(reportRecordBtn.dataset.lastClick) || 0;
+          if (now - last < 250) return;
         }
+        if (reportRecordBtn.dataset) reportRecordBtn.dataset.lastClick = String(now);
+
+        if (reportState === "idle" || reportState === "error" || reportState === "done") {
+          await startReportRecording();
+          return;
+        }
+
+        if (reportState === "starting" || reportState === "recording") {
+          await stopReportRecordingAndGenerate();
+          return;
+        }
+
+        // processing: ignora cliques
       });
     }
 
