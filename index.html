@@ -184,6 +184,60 @@
     #triageRecordBtn.recording { background: #dc3545; }
     #triageRecordBtn:active { transform: scale(0.97); }
 
+    /* Documentos: botão e controles (mesmo padrão do Iniciar atendimento) */
+    #docsRecordBtn {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+      margin-top: 6px;
+      margin-bottom: 10px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    #docsRecordBtn.start { background: #28a745; }
+    #docsRecordBtn.recording { background: #dc3545; }
+    #docsRecordBtn:active { transform: scale(0.97); }
+
+    #docsPauseBtn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      background: #6c757d;
+      color: #fff;
+      font-size: 13px;
+      display: none;
+    }
+    #docsTimer {
+      font-size: 26px;
+      margin-top: 10px;
+      font-family: "Courier New", monospace;
+    }
+    #docsMicStatus {
+      margin-top: 8px;
+      font-size: 14px;
+      text-align: center;
+      color: #333;
+      min-height: 20px;
+    }
+    #docsPauseLabel {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #555;
+      text-align: center;
+    }
+    #docsFinishHint {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #333;
+      text-align: center;
+    }
+
+
     #triagePauseBtn {
       padding: 6px 14px;
       border-radius: 20px;
@@ -1884,6 +1938,35 @@
 
       <div class="section-header-row" style="justify-content: center;">
         <div class="soap-title-actions" style="justify-content: center;">
+          <p class="module-title" style="margin: 0;">Gerar documentos</p>
+          <button id="docsGuideBtn" class="btn-print" type="button" style="display:inline-block; margin-left: 8px;">Guia para gerar documentos</button>
+        </div>
+      </div>
+
+      <p class="module-subtitle">
+        Use este módulo para gerar qualquer documento de enfermagem (relatórios, encaminhamentos, declarações, solicitações, comunicados, atestado de comparecimento/permanência, ata de reunião, registros de procedimentos e outros). Ao encerrar a gravação, o documento será gerado e ficará pronto para copiar e imprimir.
+      </p>
+
+      <button id="docsRecordBtn" class="start" type="button">Iniciar geração de documentos</button>
+
+      <div id="docsTimer">00:00</div>
+      <div id="docsMicStatus">Clique em "Iniciar geração de documentos" para começar.</div>
+
+      <div class="controls-row">
+        <button id="docsPauseBtn" type="button">Pausar</button>
+      </div>
+      <div id="docsPauseLabel">Use o botão pequeno para pausar e retomar a gravação.</div>
+
+      <div id="docsFinishHint">
+        Para encerrar e gerar o documento, clique novamente no botão grande vermelho.
+      </div>
+
+      <div id="docsError" class="error"></div>
+
+      <div class="module-divider"></div>
+
+      <div class="section-header-row" style="justify-content: center;">
+        <div class="soap-title-actions" style="justify-content: center;">
           <p class="module-title" style="margin: 0;">Passagem de plantão</p>
           <button id="handoffGuideBtn" class="btn-print" type="button" style="display:inline-block; margin-left: 8px;">Guia de Passagem de Plantão</button>
         </div>
@@ -2710,7 +2793,30 @@
   </div>
 
 
-  <div id="imageChoiceOverlay" class="modal-overlay hidden">
+  
+  <div id="docsGuidePanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Guia para gerar documentos</h3>
+      <button id="closeDocsGuideBtn" class="close-panel-btn" aria-label="Fechar guia para gerar documentos">X</button>
+    </div>
+
+    <div class="recommendations-status">
+      Use estas perguntas como roteiro. Quanto mais completo você registrar, melhor será o documento gerado.
+    </div>
+
+    <div id="docsGuideContent" class="recommendations-list">
+      <div class="recommendation-item"><strong>1) Qual documento você precisa?</strong><br>Tipo (declaração, encaminhamento, solicitação, relatório, ata, registro de procedimento etc.) e finalidade/destino (para quem será entregue).</div>
+      <div class="recommendation-item"><strong>2) Identificação completa</strong><br>Paciente (nome completo, data de nascimento/idade, CPF/CNS/prontuário quando houver), unidade/local e data/hora do registro.</div>
+      <div class="recommendation-item"><strong>3) Contexto do caso</strong><br>Motivo/queixa, histórico relevante, comorbidades, alergias e medicações em uso quando pertinente.</div>
+      <div class="recommendation-item"><strong>4) Achados objetivos</strong><br>Sinais vitais, exame físico/achados relevantes, escala de dor, nível de consciência e outros dados mensuráveis.</div>
+      <div class="recommendation-item"><strong>5) Intervenções e procedimentos</strong><br>O que foi feito (curativo, medicação, nebulização, coleta, orientação, encaminhamento), técnica/material quando aplicável e resposta do paciente.</div>
+      <div class="recommendation-item"><strong>6) Orientações e plano</strong><br>Condutas e orientações fornecidas, sinais de alarme, retorno/seguimento e para onde encaminhar (se houver).</div>
+      <div class="recommendation-item"><strong>7) Itens específicos por tipo</strong><br>Comparecimento/permanência: data e horários (chegada/saída), motivo, acompanhante. Encaminhamento: serviço/município/profissional de destino e motivo. Solicitação: item, quantidade, período e justificativa. ATA: data, pauta, participantes, decisões e encaminhamentos.</div>
+      <div class="recommendation-item"><strong>8) Identificação do profissional</strong><br>Nome do profissional, função (enfermagem), assinatura e COREN (quando pertinente no seu serviço).</div>
+    </div>
+  </div>
+
+<div id="imageChoiceOverlay" class="modal-overlay hidden">
   <div class="modal" style="max-width: 560px;">
     <h3 id="imageChoiceTitle">Imagens para análise</h3>
     <p id="imageChoiceHint">Selecione uma ou mais imagens. Você pode adicionar várias antes de analisar.</p>
@@ -3130,6 +3236,19 @@
     let handoffAccumulatedSeconds = 0;
     let handoffTimerInterval = null;
 
+    // ============================
+    // MÓDULO: Documentos (gravação + geração de documento)
+    // ============================
+    let docsRecognition = null;
+    let docsIsRecording = false;
+    let docsIsPaused = false;
+    let docsFinalTranscript = "";
+    let docsInterimTranscript = "";
+
+    let docsStartTime = null;
+    let docsAccumulatedSeconds = 0;
+    let docsTimerInterval = null;
+
 const recordBtn = document.getElementById("recordBtn");
     const pauseBtn = document.getElementById("pauseBtn");
     const timerEl = document.getElementById("timer");
@@ -3150,6 +3269,18 @@ const recordBtn = document.getElementById("recordBtn");
     const handoffTimerEl = document.getElementById("handoffTimer");
     const handoffMicStatus = document.getElementById("handoffMicStatus");
     const handoffError = document.getElementById("handoffError");
+
+    const docsRecordBtn = document.getElementById("docsRecordBtn");
+    const docsPauseBtn = document.getElementById("docsPauseBtn");
+    const docsTimerEl = document.getElementById("docsTimer");
+    const docsMicStatus = document.getElementById("docsMicStatus");
+    const docsError = document.getElementById("docsError");
+
+    const docsGuideBtn = document.getElementById("docsGuideBtn");
+    const docsGuidePanel = document.getElementById("docsGuidePanel");
+    const closeDocsGuideBtn = document.getElementById("closeDocsGuideBtn");
+
+    const patientReportCard = document.getElementById("patientReportCard");
 
     const handoffPanel = document.getElementById("handoffPanel");
     const handoffOutput = document.getElementById("handoffOutput");
@@ -6214,7 +6345,7 @@ let interim = "";
           // triageIsRecording: triagem
           // reportIsRecording: relatórios
           // questionsIsRecording: perguntas adicionais
-          return !!(isRecording || triageIsRecording || reportIsRecording || questionsIsRecording);
+          return !!(isRecording || triageIsRecording || reportIsRecording || questionsIsRecording || docsIsRecording);
         }
 
         // Guia do SBAR (inline, dentro do próprio módulo)
@@ -6691,6 +6822,248 @@ if (medicalDoubtSendBtn) {
 }
 
 
+    // ============================
+    // Documentos (gravação + geração via /api/gerar-relatorio)
+    // ============================
+
+    function docsResetTimer() {
+      docsStartTime = null;
+      docsAccumulatedSeconds = 0;
+      if (docsTimerInterval) clearInterval(docsTimerInterval);
+      docsTimerInterval = null;
+      if (docsTimerEl) docsTimerEl.textContent = "00:00";
+    }
+
+    function docsStartTimer() {
+      if (docsTimerInterval) clearInterval(docsTimerInterval);
+      docsStartTime = new Date();
+      docsTimerInterval = setInterval(() => {
+        const now = new Date();
+        const delta = Math.floor((now - docsStartTime) / 1000);
+        const total = docsAccumulatedSeconds + delta;
+        const mm = String(Math.floor(total / 60)).padStart(2, "0");
+        const ss = String(total % 60).padStart(2, "0");
+        if (docsTimerEl) docsTimerEl.textContent = `${mm}:${ss}`;
+      }, 1000);
+    }
+
+    function docsPauseTimer() {
+      if (!docsStartTime) return;
+      const now = new Date();
+      const delta = Math.floor((now - docsStartTime) / 1000);
+      docsAccumulatedSeconds += delta;
+      docsStartTime = null;
+      if (docsTimerInterval) clearInterval(docsTimerInterval);
+      docsTimerInterval = null;
+    }
+
+    function docsGetCombinedTranscript() {
+      const full = (docsFinalTranscript || "").trim();
+      const inter = (docsInterimTranscript || "").trim();
+      return [full, inter].filter(Boolean).join(" ").trim();
+    }
+
+    function ensureDocsRecognition() {
+      if (docsRecognition) return true;
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        if (docsError) docsError.textContent = "Seu navegador não suporta reconhecimento de voz. Use Chrome no computador ou Android.";
+        return false;
+      }
+      docsRecognition = new SR();
+      docsRecognition.continuous = true;
+      docsRecognition.interimResults = true;
+      docsRecognition.lang = "pt-BR";
+
+      docsRecognition.onresult = (event) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const res = event.results[i];
+          const transcript = (res[0] && res[0].transcript) ? res[0].transcript : "";
+          if (res.isFinal) {
+            docsFinalTranscript += transcript + " ";
+          } else {
+            interim += transcript + " ";
+          }
+        }
+        docsInterimTranscript = interim.trim();
+      };
+
+      docsRecognition.onerror = (e) => {
+        console.error("Erro no reconhecimento (documentos):", e);
+      };
+
+      return true;
+    }
+
+    function startDocsRecording() {
+      const busy = !!(isRecording || triageIsRecording || handoffIsRecording || reportIsRecording || questionsIsRecording || sbarIsRecording);
+      if (busy) {
+        alert("Finalize a gravação atual antes de iniciar a geração de documentos.");
+        return;
+      }
+
+      if (!ensureDocsRecognition()) return;
+
+      docsIsRecording = true;
+      docsIsPaused = false;
+      docsFinalTranscript = "";
+      docsInterimTranscript = "";
+
+      if (docsError) docsError.textContent = "";
+      if (docsMicStatus) docsMicStatus.textContent = "Gravando documentos...";
+
+      if (docsPauseBtn) {
+        docsPauseBtn.style.display = "inline-block";
+        docsPauseBtn.innerText = "Pausar";
+      }
+
+      if (docsRecordBtn) {
+        docsRecordBtn.className = "recording";
+        docsRecordBtn.innerText = "Encerrar gravação";
+      }
+
+      // Bloqueia outros módulos durante a gravação
+      if (recordBtn) recordBtn.disabled = true;
+      if (triageRecordBtn) triageRecordBtn.disabled = true;
+      if (handoffRecordBtn) handoffRecordBtn.disabled = true;
+      if (reportRecordBtn) reportRecordBtn.disabled = true;
+
+      docsResetTimer();
+      docsStartTimer();
+
+      try { docsRecognition.start(); } catch (e) {}
+    }
+
+    function stopDocsRecording() {
+      docsIsRecording = false;
+      docsIsPaused = false;
+
+      if (docsRecognition) {
+        try { docsRecognition.stop(); } catch (e) {}
+      }
+      docsPauseTimer();
+
+      if (docsRecordBtn) {
+        docsRecordBtn.className = "start";
+        docsRecordBtn.innerText = "Iniciar geração de documentos";
+      }
+      if (docsPauseBtn) docsPauseBtn.style.display = "none";
+
+      if (recordBtn) recordBtn.disabled = false;
+      if (triageRecordBtn) triageRecordBtn.disabled = false;
+      if (handoffRecordBtn) handoffRecordBtn.disabled = false;
+      if (reportRecordBtn) reportRecordBtn.disabled = false;
+    }
+
+    function pauseDocsRecording() {
+      if (!docsIsRecording || docsIsPaused) return;
+      docsIsPaused = true;
+
+      if (docsRecognition) {
+        try { docsRecognition.stop(); } catch (e) {}
+      }
+      docsPauseTimer();
+
+      if (docsPauseBtn) docsPauseBtn.innerText = "Retomar";
+      if (docsMicStatus) docsMicStatus.innerText = "Gravação pausada.";
+    }
+
+    function resumeDocsRecording() {
+      if (!docsIsRecording || !docsIsPaused) return;
+      docsIsPaused = false;
+
+      if (docsRecognition) {
+        try { docsRecognition.start(); } catch (e) {}
+      }
+      docsStartTimer();
+
+      if (docsPauseBtn) docsPauseBtn.innerText = "Pausar";
+      if (docsMicStatus) docsMicStatus.innerText = "Gravando documentos...";
+    }
+
+    async function generateDocumentFromTranscript(transcricao) {
+      const txt = (transcricao || "").trim();
+      if (!txt || txt.length < 40) {
+        if (docsError) docsError.textContent = "A transcrição ficou muito curta. Tente novamente, falando mais próximo ao microfone.";
+        return;
+      }
+
+      if (docsMicStatus) docsMicStatus.textContent = "Gerando documento...";
+      if (docsRecordBtn) docsRecordBtn.disabled = true;
+
+      // Prepara UI do módulo de documentos (já existente)
+      if (reportStatus) {
+        reportStatus.textContent = "Gerando documento...";
+        reportStatus.classList.add("loading-dot");
+      }
+      if (reportOutput) reportOutput.value = "";
+      if (reportDocTypeDetected) reportDocTypeDetected.textContent = "";
+      if (reportMissingFields) reportMissingFields.textContent = "";
+      updateReportActions();
+
+      try {
+        const selected = (reportDocTypeSelect && reportDocTypeSelect.value) ? String(reportDocTypeSelect.value).trim() : "auto";
+        const body = { transcricao: txt };
+        if (selected && selected !== "auto") body.tipo_documento = selected;
+
+        const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+
+        if (!resp.ok) {
+          const t = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (documentos):", resp.status, t);
+          if (docsError) docsError.textContent = "Não foi possível gerar o documento.";
+          if (reportStatus) {
+            reportStatus.textContent = "Não foi possível gerar o documento.";
+            reportStatus.classList.remove("loading-dot");
+          }
+          return;
+        }
+
+        const data = await resp.json().catch(() => ({}));
+        const documento = (data && (data.documento || data.relatorio)) ? String(data.documento || data.relatorio) : "";
+        const tipoIdentificado = (data && data.tipo_documento) ? String(data.tipo_documento) : "";
+        const pendentes = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : (Array.isArray(data?.campos_faltantes) ? data.campos_faltantes : []);
+
+        if (reportDocTypeDetected) reportDocTypeDetected.textContent = tipoIdentificado ? tipoIdentificado : "não informado";
+        if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "Nenhum";
+        if (reportOutput) reportOutput.value = normalizeNumberedParagraphs(documento);
+
+        updateReportActions();
+
+        if (reportStatus) {
+          reportStatus.textContent = documento ? "Documento gerado." : "Não foi possível gerar o documento.";
+          reportStatus.classList.remove("loading-dot");
+        }
+
+        if (docsMicStatus) docsMicStatus.textContent = documento ? "Documento gerado. Role para copiar/imprimir." : "Não foi possível gerar o documento.";
+        if (patientReportCard) patientReportCard.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      } catch (e) {
+        console.error("Erro ao gerar documento:", e);
+        if (docsError) docsError.textContent = "Erro ao gerar documento.";
+        if (reportStatus) {
+          reportStatus.textContent = "Erro ao gerar documento.";
+          reportStatus.classList.remove("loading-dot");
+        }
+        updateReportActions();
+      } finally {
+        if (docsRecordBtn) docsRecordBtn.disabled = false;
+      }
+    }
+
+    async function stopDocsRecordingAndGenerate() {
+      stopDocsRecording();
+      const combined = docsGetCombinedTranscript();
+      await generateDocumentFromTranscript(combined);
+    }
+
+
+
 if (triageRecordBtn) {
   triageRecordBtn.onclick = () => {
     if (!triageIsRecording) {
@@ -6709,6 +7082,26 @@ if (triagePauseBtn) {
     else resumeTriageRecording();
   };
 }
+
+if (docsRecordBtn) {
+  docsRecordBtn.onclick = () => {
+    if (!docsIsRecording) {
+      startDocsRecording();
+    } else {
+      stopDocsRecordingAndGenerate();
+    }
+  };
+}
+
+if (docsPauseBtn) {
+  docsPauseBtn.onclick = () => {
+    if (!docsIsRecording) return;
+    if (!docsIsPaused) pauseDocsRecording();
+    else resumeDocsRecording();
+  };
+}
+
+
 
 
 if (handoffRecordBtn) {
@@ -6762,6 +7155,17 @@ if (handoffGuideBtn) {
 if (closeHandoffGuideBtn) {
   closeHandoffGuideBtn.addEventListener("click", () => {
     setPanelVisible(handoffGuidePanel, false);
+  });
+}
+
+if (docsGuideBtn) {
+  docsGuideBtn.addEventListener("click", () => {
+    setPanelVisible(docsGuidePanel, true);
+  });
+}
+if (closeDocsGuideBtn) {
+  closeDocsGuideBtn.addEventListener("click", () => {
+    setPanelVisible(docsGuidePanel, false);
   });
 }
 
