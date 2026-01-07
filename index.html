@@ -1540,178 +1540,146 @@
 
 
 
-    /* Módulo de Documentos: triagem hospitalar (patientReportCard) */
-    .report-triage-shell {
+    /* Documento - triagem */
+    .report-triage-shell{
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 10px 6px 6px 6px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      text-align:center;
+      gap: 8px;
+    }
+    .report-triage-flow{
       width: 100%;
-      max-width: 620px;
-      margin: 14px auto 0 auto;
-      padding: 18px 14px 16px 14px;
-      border: 1px solid #e7e7e7;
-      border-radius: 16px;
-      background: #ffffff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      max-width: 640px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       gap: 12px;
+      margin-top: 2px;
+      margin-bottom: 10px;
     }
-
-    .report-triage-flow {
-      width: 100%;
-      display: grid;
-      grid-template-columns: 1fr auto 1fr auto 1fr;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .report-triage-step {
+    .report-triage-step{
       font-size: 12px;
       font-weight: 700;
-      color: #6b7280;
-      text-align: center;
-      padding: 8px 10px;
+      color: #334155;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
       border-radius: 999px;
-      border: 1px solid #e7e7e7;
-      background: #fafafa;
+      padding: 8px 14px;
+      min-width: 140px;
+    }
+    .report-triage-step.active{
+      background: #eef2ff;
+      border-color: #c7d2fe;
+      color: #1e293b;
+    }
+    .report-triage-connector{
+      flex: 1;
+      height: 1px;
+      background: #e5e7eb;
+      max-width: 120px;
     }
 
-    .report-triage-step.active {
-      color: #111827;
-      border-color: #cfd7e6;
-      background: #f2f6ff;
-    }
-
-    .report-triage-connector {
-      width: 44px;
-      height: 2px;
-      background: #e7e7e7;
-      border-radius: 2px;
-    }
-
-    .report-triage-btn {
-      width: 190px;
-      height: 190px;
+    .report-triage-btn{
+      width: 220px;
+      height: 220px;
       border-radius: 50%;
       border: none;
       cursor: pointer;
       font-size: 18px;
       font-weight: 800;
       color: #ffffff;
-      transition: transform 0.1s, background 0.2s, opacity 0.2s;
-      user-select: none;
+      display: block;
+      margin: 2px auto 2px auto;
+      transition: transform 0.15s ease, background-color 0.15s ease, opacity 0.15s ease;
+    }
+    .report-triage-btn:active{
+      transform: scale(0.97);
+    }
+    .report-triage-btn.start{
+      background: #0b5ed7;
+    }
+    .report-triage-btn.recording{
+      background: #dc3545;
+    }
+    .report-triage-btn.processing{
+      background: #6c757d;
+      cursor: not-allowed;
+      opacity: 0.85;
     }
 
-    .report-triage-btn.start { background: #007bff; }
-    .report-triage-btn.recording { background: #dc3545; }
-    .report-triage-btn.processing { background: #6c757d; }
-    .report-triage-btn:active { transform: scale(0.97); }
-    .report-triage-btn:disabled { opacity: 0.8; cursor: not-allowed; }
-
-    .report-triage-lines {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      min-height: 60px;
-    }
-
-    .report-triage-line {
-      width: 100%;
-      text-align: center;
+    .report-triage-caption{
       font-size: 12px;
-      color: #374151;
+      color: #64748b;
+      max-width: 760px;
       line-height: 1.35;
-      min-height: 16px;
-      padding: 0 6px;
+      margin-top: 2px;
+    }
+
+    .report-triage-lines{
+      width: 100%;
+      max-width: 520px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 2px;
+      margin-top: 2px;
+      margin-bottom: 2px;
+    }
+    .report-triage-line{
+      font-size: 13px;
+      color: #0f172a;
+      line-height: 1.25;
+    }
+    .report-triage-mono{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+    .report-triage-partial{
+      font-size: 12px;
+      color: #475569;
+      max-width: 520px;
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    .report-triage-mono {
-      font-family: "Courier New", monospace;
-      font-size: 22px;
-      color: #111827;
-      letter-spacing: 0.5px;
-    }
-
-    .report-triage-partial {
-      color: #6b7280;
-      font-size: 12px;
-      max-width: 100%;
-      white-space: nowrap;
-    }
-
-    .report-secondary {
-      width: 100%;
-      margin-top: 14px;
-      padding-top: 10px;
-      border-top: 1px solid #e7e7e7;
-      display: flex;
-      justify-content: center;
-    }
-
-    .report-secondary-row {
-      align-items: center;
-      justify-content: space-between;
+    .report-triage-actions{
+      display:flex;
       gap: 10px;
-    }
-
-    .report-secondary-label {
-      font-size: 12px;
-      font-weight: 700;
-      color: #111827;
-      min-width: 140px;
-    }
-
-    .report-secondary-select {
-      min-width: 220px;
-      max-width: 100%;
-    }
-
-    .report-secondary select {
-      width: 100%;
-      max-width: 420px;
-    }
-
-    .report-triage-caption {
-      font-size: 12px;
-      color: #6b7280;
-      text-align: center;
-      line-height: 1.35;
-      margin-top: 2px;
-      padding: 0 6px;
-    }
-
-    .report-triage-actions {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-top: 8px;
-    }
-
-    .report-results-row {
-      margin-top: 12px;
-    }
-
-    .report-result-label {
-      font-size: 12px;
-      font-weight: 700;
-      color: #111827;
+      align-items:center;
+      justify-content:center;
+      margin-top: 6px;
       margin-bottom: 4px;
     }
 
-    @media (max-width: 520px) {
-      .report-triage-btn {
-        width: 160px;
-        height: 160px;
-        font-size: 16px;
+    .report-secondary{
+      margin-top: 8px;
+      display:flex;
+      justify-content:center;
+    }
+    .report-secondary-select{
+      max-width: 520px;
+      width: 100%;
+      opacity: 0.92;
+    }
+
+    @media (max-width: 520px){
+      .report-triage-btn{
+        width: 190px;
+        height: 190px;
       }
-      .report-triage-flow {
-        grid-template-columns: 1fr;
-        gap: 8px;
+      .report-triage-step{
+        min-width: 0;
+        padding: 8px 10px;
       }
-      .report-triage-connector {
-        display: none;
+      .report-triage-connector{
+        max-width: 72px;
       }
     }
 
@@ -2651,108 +2619,102 @@
 
 
 
-                                <div id="patientReportCard" class="module-card">
+                <div id="patientReportCard" class="module-card">
 
-      <div class="report-triage-shell" aria-label="Triagem de documentos">
-        <div class="report-triage-flow" aria-label="Fluxo de etapas">
-          <div id="reportFlowVoice" class="report-triage-step active">Coleta de voz</div>
-          <div class="report-triage-connector" aria-hidden="true"></div>
-          <div id="reportFlowIdentify" class="report-triage-step">Identificação</div>
-          <div class="report-triage-connector" aria-hidden="true"></div>
-          <div id="reportFlowDoc" class="report-triage-step">Documento</div>
-        </div>
-
-        <button id="reportRecordBtn" class="report-triage-btn start" type="button">Iniciar</button>
-
-        <div id="reportCaption" class="report-triage-caption">
-          Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado / Ata / Registros
-        </div>
-
-        <div class="report-triage-lines" aria-live="polite">
-          <div id="reportStatus" class="report-triage-line">Pronto para gravar.</div>
-          <div id="reportTimer" class="report-triage-line report-triage-mono">00:00</div>
-          <div id="reportPartial" class="report-triage-line report-triage-partial hidden"></div>
-        </div>
-
-        <div id="reportActionsRow" class="report-triage-actions hidden">
-          <button id="copyReportBtn" class="btn-copy hidden" type="button">Copiar</button>
-          <button id="printReportBtn" class="btn-print hidden" type="button">Imprimir</button>
-        </div>
-      </div>
-
-      <div class="report-secondary" aria-label="Opções de documento">
-        <select id="reportDocTypeSelect" class="text-input report-secondary-select" aria-label="Tipo de documento">
-
-            <option value="auto" selected>Auto</option>
-            <option value="Declaração de comparecimento">Declaração de comparecimento</option>
-            <option value="Declaração de permanência">Declaração de permanência</option>
-            <option value="Declaração para acompanhante">Declaração para acompanhante</option>
-            <option value="Declaração de recebimento de orientações">Declaração de recebimento de orientações</option>
-            <option value="Declaração de recusa de procedimento/conduta">Declaração de recusa de procedimento/conduta</option>
-            <option value="Termo de consentimento informado (procedimento de enfermagem)">Termo de consentimento informado (procedimento de enfermagem)</option>
-            <option value="Termo de ciência e responsabilidade (orientações e riscos)">Termo de ciência e responsabilidade (orientações e riscos)</option>
-            <option value="Comunicado para escola">Comunicado para escola</option>
-            <option value="Relatório para escola (necessidades específicas)">Relatório para escola (necessidades específicas)</option>
-            <option value="Comunicado ao Conselho Tutelar">Comunicado ao Conselho Tutelar</option>
-            <option value="Relatório para Conselho Tutelar (proteção à criança/adolescente)">Relatório para Conselho Tutelar (proteção à criança/adolescente)</option>
-            <option value="Relatório de curativo seriado">Relatório de curativo seriado</option>
-            <option value="Registro de procedimento de curativo">Registro de procedimento de curativo</option>
-            <option value="Registro de retirada de pontos/suturas">Registro de retirada de pontos/suturas</option>
-            <option value="Registro de procedimento de vacinação">Registro de procedimento de vacinação</option>
-            <option value="Registro de evento adverso pós-vacinação (EAPV)">Registro de evento adverso pós-vacinação (EAPV)</option>
-            <option value="Registro de procedimento de administração de medicamentos">Registro de procedimento de administração de medicamentos</option>
-            <option value="Registro de administração de medicamento controlado (registro interno)">Registro de administração de medicamento controlado (registro interno)</option>
-            <option value="Registro de coleta de exames">Registro de coleta de exames</option>
-            <option value="Registro de nebulização/oxigenoterapia">Registro de nebulização/oxigenoterapia</option>
-            <option value="Registro de sondagem vesical">Registro de sondagem vesical</option>
-            <option value="Registro de troca de sonda/traqueostomia/gastrostomia">Registro de troca de sonda/traqueostomia/gastrostomia</option>
-            <option value="Registro de visita domiciliar">Registro de visita domiciliar</option>
-            <option value="Relatório de visita domiciliar">Relatório de visita domiciliar</option>
-            <option value="Relatório de adesão e educação em saúde (HAS/DM)">Relatório de adesão e educação em saúde (HAS/DM)</option>
-            <option value="Relatório de acompanhamento de hipertensão (HAS)">Relatório de acompanhamento de hipertensão (HAS)</option>
-            <option value="Relatório de acompanhamento de diabetes (DM)">Relatório de acompanhamento de diabetes (DM)</option>
-            <option value="Relatório de acompanhamento de asma/DPOC">Relatório de acompanhamento de asma/DPOC</option>
-            <option value="Relatório de acompanhamento de saúde da criança (puericultura)">Relatório de acompanhamento de saúde da criança (puericultura)</option>
-            <option value="Relatório de acompanhamento de pré-natal (enfermagem)">Relatório de acompanhamento de pré-natal (enfermagem)</option>
-            <option value="Relatório de puerpério (enfermagem)">Relatório de puerpério (enfermagem)</option>
-            <option value="Relatório para assistência social (vulnerabilidade e insumos)">Relatório para assistência social (vulnerabilidade e insumos)</option>
-            <option value="Solicitação de insumos (fraldas, curativos, suplementos)">Solicitação de insumos (fraldas, curativos, suplementos)</option>
-            <option value="Solicitação de fraldas (infantil/geriátrica)">Solicitação de fraldas (infantil/geriátrica)</option>
-            <option value="Solicitação de materiais para ostomia">Solicitação de materiais para ostomia</option>
-            <option value="Solicitação de dieta enteral/suplementação">Solicitação de dieta enteral/suplementação</option>
-            <option value="Solicitação de oxigenoterapia domiciliar">Solicitação de oxigenoterapia domiciliar</option>
-            <option value="Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)">Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)</option>
-            <option value="Solicitação de transporte sanitário">Solicitação de transporte sanitário</option>
-            <option value="Solicitação de avaliação médica">Solicitação de avaliação médica</option>
-            <option value="Encaminhamento para Médico (demanda espontânea)">Encaminhamento para Médico (demanda espontânea)</option>
-            <option value="Encaminhamento para sala de vacina">Encaminhamento para sala de vacina</option>
-            <option value="Encaminhamento para curativos/ambulatório de feridas">Encaminhamento para curativos/ambulatório de feridas</option>
-            <option value="Encaminhamento para CAPS / saúde mental">Encaminhamento para CAPS / saúde mental</option>
-            <option value="Relatório para CAPS / saúde mental (enfermagem)">Relatório para CAPS / saúde mental (enfermagem)</option>
-            <option value="Encaminhamento para Serviço Social">Encaminhamento para Serviço Social</option>
-            <option value="Encaminhamento para Psicologia">Encaminhamento para Psicologia</option>
-            <option value="Encaminhamento para Nutrição">Encaminhamento para Nutrição</option>
-            <option value="Encaminhamento para Fisioterapia">Encaminhamento para Fisioterapia</option>
-            <option value="Encaminhamento para Fonoaudiologia">Encaminhamento para Fonoaudiologia</option>
-            <option value="Encaminhamento para Odontologia">Encaminhamento para Odontologia</option>
-            <option value="Encaminhamento para especialista / rede">Encaminhamento para especialista / rede</option>
-            <option value="Encaminhamento para urgência/emergência">Encaminhamento para urgência/emergência</option>
-            <option value="Relatório de evolução de enfermagem">Relatório de evolução de enfermagem</option>
-            <option value="Relatório de intercorrência/ocorrência">Relatório de intercorrência/ocorrência</option>
-            <option value="Ata de reunião">Ata de reunião</option>
-            <option value="Registro de reunião de equipe (ATA breve)">Registro de reunião de equipe (ATA breve)</option>
-            <option value="Comunicado interno da equipe">Comunicado interno da equipe</option>
-            <option value="Outros">Outros</option>
-          
-        </select>
-      </div>
-
-      <div id="reportDocTypeDetected" class="hidden" aria-hidden="true"></div>
-      <div id="reportMissingFields" class="hidden" aria-hidden="true"></div>
-      <textarea id="reportOutput" class="prescription-textarea hidden" placeholder="" spellcheck="false"></textarea>
+  <div class="report-triage-shell" aria-label="Triagem de documentos">
+    <div class="report-triage-flow" aria-label="Fluxo de etapas">
+      <div id="reportFlowVoice" class="report-triage-step active">Coleta de voz</div>
+      <div class="report-triage-connector" aria-hidden="true"></div>
+      <div id="reportFlowIdentify" class="report-triage-step">Identificação</div>
+      <div class="report-triage-connector" aria-hidden="true"></div>
+      <div id="reportFlowDoc" class="report-triage-step">Documento</div>
     </div>
 
+    <button id="reportRecordBtn" class="report-triage-btn start" type="button">Gerar documentos</button>
+
+    <div id="reportCaption" class="report-triage-caption">
+      Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado / Ata / Registros
+    </div>
+
+    <div class="report-triage-lines" aria-live="polite">
+      <div id="reportStatus" class="report-triage-line">Pronto para gravar.</div>
+      <div id="reportTimer" class="report-triage-line report-triage-mono">00:00</div>
+      <div id="reportPartial" class="report-triage-line report-triage-partial hidden"></div>
+    </div>
+
+    <div id="reportActionsRow" class="report-triage-actions hidden">
+      <button id="copyReportBtn" class="btn-copy hidden" type="button">Copiar</button>
+      <button id="printReportBtn" class="btn-print hidden" type="button">Imprimir</button>
+    </div>
   </div>
+
+  <div class="report-secondary" aria-label="Opções de documento">
+    <select id="reportDocTypeSelect" class="text-input report-secondary-select" aria-label="Tipo de documento">
+      <option value="auto" selected>Auto (identificar pela gravação)</option>
+          <option value="Declaração de comparecimento">Declaração de comparecimento</option>
+          <option value="Declaração de permanência">Declaração de permanência</option>
+          <option value="Declaração para acompanhante">Declaração para acompanhante</option>
+          <option value="Declaração de recebimento de orientações">Declaração de recebimento de orientações</option>
+          <option value="Declaração de recusa de procedimento/conduta">Declaração de recusa de procedimento/conduta</option>
+          <option value="Termo de consentimento informado (procedimento de enfermagem)">Termo de consentimento informado (procedimento de enfermagem)</option>
+          <option value="Termo de ciência e responsabilidade (orientações e riscos)">Termo de ciência e responsabilidade (orientações e riscos)</option>
+          <option value="Comunicado para escola">Comunicado para escola</option>
+          <option value="Relatório para escola (necessidades específicas)">Relatório para escola (necessidades específicas)</option>
+          <option value="Comunicado ao Conselho Tutelar">Comunicado ao Conselho Tutelar</option>
+          <option value="Relatório para Conselho Tutelar (proteção à criança/adolescente)">Relatório para Conselho Tutelar (proteção à criança/adolescente)</option>
+          <option value="Relatório de curativo seriado">Relatório de curativo seriado</option>
+          <option value="Registro de procedimento de curativo">Registro de procedimento de curativo</option>
+          <option value="Registro de retirada de pontos/suturas">Registro de retirada de pontos/suturas</option>
+          <option value="Registro de procedimento de vacinação">Registro de procedimento de vacinação</option>
+          <option value="Registro de evento adverso pós-vacinação (EAPV)">Registro de evento adverso pós-vacinação (EAPV)</option>
+          <option value="Registro de procedimento de administração de medicamentos">Registro de procedimento de administração de medicamentos</option>
+          <option value="Registro de administração de medicamento controlado (registro interno)">Registro de administração de medicamento controlado (registro interno)</option>
+          <option value="Registro de coleta de exames">Registro de coleta de exames</option>
+          <option value="Registro de nebulização/oxigenoterapia">Registro de nebulização/oxigenoterapia</option>
+          <option value="Registro de sondagem vesical">Registro de sondagem vesical</option>
+          <option value="Registro de troca de sonda/traqueostomia/gastrostomia">Registro de troca de sonda/traqueostomia/gastrostomia</option>
+          <option value="Registro de visita domiciliar">Registro de visita domiciliar</option>
+          <option value="Relatório de visita domiciliar">Relatório de visita domiciliar</option>
+          <option value="Relatório de adesão e educação em saúde (HAS/DM)">Relatório de adesão e educação em saúde (HAS/DM)</option>
+          <option value="Relatório de acompanhamento de hipertensão (HAS)">Relatório de acompanhamento de hipertensão (HAS)</option>
+          <option value="Relatório de acompanhamento de diabetes (DM)">Relatório de acompanhamento de diabetes (DM)</option>
+          <option value="Relatório de acompanhamento de asma/DPOC">Relatório de acompanhamento de asma/DPOC</option>
+          <option value="Relatório de acompanhamento de saúde da criança (puericultura)">Relatório de acompanhamento de saúde da criança (puericultura)</option>
+          <option value="Relatório de acompanhamento de pré-natal (enfermagem)">Relatório de acompanhamento de pré-natal (enfermagem)</option>
+          <option value="Relatório de puerpério (enfermagem)">Relatório de puerpério (enfermagem)</option>
+          <option value="Relatório para assistência social (vulnerabilidade e insumos)">Relatório para assistência social (vulnerabilidade e insumos)</option>
+          <option value="Solicitação de insumos (fraldas, curativos, suplementos)">Solicitação de insumos (fraldas, curativos, suplementos)</option>
+          <option value="Solicitação de fraldas (infantil/geriátrica)">Solicitação de fraldas (infantil/geriátrica)</option>
+          <option value="Solicitação de materiais para ostomia">Solicitação de materiais para ostomia</option>
+          <option value="Solicitação de dieta enteral/suplementação">Solicitação de dieta enteral/suplementação</option>
+          <option value="Solicitação de oxigenoterapia domiciliar">Solicitação de oxigenoterapia domiciliar</option>
+          <option value="Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)">Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)</option>
+          <option value="Solicitação de transporte sanitário">Solicitação de transporte sanitário</option>
+          <option value="Solicitação de avaliação médica">Solicitação de avaliação médica</option>
+          <option value="Encaminhamento para Médico (demanda espontânea)">Encaminhamento para Médico (demanda espontânea)</option>
+          <option value="Encaminhamento para sala de vacina">Encaminhamento para sala de vacina</option>
+          <option value="Encaminhamento para curativos/ambulatório de feridas">Encaminhamento para curativos/ambulatório de feridas</option>
+          <option value="Encaminhamento para CAPS / saúde mental">Encaminhamento para CAPS / saúde mental</option>
+          <option value="Relatório para CAPS / saúde mental (enfermagem)">Relatório para CAPS / saúde mental (enfermagem)</option>
+          <option value="Encaminhamento para Serviço Social">Encaminhamento para Serviço Social</option>
+          <option value="Encaminhamento para Psicologia">Encaminhamento para Psicologia</option>
+          <option value="Encaminhamento para Nutrição">Encaminhamento para Nutrição</option>
+          <option value="Encaminhamento para Fisioterapia">Encaminhamento para Fisioterapia</option>
+          <option value="Encaminhamento para Fonoaudiologia">Encaminhamento para Fonoaudiologia</option>
+          <option value="Encaminhamento para Odontologia">Encaminhamento para Odontologia</option>
+          <option value="Encaminhamento para especialista / rede">Encaminhamento para especialista / rede</option>
+          <option value="Encaminhamento para urgência/emergência">Encaminhamento para urgência/emergência</option>
+          <option value="Relatório de evolução de enfermagem">Relatório de evolução de enfermagem</option>
+          <option value="Relatório de intercorrência/ocorrência">Relatório de intercorrência/ocorrência</option>
+          <option value="Ata de reunião">Ata de reunião</option>
+          <option value="Registro de reunião de equipe (ATA breve)">Registro de reunião de equipe (ATA breve)</option>
+          <option value="Comunicado interno da equipe">Comunicado interno da equipe</option>
+          <option value="Outros">Outros</option>
+    </select>
+  </div>
+
+  <textarea id="reportOutput" class="prescription-textarea hidden" placeholder="" spellcheck="false"></textarea>
+</div>
 
   <div id="recommendationsPanel" class="recommendations-panel">
     <div class="recommendations-header">
@@ -3362,7 +3324,6 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       const has = isMeaningfulText(reportOutput ? reportOutput.value : "");
       setVisible(copyReportBtn, has);
       setVisible(printReportBtn, has);
-      setVisible(reportActionsRow, has);
     }
 
 
@@ -3791,216 +3752,315 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
         const reportRecordBtn = document.getElementById("reportRecordBtn");
     const reportStatus = document.getElementById("reportStatus");
-    const reportOutput = document.getElementById("reportOutput");
-    const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
-    const reportDocTypeDetected = document.getElementById("reportDocTypeDetected");
-    const reportMissingFields = document.getElementById("reportMissingFields");
-    const reportActionsRow = document.getElementById("reportActionsRow");
-    const copyReportBtn = document.getElementById("copyReportBtn");
-    const printReportBtn = document.getElementById("printReportBtn");
-
     const reportTimerEl = document.getElementById("reportTimer");
     const reportPartialEl = document.getElementById("reportPartial");
+    const reportOutput = document.getElementById("reportOutput");
+    const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
+    const copyReportBtn = document.getElementById("copyReportBtn");
+    const printReportBtn = document.getElementById("printReportBtn");
+    const reportActionsRow = document.getElementById("reportActionsRow");
+
     const reportFlowVoice = document.getElementById("reportFlowVoice");
     const reportFlowIdentify = document.getElementById("reportFlowIdentify");
     const reportFlowDoc = document.getElementById("reportFlowDoc");
 
-    const ReportSR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const reportSpeechAvailable = !!ReportSR;
-
     let reportRecognition = null;
     let reportState = "idle"; // idle | recording | processing | done | error
+
+    // Compatibilidade: usado por bloqueios globais para evitar gravações simultâneas
+    let reportIsRecording = false;
+
     let reportFinalTranscript = "";
     let reportInterimTranscript = "";
+    let reportStopRequested = false;
+
     let reportTimerInterval = null;
-    let reportTimerSeconds = 0;
+    let reportTimerStart = null;
 
-    function formatSecondsMMSS(totalSeconds) {
-      const secs = Math.max(0, Number(totalSeconds) || 0);
-      const m = ("0" + Math.floor(secs / 60)).slice(-2);
-      const s = ("0" + (secs % 60)).slice(-2);
-      return `${m}:${s}`;
+    function setActiveReportStep(step) {
+      const set = (el, active) => {
+        if (!el) return;
+        if (active) el.classList.add("active");
+        else el.classList.remove("active");
+      };
+
+      set(reportFlowVoice, step === "voice");
+      set(reportFlowIdentify, step === "identify");
+      set(reportFlowDoc, step === "doc");
     }
 
-    function setFlowStage(stage) {
-      if (reportFlowVoice) reportFlowVoice.classList.toggle("active", stage === "voice");
-      if (reportFlowIdentify) reportFlowIdentify.classList.toggle("active", stage === "identify");
-      if (reportFlowDoc) reportFlowDoc.classList.toggle("active", stage === "doc");
+    function formatMMSS(seconds) {
+      const s = Math.max(0, Number(seconds) || 0);
+      const m = ("0" + Math.floor(s / 60)).slice(-2);
+      const r = ("0" + (s % 60)).slice(-2);
+      return `${m}:${r}`;
     }
 
-    function updateReportTimerUI() {
+    function setReportTimerText(mmss) {
       if (!reportTimerEl) return;
-      reportTimerEl.textContent = formatSecondsMMSS(reportTimerSeconds);
+      reportTimerEl.textContent = mmss;
+    }
+
+    function resetReportTimer() {
+      if (reportTimerInterval) clearInterval(reportTimerInterval);
+      reportTimerInterval = null;
+      reportTimerStart = null;
+      setReportTimerText("00:00");
     }
 
     function startReportTimer() {
-      reportTimerSeconds = 0;
-      if (reportTimerInterval) clearInterval(reportTimerInterval);
-      updateReportTimerUI();
+      resetReportTimer();
+      reportTimerStart = Date.now();
       reportTimerInterval = setInterval(() => {
-        reportTimerSeconds += 1;
-        updateReportTimerUI();
-      }, 1000);
+        if (!reportTimerStart) return;
+        const elapsed = Math.floor((Date.now() - reportTimerStart) / 1000);
+        setReportTimerText(formatMMSS(elapsed));
+      }, 250);
     }
 
-    function stopReportTimer(reset) {
+    function stopReportTimer() {
       if (reportTimerInterval) clearInterval(reportTimerInterval);
       reportTimerInterval = null;
-      if (reset) {
-        reportTimerSeconds = 0;
-        updateReportTimerUI();
-      }
+      reportTimerStart = null;
     }
 
-    function clearReportOutputs() {
+    function clearReportTranscripts() {
       reportFinalTranscript = "";
       reportInterimTranscript = "";
-
-      if (reportOutput) reportOutput.value = "";
-      if (reportDocTypeDetected) reportDocTypeDetected.textContent = "";
-      if (reportMissingFields) reportMissingFields.textContent = "";
-
       if (reportPartialEl) {
         reportPartialEl.textContent = "";
         reportPartialEl.classList.add("hidden");
       }
-
-      updateReportActions();
     }
 
-    function getSelectedReportDocType() {
-      const raw = reportDocTypeSelect ? String(reportDocTypeSelect.value || "auto") : "auto";
-      return raw === "auto" ? "auto" : raw;
-    }
-
-    function setReportState(nextState, message) {
+    function setReportUIState(nextState, message) {
       reportState = nextState;
+      reportIsRecording = (reportState === "recording");
+
+      if (reportStatus) {
+        reportStatus.textContent = (typeof message === "string" && message.trim())
+          ? message.trim()
+          : (reportState === "idle" ? "Pronto para gravar." : reportStatus.textContent);
+      }
 
       if (reportRecordBtn) {
         reportRecordBtn.disabled = (reportState === "processing");
         reportRecordBtn.classList.remove("start", "recording", "processing");
-        if (reportState === "recording") reportRecordBtn.classList.add("recording");
-        else reportRecordBtn.classList.add("start");
-        if (reportState === "processing") reportRecordBtn.classList.add("processing");
-
-        if (reportState === "recording") reportRecordBtn.textContent = "Parar";
-        else if (reportState === "processing") reportRecordBtn.textContent = "Processando";
-        else reportRecordBtn.textContent = "Iniciar";
+        if (reportState === "recording") {
+          reportRecordBtn.classList.add("recording");
+          reportRecordBtn.textContent = "Parar";
+        } else if (reportState === "processing") {
+          reportRecordBtn.classList.add("processing");
+          reportRecordBtn.textContent = "Processando";
+        } else {
+          reportRecordBtn.classList.add("start");
+          reportRecordBtn.textContent = "Gerar documentos";
+        }
       }
 
-      if (reportStatus) {
-        reportStatus.classList.remove("loading-dot");
-        if (reportState === "processing") reportStatus.classList.add("loading-dot");
-        reportStatus.textContent = String(message || "");
+      if (reportActionsRow) {
+        if (reportState === "done") reportActionsRow.classList.remove("hidden");
+        else reportActionsRow.classList.add("hidden");
       }
 
-      if (reportPartialEl && reportState !== "recording") {
-        reportPartialEl.textContent = "";
-        reportPartialEl.classList.add("hidden");
+      if (reportOutput) {
+        if (reportState === "done") reportOutput.classList.remove("hidden");
+        else reportOutput.classList.add("hidden");
       }
 
-      if (reportState === "recording") setFlowStage("voice");
-      else if (reportState === "processing") setFlowStage("identify");
-      else if (reportState === "done") setFlowStage("doc");
-      else setFlowStage("voice");
+      if (reportState === "recording") setActiveReportStep("voice");
+      else if (reportState === "processing") setActiveReportStep("identify");
+      else if (reportState === "done") setActiveReportStep("doc");
+      else setActiveReportStep("voice");
+    }
+
+    function canUseSpeechRecognition() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      return !!SR;
+    }
+
+    async function ensureMicrophonePermission() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (stream && stream.getTracks) {
+          stream.getTracks().forEach(t => {
+            try { t.stop(); } catch {}
+          });
+        }
+        return true;
+      } catch (e) {
+        return false;
+      }
     }
 
     function initReportSpeech() {
-      if (!ReportSR) return null;
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) return null;
 
-      const rec = new ReportSR();
+      const rec = new SR();
       rec.lang = "pt-BR";
       rec.continuous = true;
       rec.interimResults = true;
 
+      rec.onstart = () => {
+        reportStopRequested = false;
+        clearReportTranscripts();
+        startReportTimer();
+        setReportUIState("recording", "Gravando.");
+      };
+
       rec.onresult = (event) => {
         let interim = "";
-
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) reportFinalTranscript += transcript + " ";
-          else interim += transcript;
+          const t = (event.results[i][0] && event.results[i][0].transcript) ? event.results[i][0].transcript : "";
+          if (event.results[i].isFinal) {
+            reportFinalTranscript += t + " ";
+          } else {
+            interim += t;
+          }
         }
+        reportInterimTranscript = interim.trim();
 
-        reportInterimTranscript = interim;
-
-        if (reportPartialEl && reportState === "recording") {
-          const combined = (reportFinalTranscript + " " + reportInterimTranscript).trim();
-          const short = combined.length > 180 ? combined.slice(0, 180).trimEnd() + "..." : combined;
-          reportPartialEl.textContent = short ? ("Transcrição parcial: " + short) : "";
-          if (short) reportPartialEl.classList.remove("hidden");
-          else reportPartialEl.classList.add("hidden");
+        if (reportPartialEl) {
+          const partial = reportInterimTranscript.trim();
+          if (partial) {
+            reportPartialEl.textContent = partial;
+            reportPartialEl.classList.remove("hidden");
+          } else {
+            reportPartialEl.textContent = "";
+            reportPartialEl.classList.add("hidden");
+          }
         }
       };
 
       rec.onerror = (event) => {
-        console.error("Erro no reconhecimento do documento:", event && event.error);
-        const err = (event && event.error) ? String(event.error) : "erro";
+        console.error("Erro no reconhecimento de voz (documentos):", event.error);
+        stopReportTimer();
 
-        stopReportTimer(true);
-
-        if (err === "not-allowed" || err === "service-not-allowed") {
-          setReportState("error", "Permissão negada. Verifique o acesso ao microfone no navegador.");
-          return;
+        let msg = "Falha ao iniciar a captura de voz.";
+        if (event && typeof event.error === "string") {
+          const e = event.error;
+          if (e === "not-allowed" || e === "service-not-allowed") {
+            msg = "Permissão de microfone negada. Libere o microfone no navegador e tente novamente.";
+          } else if (e === "no-speech") {
+            msg = "Nenhuma fala detectada. Tente novamente e fale mais próximo do microfone.";
+          } else if (e === "audio-capture") {
+            msg = "Microfone não disponível. Verifique o dispositivo e selecione o microfone no navegador.";
+          } else if (e === "network") {
+            msg = "Falha de rede no reconhecimento de voz. Tente novamente.";
+          } else if (e === "aborted") {
+            msg = "Captura de voz interrompida.";
+          }
         }
 
-        setReportState("error", "Erro na captura de voz. Tente novamente.");
+        try { rec.stop(); } catch {}
+        setReportUIState("error", msg);
       };
 
       rec.onend = () => {
-        if (reportState === "recording") {
-          try { rec.start(); } catch (e) { }
+        if (reportState === "recording" && !reportStopRequested) {
+          try { rec.start(); } catch (err) {
+            console.warn("Não foi possível retomar reconhecimento (documentos):", err);
+          }
         }
       };
 
       return rec;
     }
 
+    function getSelectedReportDocType() {
+      const v = (reportDocTypeSelect && typeof reportDocTypeSelect.value === "string")
+        ? reportDocTypeSelect.value.trim()
+        : "auto";
+      return v ? v : "auto";
+    }
+
+    function getReportTranscriptForSubmit() {
+      const a = (reportFinalTranscript || "").trim();
+      const b = (reportInterimTranscript || "").trim();
+      return (a + " " + b).trim();
+    }
+
+    function anyOtherRecordingActive() {
+      try { if (typeof isRecording === "boolean" && isRecording) return true; } catch {}
+      try { if (typeof triageIsRecording === "boolean" && triageIsRecording) return true; } catch {}
+      try { if (typeof sbarIsRecording === "boolean" && sbarIsRecording) return true; } catch {}
+      try { if (typeof questionsIsRecording === "boolean" && questionsIsRecording) return true; } catch {}
+      return false;
+    }
+
     async function startReportRecording() {
-      clearReportOutputs();
+      if (!reportRecordBtn || !reportStatus) return;
 
-      if (!reportSpeechAvailable) {
-        setReportState("error", "Navegador sem suporte a captura de voz.");
+      if (anyOtherRecordingActive()) {
+        reportStatus.textContent = "Finalize a gravação atual antes de iniciar este módulo.";
         return;
       }
 
-      if (!reportRecognition) reportRecognition = initReportSpeech();
+      if (!canUseSpeechRecognition()) {
+        setReportUIState("error", "Este navegador não suporta captura automática de voz. Use Google Chrome (computador ou Android)." );
+        return;
+      }
+
+      if (reportOutput) reportOutput.value = "";
+      updateReportActions();
+      if (reportActionsRow) reportActionsRow.classList.add("hidden");
+      if (reportOutput) reportOutput.classList.add("hidden");
+      clearReportTranscripts();
+      resetReportTimer();
+      setReportUIState("recording", "Solicitando microfone...");
+
+      const permissionOk = await ensureMicrophonePermission();
+      if (!permissionOk) {
+        setReportUIState("error", "Permissão de microfone negada. Libere o microfone no navegador e tente novamente.");
+        return;
+      }
+
+      try { if (recognition) recognition.stop(); } catch {}
+      try { if (triageRecognition) triageRecognition.stop(); } catch {}
+      try { if (sbarRecognition) sbarRecognition.stop(); } catch {}
+      try { if (questionsRecognition) questionsRecognition.stop(); } catch {}
+
       if (!reportRecognition) {
-        setReportState("error", "Navegador sem suporte a captura de voz.");
-        return;
+        reportRecognition = initReportSpeech();
+        if (!reportRecognition) {
+          setReportUIState("error", "Este navegador não suporta captura automática de voz. Use Google Chrome (computador ou Android)." );
+          return;
+        }
       }
 
-      setReportState("recording", "Gravando.");
-      startReportTimer();
-
+      reportStopRequested = false;
       try {
         reportRecognition.start();
       } catch (e) {
-        console.warn("Erro ao iniciar reconhecimento do documento:", e);
-        stopReportTimer(true);
-        setReportState("error", "Falha ao iniciar a captura de voz.");
+        console.warn("Erro ao iniciar reconhecimento (documentos):", e);
+        setReportUIState("error", "Falha ao iniciar a captura de voz.");
       }
     }
 
     async function stopReportRecordingAndGenerate() {
-      if (reportRecognition) {
-        try { reportRecognition.stop(); } catch (e) { }
-      }
+      if (!reportRecordBtn || !reportStatus) return;
 
-      stopReportTimer(false);
+      reportStopRequested = true;
 
-      const transcricao = (reportFinalTranscript + " " + reportInterimTranscript).trim();
+      try { if (reportRecognition) reportRecognition.stop(); } catch {}
+
+      stopReportTimer();
+      if (reportPartialEl) reportPartialEl.classList.add("hidden");
+
+      const transcricao = getReportTranscriptForSubmit();
       if (!transcricao) {
-        stopReportTimer(true);
-        setReportState("error", "Áudio vazio. Nenhuma fala foi capturada.");
-        updateReportActions();
+        setReportUIState("error", "Nenhuma fala foi capturada.");
+        resetReportTimer();
         return;
       }
 
-      setReportState("processing", "Processando.");
+      setReportUIState("processing", "Processando.");
+
+      const tipo_documento = getSelectedReportDocType();
 
       try {
-        const tipo_documento = getSelectedReportDocType();
         const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -4009,54 +4069,30 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
         if (!resp.ok) {
           const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (documento):", resp.status, txt);
-          stopReportTimer(true);
-          setReportState("error", "Falha ao gerar documento.");
-          updateReportActions();
+          console.error("Erro HTTP do backend (documentos):", resp.status, txt);
+          setReportUIState("error", "Falha ao gerar o documento. Verifique a conexão e tente novamente.");
+          resetReportTimer();
           return;
         }
 
         const data = await resp.json().catch(() => ({}));
-        const documento = (data && data.documento) ? String(data.documento) : "";
-        const tipoIdentificado = (data && data.tipo_documento) ? String(data.tipo_documento) : "";
-        const pendentes = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : [];
-
-        if (reportDocTypeDetected) reportDocTypeDetected.textContent = tipoIdentificado ? tipoIdentificado : "";
-        if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "";
+        const documento = (data && typeof data.documento === "string") ? data.documento.trim() : "";
+        if (!documento) {
+          setReportUIState("error", "Não foi possível gerar o documento.");
+          resetReportTimer();
+          return;
+        }
 
         if (reportOutput) reportOutput.value = normalizeNumberedParagraphs(documento);
-
         updateReportActions();
 
-        stopReportTimer(true);
-        setReportState(documento ? "done" : "error", documento ? "Documento gerado." : "Falha ao gerar documento.");
+        setReportUIState("done", "Documento gerado.");
       } catch (err) {
         console.error("Erro ao gerar documento:", err);
-        stopReportTimer(true);
-        setReportState("error", "Falha de rede ao gerar documento.");
-        updateReportActions();
+        setReportUIState("error", "Falha de rede ou servidor ao gerar o documento.");
+        resetReportTimer();
       }
     }
-
-    async function handleReportPrimaryAction() {
-      if (reportState === "processing") return;
-
-      if (reportState === "recording") {
-        await stopReportRecordingAndGenerate();
-        return;
-      }
-
-      await startReportRecording();
-    }
-
-    // Estado inicial
-    setReportState("idle", reportSpeechAvailable ? "Pronto para gravar." : "Navegador sem suporte a captura de voz.");
-    stopReportTimer(true);
-    updateReportActions();
-
-
-
-
 
     async function submitMedicalDoubt() {
       const q = (medicalDoubtInput.value || "").trim();
@@ -4271,16 +4307,16 @@ recordBtn.onclick = () => {
     }
 
     // Relatórios de Enfermagem / Encaminhamentos etc.
-
     if (reportRecordBtn) {
       reportRecordBtn.addEventListener("click", async (e) => {
         e.preventDefault();
-        await handleReportPrimaryAction();
+        if (!reportIsRecording) {
+          startReportRecording();
+        } else {
+          await stopReportRecordingAndGenerate();
+        }
       });
     }
-
-
-
 
     if (copyReportBtn) {
       copyReportBtn.addEventListener("click", (e) => {
