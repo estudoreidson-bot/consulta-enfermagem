@@ -2264,6 +2264,49 @@ Formato de saída: JSON estrito:
   };
 }
 
+
+async function transcreverDocumentoPorImagem(safeImage) {
+  const prompt = `
+Você é um profissional de saúde transcrevendo um documento ou prescrição fotografada.
+
+Tarefa:
+1) Transcrever somente o que estiver legível (sem inventar). Se houver trechos ilegíveis ou duvidosos, marque como "não informado".
+2) Organizar o conteúdo de forma clara. Se for prescrição, liste os itens em linhas separadas com: nome do medicamento, concentração/apresentação, dose, via, posologia, duração e observações quando existirem.
+3) Não interpretar, não sugerir conduta, não calcular doses, não orientar tratamento. Apenas transcrever e organizar.
+4) Preserve informações como datas, identificação, carimbos/assinaturas quando estiverem visíveis.
+5) Sem emojis e sem símbolos gráficos.
+
+Responda EXCLUSIVAMENTE em JSON, sem markdown, neste formato:
+{
+  "tipo_documento": "string",
+  "identificacao": "string",
+  "transcricao_organizada": "string",
+  "itens_prescricao": "string",
+  "campos_pendentes": "string",
+  "limitacoes": "string"
+}
+`;
+
+  const data = await callOpenAIVisionJson(prompt, safeImage);
+
+  const tipo_documento = typeof data?.tipo_documento === "string" ? data.tipo_documento.trim() : "";
+  const identificacao = typeof data?.identificacao === "string" ? data.identificacao.trim() : "";
+  const transcricao_organizada = typeof data?.transcricao_organizada === "string" ? data.transcricao_organizada.trim() : "";
+  const itens_prescricao = typeof data?.itens_prescricao === "string" ? data.itens_prescricao.trim() : "";
+  const campos_pendentes = typeof data?.campos_pendentes === "string" ? data.campos_pendentes.trim() : "";
+  const limitacoes = typeof data?.limitacoes === "string" ? data.limitacoes.trim() : "";
+
+  return {
+    tipo_documento: tipo_documento || "não informado",
+    identificacao: identificacao || "não informado",
+    transcricao_organizada: transcricao_organizada || "não informado",
+    itens_prescricao: itens_prescricao || "não informado",
+    campos_pendentes: campos_pendentes || "não informado",
+    limitacoes: limitacoes || "não informado"
+  };
+}
+
+
 app.post("/api/interpretar-exame-imagem", requirePaidOrAdmin, async(req, res) => {
   try {
     const imagemDataUrl = getImageDataUrlFromBody(req.body);
@@ -2288,6 +2331,35 @@ app.post("/api/interpretar-exame-imagem", requirePaidOrAdmin, async(req, res) =>
     console.error(e);
     return res.status(500).json({ error: "Falha interna ao interpretar o exame." });
   }
+
+app.post("/api/transcrever-documento-imagem", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const imagemDataUrl = getImageDataUrlFromBody(req.body);
+    const safeImage = normalizeImageDataUrl(imagemDataUrl, 4_000_000);
+
+    if (!safeImage) {
+      return res.status(400).json({
+        error:
+          "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
+      });
+    }
+
+    const out = await transcreverDocumentoPorImagem(safeImage);
+    const texto =
+      "Tipo de documento:\n" + out.tipo_documento +
+      "\n\nIdentificação:\n" + out.identificacao +
+      "\n\nTranscrição organizada:\n" + out.transcricao_organizada +
+      "\n\nItens da prescrição (se aplicável):\n" + out.itens_prescricao +
+      "\n\nCampos pendentes:\n" + out.campos_pendentes +
+      "\n\nLimitações:\n" + out.limitacoes;
+
+    return res.json({ texto });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao transcrever o documento." });
+  }
+});
+
 });
 
 // ======================================================================

@@ -2233,6 +2233,52 @@
 
       <input id="examCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
       <input id="examFileInput" class="hidden-input" type="file" accept="image/*" multiple />
+    
+</div>
+
+    <div id="docTranscriptionCard" class="module-card">
+      <div class="section-header-row" style="justify-content: flex-start;">
+        <div class="soap-title-actions" style="justify-content: flex-start;">
+          <h2 style="margin: 0;">Transcrição de documentos</h2>
+          <button id="transcriptionGuideBtn" class="btn-print" type="button" style="display: inline-block; margin-left: 8px;">Guia de Transcrição de documentos</button>
+        </div>
+      </div>
+
+      <p class="mini-status" style="margin-top: 0;">
+        Use os botões para fotografar ou enviar um arquivo da galeria (documento, prescrição, formulário, etc). O sistema irá transcrever somente o que estiver legível e organizar o conteúdo para facilitar a leitura, sem interpretar e sem inventar dados.
+      </p>
+
+      <div class="prescription-actions">
+        <label for="transcriptionCameraInput" class="photo-btn">Tirar foto</label>
+        <label for="transcriptionFileInput" class="photo-btn">Escolher arquivo</label>
+        <button id="copyTranscriptionBtn" class="btn-copy hidden">Copiar transcrição</button>
+        <button id="printTranscriptionBtn" class="btn-print hidden">Imprimir transcrição</button>
+      </div>
+
+      <div id="transcriptionStatus" class="mini-status"></div>
+      <div id="transcriptionBox" class="classification-box">Nenhum conteúdo disponível.</div>
+
+      <input id="transcriptionCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
+      <input id="transcriptionFileInput" class="hidden-input" type="file" accept="image/*" multiple />
+    </div>
+
+    <div id="transcriptionGuidePanel" class="recommendations-panel">
+      <div class="recommendations-header">
+        <h3>Guia de Transcrição de documentos</h3>
+        <button id="closeTranscriptionGuideBtn" class="close-panel-btn" aria-label="Fechar guia de transcrição de documentos">X</button>
+      </div>
+
+      <div class="recommendations-status">
+        Este módulo transcreve e organiza documentos e prescrições a partir de foto/arquivo, sem interpretação clínica.
+      </div>
+
+      <div class="recommendations-list">
+        <div class="recommendation-item"><strong>1) Envio</strong> Tire uma foto nítida ou selecione um arquivo da galeria. Se houver mais de uma página, envie as páginas mais importantes.</div>
+        <div class="recommendation-item"><strong>2) Transcrição fiel</strong> O sistema transcreve somente o que estiver legível. Trechos duvidosos ou ilegíveis serão marcados como "não informado".</div>
+        <div class="recommendation-item"><strong>3) Organização</strong> O conteúdo é organizado por seções (tipo de documento, identificação, corpo do texto e assinaturas/carimbo quando existirem). Em prescrições, os itens são listados em linhas separadas para facilitar conferência.</div>
+        <div class="recommendation-item"><strong>4) Sem invenção</strong> Nenhum dado é criado. Se um campo não aparecer no documento, ele será mantido como "não informado" ou ficará em branco quando apropriado.</div>
+        <div class="recommendation-item"><strong>5) Conferência</strong> Sempre confirme a transcrição com a imagem original antes de registrar ou executar qualquer conduta.</div>
+      </div>
     </div>
 
 <div id="medicalDoubtsCard" class="module-card">
@@ -2863,9 +2909,11 @@
     let woundImages = [];
     let medImages = [];
     let examImages = [];
+    let transcriptionImages = [];
     let woundAnalyzeTimer = null;
     let medAnalyzeTimer = null;
     let examAnalyzeTimer = null;
+    let transcriptionAnalyzeTimer = null;
 
     function scheduleWoundAnalysis() {
       if (woundAnalyzeTimer) clearTimeout(woundAnalyzeTimer);
@@ -2885,6 +2933,13 @@
       if (examAnalyzeTimer) clearTimeout(examAnalyzeTimer);
       examAnalyzeTimer = setTimeout(() => {
         if (examImages && examImages.length) analyzeExamWithImages(examImages.slice());
+      }, 180);
+    }
+
+    function scheduleTranscriptionAnalysis() {
+      if (transcriptionAnalyzeTimer) clearTimeout(transcriptionAnalyzeTimer);
+      transcriptionAnalyzeTimer = setTimeout(() => {
+        if (transcriptionImages && transcriptionImages.length) analyzeTranscriptionWithImages(transcriptionImages.slice());
       }, 180);
     }
 
@@ -3403,6 +3458,17 @@ const presentationsMaxDoseBox = document.getElementById("presentationsMaxDoseBox
     const examCameraInput = document.getElementById("examCameraInput");
     const examFileInput = document.getElementById("examFileInput");
 
+    const transcriptionBox = document.getElementById("transcriptionBox");
+    const transcriptionStatus = document.getElementById("transcriptionStatus");
+    const copyTranscriptionBtn = document.getElementById("copyTranscriptionBtn");
+    const printTranscriptionBtn = document.getElementById("printTranscriptionBtn");
+    const transcriptionCameraInput = document.getElementById("transcriptionCameraInput");
+    const transcriptionFileInput = document.getElementById("transcriptionFileInput");
+
+    const transcriptionGuideBtn = document.getElementById("transcriptionGuideBtn");
+    const transcriptionGuidePanel = document.getElementById("transcriptionGuidePanel");
+    const closeTranscriptionGuideBtn = document.getElementById("closeTranscriptionGuideBtn");
+
 const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
     const chooseCameraBtn = document.getElementById("chooseCameraBtn");
     const chooseFileBtn = document.getElementById("chooseFileBtn");
@@ -3457,6 +3523,12 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       const has = isMeaningfulText(examInterpretationBox ? examInterpretationBox.textContent : "");
       setVisible(copyExamBtn, has);
       setVisible(printExamBtn, has);
+    }
+
+    function updateTranscriptionActions() {
+      const has = isMeaningfulText(transcriptionBox ? transcriptionBox.textContent : "");
+      setVisible(copyTranscriptionBtn, has);
+      setVisible(printTranscriptionBtn, has);
     }
 
     function updateReportActions() {
@@ -5915,13 +5987,15 @@ async function addFilesToTarget(files, targetKey, mode) {
   const list = Array.from(files || []);
   if (!list.length) return;
 
-  const key = (targetKey === "wound" || targetKey === "med" || targetKey === "exam") ? targetKey : "med";
+  const key = (targetKey === "wound" || targetKey === "med" || targetKey === "exam" || targetKey === "transcription") ? targetKey : "med";
 
   const cfg = key === "wound"
     ? { arr: woundImages, statusEl: presentationsMaxDoseStatus, boxEl: presentationsMaxDoseBox, update: updateWoundActions, schedule: scheduleWoundAnalysis }
     : key === "exam"
       ? { arr: examImages, statusEl: examInterpretationStatus, boxEl: examInterpretationBox, update: updateExamActions, schedule: scheduleExamAnalysis }
-      : { arr: medImages, statusEl: interactionsStatus, boxEl: interactionsBox, update: updateMedSafetyActions, schedule: scheduleMedAnalysis };
+      : key === "transcription"
+        ? { arr: transcriptionImages, statusEl: transcriptionStatus, boxEl: transcriptionBox, update: updateTranscriptionActions, schedule: scheduleTranscriptionAnalysis }
+        : { arr: medImages, statusEl: interactionsStatus, boxEl: interactionsBox, update: updateMedSafetyActions, schedule: scheduleMedAnalysis };
 
   const arr = cfg.arr;
   const statusEl = cfg.statusEl;
@@ -6097,6 +6171,47 @@ async function addFilesToTarget(files, targetKey, mode) {
     examInterpretationStatus.textContent = "Falha ao interpretar o exame. " + (e && e.message ? e.message : "");
     examInterpretationBox.textContent = "Nenhum conteúdo disponível.";
     updateExamActions();
+  }
+}
+
+    async function analyzeTranscriptionWithImages(dataUrls) {
+  if (!transcriptionStatus || !transcriptionBox) return;
+
+  const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
+  if (!images.length) {
+    transcriptionStatus.textContent = "Nenhuma imagem selecionada.";
+    transcriptionBox.textContent = "Nenhum conteúdo disponível.";
+    updateTranscriptionActions();
+    return;
+  }
+
+  transcriptionStatus.textContent = "Transcrevendo documento (imagem(ns)).";
+  transcriptionBox.textContent = "Processando.";
+  updateTranscriptionActions();
+
+  try {
+    const payload = {
+      images_data_url: images,
+      image_data_url: images[0] // compatibilidade
+    };
+
+    const resp = await fetch(BACKEND_URL + "/api/transcrever-documento-imagem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data?.error || "Falha ao transcrever o documento.");
+
+    const texto = (data?.texto || "").trim();
+    transcriptionBox.textContent = texto || "Nenhum conteúdo disponível.";
+    transcriptionStatus.textContent = "Transcrição concluída.";
+    updateTranscriptionActions();
+  } catch (e) {
+    transcriptionStatus.textContent = "Falha ao transcrever o documento. " + (e && e.message ? e.message : "");
+    transcriptionBox.textContent = "Nenhum conteúdo disponível.";
+    updateTranscriptionActions();
   }
 }
 
@@ -7169,6 +7284,17 @@ if (closeDocsGuideBtn) {
   });
 }
 
+if (transcriptionGuideBtn) {
+  transcriptionGuideBtn.addEventListener("click", () => {
+    setPanelVisible(transcriptionGuidePanel, true);
+  });
+}
+if (closeTranscriptionGuideBtn) {
+  closeTranscriptionGuideBtn.addEventListener("click", () => {
+    setPanelVisible(transcriptionGuidePanel, false);
+  });
+}
+
 if (triageCopyFullBtn) {
   triageCopyFullBtn.addEventListener("click", () => {
     const text = (triageFullReport && triageFullReport.value) ? triageFullReport.value.trim() : "";
@@ -7483,6 +7609,7 @@ function getImageUiByKey(key) {
       const k = String(key || "").toLowerCase();
       if (k === "wound") return { statusEl: presentationsMaxDoseStatus, boxEl: presentationsMaxDoseBox };
       if (k === "exam") return { statusEl: examInterpretationStatus, boxEl: examInterpretationBox };
+      if (k === "transcription") return { statusEl: transcriptionStatus, boxEl: transcriptionBox };
       return { statusEl: interactionsStatus, boxEl: interactionsBox };
     }
 
@@ -7524,6 +7651,8 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
     if (medFileInput) bindImageInput(medFileInput, "med", "replace");
     if (examCameraInput) bindImageInput(examCameraInput, "exam", "append");
     if (examFileInput) bindImageInput(examFileInput, "exam", "replace");
+    if (transcriptionCameraInput) bindImageInput(transcriptionCameraInput, "transcription", "append");
+    if (transcriptionFileInput) bindImageInput(transcriptionFileInput, "transcription", "replace");
 
     // =========================
     // ADMIN (cadastro, mensalidade, histórico e auditoria)
