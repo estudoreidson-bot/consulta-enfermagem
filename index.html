@@ -1646,6 +1646,8 @@
       margin-top: 14px;
       padding-top: 10px;
       border-top: 1px solid #e7e7e7;
+      display: flex;
+      justify-content: center;
     }
 
     .report-secondary-row {
@@ -1664,6 +1666,27 @@
     .report-secondary-select {
       min-width: 220px;
       max-width: 100%;
+    }
+
+    .report-secondary select {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .report-triage-caption {
+      font-size: 12px;
+      color: #6b7280;
+      text-align: center;
+      line-height: 1.35;
+      margin-top: 2px;
+      padding: 0 6px;
+    }
+
+    .report-triage-actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 8px;
     }
 
     .report-results-row {
@@ -2629,10 +2652,6 @@
 
 
                                 <div id="patientReportCard" class="module-card">
-      <h2>Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado / Ata / Registros</h2>
-      <p class="module-subtitle" style="margin-top: 6px;">
-        Grave em voz alta o conteúdo do documento. Diga, no início, qual documento deseja produzir e inclua os dados essenciais. Ao parar, o texto será padronizado para uso imediato.
-      </p>
 
       <div class="report-triage-shell" aria-label="Triagem de documentos">
         <div class="report-triage-flow" aria-label="Fluxo de etapas">
@@ -2645,20 +2664,25 @@
 
         <button id="reportRecordBtn" class="report-triage-btn start" type="button">Iniciar</button>
 
+        <div id="reportCaption" class="report-triage-caption">
+          Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado / Ata / Registros
+        </div>
+
         <div class="report-triage-lines" aria-live="polite">
           <div id="reportStatus" class="report-triage-line">Pronto para gravar.</div>
           <div id="reportTimer" class="report-triage-line report-triage-mono">00:00</div>
           <div id="reportPartial" class="report-triage-line report-triage-partial hidden"></div>
         </div>
 
-        <input id="reportAudioUpload" class="hidden" type="file" accept="audio/*" />
-        <textarea id="reportManualTranscription" class="text-input hidden" placeholder="Se necessário, digite ou cole a transcrição aqui para gerar o documento." spellcheck="false"></textarea>
+        <div id="reportActionsRow" class="report-triage-actions hidden">
+          <button id="copyReportBtn" class="btn-copy hidden" type="button">Copiar</button>
+          <button id="printReportBtn" class="btn-print hidden" type="button">Imprimir</button>
+        </div>
       </div>
 
-      <div class="report-secondary">
-        <div class="inline-input-row report-secondary-row">
-          <label for="reportDocTypeSelect" class="report-secondary-label">Tipo de documento</label>
-          <select id="reportDocTypeSelect" class="text-input report-secondary-select">
+      <div class="report-secondary" aria-label="Opções de documento">
+        <select id="reportDocTypeSelect" class="text-input report-secondary-select" aria-label="Tipo de documento">
+
             <option value="auto" selected>Auto</option>
             <option value="Declaração de comparecimento">Declaração de comparecimento</option>
             <option value="Declaração de permanência">Declaração de permanência</option>
@@ -2719,27 +2743,13 @@
             <option value="Registro de reunião de equipe (ATA breve)">Registro de reunião de equipe (ATA breve)</option>
             <option value="Comunicado interno da equipe">Comunicado interno da equipe</option>
             <option value="Outros">Outros</option>
-          </select>
-        </div>
+          
+        </select>
       </div>
 
-      <div class="inline-input-row report-results-row">
-        <div style="flex: 1; min-width: 240px;">
-          <div class="report-result-label">Tipo identificado</div>
-          <div id="reportDocTypeDetected" class="answer-box" style="min-height: 44px;"></div>
-        </div>
-        <div style="flex: 1; min-width: 240px;">
-          <div class="report-result-label">Campos pendentes</div>
-          <div id="reportMissingFields" class="answer-box" style="min-height: 44px;"></div>
-        </div>
-      </div>
-
-      <textarea id="reportOutput" class="prescription-textarea" placeholder="O documento gerado aparecerá aqui." style="margin-top: 12px;" spellcheck="false"></textarea>
-
-      <div class="prescription-actions">
-        <button id="copyReportBtn" class="btn-copy hidden" type="button">Copiar</button>
-        <button id="printReportBtn" class="btn-print hidden" type="button">Imprimir</button>
-      </div>
+      <div id="reportDocTypeDetected" class="hidden" aria-hidden="true"></div>
+      <div id="reportMissingFields" class="hidden" aria-hidden="true"></div>
+      <textarea id="reportOutput" class="prescription-textarea hidden" placeholder="" spellcheck="false"></textarea>
     </div>
 
   </div>
@@ -3352,6 +3362,7 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       const has = isMeaningfulText(reportOutput ? reportOutput.value : "");
       setVisible(copyReportBtn, has);
       setVisible(printReportBtn, has);
+      setVisible(reportActionsRow, has);
     }
 
 
@@ -3778,847 +3789,271 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       });
     }
 
-    const reportRecordBtn = document.getElementById("reportRecordBtn");
+        const reportRecordBtn = document.getElementById("reportRecordBtn");
     const reportStatus = document.getElementById("reportStatus");
     const reportOutput = document.getElementById("reportOutput");
     const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
     const reportDocTypeDetected = document.getElementById("reportDocTypeDetected");
     const reportMissingFields = document.getElementById("reportMissingFields");
+    const reportActionsRow = document.getElementById("reportActionsRow");
     const copyReportBtn = document.getElementById("copyReportBtn");
     const printReportBtn = document.getElementById("printReportBtn");
 
-
     const reportTimerEl = document.getElementById("reportTimer");
     const reportPartialEl = document.getElementById("reportPartial");
-    const reportAudioUpload = document.getElementById("reportAudioUpload");
-    const reportManualTranscription = document.getElementById("reportManualTranscription");
     const reportFlowVoice = document.getElementById("reportFlowVoice");
     const reportFlowIdentify = document.getElementById("reportFlowIdentify");
     const reportFlowDoc = document.getElementById("reportFlowDoc");
 
+    const ReportSR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const reportSpeechAvailable = !!ReportSR;
+
     let reportRecognition = null;
-
-
     let reportState = "idle"; // idle | recording | processing | done | error
-
-
-    let reportIsRecording = false;
-
-
-
     let reportFinalTranscript = "";
-
-
     let reportInterimTranscript = "";
-
-
-
     let reportTimerInterval = null;
-
-
     let reportTimerSeconds = 0;
 
-
-
-    let reportSpeechAvailable = false;
-
-
-    let reportUseFallback = false;
-
-
-    let reportSelectedAudioFile = null;
-
-function formatSecondsMMSS(totalSeconds) {
-
-
-  const secs = Math.max(0, Number(totalSeconds) || 0);
-
-
-  const m = ("0" + Math.floor(secs / 60)).slice(-2);
-
-
-  const s = ("0" + (secs % 60)).slice(-2);
-
-
-  return `${m}:${s}`;
-
-
-}
-
-
-
-function setFlowStage(stage) {
-
-
-  if (reportFlowVoice) reportFlowVoice.classList.toggle("active", stage === "voice");
-
-
-  if (reportFlowIdentify) reportFlowIdentify.classList.toggle("active", stage === "identify");
-
-
-  if (reportFlowDoc) reportFlowDoc.classList.toggle("active", stage === "doc");
-
-
-}
-
-
-
-function updateReportTimerUI() {
-
-
-  if (!reportTimerEl) return;
-
-
-  reportTimerEl.textContent = formatSecondsMMSS(reportTimerSeconds);
-
-
-}
-
-
-
-function startReportTimer() {
-
-
-  reportTimerSeconds = 0;
-
-
-  if (reportTimerInterval) clearInterval(reportTimerInterval);
-
-
-  updateReportTimerUI();
-
-
-  reportTimerInterval = setInterval(() => {
-
-
-    reportTimerSeconds += 1;
-
-
-    updateReportTimerUI();
-
-
-  }, 1000);
-
-
-}
-
-
-
-function stopReportTimer(reset) {
-
-
-  if (reportTimerInterval) clearInterval(reportTimerInterval);
-
-
-  reportTimerInterval = null;
-
-
-  if (reset) {
-
-
-    reportTimerSeconds = 0;
-
-
-    updateReportTimerUI();
-
-
-  }
-
-
-}
-
-
-
-function clearReportOutputs() {
-
-
-  if (reportOutput) reportOutput.value = "";
-
-
-  if (reportDocTypeDetected) reportDocTypeDetected.textContent = "";
-
-
-  if (reportMissingFields) reportMissingFields.textContent = "";
-
-
-  reportFinalTranscript = "";
-
-
-  reportInterimTranscript = "";
-
-
-  if (reportPartialEl) {
-
-
-    reportPartialEl.textContent = "";
-
-
-    reportPartialEl.classList.add("hidden");
-
-
-  }
-
-
-  reportSelectedAudioFile = null;
-
-
-  if (reportManualTranscription) {
-
-
-    reportManualTranscription.value = "";
-
-
-    reportManualTranscription.classList.add("hidden");
-
-
-  }
-
-
-  updateReportActions();
-
-
-}
-
-
-
-function getSelectedReportDocType() {
-
-
-  const raw = reportDocTypeSelect ? String(reportDocTypeSelect.value || "auto") : "auto";
-
-
-  return raw === "auto" ? "auto" : raw;
-
-
-}
-
-
-
-function setReportState(nextState, message) {
-
-
-  reportState = nextState;
-
-
-  reportIsRecording = (reportState === "recording");
-
-
-
-  if (reportRecordBtn) {
-
-
-    reportRecordBtn.disabled = (reportState === "processing");
-
-
-    reportRecordBtn.classList.remove("start");
-
-
-    reportRecordBtn.classList.remove("recording");
-
-
-    reportRecordBtn.classList.remove("processing");
-
-
-    reportRecordBtn.classList.add(reportIsRecording ? "recording" : "start");
-
-
-    if (reportState === "processing") reportRecordBtn.classList.add("processing");
-
-
-  }
-
-
-
-  if (reportStatus) {
-
-
-    reportStatus.classList.remove("loading-dot");
-
-
-    if (reportState === "processing") reportStatus.classList.add("loading-dot");
-
-
-    reportStatus.textContent = String(message || "");
-
-
-  }
-
-
-
-  if (reportPartialEl && reportState !== "recording") {
-
-
-    reportPartialEl.textContent = "";
-
-
-    reportPartialEl.classList.add("hidden");
-
-
-  }
-
-
-
-  if (reportState === "recording") setFlowStage("voice");
-
-
-  else if (reportState === "processing") setFlowStage("identify");
-
-
-  else if (reportState === "done") setFlowStage("doc");
-
-
-  else setFlowStage("voice");
-
-
-
-  if (reportRecordBtn) {
-
-
-    if (reportState === "recording") reportRecordBtn.textContent = "Parar";
-
-
-    else if (reportState === "processing") reportRecordBtn.textContent = "Processando";
-
-
-    else if (reportUseFallback || !reportSpeechAvailable) {
-      const hasManual = reportManualTranscription && reportManualTranscription.value && reportManualTranscription.value.trim().length > 0;
-      reportRecordBtn.textContent = (reportSelectedAudioFile || hasManual) ? "Gerar" : "Selecionar";
+    function formatSecondsMMSS(totalSeconds) {
+      const secs = Math.max(0, Number(totalSeconds) || 0);
+      const m = ("0" + Math.floor(secs / 60)).slice(-2);
+      const s = ("0" + (secs % 60)).slice(-2);
+      return `${m}:${s}`;
     }
 
-
-    else reportRecordBtn.textContent = "Iniciar";
-
-
-  }
-
-
-}
-
-
-
-function initReportSpeech() {
-
-
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-
-  reportSpeechAvailable = !!SR;
-
-
-  if (!SR) return null;
-
-
-
-  const rec = new SR();
-
-
-  rec.lang = "pt-BR";
-
-
-  rec.continuous = true;
-
-
-  rec.interimResults = true;
-
-
-
-  rec.onresult = (event) => {
-
-
-    let interim = "";
-
-
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-
-
-      const transcript = event.results[i][0].transcript;
-
-
-      if (event.results[i].isFinal) reportFinalTranscript += transcript + " ";
-
-
-      else interim += transcript;
-
-
+    function setFlowStage(stage) {
+      if (reportFlowVoice) reportFlowVoice.classList.toggle("active", stage === "voice");
+      if (reportFlowIdentify) reportFlowIdentify.classList.toggle("active", stage === "identify");
+      if (reportFlowDoc) reportFlowDoc.classList.toggle("active", stage === "doc");
     }
 
-
-    reportInterimTranscript = interim;
-
-
-
-    if (reportPartialEl && reportState === "recording") {
-
-
-      const combined = (reportFinalTranscript + " " + reportInterimTranscript).trim();
-
-
-      const short = combined.length > 180 ? combined.slice(0, 180).trimEnd() + "..." : combined;
-
-
-      reportPartialEl.textContent = short ? ("Transcrição parcial: " + short) : "";
-
-
-      if (short) reportPartialEl.classList.remove("hidden");
-
-
-      else reportPartialEl.classList.add("hidden");
-
-
+    function updateReportTimerUI() {
+      if (!reportTimerEl) return;
+      reportTimerEl.textContent = formatSecondsMMSS(reportTimerSeconds);
     }
 
-
-  };
-
-
-
-  rec.onerror = (event) => {
-
-
-    console.error("Erro no reconhecimento do relatório:", event && event.error);
-
-
-    const err = (event && event.error) ? String(event.error) : "erro";
-
-
-    if (err === "not-allowed" || err === "service-not-allowed") {
-
-
-      reportUseFallback = true;
-
-
-      stopReportTimer(true);
-
-
-      setReportState("error", "Permissão negada. Selecione um áudio e use transcrição manual.");
-
-
-      if (reportManualTranscription) reportManualTranscription.classList.remove("hidden");
-
-
-      return;
-
-
+    function startReportTimer() {
+      reportTimerSeconds = 0;
+      if (reportTimerInterval) clearInterval(reportTimerInterval);
+      updateReportTimerUI();
+      reportTimerInterval = setInterval(() => {
+        reportTimerSeconds += 1;
+        updateReportTimerUI();
+      }, 1000);
     }
 
-
-    stopReportTimer(true);
-
-
-    setReportState("error", "Erro na captura de voz. Tente novamente.");
-
-
-  };
-
-
-
-  rec.onend = () => {
-
-
-    if (reportState === "recording") {
-
-
-      try { rec.start(); } catch (e) { }
-
-
+    function stopReportTimer(reset) {
+      if (reportTimerInterval) clearInterval(reportTimerInterval);
+      reportTimerInterval = null;
+      if (reset) {
+        reportTimerSeconds = 0;
+        updateReportTimerUI();
+      }
     }
 
-
-  };
-
-
-
-  return rec;
-
-
-}
-
-
-
-async function startReportRecording() {
-
-
-  clearReportOutputs();
-
-
-
-  if (!reportRecognition) reportRecognition = initReportSpeech();
-
-
-
-  if (!reportRecognition) {
-
-
-    reportUseFallback = true;
-
-
-    reportSpeechAvailable = false;
-
-
-    setReportState("idle", "Navegador sem suporte a captura de voz. Selecione um áudio e use transcrição manual.");
-
-
-    if (reportManualTranscription) reportManualTranscription.classList.remove("hidden");
-
-
-    return;
-
-
-  }
-
-
-
-  reportUseFallback = false;
-
-
-  setReportState("recording", "Gravando.");
-
-
-  startReportTimer();
-
-
-
-  try {
-
-
-    reportRecognition.start();
-
-
-  } catch (e) {
-
-
-    console.warn("Erro ao iniciar reconhecimento do relatório:", e);
-
-
-    stopReportTimer(true);
-
-
-    setReportState("error", "Falha ao iniciar a captura de voz.");
-
-
-  }
-
-
-}
-
-
-
-async function stopReportRecordingAndGenerate() {
-
-
-  if (reportRecognition) {
-
-
-    try { reportRecognition.stop(); } catch (e) { }
-
-
-  }
-
-
-
-  stopReportTimer(false);
-
-
-
-  const transcricao = (reportFinalTranscript + " " + reportInterimTranscript).trim();
-
-
-  if (!transcricao) {
-
-
-    stopReportTimer(true);
-
-
-    setReportState("error", "Áudio vazio. Nenhuma fala foi capturada.");
-
-
-    updateReportActions();
-
-
-    return;
-
-
-  }
-
-
-
-  setReportState("processing", "Processando.");
-
-
-
-  try {
-
-
-    const tipo_documento = getSelectedReportDocType();
-
-
-    const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
-
-
-      method: "POST",
-
-
-      headers: { "Content-Type": "application/json" },
-
-
-      body: JSON.stringify({ transcricao, tipo_documento })
-
-
-    });
-
-
-
-    if (!resp.ok) {
-
-
-      const txt = await resp.text().catch(() => "");
-
-
-      console.error("Erro HTTP do backend (relatório):", resp.status, txt);
-
-
-      stopReportTimer(true);
-
-
-      setReportState("error", "Falha ao gerar documento.");
-
+    function clearReportOutputs() {
+      reportFinalTranscript = "";
+      reportInterimTranscript = "";
+
+      if (reportOutput) reportOutput.value = "";
+      if (reportDocTypeDetected) reportDocTypeDetected.textContent = "";
+      if (reportMissingFields) reportMissingFields.textContent = "";
+
+      if (reportPartialEl) {
+        reportPartialEl.textContent = "";
+        reportPartialEl.classList.add("hidden");
+      }
 
       updateReportActions();
-
-
-      return;
-
-
     }
 
+    function getSelectedReportDocType() {
+      const raw = reportDocTypeSelect ? String(reportDocTypeSelect.value || "auto") : "auto";
+      return raw === "auto" ? "auto" : raw;
+    }
 
+    function setReportState(nextState, message) {
+      reportState = nextState;
 
-    const data = await resp.json().catch(() => ({}));
+      if (reportRecordBtn) {
+        reportRecordBtn.disabled = (reportState === "processing");
+        reportRecordBtn.classList.remove("start", "recording", "processing");
+        if (reportState === "recording") reportRecordBtn.classList.add("recording");
+        else reportRecordBtn.classList.add("start");
+        if (reportState === "processing") reportRecordBtn.classList.add("processing");
 
+        if (reportState === "recording") reportRecordBtn.textContent = "Parar";
+        else if (reportState === "processing") reportRecordBtn.textContent = "Processando";
+        else reportRecordBtn.textContent = "Iniciar";
+      }
 
-    const documento = (data && data.documento) ? String(data.documento) : "";
+      if (reportStatus) {
+        reportStatus.classList.remove("loading-dot");
+        if (reportState === "processing") reportStatus.classList.add("loading-dot");
+        reportStatus.textContent = String(message || "");
+      }
 
+      if (reportPartialEl && reportState !== "recording") {
+        reportPartialEl.textContent = "";
+        reportPartialEl.classList.add("hidden");
+      }
 
-    const tipoIdentificado = (data && data.tipo_documento) ? String(data.tipo_documento) : "";
+      if (reportState === "recording") setFlowStage("voice");
+      else if (reportState === "processing") setFlowStage("identify");
+      else if (reportState === "done") setFlowStage("doc");
+      else setFlowStage("voice");
+    }
 
+    function initReportSpeech() {
+      if (!ReportSR) return null;
 
-    const pendentes = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : [];
+      const rec = new ReportSR();
+      rec.lang = "pt-BR";
+      rec.continuous = true;
+      rec.interimResults = true;
 
+      rec.onresult = (event) => {
+        let interim = "";
 
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) reportFinalTranscript += transcript + " ";
+          else interim += transcript;
+        }
 
-    if (reportDocTypeDetected) reportDocTypeDetected.textContent = tipoIdentificado ? tipoIdentificado : "não informado";
+        reportInterimTranscript = interim;
 
+        if (reportPartialEl && reportState === "recording") {
+          const combined = (reportFinalTranscript + " " + reportInterimTranscript).trim();
+          const short = combined.length > 180 ? combined.slice(0, 180).trimEnd() + "..." : combined;
+          reportPartialEl.textContent = short ? ("Transcrição parcial: " + short) : "";
+          if (short) reportPartialEl.classList.remove("hidden");
+          else reportPartialEl.classList.add("hidden");
+        }
+      };
 
-    if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "Nenhum";
+      rec.onerror = (event) => {
+        console.error("Erro no reconhecimento do documento:", event && event.error);
+        const err = (event && event.error) ? String(event.error) : "erro";
 
+        stopReportTimer(true);
 
+        if (err === "not-allowed" || err === "service-not-allowed") {
+          setReportState("error", "Permissão negada. Verifique o acesso ao microfone no navegador.");
+          return;
+        }
 
-    if (reportOutput) reportOutput.value = normalizeNumberedParagraphs(documento);
+        setReportState("error", "Erro na captura de voz. Tente novamente.");
+      };
 
+      rec.onend = () => {
+        if (reportState === "recording") {
+          try { rec.start(); } catch (e) { }
+        }
+      };
 
-    updateReportActions();
+      return rec;
+    }
 
+    async function startReportRecording() {
+      clearReportOutputs();
 
+      if (!reportSpeechAvailable) {
+        setReportState("error", "Navegador sem suporte a captura de voz.");
+        return;
+      }
 
+      if (!reportRecognition) reportRecognition = initReportSpeech();
+      if (!reportRecognition) {
+        setReportState("error", "Navegador sem suporte a captura de voz.");
+        return;
+      }
+
+      setReportState("recording", "Gravando.");
+      startReportTimer();
+
+      try {
+        reportRecognition.start();
+      } catch (e) {
+        console.warn("Erro ao iniciar reconhecimento do documento:", e);
+        stopReportTimer(true);
+        setReportState("error", "Falha ao iniciar a captura de voz.");
+      }
+    }
+
+    async function stopReportRecordingAndGenerate() {
+      if (reportRecognition) {
+        try { reportRecognition.stop(); } catch (e) { }
+      }
+
+      stopReportTimer(false);
+
+      const transcricao = (reportFinalTranscript + " " + reportInterimTranscript).trim();
+      if (!transcricao) {
+        stopReportTimer(true);
+        setReportState("error", "Áudio vazio. Nenhuma fala foi capturada.");
+        updateReportActions();
+        return;
+      }
+
+      setReportState("processing", "Processando.");
+
+      try {
+        const tipo_documento = getSelectedReportDocType();
+        const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcricao, tipo_documento })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (documento):", resp.status, txt);
+          stopReportTimer(true);
+          setReportState("error", "Falha ao gerar documento.");
+          updateReportActions();
+          return;
+        }
+
+        const data = await resp.json().catch(() => ({}));
+        const documento = (data && data.documento) ? String(data.documento) : "";
+        const tipoIdentificado = (data && data.tipo_documento) ? String(data.tipo_documento) : "";
+        const pendentes = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : [];
+
+        if (reportDocTypeDetected) reportDocTypeDetected.textContent = tipoIdentificado ? tipoIdentificado : "";
+        if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "";
+
+        if (reportOutput) reportOutput.value = normalizeNumberedParagraphs(documento);
+
+        updateReportActions();
+
+        stopReportTimer(true);
+        setReportState(documento ? "done" : "error", documento ? "Documento gerado." : "Falha ao gerar documento.");
+      } catch (err) {
+        console.error("Erro ao gerar documento:", err);
+        stopReportTimer(true);
+        setReportState("error", "Falha de rede ao gerar documento.");
+        updateReportActions();
+      }
+    }
+
+    async function handleReportPrimaryAction() {
+      if (reportState === "processing") return;
+
+      if (reportState === "recording") {
+        await stopReportRecordingAndGenerate();
+        return;
+      }
+
+      await startReportRecording();
+    }
+
+    // Estado inicial
+    setReportState("idle", reportSpeechAvailable ? "Pronto para gravar." : "Navegador sem suporte a captura de voz.");
     stopReportTimer(true);
-
-
-    setReportState(documento ? "done" : "error", documento ? "Documento gerado." : "Falha ao gerar documento.");
-
-
-  } catch (err) {
-
-
-    console.error("Erro ao gerar relatório:", err);
-
-
-    stopReportTimer(true);
-
-
-    setReportState("error", "Falha de rede ao gerar documento.");
-
-
     updateReportActions();
 
-
-  }
-
-
-}
-
-
-
-async function generateReportFromManualTranscription() {
-
-
-  const transcricao = (reportManualTranscription && reportManualTranscription.value) ? reportManualTranscription.value.trim() : "";
-
-
-  if (!transcricao) {
-
-
-    setReportState("error", "Transcrição vazia. Preencha a transcrição para gerar o documento.");
-
-
-    return;
-
-
-  }
-
-
-
-  setReportState("processing", "Processando.");
-
-
-
-  try {
-
-
-    const tipo_documento = getSelectedReportDocType();
-
-
-    const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
-
-
-      method: "POST",
-
-
-      headers: { "Content-Type": "application/json" },
-
-
-      body: JSON.stringify({ transcricao, tipo_documento })
-
-
-    });
-
-
-
-    if (!resp.ok) {
-
-
-      const txt = await resp.text().catch(() => "");
-
-
-      console.error("Erro HTTP do backend (relatório):", resp.status, txt);
-
-
-      setReportState("error", "Falha ao gerar documento.");
-
-
-      updateReportActions();
-
-
-      return;
-
-
-    }
-
-
-
-    const data = await resp.json().catch(() => ({}));
-
-
-    const documento = (data && data.documento) ? String(data.documento) : "";
-
-
-    const tipoIdentificado = (data && data.tipo_documento) ? String(data.tipo_documento) : "";
-
-
-    const pendentes = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : [];
-
-
-
-    if (reportDocTypeDetected) reportDocTypeDetected.textContent = tipoIdentificado ? tipoIdentificado : "não informado";
-
-
-    if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "Nenhum";
-
-
-
-    if (reportOutput) reportOutput.value = normalizeNumberedParagraphs(documento);
-
-
-    updateReportActions();
-
-
-    setReportState(documento ? "done" : "error", documento ? "Documento gerado." : "Falha ao gerar documento.");
-
-
-  } catch (err) {
-
-
-    console.error("Erro ao gerar relatório (manual):", err);
-
-
-    setReportState("error", "Falha de rede ao gerar documento.");
-
-
-    updateReportActions();
-
-
-  }
-
-
-}
-
-
-
-async function handleReportPrimaryAction() {
-
-
-  if (reportState === "processing") return;
-
-
-
-  if (reportUseFallback || !reportSpeechAvailable) {
-
-    const manual = (reportManualTranscription && reportManualTranscription.value) ? reportManualTranscription.value.trim() : "";
-    if (manual) {
-      await generateReportFromManualTranscription();
-      return;
-    }
-
-    if (reportAudioUpload) {
-      reportAudioUpload.click();
-      setReportState("idle", "Selecione um áudio ou preencha a transcrição para gerar o documento.");
-      if (reportManualTranscription) reportManualTranscription.classList.remove("hidden");
-      return;
-    }
-
-    setReportState("error", "Recurso indisponível. Preencha a transcrição para gerar o documento.");
-    if (reportManualTranscription) reportManualTranscription.classList.remove("hidden");
-    return;
-  }
-
-
-
-  if (reportState === "recording") {
-
-
-    await stopReportRecordingAndGenerate();
-
-
-    return;
-
-
-  }
-
-
-
-  await startReportRecording();
-
-
-}
-
-
-
-// Estado inicial
-
-
-setReportState("idle", "Pronto para gravar.");
-
-
-stopReportTimer(true);
 
 
 
@@ -4837,59 +4272,14 @@ recordBtn.onclick = () => {
 
     // Relatórios de Enfermagem / Encaminhamentos etc.
 
-    if (reportAudioUpload) {
-
-      reportAudioUpload.addEventListener("change", () => {
-
-        const files = reportAudioUpload.files;
-
-        reportSelectedAudioFile = (files && files.length) ? files[0] : null;
-
-        if (reportManualTranscription) reportManualTranscription.classList.remove("hidden");
-
-        if (reportSelectedAudioFile) {
-
-          setReportState("idle", "Áudio selecionado. Preencha a transcrição para gerar o documento.");
-
-        } else {
-
-          setReportState("idle", "Pronto para gravar.");
-
-        }
-
-      });
-
-    }
-
-
-    if (reportManualTranscription) {
-
-      reportManualTranscription.addEventListener("input", () => {
-
-        if (reportUseFallback || !reportSpeechAvailable) {
-
-          const msg = reportStatus ? reportStatus.textContent : "Pronto para gravar.";
-
-          setReportState(reportState, msg);
-
-        }
-
-      });
-
-    }
-
-
     if (reportRecordBtn) {
-
       reportRecordBtn.addEventListener("click", async (e) => {
-
         e.preventDefault();
-
         await handleReportPrimaryAction();
-
       });
-
     }
+
+
 
 
     if (copyReportBtn) {
