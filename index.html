@@ -1882,13 +1882,6 @@
         </div>
       </div>
 
-      <div class="section-header-row" style="justify-content: center; margin-top: 6px;">
-        <div class="soap-title-actions" style="justify-content: center;">
-          <p class="module-title" style="margin: 0;">Atendimento</p>
-          <button id="attendGuideBtn" class="btn-print" type="button" style="display:inline-block; margin-left: 8px;">Guia do atendimento</button>
-        </div>
-      </div>
-
       <div id="liveGuidance" class="live-guidance">
         <div class="live-guidance-header">
           <p class="live-guidance-title">Perguntas e procedimentos essenciais</p>
@@ -1921,14 +1914,7 @@
       <div id="soapError" class="error"></div>
 
       <div class="module-divider"></div>
-      
-      <div class="section-header-row" style="justify-content: center;">
-        <div class="soap-title-actions" style="justify-content: center;">
-          <p class="module-title" style="margin: 0;">Triagem hospitalar</p>
-          <button id="triageGuideBtn" class="btn-print" type="button" style="display:inline-block; margin-left: 8px;">Guia da triagem</button>
-        </div>
-      </div>
-
+      <p class="module-title">Triagem hospitalar</p>
       <p class="module-subtitle">
         Use este módulo para triagem na porta do hospital. Fale identificação do paciente, queixa principal, sinais vitais, achados do ABCDE, comorbidades, alergias e medicações em uso. Ao encerrar, será gerado um relatório técnico de triagem, condutas iniciais e passagem rápida ao médico.
       </p>
@@ -2860,7 +2846,7 @@
   
 <div id="handoffGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
-      <h3>Guia rápido para Passagem de Plantão (SBAR)</h3>
+      <h3>Guia Passagem de Plantão (SBAR)</h3>
       <button id="closeHandoffGuideBtn" class="close-panel-btn" aria-label="Fechar guia de passagem de plantão">X</button>
     </div>
 
@@ -2912,130 +2898,6 @@
     </div>
   </div>
 
-  <div id="attendGuidePanel" class="recommendations-panel">
-    <div class="recommendations-header">
-      <h3>Guia rápido para Iniciar Atendimento (SOAP)</h3>
-      <button id="closeAttendGuideBtn" class="close-panel-btn" aria-label="Fechar guia do atendimento">X</button>
-    </div>
-
-    <div class="recommendations-status">
-      Use este roteiro para lembrar as perguntas essenciais e padronizar a gravação do atendimento. Adapte ao caso.
-    </div>
-
-    <div class="recommendations-list">
-      <div class="recommendation-item"><strong>Identificação e segurança</strong>
-        <ul>
-          <li>Quem é o paciente (nome completo, idade/data de nascimento, peso quando relevante) e onde está sendo atendido (local/unidade)?</li>
-          <li>Data e hora do atendimento.</li>
-          <li>Alergias e reações prévias.</li>
-          <li>Medicações em uso e condições especiais (gestação/puérperio, imunossupressão, anticoagulação).</li>
-          <li>Há urgência imediata (via aérea, respiração, circulação, sangramento, dor intensa, rebaixamento de consciência)?</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>Queixa principal e história do problema</strong>
-        <ul>
-          <li>Qual a queixa principal e desde quando começou? Como evoluiu?</li>
-          <li>Sintomas associados e fatores de melhora/piora.</li>
-          <li>Dor: localização, intensidade, irradiação, duração e gatilhos.</li>
-          <li>Febre: início, pico, uso de antitérmico e resposta.</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>Antecedentes e contexto</strong>
-        <ul>
-          <li>Comorbidades relevantes, cirurgias, internações, eventos prévios semelhantes.</li>
-          <li>Hábitos (tabaco/álcool) e fatores sociais importantes para adesão/segurança.</li>
-          <li>Para crianças: alimentação, diurese/evacuação, vacinação, sinais de gravidade.</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>Avaliação objetiva</strong>
-        <ul>
-          <li>Sinais vitais: PA, FC, FR, SpO2, temperatura; glicemia capilar quando indicada.</li>
-          <li>Estado geral, hidratação, perfusão, nível de consciência, dor (0 a 10) quando aplicável.</li>
-          <li>Exame físico dirigido ao motivo, com achados relevantes.</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>Plano e orientações</strong>
-        <ul>
-          <li>Intervenções realizadas (medicações, procedimentos, curativos, nebulização, hidratação, testes rápidos) e resposta clínica.</li>
-          <li>Exames solicitados, justificativa e conduta prevista conforme resultado.</li>
-          <li>Orientações de alta/retorno, sinais de alarme e encaminhamentos quando necessários.</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>Dica prática</strong><br>
-        Se faltar alguma informação durante a gravação, use "Pausar", confira o dado e retome. Para finalizar e gerar o SOAP, encerre no botão grande.
-      </div>
-    </div>
-  </div>
-
-  <div id="triageGuidePanel" class="recommendations-panel">
-    <div class="recommendations-header">
-      <h3>Guia rápido para Triagem Hospitalar</h3>
-      <button id="closeTriageGuideBtn" class="close-panel-btn" aria-label="Fechar guia da triagem hospitalar">X</button>
-    </div>
-
-    <div class="recommendations-status">
-      Use este roteiro para lembrar as perguntas essenciais e fazer passagem objetiva ao médico. Adapte ao caso.
-    </div>
-
-    <div class="recommendations-list">
-      <div class="recommendation-item"><strong>Identificação e risco imediato</strong>
-        <ul>
-          <li>Quem é o paciente (nome/idade) e onde está (sala/leito)? Há acompanhante?</li>
-          <li>Qual a queixa principal e desde quando? Houve trauma ou mecanismo específico?</li>
-          <li>Há urgência imediata (via aérea, dispneia grave, cianose, choque, sangramento ativo, dor torácica, convulsão, rebaixamento, anafilaxia)?</li>
-          <li>Precauções/isolamento quando aplicável.</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>Sinais vitais e dor</strong>
-        <ul>
-          <li>PA, FC, FR, SpO2, temperatura.</li>
-          <li>Glicemia capilar quando indicada.</li>
-          <li>Dor (0 a 10) e tendência dos sinais vitais, quando houver medidas prévias.</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>ABCDE focado</strong>
-        <ul>
-          <li>Via aérea: patência, risco de obstrução, proteção cervical quando trauma.</li>
-          <li>Respiração: esforço, ausculta quando possível, necessidade de oxigênio, SpO2.</li>
-          <li>Circulação: perfusão, pulsos, sangramento, enchimento capilar, necessidade de acesso venoso/monitorização.</li>
-          <li>Neurológico: nível de consciência (AVPU/Glasgow), pupilas, déficit focal, glicemia.</li>
-          <li>Exposição: lesões, rash, edema, temperatura, dor e achados relevantes.</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>Background rápido</strong>
-        <ul>
-          <li>Diagnóstico(s) e comorbidades relevantes (cardiopatia, DPOC/asma, DM, IRC, anticoagulação).</li>
-          <li>Alergias e medicações em uso.</li>
-          <li>Gestação/puerpério e imunossupressão quando aplicável.</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>Condutas iniciais e passagem ao médico</strong>
-        <ul>
-          <li>O que foi feito: oxigênio, monitorização, acesso venoso, coleta de exames conforme protocolo local, ECG quando indicado, controle de sangramento, imobilização, analgesia conforme prescrição.</li>
-          <li>O que está pendente e o que precisa ser reavaliado no próximo intervalo.</li>
-          <li>Passagem objetiva ao médico: problema principal, gravidade, sinais vitais, achados críticos e condutas realizadas.</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>Dica prática</strong><br>
-        Para encerrar e gerar o relatório de triagem, finalize no botão grande. Se precisar interromper, use "Pausar" e retome quando necessário.
-      </div>
-    </div>
-  </div>
-
-
-  <div id="docsGuidePanel"
-
-
   <div id="docsGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
       <h3>Guia para gerar documentos</h3>
@@ -3047,15 +2909,63 @@
     </div>
 
     <div id="docsGuideContent" class="recommendations-list">
-      <div class="recommendation-item"><strong>1) Qual documento você precisa?</strong><br>Tipo (declaração, encaminhamento, solicitação, relatório, ata, registro de procedimento etc.) e finalidade/destino (para quem será entregue).</div>
-      <div class="recommendation-item"><strong>2) Identificação completa</strong><br>Paciente (nome completo, data de nascimento/idade, CPF/CNS/prontuário quando houver), unidade/local e data/hora do registro.</div>
-      <div class="recommendation-item"><strong>3) Contexto do caso</strong><br>Motivo/queixa, histórico relevante, comorbidades, alergias e medicações em uso quando pertinente.</div>
-      <div class="recommendation-item"><strong>4) Achados objetivos</strong><br>Sinais vitais, exame físico/achados relevantes, escala de dor, nível de consciência e outros dados mensuráveis.</div>
-      <div class="recommendation-item"><strong>5) Intervenções e procedimentos</strong><br>O que foi feito (curativo, medicação, nebulização, coleta, orientação, encaminhamento), técnica/material quando aplicável e resposta do paciente.</div>
-      <div class="recommendation-item"><strong>6) Orientações e plano</strong><br>Condutas e orientações fornecidas, sinais de alarme, retorno/seguimento e para onde encaminhar (se houver).</div>
-      <div class="recommendation-item"><strong>7) Itens específicos por tipo</strong><br>Comparecimento/permanência: data e horários (chegada/saída), motivo, acompanhante. Encaminhamento: serviço/município/profissional de destino e motivo. Solicitação: item, quantidade, período e justificativa. ATA: data, pauta, participantes, decisões e encaminhamentos.</div>
-      <div class="recommendation-item"><strong>8) Identificação do profissional</strong><br>Nome do profissional, função (enfermagem), assinatura e COREN (quando pertinente no seu serviço).</div>
-    </div>
+      <div class="recommendation-item"><strong>1) Como usar o botão "Iniciar geração de documentos"</strong><br>
+        1. Clique em "Iniciar geração de documentos" (botão grande). Aguarde o cronômetro iniciar e fale de forma contínua.<br>
+        2. Se precisar interromper por qualquer motivo, use "Pausar" (botão pequeno). Clique novamente em "Pausar" para retomar.<br>
+        3. Para finalizar e gerar o documento, clique novamente no botão grande (ele ficará vermelho durante a gravação).<br>
+        4. Ao final, role a página para visualizar o documento gerado e use "Copiar" e/ou "Imprimir".
+      </div>
+
+      <div class="recommendation-item"><strong>2) Abertura obrigatória (fale no início da gravação)</strong><br>
+        Informe, nessa ordem, para o sistema entender o tipo e a finalidade:<br>
+        1. Tipo de documento (ex.: "RELATÓRIO DE ENFERMAGEM", "DECLARAÇÃO", "ENCAMINHAMENTO", "SOLICITAÇÃO", "ATA", "COMUNICADO").<br>
+        2. Finalidade/destino (para quem vai: escola, CRAS, empresa, unidade de destino, regulação, auditoria, direção, paciente).<br>
+        3. Data e horário do registro (se não souber, diga "não informado").
+      </div>
+
+      <div class="recommendation-item"><strong>3) Identificação completa (quanto mais completa, melhor)</strong><br>
+        1. Unidade/serviço e município/UF.<br>
+        2. Paciente: nome completo; data de nascimento/idade; CPF; CNS; número de prontuário (se houver).<br>
+        3. Endereço e telefone (quando pertinente).<br>
+        4. Responsável/acompanhante (nome e vínculo), quando aplicável.
+      </div>
+
+      <div class="recommendation-item"><strong>4) Conteúdo clínico e assistencial (quando for documento assistencial)</strong><br>
+        1. Motivo/queixa e tempo de evolução.<br>
+        2. Comorbidades relevantes, alergias e medicações em uso (quando for pertinente para o documento).<br>
+        3. Achados objetivos: sinais vitais, exame dirigido, escala de dor, nível de consciência, glicemia capilar (se houver).<br>
+        4. Intervenções de enfermagem: o que foi feito, técnica/material quando aplicável e resposta do paciente.<br>
+        5. Orientações e plano: orientações dadas, sinais de alarme, retorno/seguimento e quando acionar o médico.
+      </div>
+
+      <div class="recommendation-item"><strong>5) Conteúdo administrativo (quando for documento administrativo)</strong><br>
+        1. O fato/assunto de forma objetiva (o que ocorreu, onde, quando, com quem).<br>
+        2. Registros verificáveis: datas, horários, locais, nomes completos e funções (se aplicável).<br>
+        3. Encaminhamentos: decisões tomadas, responsáveis e prazos, quando existirem.<br>
+        4. Evite conclusões sem base e não invente dados; se faltar algo, declare "não informado".
+      </div>
+
+      <div class="recommendation-item"><strong>6) Documentos que podem ser gerados (exemplos mais comuns)</strong><br>
+        O módulo pode redigir documentos textuais de saúde e administrativos. Exemplos frequentes:<br>
+        Assistenciais: evolução/registro de enfermagem; relatório de atendimento; plano de cuidados; SAE (descrição e intervenções); relatório de curativo; relatório de administração de medicação; registro de procedimento; alta de enfermagem; orientação de alta.<br>
+        Declarações: comparecimento; permanência; acompanhante; recebimento/retirada de medicamentos; participação em grupo; declaração para escola/CRAS.<br>
+        Encaminhamentos: referência/contrarreferência; encaminhamento para especialista; encaminhamento para serviço social/psicologia/fisioterapia; encaminhamento para unidade/hospital; solicitação de transporte sanitário.<br>
+        Solicitações: exames; insumos (curativo, fraldas, materiais); medicações; visita domiciliar; avaliação multiprofissional; regulação.<br>
+        Vigilância e notificações: comunicação interna de agravo/evento; registro descritivo para suporte à notificação (quando aplicável no seu serviço).<br>
+        Gestão/administrativo: ata de reunião; ofício; comunicado interno; relatório gerencial simples; termo de ciência; termo de recusa; termo de responsabilidade; registro de ocorrência.
+      </div>
+
+      <div class="recommendation-item"><strong>7) Para gerar documentos mais completos</strong><br>
+        1. Use frases curtas e objetivas, em ordem cronológica.<br>
+        2. Diga explicitamente o que é fato observado e o que foi informado pelo paciente.<br>
+        3. Se houver campos obrigatórios que você não tem, diga "não informado" em vez de omitir.<br>
+        4. Ao final, revise o texto gerado antes de copiar/imprimir e ajuste qualquer detalhe necessário.
+      </div>
+
+      <div class="recommendation-item"><strong>8) Identificação do profissional</strong><br>
+        Informe nome completo, função e COREN (quando pertinente no seu serviço), e finalize com local e data.
+      </div>
+</div>
   </div>
 
 <div id="imageChoiceOverlay" class="modal-overlay hidden">
@@ -3610,14 +3520,6 @@ const recordBtn = document.getElementById("recordBtn");
     const docsGuideBtn = document.getElementById("docsGuideBtn");
     const docsGuidePanel = document.getElementById("docsGuidePanel");
     const closeDocsGuideBtn = document.getElementById("closeDocsGuideBtn");
-
-    const attendGuideBtn = document.getElementById("attendGuideBtn");
-    const attendGuidePanel = document.getElementById("attendGuidePanel");
-    const closeAttendGuideBtn = document.getElementById("closeAttendGuideBtn");
-
-    const triageGuideBtn = document.getElementById("triageGuideBtn");
-    const triageGuidePanel = document.getElementById("triageGuidePanel");
-    const closeTriageGuideBtn = document.getElementById("closeTriageGuideBtn");
 
     const patientReportCard = document.getElementById("patientReportCard");
 
@@ -6559,7 +6461,169 @@ async function addFilesToTarget(files, targetKey, mode) {
       w.print();
     }
 
-    
+
+    // ======================================================================
+    // Guias em aba separada (Atendimento e Triagem) - leitura rápida pelo enfermeiro
+    // ======================================================================
+    const __nurseHelpWindows = { atendimento: null, triagem: null };
+
+    function openNurseHelpTab(kind) {
+      const cfg = (kind === "triagem")
+        ? {
+            title: "Guia do botão: Iniciar triagem hospitalar",
+            subtitle: "Como gravar, pausar e finalizar a triagem para gerar um relatório técnico completo.",
+            content: `
+              <h1>Guia do botão: Iniciar triagem hospitalar</h1>
+              <p class="subtitle">Este guia explica como usar o botão e como falar na gravação para obter um relatório de triagem mais completo e útil para o médico.</p>
+
+              <div class="card">
+                <h2>1) Como usar o botão</h2>
+                <p><strong>Iniciar:</strong> clique em "Iniciar triagem hospitalar" (botão grande). O cronômetro começa a contar e a gravação fica ativa.</p>
+                <p><strong>Pausar:</strong> use "Pausar" (botão pequeno) sempre que precisar interromper. Clique novamente para retomar.</p>
+                <p><strong>Finalizar:</strong> clique novamente no botão grande (ele fica vermelho durante a gravação). Ao finalizar, o sistema gera o relatório completo.</p>
+                <p><strong>Depois de gerar:</strong> role até "Relatório de triagem hospitalar" e use "Copiar" ou "Imprimir" (relatório, prontuário e passagem ao médico).</p>
+              </div>
+
+              <div class="card">
+                <h2>2) Abertura obrigatória (fale no início)</h2>
+                <p>1. Identificação do paciente: nome completo, idade, sexo, gestação (se aplicável) e documento/prontuário quando houver.</p>
+                <p>2. Queixa principal e tempo de evolução (desde quando começou).</p>
+                <p>3. Sinais vitais iniciais: PA, FC, FR, SpO2, temperatura; dor (0 a 10); glicemia capilar quando indicado.</p>
+              </div>
+
+              <div class="card">
+                <h2>3) Estrutura recomendada para uma triagem de alta qualidade</h2>
+                <p><strong>A)</strong> Situação atual: aspecto geral, nível de consciência, perfusão, esforço respiratório, sangramentos, dor intensa, convulsão, sinais de choque.</p>
+                <p><strong>B)</strong> ABCDE (resumo objetivo):</p>
+                <p>1. A (Via aérea): fala preservada? estridor? risco de aspiração? corpos estranhos? trauma facial/colo cervical?</p>
+                <p>2. B (Respiração): dispneia, tiragem, cianose, ausculta quando possível, SpO2 em ar ambiente e com O2 (se usado).</p>
+                <p>3. C (Circulação): PA, FC, tempo de enchimento capilar, extremidades frias, sangramento ativo, diurese quando pertinente.</p>
+                <p>4. D (Neurológico): Glasgow/orientação, pupilas, déficit focal, glicemia se alteração de consciência.</p>
+                <p>5. E (Exposição): febre, rash, edema, sinais de trauma, dor localizada, sangramentos, feridas.</p>
+                <p><strong>C)</strong> Histórico breve: comorbidades relevantes, alergias, medicações em uso, anticoagulantes, última refeição (quando pertinente), imunossupressão.</p>
+                <p><strong>D)</strong> Riscos e fatores de gravidade: idade extrema, gestação, sinais de sepse, dor torácica, AVC, dispneia grave, sangramento importante.</p>
+              </div>
+
+              <div class="card">
+                <h2>4) Intervenções e condutas iniciais (enfermagem)</h2>
+                <p>Registre o que foi feito e a resposta: monitorização, O2, acesso venoso, glicemia, controle de dor conforme protocolo, curativo, medidas para febre, posicionamento, isolamento/precauções, coleta de exames quando indicado.</p>
+                <p>Se houve orientação, registre o conteúdo (ex.: sinais de alarme, manter jejum, acompanhar em sala, aguardar médico).</p>
+              </div>
+
+              <div class="card">
+                <h2>5) Como aproveitar o guia em tempo real</h2>
+                <p>Durante a triagem, acompanhe "Perguntas e procedimentos essenciais da triagem". Se aparecer algum item relevante, responda na própria gravação e descreva o achado objetivo.</p>
+              </div>
+
+              <div class="card">
+                <h2>6) Finalização segura</h2>
+                <p>Antes de encerrar, diga explicitamente: principais achados, nível de risco percebido, principais alertas e qual foi o encaminhamento imediato (ex.: sala vermelha, observação, consultório, retorno).</p>
+                <p>Se algum dado não foi obtido, diga "não informado" (em vez de omitir).</p>
+              </div>
+            `
+          }
+        : {
+            title: "Guia do botão: Iniciar atendimento",
+            subtitle: "Como gravar, pausar e finalizar para gerar SOAP e condutas com maior qualidade.",
+            content: `
+              <h1>Guia do botão: Iniciar atendimento</h1>
+              <p class="subtitle">Este guia explica como usar o botão e como falar na gravação para obter um SOAP mais completo e seguro para registro.</p>
+
+              <div class="card">
+                <h2>1) Como usar o botão</h2>
+                <p><strong>Iniciar:</strong> clique em "Iniciar atendimento" (botão grande). O cronômetro inicia e a gravação fica ativa.</p>
+                <p><strong>Pausar:</strong> use "Pausar" (botão pequeno) se precisar interromper. Clique novamente em "Pausar" para retomar.</p>
+                <p><strong>Finalizar:</strong> clique novamente no botão grande (ele fica vermelho durante a gravação). Ao finalizar, o sistema gera o SOAP e o plano de cuidados/prescrição de enfermagem.</p>
+                <p><strong>Depois de gerar:</strong> use os botões de copiar/imprimir para registrar no prontuário e entregar orientações quando necessário.</p>
+              </div>
+
+              <div class="card">
+                <h2>2) Abertura obrigatória (fale no início)</h2>
+                <p>1. Identificação do paciente: nome completo, idade e peso.</p>
+                <p>2. Sinais vitais: PA, FC, FR, SpO2 e temperatura (e glicemia capilar quando indicado).</p>
+                <p>3. Queixa principal e tempo de evolução.</p>
+              </div>
+
+              <div class="card">
+                <h2>3) Roteiro de anamnese e exame para um SOAP de alta qualidade</h2>
+                <p><strong>S (Subjetivo):</strong> queixa e história (início, evolução, fatores de melhora/piora, sintomas associados), antecedentes, alergias, medicações em uso, gestação quando aplicável.</p>
+                <p><strong>O (Objetivo):</strong> sinais vitais e exame físico dirigido, achados mensuráveis (ex.: ausculta, edema, hidratação, dor 0 a 10, glicemia capilar quando houver).</p>
+                <p><strong>A (Avaliação):</strong> principais hipóteses/síndromes e problemas de enfermagem (descrição objetiva, sem inventar dados).</p>
+                <p><strong>P (Plano):</strong> condutas de enfermagem, orientações, sinais de alarme, necessidade de avaliação médica, encaminhamentos e plano de seguimento/retorno.</p>
+              </div>
+
+              <div class="card">
+                <h2>4) Como aproveitar as sugestões em tempo real</h2>
+                <p>Durante o atendimento, acompanhe "Perguntas e procedimentos essenciais". Se aparecer um item importante, aplique na entrevista/exame e responda na própria gravação.</p>
+                <p>Se estiver realizando um roteiro adicional, use "Perguntas essenciais" e depois "Complementar avaliação" para registrar as respostas.</p>
+              </div>
+
+              <div class="card">
+                <h2>5) Dicas práticas para reduzir retrabalho</h2>
+                <p>1. Fale em frases curtas, em ordem lógica, e diga explicitamente dados críticos (alergias, comorbidades, medicações, gestação).</p>
+                <p>2. Diferencie claramente "referido pelo paciente" de "observado no exame".</p>
+                <p>3. Se algum dado não for obtido, diga "não informado".</p>
+                <p>4. Ao final, revise o texto antes de copiar/imprimir e ajuste qualquer detalhe necessário.</p>
+              </div>
+            `
+          };
+
+      let w = __nurseHelpWindows[kind] || null;
+      if (w && !w.closed) {
+        w.focus();
+        return;
+      }
+
+      w = window.open("", "_blank");
+      if (!w) {
+        alert("Não foi possível abrir a aba de ajuda. Verifique se o navegador bloqueou pop-ups.");
+        return;
+      }
+      __nurseHelpWindows[kind] = w;
+
+      const safeTitle = escapeHtml(cfg.title);
+      const safeSubtitle = escapeHtml(cfg.subtitle);
+
+      w.document.open();
+      w.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>${safeTitle}</title>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; background: #f5f5f5; margin: 0; padding: 24px; color: #111827; }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  h1 { margin: 0 0 6px 0; font-size: 24px; }
+  .subtitle { margin: 0 0 18px 0; color: #374151; font-size: 14px; line-height: 1.4; }
+  .topbar { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .meta { margin-top: 6px; color: #6b7280; font-size: 12px; }
+  .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; margin-top: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .card h2 { margin: 0 0 8px 0; font-size: 16px; color: #111827; }
+  .card p { margin: 0 0 8px 0; font-size: 13px; line-height: 1.45; color: #1f2937; }
+  .card p:last-child { margin-bottom: 0; }
+  .footer { margin-top: 14px; color: #6b7280; font-size: 12px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div style="font-weight: 700; font-size: 14px;">${safeTitle}</div>
+      <div class="meta">${safeSubtitle}</div>
+    </div>
+
+    ${cfg.content}
+
+    <div class="footer">
+      Se necessário, feche esta aba após a leitura e retorne à aba principal do sistema.
+    </div>
+  </div>
+</body>
+</html>`);
+      w.document.close();
+      w.focus();
+    }
+
     function extractMedicationsFromPrescriptionText(text) {
       const raw = String(text || "").replace(/\r/g, "").trim();
       if (!raw) return [];
@@ -7647,29 +7711,6 @@ if (closeDocsGuideBtn) {
   });
 }
 
-
-if (attendGuideBtn) {
-  attendGuideBtn.addEventListener("click", () => {
-    setPanelVisible(attendGuidePanel, true);
-  });
-}
-if (closeAttendGuideBtn) {
-  closeAttendGuideBtn.addEventListener("click", () => {
-    setPanelVisible(attendGuidePanel, false);
-  });
-}
-
-if (triageGuideBtn) {
-  triageGuideBtn.addEventListener("click", () => {
-    setPanelVisible(triageGuidePanel, true);
-  });
-}
-if (closeTriageGuideBtn) {
-  closeTriageGuideBtn.addEventListener("click", () => {
-    setPanelVisible(triageGuidePanel, false);
-  });
-}
-
 if (transcriptionGuideBtn) {
   transcriptionGuideBtn.addEventListener("click", () => {
     setPanelVisible(transcriptionGuidePanel, true);
@@ -7732,6 +7773,18 @@ if (triagePrintPassagemBtn) {
   triagePrintPassagemBtn.addEventListener("click", () => {
     const text = (triagePassagemMedico && triagePassagemMedico.value) ? triagePassagemMedico.value : "";
     openPrintWindow("Passagem rápida ao médico - Triagem", text);
+  });
+}
+
+
+if (recordBtn) {
+  recordBtn.addEventListener("click", () => {
+    openNurseHelpTab("atendimento");
+  });
+}
+if (triageRecordBtn) {
+  triageRecordBtn.addEventListener("click", () => {
+    openNurseHelpTab("triagem");
   });
 }
 
