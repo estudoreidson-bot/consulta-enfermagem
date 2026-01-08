@@ -1648,12 +1648,22 @@
       opacity:0.92;
     }
 
+
+    .site-verse{
+      text-align:center;
+      font-size:13px;
+      color:#374151;
+      margin:0 0 10px 0;
+      line-height:1.35;
+    }
+    
 </style>
 </head>
 <body>
 
   <div id="loginView" class="auth-shell">
     <div class="auth-card">
+             <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
 
@@ -1677,7 +1687,8 @@
     <div class="admin-wrap">
       <div class="admin-row" style="justify-content: space-between; align-items: flex-end;">
         <div>
-          <h1 style="margin: 10px 0 4px 0;">Painel do Administrador</h1>
+                 <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
+           <h1 style="margin: 10px 0 4px 0;">Painel do Administrador</h1>
           <div id="adminSubtitle" style="font-size: 12px; color: #555;"></div>
           <div id="adminLocalBackupInfo" style="font-size: 12px; color: #555; margin-top: 2px;"></div>
         </div>
@@ -1824,7 +1835,8 @@
 
   <div id="nurseView" class="hidden">
   <div class="page">
-    <h1>Atendimento de Enfermagem</h1>
+                <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
+     <h1>Atendimento de Enfermagem</h1>
 
 
     <div class="nurse-bar" id="nurseBar">
@@ -2176,7 +2188,10 @@
 
     
     <div id="medSafetyCard" class="module-card">
-      <h2>Administração segura de medicamentos (registro de enfermagem)</h2>
+      <div class="section-header-row">
+      <h2>Administração segura de medicamentos</h2>
+      <button id="medSafetyGuideBtn" class="btn-print" type="button">Guia</button>
+    </div>
                   <p class="mini-status" style="margin-top: 0;">
         Use o botão para fotografar a prescrição médica. O sistema irá transcrever o que estiver legível, organizar os medicamentos, apontar riscos e inconsistências relevantes para a enfermagem e sinalizar interações importantes quando for possível confirmar com segurança.
       </p>
@@ -2195,7 +2210,10 @@
     </div>
 
     <div id="woundCard" class="module-card">
+      <div class="section-header-row">
       <h2>Curativos e feridas</h2>
+      <button id="woundGuideBtn" class="btn-print" type="button">Guia</button>
+    </div>
       <p class="mini-status" style="margin-top: 0;">
         Use o botão para fotografar a lesão. O sistema irá descrever a ferida em linguagem técnica, apenas com base no que estiver visível, e sugerir condutas locais, cuidados não medicamentosos e, quando aplicável, opções de tratamento medicamentoso, além de sinais de alarme e critérios de encaminhamento, sem inventar dados.
       </p>
@@ -2216,7 +2234,10 @@
 
 
     <div id="examInterpretationCard" class="module-card">
-      <h2>Interpretação de resultados de exames (laboratoriais, de imagem, etc)</h2>
+      <div class="section-header-row">
+      <h2>Interpretação de resultados de exames</h2>
+      <button id="examGuideBtn" class="btn-print" type="button">Guia</button>
+    </div>
       <p class="mini-status" style="margin-top: 0;">
         Use os botões para fotografar o resultado do exame (ex.: laudo, tabela de laboratório, impressão do sistema). O sistema irá transcrever somente o que estiver legível, organizar achados relevantes e oferecer uma interpretação clínica didática, com hipóteses possíveis, limitações, próximos passos e sinais de alarme, sem inventar dados.
       </p>
@@ -2282,7 +2303,10 @@
     </div>
 
 <div id="medicalDoubtsCard" class="module-card">
+      <div class="section-header-row">
       <h2>Dúvidas em Saúde</h2>
+      <button id="medicalDoubtsGuideBtn" class="btn-print" type="button">Guia</button>
+    </div>
       <p class="mini-status" style="margin-top: 0;">Faça qualquer pergunta sobre saúde. Pressione Enter ou clique em Enviar.</p><div class="inline-input-row" style="gap: 10px; align-items: stretch;">
   <input id="medicalDoubtInput" class="text-input" type="text" placeholder="Digite sua dúvida sobre saúde e pressione Enter" autocomplete="off" style="flex: 1 1 auto; margin: 0;" />
   <button id="medicalDoubtSendBtn" class="btn-print" type="button" style="white-space: nowrap;">Enviar</button>
@@ -2293,7 +2317,10 @@
 
 
                 <div id="calculatorsCard" class="module-card">
+      <div class="section-header-row">
       <h2>Calculadoras Clínicas</h2>
+      <button id="calculatorsGuideBtn" class="btn-print" type="button">Guia</button>
+    </div>
       <p class="mini-status" style="margin-top: 0;">
         Selecione a calculadora, preencha os campos e veja o resultado.
       </p>
@@ -2816,31 +2843,62 @@
       As respostas serão usadas para atualizar automaticamente o SOAP e a conduta.
     </p>
 
-  <div id="handoffGuidePanel" class="recommendations-panel">
+  
+<div id="handoffGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
-      <h3>Guia de Passagem de Plantão</h3>
+      <h3>Guia Passagem de Plantão (SBAR)</h3>
       <button id="closeHandoffGuideBtn" class="close-panel-btn" aria-label="Fechar guia de passagem de plantão">X</button>
     </div>
 
     <div class="recommendations-status">
-      Use estas perguntas como roteiro. Quanto mais completo você responder, melhor será a passagem de plantão gerada.
+      Use este roteiro para lembrar as perguntas essenciais. Você pode seguir na ordem SBAR, mas adapte ao caso.
     </div>
 
     <div id="handoffGuideContent" class="recommendations-list">
-      <div class="recommendation-item"><strong>1) Identificação</strong><br>Nome completo, idade, leito/setor, diagnóstico/hipótese e motivo da internação/atendimento.</div>
-      <div class="recommendation-item"><strong>2) Situação atual</strong><br>Nível de consciência, dor, sinais vitais mais recentes, oxigenação (ar ambiente/ O2), diurese e balanço hídrico quando pertinente.</div>
-      <div class="recommendation-item"><strong>3) Eventos e evolução no turno</strong><br>O que mudou desde o turno anterior, intercorrências, procedimentos realizados, resposta às condutas.</div>
-      <div class="recommendation-item"><strong>4) Dispositivos e cuidados</strong><br>Acessos (tipo/local), sondas/drenos, curativos (local/estado), risco de queda e LPP, precauções/isolamento.</div>
-      <div class="recommendation-item"><strong>5) Medicações e terapias em curso</strong><br>Antibióticos, drogas vasoativas, analgesia, insulinoterapia, nebulização, oxigenoterapia, dietas e horários críticos.</div>
-      <div class="recommendation-item"><strong>6) Exames e resultados</strong><br>Exames já coletados e principais resultados relevantes; exames pendentes (o que e quando).</div>
-      <div class="recommendation-item"><strong>7) Pendências e plano</strong><br>O que precisa ser feito/checado no próximo turno (prioridades), metas, monitorizações, critérios de alarme e quando acionar o médico.</div>
+      <div class="recommendation-item"><strong>Situação (S)</strong>
+        <ul>
+          <li>Quem é o paciente (nome/idade/leito) e por que está internado/atendido agora?</li>
+          <li>Qual é o problema principal neste momento? O que mudou nas últimas horas?</li>
+          <li>Há alguma urgência imediata (via aérea, respiração, circulação, sangramento, dor intensa, rebaixamento)?</li>
+        </ul>
+      </div>
+
+      <div class="recommendation-item"><strong>Background (B)</strong>
+        <ul>
+          <li>Diagnóstico(s) principal(is) e tempo de evolução/internação.</li>
+          <li>Comorbidades relevantes (HAS, DM, DPOC/asma, IRC, cardiopatia, anticoagulação, etc.).</li>
+          <li>Alergias, medicamentos em uso e antibióticos (dose/horário da próxima dose).</li>
+          <li>Procedimentos/dispositivos: acesso venoso, sonda vesical, SNG, drenos, oxigênio, ventilação, curativos.</li>
+          <li>Isolamento/precauções, histórico recente de febre, quedas, delirium, convulsões.</li>
+        </ul>
+      </div>
+
+      <div class="recommendation-item"><strong>Avaliação (A)</strong>
+        <ul>
+          <li>Sinais vitais atuais e tendência (PA, FC, FR, SpO2, temperatura), diurese e balanço hídrico quando aplicável.</li>
+          <li>Estado geral e exame dirigido (consciência, perfusão, dispneia, dor, sangramentos, feridas, edema).</li>
+          <li>Resultados relevantes: glicemias, hemograma, eletrólitos, função renal, gasometria, culturas, imagem recente.</li>
+          <li>Risco e segurança: risco de queda/lesão por pressão, risco de broncoaspiração, escala de dor, sedação.</li>
+        </ul>
+      </div>
+
+      <div class="recommendation-item"><strong>Recomendação (R)</strong>
+        <ul>
+          <li>O que precisa ser feito no próximo turno? Liste tarefas e prioridades.</li>
+          <li>Metas e monitorização: parâmetros-alvo, frequência de checagens, quando reavaliar.</li>
+          <li>Exames pendentes e o que fazer com o resultado (conduta se alterar).</li>
+          <li>Sinais de alarme e quando acionar o médico/plantonista.</li>
+          <li>Plano de alta/transferência se aplicável.</li>
+        </ul>
+      </div>
+
+      <div class="recommendation-item"><strong>Dica prática:</strong><br>
+        Se faltar alguma informação, pergunte e registre durante a própria gravação do SBAR. Quanto mais completo o relato, melhor a passagem de plantão.
+      </div>
     </div>
   </div>
-  </div>
 
-
-  
-  <div id="docsGuidePanel" class="recommendations-panel">
+  <div id="docsGuidePanel" class="recommendations-panel"> class="recommendations-panel">
     <div class="recommendations-header">
       <h3>Guia para gerar documentos</h3>
       <button id="closeDocsGuideBtn" class="close-panel-btn" aria-label="Fechar guia para gerar documentos">X</button>
@@ -2884,7 +2942,87 @@
 
   </div>
 
-  <script>
+  
+  <div id="medSafetyGuidePanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Guia: Administração segura de medicamentos</h3>
+      <button id="closeMedSafetyGuideBtn" class="close-panel-btn" aria-label="Fechar guia de administração segura de medicamentos">X</button>
+    </div>
+    <div class="recommendations-status">
+      Como usar este módulo com segurança.
+    </div>
+    <div class="recommendations-list">
+      <div class="recommendation-item"><strong>1) Captura da prescrição</strong><br>Use "Tirar foto" ou "Escolher arquivo". Garanta boa iluminação, foco e que dose, via e horários estejam legíveis.</div>
+      <div class="recommendation-item"><strong>2) Conferência obrigatória</strong><br>Compare sempre o texto gerado com a imagem original antes de registrar no prontuário ou administrar qualquer medicação.</div>
+      <div class="recommendation-item"><strong>3) Registro</strong><br>Após revisar, use "Copiar segurança dos medicamentos" para colar no registro de enfermagem ou "Imprimir" quando necessário.</div>
+      <div class="recommendation-item"><strong>4) Se houver dúvida</strong><br>Quando faltar informação ou houver risco (alergias, dose incompleta, diluição, velocidade, incompatibilidade), confirme com prescrição oficial e acione o médico/plantonista conforme protocolo.</div>
+    </div>
+  </div>
+
+  <div id="woundGuidePanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Guia: Curativos e feridas</h3>
+      <button id="closeWoundGuideBtn" class="close-panel-btn" aria-label="Fechar guia de curativos e feridas">X</button>
+    </div>
+    <div class="recommendations-status">
+      Como usar este módulo para padronizar a avaliação e orientar o curativo.
+    </div>
+    <div class="recommendations-list">
+      <div class="recommendation-item"><strong>1) Foto adequada</strong><br>Fotografe a lesão em boa luz, com foco. Se possível, inclua um referencial de tamanho (régua) e uma foto geral e outra de perto.</div>
+      <div class="recommendation-item"><strong>2) Contexto clínico</strong><br>Antes de agir, verifique sinais de infecção, dor, perfusão, comorbidades (DM, vasculopatia) e risco de lesão por pressão.</div>
+      <div class="recommendation-item"><strong>3) Revisão do resultado</strong><br>Leia a descrição, cuidados sugeridos e sinais de alarme. Ajuste à realidade do paciente e ao protocolo local.</div>
+      <div class="recommendation-item"><strong>4) Registro</strong><br>Use "Copiar descrição e conduta" para colar no prontuário e "Imprimir" quando necessário.</div>
+    </div>
+  </div>
+
+  <div id="examGuidePanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Guia: Interpretação de resultados de exames</h3>
+      <button id="closeExamGuideBtn" class="close-panel-btn" aria-label="Fechar guia de interpretação de resultados de exames">X</button>
+    </div>
+    <div class="recommendations-status">
+      Como usar este módulo para orientar o paciente e apoiar a tomada de decisão.
+    </div>
+    <div class="recommendations-list">
+      <div class="recommendation-item"><strong>1) Envie o exame</strong><br>Use "Tirar foto" ou "Escolher arquivo". Garanta que valores, unidades, data e identificação do exame estejam visíveis.</div>
+      <div class="recommendation-item"><strong>2) Use junto do contexto</strong><br>Interpretação depende de sintomas, história e exame físico. Não use o texto gerado como substituto de avaliação clínica.</div>
+      <div class="recommendation-item"><strong>3) Revise antes de registrar</strong><br>Confira com o documento original. Se houver divergência, priorize o laudo/resultado oficial.</div>
+      <div class="recommendation-item"><strong>4) Próximos passos</strong><br>Utilize as orientações para explicar ao paciente, planejar monitorização e identificar sinais de alarme para acionar o médico.</div>
+    </div>
+  </div>
+
+  <div id="medicalDoubtsGuidePanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Guia: Dúvidas em Saúde</h3>
+      <button id="closeMedicalDoubtsGuideBtn" class="close-panel-btn" aria-label="Fechar guia de dúvidas em saúde">X</button>
+    </div>
+    <div class="recommendations-status">
+      Como formular perguntas e usar as respostas de forma segura.
+    </div>
+    <div class="recommendations-list">
+      <div class="recommendation-item"><strong>1) Pergunta objetiva</strong><br>Descreva o cenário com idade, queixa, tempo de evolução e sinais de gravidade. Evite termos vagos.</div>
+      <div class="recommendation-item"><strong>2) Foque em orientação prática</strong><br>Peça condutas de enfermagem, sinais de alarme, educação do paciente e quando acionar o médico.</div>
+      <div class="recommendation-item"><strong>3) Validação</strong><br>Use a resposta como apoio. Confirme com protocolos locais e documentação oficial antes de registrar ou orientar condutas críticas.</div>
+    </div>
+  </div>
+
+  <div id="calculatorsGuidePanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Guia: Calculadoras Clínicas</h3>
+      <button id="closeCalculatorsGuideBtn" class="close-panel-btn" aria-label="Fechar guia de calculadoras clínicas">X</button>
+    </div>
+    <div class="recommendations-status">
+      Como usar as calculadoras e evitar erros de unidade.
+    </div>
+    <div class="recommendations-list">
+      <div class="recommendation-item"><strong>1) Selecione a calculadora</strong><br>Escolha o tipo (IMC, risco cardiovascular, SC, idade gestacional, gotejamento, balanço hídrico, dose por peso, Glasgow, sedação).</div>
+      <div class="recommendation-item"><strong>2) Preencha com atenção</strong><br>Confira unidades (kg, cm, mL, gotas/min, bpm), datas e se o campo exige número inteiro ou decimal.</div>
+      <div class="recommendation-item"><strong>3) Interprete com contexto</strong><br>O resultado é um apoio. Use junto da avaliação clínica e do protocolo do serviço.</div>
+      <div class="recommendation-item"><strong>4) Registro</strong><br>Quando necessário, copie o resultado para o prontuário e registre também os dados usados no cálculo.</div>
+    </div>
+  </div>
+
+<script>
 
     const DEFAULT_BACKEND_URL = "https://consulta-enfermagem-1.onrender.com";
     // Backend principal (Render). Pode ser sobrescrito por:
@@ -3346,6 +3484,28 @@ const recordBtn = document.getElementById("recordBtn");
     const handoffGuideBtn = document.getElementById("handoffGuideBtn");
     const handoffGuidePanel = document.getElementById("handoffGuidePanel");
     const closeHandoffGuideBtn = document.getElementById("closeHandoffGuideBtn");
+
+
+    const medSafetyGuideBtn = document.getElementById("medSafetyGuideBtn");
+    const medSafetyGuidePanel = document.getElementById("medSafetyGuidePanel");
+    const closeMedSafetyGuideBtn = document.getElementById("closeMedSafetyGuideBtn");
+
+    const woundGuideBtn = document.getElementById("woundGuideBtn");
+    const woundGuidePanel = document.getElementById("woundGuidePanel");
+    const closeWoundGuideBtn = document.getElementById("closeWoundGuideBtn");
+
+    const examGuideBtn = document.getElementById("examGuideBtn");
+    const examGuidePanel = document.getElementById("examGuidePanel");
+    const closeExamGuideBtn = document.getElementById("closeExamGuideBtn");
+
+    const medicalDoubtsGuideBtn = document.getElementById("medicalDoubtsGuideBtn");
+    const medicalDoubtsGuidePanel = document.getElementById("medicalDoubtsGuidePanel");
+    const closeMedicalDoubtsGuideBtn = document.getElementById("closeMedicalDoubtsGuideBtn");
+
+    const calculatorsGuideBtn = document.getElementById("calculatorsGuideBtn");
+    const calculatorsGuidePanel = document.getElementById("calculatorsGuidePanel");
+    const closeCalculatorsGuideBtn = document.getElementById("closeCalculatorsGuideBtn");
+
 
 
     const triageLiveGuidance = document.getElementById("triageLiveGuidance");
@@ -7267,6 +7427,63 @@ if (handoffGuideBtn) {
     setPanelVisible(handoffGuidePanel, true);
   });
 }
+
+
+if (medSafetyGuideBtn) {
+  medSafetyGuideBtn.addEventListener("click", () => {
+    setPanelVisible(medSafetyGuidePanel, true);
+  });
+}
+if (closeMedSafetyGuideBtn) {
+  closeMedSafetyGuideBtn.addEventListener("click", () => {
+    setPanelVisible(medSafetyGuidePanel, false);
+  });
+}
+
+if (woundGuideBtn) {
+  woundGuideBtn.addEventListener("click", () => {
+    setPanelVisible(woundGuidePanel, true);
+  });
+}
+if (closeWoundGuideBtn) {
+  closeWoundGuideBtn.addEventListener("click", () => {
+    setPanelVisible(woundGuidePanel, false);
+  });
+}
+
+if (examGuideBtn) {
+  examGuideBtn.addEventListener("click", () => {
+    setPanelVisible(examGuidePanel, true);
+  });
+}
+if (closeExamGuideBtn) {
+  closeExamGuideBtn.addEventListener("click", () => {
+    setPanelVisible(examGuidePanel, false);
+  });
+}
+
+if (medicalDoubtsGuideBtn) {
+  medicalDoubtsGuideBtn.addEventListener("click", () => {
+    setPanelVisible(medicalDoubtsGuidePanel, true);
+  });
+}
+if (closeMedicalDoubtsGuideBtn) {
+  closeMedicalDoubtsGuideBtn.addEventListener("click", () => {
+    setPanelVisible(medicalDoubtsGuidePanel, false);
+  });
+}
+
+if (calculatorsGuideBtn) {
+  calculatorsGuideBtn.addEventListener("click", () => {
+    setPanelVisible(calculatorsGuidePanel, true);
+  });
+}
+if (closeCalculatorsGuideBtn) {
+  closeCalculatorsGuideBtn.addEventListener("click", () => {
+    setPanelVisible(calculatorsGuidePanel, false);
+  });
+}
+
 if (closeHandoffGuideBtn) {
   closeHandoffGuideBtn.addEventListener("click", () => {
     setPanelVisible(handoffGuidePanel, false);
