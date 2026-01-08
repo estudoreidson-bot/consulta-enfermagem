@@ -2860,7 +2860,7 @@
   
 <div id="handoffGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
-      <h3>Guia Passagem de Plantão (SBAR)</h3>
+      <h3>Guia rápido para Passagem de Plantão (SBAR)</h3>
       <button id="closeHandoffGuideBtn" class="close-panel-btn" aria-label="Fechar guia de passagem de plantão">X</button>
     </div>
 
@@ -2914,67 +2914,126 @@
 
   <div id="attendGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
-      <h3>Guia do atendimento</h3>
+      <h3>Guia rápido para Iniciar Atendimento (SOAP)</h3>
       <button id="closeAttendGuideBtn" class="close-panel-btn" aria-label="Fechar guia do atendimento">X</button>
     </div>
 
     <div class="recommendations-status">
-      Use este roteiro para iniciar e conduzir o atendimento gravado com padrão consistente e completo.
+      Use este roteiro para lembrar as perguntas essenciais e padronizar a gravação do atendimento. Adapte ao caso.
     </div>
 
     <div class="recommendations-list">
-      <div class="recommendation-item"><strong>1) Identificação e segurança</strong><br>
-        Registre nome completo do paciente, idade/data de nascimento, peso (quando relevante), local/unidade, data e hora. Confirme alergias e medicações em uso. Se houver risco imediato, priorize avaliação ABC e acione suporte.
+      <div class="recommendation-item"><strong>Identificação e segurança</strong>
+        <ul>
+          <li>Quem é o paciente (nome completo, idade/data de nascimento, peso quando relevante) e onde está sendo atendido (local/unidade)?</li>
+          <li>Data e hora do atendimento.</li>
+          <li>Alergias e reações prévias.</li>
+          <li>Medicações em uso e condições especiais (gestação/puérperio, imunossupressão, anticoagulação).</li>
+          <li>Há urgência imediata (via aérea, respiração, circulação, sangramento, dor intensa, rebaixamento de consciência)?</li>
+        </ul>
       </div>
-      <div class="recommendation-item"><strong>2) Motivo da consulta</strong><br>
-        Peça a queixa principal com duração e evolução. Se houver dor, registre localização, intensidade, irradiação, fatores de melhora/piora e sinais associados.
+
+      <div class="recommendation-item"><strong>Queixa principal e história do problema</strong>
+        <ul>
+          <li>Qual a queixa principal e desde quando começou? Como evoluiu?</li>
+          <li>Sintomas associados e fatores de melhora/piora.</li>
+          <li>Dor: localização, intensidade, irradiação, duração e gatilhos.</li>
+          <li>Febre: início, pico, uso de antitérmico e resposta.</li>
+        </ul>
       </div>
-      <div class="recommendation-item"><strong>3) Sinais vitais e exame dirigido</strong><br>
-        Registre PA, FC, FR, SpO2, temperatura e glicemia capilar quando indicado. Faça exame físico direcionado ao motivo, incluindo estado geral, hidratação, perfusão, nível de consciência e achados relevantes.
+
+      <div class="recommendation-item"><strong>Antecedentes e contexto</strong>
+        <ul>
+          <li>Comorbidades relevantes, cirurgias, internações, eventos prévios semelhantes.</li>
+          <li>Hábitos (tabaco/álcool) e fatores sociais importantes para adesão/segurança.</li>
+          <li>Para crianças: alimentação, diurese/evacuação, vacinação, sinais de gravidade.</li>
+        </ul>
       </div>
-      <div class="recommendation-item"><strong>4) História e fatores de risco</strong><br>
-        Comorbidades, cirurgias, gestação quando aplicável, uso de álcool/tabaco e fatores sociais relevantes. Para crianças, registre alimentação, diurese/evacuação, vacinação e sinais de gravidade.
+
+      <div class="recommendation-item"><strong>Avaliação objetiva</strong>
+        <ul>
+          <li>Sinais vitais: PA, FC, FR, SpO2, temperatura; glicemia capilar quando indicada.</li>
+          <li>Estado geral, hidratação, perfusão, nível de consciência, dor (0 a 10) quando aplicável.</li>
+          <li>Exame físico dirigido ao motivo, com achados relevantes.</li>
+        </ul>
       </div>
-      <div class="recommendation-item"><strong>5) Condutas e orientações</strong><br>
-        Descreva intervenções realizadas (medicações, procedimentos, curativos, nebulização, hidratação, testes rápidos). Registre resposta clínica, orientações, sinais de alarme e retorno/encaminhamento.
+
+      <div class="recommendation-item"><strong>Plano e orientações</strong>
+        <ul>
+          <li>Intervenções realizadas (medicações, procedimentos, curativos, nebulização, hidratação, testes rápidos) e resposta clínica.</li>
+          <li>Exames solicitados, justificativa e conduta prevista conforme resultado.</li>
+          <li>Orientações de alta/retorno, sinais de alarme e encaminhamentos quando necessários.</li>
+        </ul>
       </div>
-      <div class="recommendation-item"><strong>6) Dica prática</strong><br>
-        Use "Pausar" para interromper a gravação quando precisar checar dado, e retome quando estiver pronto. Para finalizar e gerar o SOAP, encerre no botão grande.
+
+      <div class="recommendation-item"><strong>Dica prática</strong><br>
+        Se faltar alguma informação durante a gravação, use "Pausar", confira o dado e retome. Para finalizar e gerar o SOAP, encerre no botão grande.
       </div>
     </div>
   </div>
 
   <div id="triageGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
-      <h3>Guia da triagem hospitalar</h3>
+      <h3>Guia rápido para Triagem Hospitalar</h3>
       <button id="closeTriageGuideBtn" class="close-panel-btn" aria-label="Fechar guia da triagem hospitalar">X</button>
     </div>
 
     <div class="recommendations-status">
-      Roteiro rápido para triagem de porta e passagem objetiva ao médico.
+      Use este roteiro para lembrar as perguntas essenciais e fazer passagem objetiva ao médico. Adapte ao caso.
     </div>
 
     <div class="recommendations-list">
-      <div class="recommendation-item"><strong>1) Identificação e queixa</strong><br>
-        Nome completo, idade, acompanhante quando houver. Queixa principal, tempo de início e contexto (trauma, febre, dispneia, dor torácica, alteração neurológica, sangramento).
+      <div class="recommendation-item"><strong>Identificação e risco imediato</strong>
+        <ul>
+          <li>Quem é o paciente (nome/idade) e onde está (sala/leito)? Há acompanhante?</li>
+          <li>Qual a queixa principal e desde quando? Houve trauma ou mecanismo específico?</li>
+          <li>Há urgência imediata (via aérea, dispneia grave, cianose, choque, sangramento ativo, dor torácica, convulsão, rebaixamento, anafilaxia)?</li>
+          <li>Precauções/isolamento quando aplicável.</li>
+        </ul>
       </div>
-      <div class="recommendation-item"><strong>2) Sinais vitais</strong><br>
-        PA, FC, FR, SpO2, temperatura, glicemia capilar quando indicado. Registre dor (0 a 10). Se houver instabilidade, priorize condutas imediatas e acione o médico.
+
+      <div class="recommendation-item"><strong>Sinais vitais e dor</strong>
+        <ul>
+          <li>PA, FC, FR, SpO2, temperatura.</li>
+          <li>Glicemia capilar quando indicada.</li>
+          <li>Dor (0 a 10) e tendência dos sinais vitais, quando houver medidas prévias.</li>
+        </ul>
       </div>
-      <div class="recommendation-item"><strong>3) ABCDE focado</strong><br>
-        Via aérea e proteção cervical quando trauma. Respiração (dispneia, cianose, uso de musculatura acessória). Circulação (perfusão, pulso, sangramento). Neurológico (nível de consciência, pupilas, déficit focal). Exposição (lesões, rash, edema).
+
+      <div class="recommendation-item"><strong>ABCDE focado</strong>
+        <ul>
+          <li>Via aérea: patência, risco de obstrução, proteção cervical quando trauma.</li>
+          <li>Respiração: esforço, ausculta quando possível, necessidade de oxigênio, SpO2.</li>
+          <li>Circulação: perfusão, pulsos, sangramento, enchimento capilar, necessidade de acesso venoso/monitorização.</li>
+          <li>Neurológico: nível de consciência (AVPU/Glasgow), pupilas, déficit focal, glicemia.</li>
+          <li>Exposição: lesões, rash, edema, temperatura, dor e achados relevantes.</li>
+        </ul>
       </div>
-      <div class="recommendation-item"><strong>4) Risco e antecedentes</strong><br>
-        Comorbidades relevantes (cardiopatia, DPOC/asma, DM, IRC, anticoagulação), alergias, medicações em uso, gestação e imunossupressão.
+
+      <div class="recommendation-item"><strong>Background rápido</strong>
+        <ul>
+          <li>Diagnóstico(s) e comorbidades relevantes (cardiopatia, DPOC/asma, DM, IRC, anticoagulação).</li>
+          <li>Alergias e medicações em uso.</li>
+          <li>Gestação/puerpério e imunossupressão quando aplicável.</li>
+        </ul>
       </div>
-      <div class="recommendation-item"><strong>5) Condutas iniciais e encaminhamento</strong><br>
-        Oxigênio, acesso venoso, monitorização, coleta de exames conforme protocolo local, controle de sangramento, analgesia conforme prescrição, imobilização. Finalize com uma frase de passagem ao médico: problema, gravidade, sinais vitais, achados críticos e o que já foi feito.
+
+      <div class="recommendation-item"><strong>Condutas iniciais e passagem ao médico</strong>
+        <ul>
+          <li>O que foi feito: oxigênio, monitorização, acesso venoso, coleta de exames conforme protocolo local, ECG quando indicado, controle de sangramento, imobilização, analgesia conforme prescrição.</li>
+          <li>O que está pendente e o que precisa ser reavaliado no próximo intervalo.</li>
+          <li>Passagem objetiva ao médico: problema principal, gravidade, sinais vitais, achados críticos e condutas realizadas.</li>
+        </ul>
       </div>
-      <div class="recommendation-item"><strong>6) Dica prática</strong><br>
-        Para encerrar e gerar o relatório, finalize no botão grande. Se precisar interromper, use "Pausar" e retome quando necessário.
+
+      <div class="recommendation-item"><strong>Dica prática</strong><br>
+        Para encerrar e gerar o relatório de triagem, finalize no botão grande. Se precisar interromper, use "Pausar" e retome quando necessário.
       </div>
     </div>
   </div>
+
+
+  <div id="docsGuidePanel"
 
 
   <div id="docsGuidePanel" class="recommendations-panel">
