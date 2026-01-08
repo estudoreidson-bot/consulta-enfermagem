@@ -1121,6 +1121,15 @@
     .btn-print:hover { opacity: 0.92; }
     .btn-print:active { transform: scale(0.98); }
 
+
+    .guide-main-btn {
+      padding: 7px 12px;
+      font-size: 12px;
+      border-radius: 14px;
+      white-space: normal;
+      line-height: 1.15;
+    }
+
     /* Botões "Copiar" por seção do SOAP (mesma identidade visual, tamanho menor) */
     .copy-soap-btn {
       border: 1px solid #fd7e14 !important;
@@ -1978,6 +1987,7 @@
 
       <div class="section-header-row" style="justify-content: center;">
         <div class="soap-title-actions" style="justify-content: center;">
+          <button id="handoffGuideBtn" class="btn-print guide-main-btn" type="button">Guia de Passagem de Plantão</button>
           <p class="module-title" style="margin: 0;">Passagem de plantão</p>
         </div>
       </div>
@@ -2674,7 +2684,7 @@
 
       <div id="sbarGuidePanel" class="guide-inline hidden">
         <h3>Guia rápido para Passagem de Plantão (SBAR)</h3>
-        <p>Use este roteiro para lembrar as perguntas essenciais. Você pode seguir na ordem SBAR, mas adapte ao caso.</p>
+        <p>Este guia explica como usar o módulo e traz um roteiro completo para coletar informações e gerar uma passagem de plantão de alta qualidade. Use a estrutura SBAR como base e adapte ao caso.</p>
 
         <h4>Situação (S)</h4>
         <ul>
@@ -2842,61 +2852,141 @@
     </p>
 
   
-<div id="handoffGuidePanel" class="recommendations-panel">
+
+  </div>
+
+  <div id="handoffGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
-      <h3>Guia Passagem de Plantão (SBAR)</h3>
+      <h3>Guia de Passagem de Plantão</h3>
       <button id="closeHandoffGuideBtn" class="close-panel-btn" aria-label="Fechar guia de passagem de plantão">X</button>
     </div>
 
     <div class="recommendations-status">
-      Use este roteiro para lembrar as perguntas essenciais. Você pode seguir na ordem SBAR, mas adapte ao caso.
+      Este guia explica como usar o módulo e traz um roteiro completo para coletar informações e gerar uma passagem de plantão de alta qualidade. Use a estrutura SBAR como base e adapte ao caso.
     </div>
 
     <div id="handoffGuideContent" class="recommendations-list">
-      <div class="recommendation-item"><strong>Situação (S)</strong>
+      <div class="recommendation-item"><strong>Como funciona o módulo</strong>
         <ul>
-          <li>Quem é o paciente (nome/idade/leito) e por que está internado/atendido agora?</li>
-          <li>Qual é o problema principal neste momento? O que mudou nas últimas horas?</li>
-          <li>Há alguma urgência imediata (via aérea, respiração, circulação, sangramento, dor intensa, rebaixamento)?</li>
+          <li>Clique em "Iniciar passagem de plantão", fale de forma objetiva seguindo o roteiro abaixo e finalize clicando novamente no botão grande vermelho.</li>
+          <li>O sistema transforma sua fala em um texto estruturado para repassar ao colega e registrar no prontuário.</li>
+          <li>Se perceber que algo importante ficou faltando, regrave imediatamente e inclua a informação durante a própria passagem.</li>
+        </ul>
+      </div>
+
+      <div class="recommendation-item"><strong>Antes de gravar (preparo rápido em 30 a 60 segundos)</strong>
+        <ul>
+          <li>Confirme identificação: nome completo, idade, leito/box, número de prontuário se houver.</li>
+          <li>Releia rapidamente: evolução mais recente, últimos sinais vitais, diurese/balanço quando aplicável, exames novos e prescrições.</li>
+          <li>Cheque segurança: alergias, precauções/isolamento, risco de queda, lesão por pressão, broncoaspiração, restrição de dieta/jejum.</li>
+          <li>Revise dispositivos e terapias em curso: oxigênio, acesso venoso, sonda vesical, SNG/SNE, drenos, curativos, bombas de infusão.</li>
+        </ul>
+      </div>
+
+      <div class="recommendation-item"><strong>Situação (S)</strong>
+        <div style="margin-top: 6px; font-size: 13px; color: #111827;">
+          O que falar:
+        </div>
+        <ul>
+          <li>Quem é o paciente (nome/idade/leito) e motivo atual do atendimento/internação.</li>
+          <li>Estado atual em uma frase: estável, instável, piora recente, necessidade de monitorização.</li>
+          <li>O que mudou nas últimas horas: dor, dispneia, febre, rebaixamento, sangramento, hipotensão, hipoglicemia/hiperglicemia, queda de saturação.</li>
+          <li>Se houver, urgência imediata e o que já foi feito.</li>
+        </ul>
+        <div style="margin-top: 6px; font-size: 13px; color: #111827;">
+          O que perguntar ao colega (se estiver recebendo o plantão):
+        </div>
+        <ul>
+          <li>Qual é o principal risco nas próximas horas?</li>
+          <li>Qual é o limiar para acionar o médico/plantonista (valores de PA, SpO2, glicemia, febre, dor)?</li>
         </ul>
       </div>
 
       <div class="recommendation-item"><strong>Background (B)</strong>
+        <div style="margin-top: 6px; font-size: 13px; color: #111827;">
+          O que falar:
+        </div>
         <ul>
-          <li>Diagnóstico(s) principal(is) e tempo de evolução/internação.</li>
-          <li>Comorbidades relevantes (HAS, DM, DPOC/asma, IRC, cardiopatia, anticoagulação, etc.).</li>
-          <li>Alergias, medicamentos em uso e antibióticos (dose/horário da próxima dose).</li>
-          <li>Procedimentos/dispositivos: acesso venoso, sonda vesical, SNG, drenos, oxigênio, ventilação, curativos.</li>
-          <li>Isolamento/precauções, histórico recente de febre, quedas, delirium, convulsões.</li>
+          <li>Diagnóstico(s) principal(is), hipótese(s) em investigação e tempo de evolução/internação.</li>
+          <li>Comorbidades relevantes e fatores de risco.</li>
+          <li>Alergias e reações prévias importantes.</li>
+          <li>Medicações críticas em uso e próximos horários: antibióticos, anticoagulantes, insulina, vasopressores, sedação, analgesia forte, anticonvulsivantes.</li>
+          <li>Procedimentos e dispositivos: tipo/local do acesso, sondas, drenos, oxigenoterapia, ventilação, curativos e cuidados específicos.</li>
+          <li>Precauções/isolamento, status de jejum/dieta e restrições.</li>
+        </ul>
+        <div style="margin-top: 6px; font-size: 13px; color: #111827;">
+          O que perguntar ao colega (se estiver recebendo o plantão):
+        </div>
+        <ul>
+          <li>Existe medicação de alto risco ou ajuste programado ainda neste turno?</li>
+          <li>Há pendência de autorização, encaminhamento, regulação ou vaga/transferência?</li>
         </ul>
       </div>
 
       <div class="recommendation-item"><strong>Avaliação (A)</strong>
+        <div style="margin-top: 6px; font-size: 13px; color: #111827;">
+          O que falar:
+        </div>
         <ul>
-          <li>Sinais vitais atuais e tendência (PA, FC, FR, SpO2, temperatura), diurese e balanço hídrico quando aplicável.</li>
-          <li>Estado geral e exame dirigido (consciência, perfusão, dispneia, dor, sangramentos, feridas, edema).</li>
-          <li>Resultados relevantes: glicemias, hemograma, eletrólitos, função renal, gasometria, culturas, imagem recente.</li>
-          <li>Risco e segurança: risco de queda/lesão por pressão, risco de broncoaspiração, escala de dor, sedação.</li>
+          <li>Últimos sinais vitais e tendência, incluindo necessidade de O2 e saturação.</li>
+          <li>Estado neurológico (nível de consciência), dor, perfusão, respiração, sangramentos, feridas/curativos, edema.</li>
+          <li>Diurese e balanço hídrico quando relevante; aceitação de dieta e vômitos/diarreia se presente.</li>
+          <li>Resultados relevantes recentes (glicemias, hemograma, eletrólitos, função renal, gasometria, culturas, imagem) e o impacto na conduta.</li>
+          <li>Riscos de segurança: queda, lesão por pressão, broncoaspiração, delirium, convulsões, contenção, risco de extravasamento/complicação de acesso.</li>
+        </ul>
+        <div style="margin-top: 6px; font-size: 13px; color: #111827;">
+          O que perguntar ao colega (se estiver recebendo o plantão):
+        </div>
+        <ul>
+          <li>Qual foi a evolução nas últimas 6 a 12 horas e qual a principal tendência (melhora/piora)?</li>
+          <li>Há exame que precisa ser rechecado em horário específico ou após intervenção?</li>
         </ul>
       </div>
 
       <div class="recommendation-item"><strong>Recomendação (R)</strong>
+        <div style="margin-top: 6px; font-size: 13px; color: #111827;">
+          O que falar:
+        </div>
         <ul>
-          <li>O que precisa ser feito no próximo turno? Liste tarefas e prioridades.</li>
-          <li>Metas e monitorização: parâmetros-alvo, frequência de checagens, quando reavaliar.</li>
-          <li>Exames pendentes e o que fazer com o resultado (conduta se alterar).</li>
-          <li>Sinais de alarme e quando acionar o médico/plantonista.</li>
-          <li>Plano de alta/transferência se aplicável.</li>
+          <li>Pendências objetivas para o próximo turno, em ordem de prioridade, com horário quando houver.</li>
+          <li>Exames solicitados e pendentes: qual resultado esperar e qual conduta tomar conforme o resultado.</li>
+          <li>Metas de monitorização: frequência de sinais vitais, glicemia capilar, débito urinário, reavaliação de dor, checagem de curativos, balanço hídrico.</li>
+          <li>Sinais de alarme e plano de ação: o que fazer e quando acionar o médico/plantonista.</li>
+          <li>Plano de alta/transferência se aplicável e pontos que precisam ser resolvidos para isso.</li>
+        </ul>
+        <div style="margin-top: 6px; font-size: 13px; color: #111827;">
+          O que perguntar ao colega (se estiver recebendo o plantão):
+        </div>
+        <ul>
+          <li>Qual é a tarefa mais importante a cumprir primeiro neste paciente?</li>
+          <li>Qual é o plano se houver piora (passo a passo)?</li>
         </ul>
       </div>
 
-      <div class="recommendation-item"><strong>Dica prática:</strong><br>
-        Se faltar alguma informação, pergunte e registre durante a própria gravação do SBAR. Quanto mais completo o relato, melhor a passagem de plantão.
+      <div class="recommendation-item"><strong>Modelo pronto de passagem (falar e adaptar)</strong>
+        <div style="white-space: pre-wrap; margin-top: 8px; font-size: 13px; color: #111827;">
+Situação: Paciente [nome], [idade], leito [X], em acompanhamento por [motivo/diagnóstico]. No momento está [estável/instável], com [principal problema atual] e [mudança recente].
+
+Background: Diagnóstico principal [X], comorbidades [X]. Alergia [X]. Medicações críticas: [medicação] próxima dose [horário]. Dispositivos: [acesso], [sonda], [O2], [curativo/dreno], com cuidados [detalhes].
+
+Avaliação: SV atuais [PA/FC/FR/SpO2/T], tendência [melhora/piora]. Dor [escala], consciência [nível]. Diurese/balanço [se aplicável]. Exames recentes: [resultados] com impacto [conduta]. Riscos: [queda/LPP/broncoaspiração/outros] e medidas em curso.
+
+Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [tarefa]. Exames pendentes: [exame], conferir em [horário] e agir assim: [conduta]. Monitorizar [parâmetros] a cada [intervalo]. Acionar médico se: [sinais de alarme].</div>
       </div>
+
+      <div class="recommendation-item"><strong>Checagem final de qualidade</strong>
+        <ul>
+          <li>A passagem tem identificação completa, problema atual e tendência?</li>
+          <li>Há lista clara de dispositivos/terapias em curso e riscos principais?</li>
+          <li>As pendências estão priorizadas, com horários e conduta se o exame vier alterado?</li>
+          <li>Ficou explícito quando acionar o médico/plantonista e quais são os sinais de alarme?</li>
+        </ul>
+      </div>
+</div>
     </div>
   </div>
 
-  <div id="docsGuidePanel" class="recommendations-panel"> class="recommendations-panel">
+  <div id="docsGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
       <h3>Guia para gerar documentos</h3>
       <button id="closeDocsGuideBtn" class="close-panel-btn" aria-label="Fechar guia para gerar documentos">X</button>
