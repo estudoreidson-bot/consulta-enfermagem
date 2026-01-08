@@ -1882,6 +1882,13 @@
         </div>
       </div>
 
+      <div class="section-header-row" style="justify-content: center; margin-top: 6px;">
+        <div class="soap-title-actions" style="justify-content: center;">
+          <p class="module-title" style="margin: 0;">Atendimento</p>
+          <button id="attendGuideBtn" class="btn-print" type="button" style="display:inline-block; margin-left: 8px;">Guia do atendimento</button>
+        </div>
+      </div>
+
       <div id="liveGuidance" class="live-guidance">
         <div class="live-guidance-header">
           <p class="live-guidance-title">Perguntas e procedimentos essenciais</p>
@@ -1914,7 +1921,14 @@
       <div id="soapError" class="error"></div>
 
       <div class="module-divider"></div>
-      <p class="module-title">Triagem hospitalar</p>
+      
+      <div class="section-header-row" style="justify-content: center;">
+        <div class="soap-title-actions" style="justify-content: center;">
+          <p class="module-title" style="margin: 0;">Triagem hospitalar</p>
+          <button id="triageGuideBtn" class="btn-print" type="button" style="display:inline-block; margin-left: 8px;">Guia da triagem</button>
+        </div>
+      </div>
+
       <p class="module-subtitle">
         Use este módulo para triagem na porta do hospital. Fale identificação do paciente, queixa principal, sinais vitais, achados do ABCDE, comorbidades, alergias e medicações em uso. Ao encerrar, será gerado um relatório técnico de triagem, condutas iniciais e passagem rápida ao médico.
       </p>
@@ -2898,7 +2912,72 @@
     </div>
   </div>
 
-  <div id="docsGuidePanel" class="recommendations-panel"> class="recommendations-panel">
+  <div id="attendGuidePanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Guia do atendimento</h3>
+      <button id="closeAttendGuideBtn" class="close-panel-btn" aria-label="Fechar guia do atendimento">X</button>
+    </div>
+
+    <div class="recommendations-status">
+      Use este roteiro para iniciar e conduzir o atendimento gravado com padrão consistente e completo.
+    </div>
+
+    <div class="recommendations-list">
+      <div class="recommendation-item"><strong>1) Identificação e segurança</strong><br>
+        Registre nome completo do paciente, idade/data de nascimento, peso (quando relevante), local/unidade, data e hora. Confirme alergias e medicações em uso. Se houver risco imediato, priorize avaliação ABC e acione suporte.
+      </div>
+      <div class="recommendation-item"><strong>2) Motivo da consulta</strong><br>
+        Peça a queixa principal com duração e evolução. Se houver dor, registre localização, intensidade, irradiação, fatores de melhora/piora e sinais associados.
+      </div>
+      <div class="recommendation-item"><strong>3) Sinais vitais e exame dirigido</strong><br>
+        Registre PA, FC, FR, SpO2, temperatura e glicemia capilar quando indicado. Faça exame físico direcionado ao motivo, incluindo estado geral, hidratação, perfusão, nível de consciência e achados relevantes.
+      </div>
+      <div class="recommendation-item"><strong>4) História e fatores de risco</strong><br>
+        Comorbidades, cirurgias, gestação quando aplicável, uso de álcool/tabaco e fatores sociais relevantes. Para crianças, registre alimentação, diurese/evacuação, vacinação e sinais de gravidade.
+      </div>
+      <div class="recommendation-item"><strong>5) Condutas e orientações</strong><br>
+        Descreva intervenções realizadas (medicações, procedimentos, curativos, nebulização, hidratação, testes rápidos). Registre resposta clínica, orientações, sinais de alarme e retorno/encaminhamento.
+      </div>
+      <div class="recommendation-item"><strong>6) Dica prática</strong><br>
+        Use "Pausar" para interromper a gravação quando precisar checar dado, e retome quando estiver pronto. Para finalizar e gerar o SOAP, encerre no botão grande.
+      </div>
+    </div>
+  </div>
+
+  <div id="triageGuidePanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Guia da triagem hospitalar</h3>
+      <button id="closeTriageGuideBtn" class="close-panel-btn" aria-label="Fechar guia da triagem hospitalar">X</button>
+    </div>
+
+    <div class="recommendations-status">
+      Roteiro rápido para triagem de porta e passagem objetiva ao médico.
+    </div>
+
+    <div class="recommendations-list">
+      <div class="recommendation-item"><strong>1) Identificação e queixa</strong><br>
+        Nome completo, idade, acompanhante quando houver. Queixa principal, tempo de início e contexto (trauma, febre, dispneia, dor torácica, alteração neurológica, sangramento).
+      </div>
+      <div class="recommendation-item"><strong>2) Sinais vitais</strong><br>
+        PA, FC, FR, SpO2, temperatura, glicemia capilar quando indicado. Registre dor (0 a 10). Se houver instabilidade, priorize condutas imediatas e acione o médico.
+      </div>
+      <div class="recommendation-item"><strong>3) ABCDE focado</strong><br>
+        Via aérea e proteção cervical quando trauma. Respiração (dispneia, cianose, uso de musculatura acessória). Circulação (perfusão, pulso, sangramento). Neurológico (nível de consciência, pupilas, déficit focal). Exposição (lesões, rash, edema).
+      </div>
+      <div class="recommendation-item"><strong>4) Risco e antecedentes</strong><br>
+        Comorbidades relevantes (cardiopatia, DPOC/asma, DM, IRC, anticoagulação), alergias, medicações em uso, gestação e imunossupressão.
+      </div>
+      <div class="recommendation-item"><strong>5) Condutas iniciais e encaminhamento</strong><br>
+        Oxigênio, acesso venoso, monitorização, coleta de exames conforme protocolo local, controle de sangramento, analgesia conforme prescrição, imobilização. Finalize com uma frase de passagem ao médico: problema, gravidade, sinais vitais, achados críticos e o que já foi feito.
+      </div>
+      <div class="recommendation-item"><strong>6) Dica prática</strong><br>
+        Para encerrar e gerar o relatório, finalize no botão grande. Se precisar interromper, use "Pausar" e retome quando necessário.
+      </div>
+    </div>
+  </div>
+
+
+  <div id="docsGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
       <h3>Guia para gerar documentos</h3>
       <button id="closeDocsGuideBtn" class="close-panel-btn" aria-label="Fechar guia para gerar documentos">X</button>
@@ -3472,6 +3551,14 @@ const recordBtn = document.getElementById("recordBtn");
     const docsGuideBtn = document.getElementById("docsGuideBtn");
     const docsGuidePanel = document.getElementById("docsGuidePanel");
     const closeDocsGuideBtn = document.getElementById("closeDocsGuideBtn");
+
+    const attendGuideBtn = document.getElementById("attendGuideBtn");
+    const attendGuidePanel = document.getElementById("attendGuidePanel");
+    const closeAttendGuideBtn = document.getElementById("closeAttendGuideBtn");
+
+    const triageGuideBtn = document.getElementById("triageGuideBtn");
+    const triageGuidePanel = document.getElementById("triageGuidePanel");
+    const closeTriageGuideBtn = document.getElementById("closeTriageGuideBtn");
 
     const patientReportCard = document.getElementById("patientReportCard");
 
@@ -7498,6 +7585,29 @@ if (docsGuideBtn) {
 if (closeDocsGuideBtn) {
   closeDocsGuideBtn.addEventListener("click", () => {
     setPanelVisible(docsGuidePanel, false);
+  });
+}
+
+
+if (attendGuideBtn) {
+  attendGuideBtn.addEventListener("click", () => {
+    setPanelVisible(attendGuidePanel, true);
+  });
+}
+if (closeAttendGuideBtn) {
+  closeAttendGuideBtn.addEventListener("click", () => {
+    setPanelVisible(attendGuidePanel, false);
+  });
+}
+
+if (triageGuideBtn) {
+  triageGuideBtn.addEventListener("click", () => {
+    setPanelVisible(triageGuidePanel, true);
+  });
+}
+if (closeTriageGuideBtn) {
+  closeTriageGuideBtn.addEventListener("click", () => {
+    setPanelVisible(triageGuidePanel, false);
   });
 }
 
