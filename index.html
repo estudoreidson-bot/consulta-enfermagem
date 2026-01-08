@@ -1959,6 +1959,7 @@
 
       <div class="section-header-row" style="justify-content: center;">
         <div class="soap-title-actions" style="justify-content: center;">
+          <button id="docsGuideBtn" class="btn-print guide-main-btn" type="button">Guia Gerar documentos</button>
           <p class="module-title" style="margin: 0;">Gerar documentos</p>
         </div>
       </div>
@@ -2988,23 +2989,111 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
 
   <div id="docsGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
-      <h3>Guia para gerar documentos</h3>
+      <h3>Guia Gerar documentos</h3>
       <button id="closeDocsGuideBtn" class="close-panel-btn" aria-label="Fechar guia para gerar documentos">X</button>
     </div>
 
     <div class="recommendations-status">
-      Use estas perguntas como roteiro. Quanto mais completo você registrar, melhor será o documento gerado.
+      Este guia é apenas informativo. Use como roteiro do que falar, perguntar e registrar para gerar documentos com máxima qualidade.
     </div>
 
     <div id="docsGuideContent" class="recommendations-list">
-      <div class="recommendation-item"><strong>1) Qual documento você precisa?</strong><br>Tipo (declaração, encaminhamento, solicitação, relatório, ata, registro de procedimento etc.) e finalidade/destino (para quem será entregue).</div>
-      <div class="recommendation-item"><strong>2) Identificação completa</strong><br>Paciente (nome completo, data de nascimento/idade, CPF/CNS/prontuário quando houver), unidade/local e data/hora do registro.</div>
-      <div class="recommendation-item"><strong>3) Contexto do caso</strong><br>Motivo/queixa, histórico relevante, comorbidades, alergias e medicações em uso quando pertinente.</div>
-      <div class="recommendation-item"><strong>4) Achados objetivos</strong><br>Sinais vitais, exame físico/achados relevantes, escala de dor, nível de consciência e outros dados mensuráveis.</div>
-      <div class="recommendation-item"><strong>5) Intervenções e procedimentos</strong><br>O que foi feito (curativo, medicação, nebulização, coleta, orientação, encaminhamento), técnica/material quando aplicável e resposta do paciente.</div>
-      <div class="recommendation-item"><strong>6) Orientações e plano</strong><br>Condutas e orientações fornecidas, sinais de alarme, retorno/seguimento e para onde encaminhar (se houver).</div>
-      <div class="recommendation-item"><strong>7) Itens específicos por tipo</strong><br>Comparecimento/permanência: data e horários (chegada/saída), motivo, acompanhante. Encaminhamento: serviço/município/profissional de destino e motivo. Solicitação: item, quantidade, período e justificativa. ATA: data, pauta, participantes, decisões e encaminhamentos.</div>
-      <div class="recommendation-item"><strong>8) Identificação do profissional</strong><br>Nome do profissional, função (enfermagem), assinatura e COREN (quando pertinente no seu serviço).</div>
+      
+      <div class="recommendation-item"><strong>Como usar este guia</strong>
+        <div style="white-space: pre-wrap; margin-top: 8px; font-size: 13px; color: #111827;">
+1) Antes de gravar, defina o tipo de documento e o destinatário.
+2) Durante a gravação, fale de forma organizada seguindo os tópicos abaixo.
+3) Sempre inclua datas e horários completos, com local/unidade, e identifique o profissional.</div>
+      </div>
+
+      <div class="recommendation-item"><strong>1) Tipo de documento e finalidade</strong>
+        <ul>
+          <li>Qual documento é: declaração, encaminhamento, solicitação, relatório, registro de procedimento, atestado de comparecimento/permanência, comunicado, ata.</li>
+          <li>Para quem é: paciente, família, escola, empresa, serviço de referência, secretaria, auditoria, prontuário interno.</li>
+          <li>Objetivo: informar, justificar, solicitar, registrar, encaminhar, comprovar comparecimento, documentar reunião.</li>
+        </ul>
+      </div>
+
+      <div class="recommendation-item"><strong>2) Identificação completa</strong>
+        <ul>
+          <li>Paciente: nome completo; data de nascimento e/ou idade; CPF/CNS/prontuário (quando existir no serviço).</li>
+          <li>Responsável/acompanhante: nome e vínculo (quando relevante).</li>
+          <li>Unidade/setor/leito (se aplicável), município e estado.</li>
+          <li>Data e hora do registro e, quando necessário, período do evento (início e término).</li>
+        </ul>
+      </div>
+
+      <div class="recommendation-item"><strong>3) Contexto clínico essencial</strong>
+        <ul>
+          <li>Motivo do atendimento/queixa principal.</li>
+          <li>História resumida e antecedentes relevantes (comorbidades, alergias, medicações de uso contínuo quando pertinente).</li>
+          <li>Risco/gravidade quando aplicável e evolução desde a chegada.</li>
+        </ul>
+      </div>
+
+      <div class="recommendation-item"><strong>4) Dados objetivos que elevam a qualidade</strong>
+        <ul>
+          <li>Sinais vitais com horário (PA, FC, FR, SpO2, temperatura, glicemia capilar quando houver).</li>
+          <li>Achados relevantes do exame/observação de enfermagem (nível de consciência, dor com escala, perfusão, pele, hidratação, diurese quando aplicável).</li>
+          <li>Resultados de exames já disponíveis (somente se forem relevantes para o documento e se você tiver certeza do resultado).</li>
+        </ul>
+      </div>
+
+      <div class="recommendation-item"><strong>5) Intervenções, procedimentos e resposta</strong>
+        <ul>
+          <li>O que foi realizado: medicação administrada (nome, dose, via, horário), curativo (local e tipo), nebulização, oxigenoterapia, coleta, sondagens, monitorização, orientações.</li>
+          <li>Materiais/técnica quando necessário (ex.: tipo de curativo, cobertura, calibre do dispositivo, local de punção).</li>
+          <li>Resposta do paciente e evolução após a intervenção (melhora/piora, sinais vitais pós, controle de dor).</li>
+        </ul>
+      </div>
+
+      <div class="recommendation-item"><strong>6) Plano, orientações e critérios de retorno</strong>
+        <ul>
+          <li>Condutas orientadas e encaminhamentos realizados (para onde, quando e por qual motivo).</li>
+          <li>Sinais de alarme informados e o que fazer (retornar à unidade/UPA/hospital).</li>
+          <li>Agendamentos, retornos e seguimento (data prevista quando houver).</li>
+        </ul>
+      </div>
+
+      <div class="recommendation-item"><strong>7) Campos obrigatórios por tipo de documento</strong>
+        <div style="white-space: pre-wrap; margin-top: 8px; font-size: 13px; color: #111827;">
+Atestado de comparecimento/permanência:
+- Data; horário de chegada e de saída (ou período); local; motivo de comparecimento (sem expor detalhes sensíveis se não for necessário).
+
+Encaminhamento:
+- Serviço/profissional de destino; município; motivo do encaminhamento; resumo objetivo do quadro; o que já foi feito; anexos/exames enviados.
+
+Solicitação (insumo/exame/transporte/apoio):
+- Item solicitado; quantidade; justificativa técnica; urgência/prazo; dados do paciente; contato/unidade.
+
+Relatório de enfermagem:
+- Identificação; contexto; achados objetivos; intervenções realizadas; evolução; orientações/condutas; pendências.
+
+Registro de procedimento:
+- Indicação; local; data/hora; técnica; materiais; intercorrências; tolerância; evolução imediata; profissional responsável.
+
+Ata de reunião:
+- Data/hora; local; pauta; participantes; deliberações; encaminhamentos; responsáveis e prazos.</div>
+      </div>
+
+      <div class="recommendation-item"><strong>8) Identificação do profissional e fechamento</strong>
+        <ul>
+          <li>Nome do profissional e função.</li>
+          <li>Registro profissional (COREN) quando aplicável no seu serviço.</li>
+          <li>Assinatura e carimbo (quando o documento for impresso).</li>
+        </ul>
+      </div>
+
+      <div class="recommendation-item"><strong>Checklist final de qualidade</strong>
+        <ul>
+          <li>O documento tem tipo, finalidade/destino e está escrito de forma objetiva?</li>
+          <li>Identificação do paciente e datas/horários estão completos e coerentes?</li>
+          <li>Há dados objetivos suficientes para sustentar o registro?</li>
+          <li>Intervenções e orientações estão claras, com horários e resposta?</li>
+          <li>Profissional identificado corretamente no final?</li>
+        </ul>
+      </div>
+
     </div>
   </div>
 
