@@ -1685,8 +1685,41 @@
       <button id="loginBtn" class="auth-btn" type="button">Entrar</button>
       <div id="loginError" class="auth-error"></div>
 
+      <button id="openSignupBtn" class="auth-btn outline" type="button">Cadastrar enfermeiro(a)</button>
+
       <div class="auth-help">
         Se não conseguir acessar, use o botão “Entrar em contato”.
+      </div>
+    </div>
+  </div>
+
+  <div id="nurseSignupView" class="auth-shell hidden">
+    <div class="auth-card">
+      <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
+      <h1>Cadastro de enfermeiro(a)</h1>
+      <p class="auth-subtitle">Preencha os dados para criar seu cadastro.</p>
+
+      <label class="auth-label" for="signupFullName">Nome completo</label>
+      <input id="signupFullName" class="auth-input" autocomplete="name" inputmode="text" />
+
+      <label class="auth-label" for="signupDob">Data de nascimento</label>
+      <input id="signupDob" class="auth-input" type="date" />
+
+      <label class="auth-label" for="signupPhone">Telefone</label>
+      <input id="signupPhone" class="auth-input" type="tel" autocomplete="tel" inputmode="tel" />
+
+      <label class="auth-label" for="signupLogin">Login</label>
+      <input id="signupLogin" class="auth-input" autocomplete="username" inputmode="text" />
+
+      <label class="auth-label" for="signupPassword">Senha</label>
+      <input id="signupPassword" class="auth-input" type="password" autocomplete="new-password" />
+
+      <button id="signupBtn" class="auth-btn" type="button">Cadastrar</button>
+      <button id="signupBackBtn" class="auth-btn secondary" type="button">Voltar</button>
+      <div id="signupError" class="auth-error"></div>
+
+      <div class="auth-help">
+        Após o cadastro, o acesso ao sistema pode depender de liberação/regularização com o administrador.
       </div>
     </div>
   </div>
@@ -3371,17 +3404,27 @@ Ata de reunião:
       document.getElementById("loginView")?.classList.remove("hidden");
       document.getElementById("adminView")?.classList.add("hidden");
       document.getElementById("nurseView")?.classList.add("hidden");
+      document.getElementById("nurseSignupView")?.classList.add("hidden");
+      document.getElementById("paymentsModal")?.classList.add("hidden");
+    }
+    function showSignup() {
+      document.getElementById("loginView")?.classList.add("hidden");
+      document.getElementById("adminView")?.classList.add("hidden");
+      document.getElementById("nurseView")?.classList.add("hidden");
+      document.getElementById("nurseSignupView")?.classList.remove("hidden");
       document.getElementById("paymentsModal")?.classList.add("hidden");
     }
     function showAdmin() {
       document.getElementById("loginView")?.classList.add("hidden");
       document.getElementById("adminView")?.classList.remove("hidden");
       document.getElementById("nurseView")?.classList.add("hidden");
+      document.getElementById("nurseSignupView")?.classList.add("hidden");
     }
     function showNurse() {
       document.getElementById("loginView")?.classList.add("hidden");
       document.getElementById("adminView")?.classList.add("hidden");
       document.getElementById("nurseView")?.classList.remove("hidden");
+      document.getElementById("nurseSignupView")?.classList.add("hidden");
     }
 
     // Intercepta chamadas ao backend e injeta Authorization quando for /api/
@@ -3443,6 +3486,65 @@ Ata de reunião:
         }
         setToken(data.token || "");
         await restoreSession();
+      } catch (e) {
+        if (errEl) errEl.textContent = "Falha ao conectar no servidor.";
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function resetSignupForm() {
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+      set("signupFullName", "");
+      set("signupDob", "");
+      set("signupPhone", "");
+      set("signupLogin", "");
+      set("signupPassword", "");
+      const err = document.getElementById("signupError");
+      if (err) err.textContent = "";
+      const btn = document.getElementById("signupBtn");
+      if (btn) btn.disabled = false;
+    }
+
+    async function doSignup() {
+      const fullName = (document.getElementById("signupFullName")?.value || "").trim();
+      const dob = (document.getElementById("signupDob")?.value || "").trim();
+      const phone = (document.getElementById("signupPhone")?.value || "").trim();
+      const login = (document.getElementById("signupLogin")?.value || "").trim();
+      const password = (document.getElementById("signupPassword")?.value || "").trim();
+
+      const errEl = document.getElementById("signupError");
+      const btn = document.getElementById("signupBtn");
+
+      if (!fullName || !dob || !phone || !login || !password) {
+        if (errEl) errEl.textContent = "Preencha: nome completo, data de nascimento, telefone, login e senha.";
+        return;
+      }
+
+      if (errEl) errEl.textContent = "Cadastrando.";
+      if (btn) btn.disabled = true;
+
+      try {
+        const resp = await nativeFetch(BACKEND_URL + "/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fullName, dob, phone, login, password })
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          if (errEl) errEl.textContent = data.error || "Falha ao cadastrar.";
+          return;
+        }
+
+        // Volta para o login e orienta o próximo passo
+        showLogin();
+        const lf = document.getElementById("loginField");
+        if (lf) lf.value = login;
+        const pf = document.getElementById("passwordField");
+        if (pf) pf.value = "";
+        const loginErr = document.getElementById("loginError");
+        if (loginErr) loginErr.textContent = "Cadastro realizado. Para liberar o acesso, regularize com o administrador e, depois, faça login.";
+        resetSignupForm();
       } catch (e) {
         if (errEl) errEl.textContent = "Falha ao conectar no servidor.";
       } finally {
@@ -3521,6 +3623,15 @@ Ata de reunião:
     document.getElementById("loginBtn")?.addEventListener("click", doLogin);
     document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
     document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    document.getElementById("openSignupBtn")?.addEventListener("click", () => {
+      resetSignupForm();
+      showSignup();
+    });
+    document.getElementById("signupBackBtn")?.addEventListener("click", () => {
+      showLogin();
+    });
+    document.getElementById("signupBtn")?.addEventListener("click", doSignup);
+    document.getElementById("signupPassword")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doSignup(); });
     document.getElementById("nurseLogoutBtn")?.addEventListener("click", logoutAll);
     document.getElementById("adminLogoutBtn")?.addEventListener("click", logoutAll);
 
