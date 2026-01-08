@@ -907,12 +907,16 @@ app.post("/api/auth/signup", (req, res) => {
     const password = String(req.body?.password || "").trim();
 
     if (!fullName || !dob || !phone || !login || !password) {
-      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, CPF (login) e senha são obrigatórios." });
+      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, login e senha são obrigatórios." });
     }
 
-    const cpfDigits = onlyDigits(login);
-    if (!cpfDigits || cpfDigits.length !== 11) {
-      return res.status(400).json({ error: "CPF inválido. Informe 11 dígitos (pode ser com pontuação)." });
+    // Login não precisa ser CPF. Permite letras, números e alguns caracteres seguros.
+    // Evita espaços e caracteres que possam causar confusão em URLs/armazenamento.
+    if (login.length < 3 || login.length > 40) {
+      return res.status(400).json({ error: "Login inválido. Use entre 3 e 40 caracteres." });
+    }
+    if (!/^[A-Za-z0-9._@-]+$/.test(login)) {
+      return res.status(400).json({ error: "Login inválido. Use apenas letras, números, ponto, sublinhado, hífen ou @." });
     }
 
     if (password.length < 4) {
@@ -920,7 +924,7 @@ app.post("/api/auth/signup", (req, res) => {
     }
 
     if (findUserByLogin(login)) {
-      return res.status(409).json({ error: "Já existe usuário com este CPF/login." });
+      return res.status(409).json({ error: "Já existe usuário com este login." });
     }
 
     const salt = crypto.randomBytes(10).toString("hex");
