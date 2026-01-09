@@ -2891,11 +2891,7 @@ Retorne SOMENTE JSON com:
 
     for (let i = 0; i < imgs.length; i++) {
       const img = imgs[i];
-      const r = await callOpenAIVisionJson({
-        prompt,
-        imageDataUrl: img,
-        schema
-      });
+      const r = await callOpenAIVisionJson(prompt, img);
 
       const itens = Array.isArray(r?.itens) ? r.itens : [];
       for (const it of itens) {
@@ -2994,11 +2990,7 @@ ${texto}
 
 Retorne SOMENTE JSON com itens e limitacoes.`;
 
-    const r = await callOpenAIJson({
-      prompt,
-      schema,
-      maxOutputTokens: 1500
-    });
+    const r = await callOpenAIJson(prompt);
 
     const itens = Array.isArray(r?.itens) ? r.itens : [];
     const out = itens.map(it => ({
