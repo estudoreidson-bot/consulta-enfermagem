@@ -363,7 +363,7 @@ function tryReadDbFile(filePath) {
 
 function dbScore(db) {
   if (!db) return 0;
-  return (db.users?.length || 0) * 1000000 + (db.payments?.length || 0) * 1000 + (db.audit?.length || 0);
+  return (db.users?.length || 0) * 1000000 + (db.payments?.length || 0) * 1000 + (db.audit?.length || 0) * 10 + (db.aprazamentos?.length || 0);
 }
 
 function mergeDbs(a, b) {
@@ -521,7 +521,7 @@ function loadDb() {
   }
 
   // 3) Primeira execução sem DB: cria inicial (sem riscos de apagar dados)
-  const fresh = { users: [], payments: [], audit: [] };
+  const fresh = { users: [], payments: [], audit: [], aprazamentos: [], aprazConfigs: {} };
   try {
     if (!fs.existsSync(DB_PATH)) {
       safeWriteFileAtomic(DB_PATH, JSON.stringify(fresh, null, 2));
@@ -536,6 +536,10 @@ function normalizeDb(db) {
   out.users = Array.isArray(out.users) ? out.users : [];
   out.payments = Array.isArray(out.payments) ? out.payments : [];
   out.audit = Array.isArray(out.audit) ? out.audit : [];
+
+  out.aprazamentos = Array.isArray(out.aprazamentos) ? out.aprazamentos : [];
+  out.aprazConfigs = (out.aprazConfigs && typeof out.aprazConfigs === "object") ? out.aprazConfigs : {};
+
   return out;
 }
 
@@ -2501,6 +2505,764 @@ Formato de saída: JSON estrito:
 
 
 // ======================================================================
+
+// ======================================================================
+// ROTA 4B – APRAZAR MEDICAÇÕES (OCR + PARSE + MOTOR DE HORÁRIOS)
+// Objetivo: automatizar conversão de frequência em horários sem automatizar
+// responsabilidade clínica. Sempre exige conferência final no frontend.
+// ======================================================================
+
+const DEFAULT_APRAZ_CONFIG = {
+  strategy: "alinhar",
+  now_mode: "proximo_padrao",
+  min_gap_min: 120,
+  horarios_padrao: {
+    "24": ["08:00"],
+    "12": ["08:00", "20:00"],
+    "8": ["06:00", "14:00", "22:00"],
+    "6": ["06:00", "12:00", "18:00", "00:00"],
+    "4": ["06:00", "10:00", "14:00", "18:00", "22:00", "02:00"]
+  },
+  refeicoes: {
+    cafe: "07:00",
+    almoco: "12:00",
+    jantar: "18:00",
+    noite: "21:00"
+  }
+};
+
+function normalizeUnitKey(s) {
+  return String(s || "").trim().toLowerCase().replace(/\s+/g, " ").slice(0, 80);
+}
+
+function getAprazConfigKey(userId, unidadeKey) {
+  const u = normalizeUnitKey(unidadeKey);
+  return `${String(userId || "")}:${u || "default"}`;
+}
+
+function safeStr(x, maxLen = 240) {
+  const s = String(x || "").replace(/\s+/g, " ").trim();
+  return s.length > maxLen ? s.slice(0, maxLen) : s;
+}
+
+function parseTimeHHMM(s) {
+  const m = String(s || "").trim().match(/(\d{1,2})\s*:\s*(\d{2})/);
+  if (!m) return null;
+  const hh = parseInt(m[1], 10);
+  const mm = parseInt(m[2], 10);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+  return { hh, mm, str: `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}` };
+}
+
+function splitTimesCsv(s) {
+  return String(s || "")
+    .split(",")
+    .map(x => x.trim())
+    .filter(Boolean)
+    .map(x => {
+      const t = parseTimeHHMM(x);
+      return t ? t.str : null;
+    })
+    .filter(Boolean);
+}
+
+function formatDM(h) {
+  const v = parseTimeHHMM(h);
+  return v ? v.str : String(h || "").trim();
+}
+
+function ymdToParts(ymd) {
+  const m = String(ymd || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const y = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10);
+  const d = parseInt(m[3], 10);
+  if (!y || !mo || !d) return null;
+  return { y, mo, d };
+}
+
+function utcDateFromYmdHm(ymd, hm) {
+  const p = ymdToParts(ymd);
+  const t = parseTimeHHMM(hm);
+  if (!p || !t) return null;
+  return new Date(Date.UTC(p.y, p.mo - 1, p.d, t.hh, t.mm, 0));
+}
+
+function fmtYmd(d) {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
+function fmtHm(d) {
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function fmtBrDate(ymd) {
+  const p = ymdToParts(ymd);
+  if (!p) return String(ymd || "");
+  return `${String(p.d).padStart(2, "0")}/${String(p.mo).padStart(2, "0")}/${p.y}`;
+}
+
+function parseDurationDays(raw) {
+  const s = String(raw || "").toLowerCase();
+  const m1 = s.match(/(\d{1,3})\s*(dias|dia)\b/);
+  if (m1) {
+    const n = parseInt(m1[1], 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  return null;
+}
+
+function classifyItemType(item) {
+  const freq = String(item?.frequencia || "").toLowerCase();
+  const obs = String(item?.observacoes || "").toLowerCase();
+  const via = String(item?.via || "").toLowerCase();
+  const tipo = String(item?.tipo || "").toLowerCase();
+
+  const blob = [freq, obs, via, tipo].join(" ");
+
+  if (tipo === "sos") return "sos";
+  if (tipo === "infusao_continua") return "infusao_continua";
+
+  if (/\b(sos|se necessario|se necessário|prn)\b/.test(blob)) return "sos";
+  if (/\b(infus[aã]o|bomba|cont[ií]nua|cont[ií]nuo|gotejamento|ml\/h|mcg\/kg\/min|mg\/h)\b/.test(blob)) return "infusao_continua";
+
+  return "regular";
+}
+
+function parseFrequencyToIntervalHours(raw) {
+  const s = String(raw || "").toLowerCase().replace(/\s+/g, " ").trim();
+  if (!s) return { intervalHours: null, parsed: "" };
+
+  if (/\b(sos|prn|se necessario|se necessário)\b/.test(s)) return { intervalHours: null, parsed: "SOS" };
+
+  // 8/8h, 12/12, 6/6, 4/4
+  const mFrac = s.match(/(\d{1,2})\s*\/\s*(\d{1,2})\s*h?/);
+  if (mFrac) {
+    const n1 = parseInt(mFrac[1], 10);
+    const n2 = parseInt(mFrac[2], 10);
+    const h = Number.isFinite(n2) ? n2 : null;
+    if (h && h >= 1 && h <= 24) return { intervalHours: h, parsed: `${h}/${h}h` };
+  }
+
+  // a cada Xh
+  const mCada = s.match(/\b(a\s*cada|cada)\s*(\d{1,2})\s*h\b/);
+  if (mCada) {
+    const h = parseInt(mCada[2], 10);
+    if (h && h >= 1 && h <= 24) return { intervalHours: h, parsed: `a cada ${h}h` };
+  }
+
+  // Xx/dia
+  const mXd = s.match(/\b(\d{1,2})\s*x\s*\/\s*dia\b/);
+  if (mXd) {
+    const n = parseInt(mXd[1], 10);
+    if (n && n > 0 && n <= 24 && 24 % n === 0) {
+      const h = 24 / n;
+      return { intervalHours: h, parsed: `${n}x/dia` };
+    }
+  }
+
+  // 1x/dia, diário
+  if (/\b(1x\/dia|1x ao dia|uma vez ao dia|uma vez\/dia|diari[oa])\b/.test(s)) {
+    return { intervalHours: 24, parsed: "1x/dia" };
+  }
+
+  // 2x/dia (12/12) e 3x/dia (8/8) e 4x/dia (6/6)
+  const mVez = s.match(/\b(\d{1,2})\s*(vez|vezes)\s*ao\s*dia\b/);
+  if (mVez) {
+    const n = parseInt(mVez[1], 10);
+    if (n && n > 0 && n <= 24 && 24 % n === 0) {
+      const h = 24 / n;
+      return { intervalHours: h, parsed: `${n}x/dia` };
+    }
+  }
+
+  return { intervalHours: null, parsed: "" };
+}
+
+function pickStandardTimes(intervalHours, config, itemObs) {
+  const c = config && typeof config === "object" ? config : DEFAULT_APRAZ_CONFIG;
+  const hp = c.horarios_padrao || DEFAULT_APRAZ_CONFIG.horarios_padrao;
+
+  const h = String(intervalHours || "");
+  const base = Array.isArray(hp?.[h]) ? hp[h] : null;
+
+  const obs = String(itemObs || "").toLowerCase();
+
+  // Regras de referência de refeições/noite quando fizer sentido
+  const ref = c.refeicoes || DEFAULT_APRAZ_CONFIG.refeicoes;
+
+  if (intervalHours === 24) {
+    if (/\b(a noite|à noite|noite)\b/.test(obs)) return [formatDM(ref.noite)];
+    if (/\b(antes do desjejum|antes do cafe|antes do café|cafe da manha|café da manhã|desjejum)\b/.test(obs)) return [formatDM(ref.cafe)];
+    if (/\b(apos almoco|após almoço|almoco|almoço)\b/.test(obs)) return [formatDM(ref.almoco)];
+    if (/\b(apos jantar|após jantar|jantar)\b/.test(obs)) return [formatDM(ref.jantar)];
+  }
+
+  if (/\bantes das refei[cç][oõ]es\b/.test(obs)) {
+    // se a frequência estiver ausente, ainda assim dá uma sugestão de horários
+    return [formatDM(ref.cafe), formatDM(ref.almoco), formatDM(ref.jantar)];
+  }
+
+  return Array.isArray(base) ? base.map(formatDM) : null;
+}
+
+function nextAlignedTimeAfter(startDt, ymd, times) {
+  if (!times || !times.length) return null;
+  const startYmd = fmtYmd(startDt);
+  const day = ymd || startYmd;
+
+  for (let dayOffset = 0; dayOffset <= 7; dayOffset++) {
+    const dayDt = utcDateFromYmdHm(day, "00:00");
+    if (!dayDt) return null;
+    const cur = new Date(dayDt.getTime() + dayOffset * 24 * 60 * 60 * 1000);
+    const curYmd = fmtYmd(cur);
+
+    const sorted = times
+      .map(t => parseTimeHHMM(t))
+      .filter(Boolean)
+      .sort((a, b) => (a.hh * 60 + a.mm) - (b.hh * 60 + b.mm));
+
+    for (const t of sorted) {
+      const cand = utcDateFromYmdHm(curYmd, `${String(t.hh).padStart(2, "0")}:${String(t.mm).padStart(2, "0")}`);
+      if (!cand) continue;
+      if (cand.getTime() >= startDt.getTime()) return cand;
+    }
+  }
+  return null;
+}
+
+function generateAlignedSchedule(startDt, endDt, baseYmd, times) {
+  if (!times || !times.length) return [];
+  const out = [];
+  const sorted = times
+    .map(t => parseTimeHHMM(t))
+    .filter(Boolean)
+    .sort((a, b) => (a.hh * 60 + a.mm) - (b.hh * 60 + b.mm));
+
+  // varre dia a dia
+  const base = utcDateFromYmdHm(baseYmd, "00:00");
+  if (!base) return out;
+
+  for (let dayOffset = 0; dayOffset <= 15; dayOffset++) {
+    const day = new Date(base.getTime() + dayOffset * 24 * 60 * 60 * 1000);
+    const ymd = fmtYmd(day);
+
+    for (const t of sorted) {
+      const cand = utcDateFromYmdHm(ymd, `${String(t.hh).padStart(2, "0")}:${String(t.mm).padStart(2, "0")}`);
+      if (!cand) continue;
+
+      if (cand.getTime() < startDt.getTime()) continue;
+      if (cand.getTime() > endDt.getTime()) continue;
+
+      out.push(cand);
+    }
+  }
+  return out;
+}
+
+function generateCountingSchedule(firstDt, endDt, intervalMin) {
+  const out = [];
+  if (!intervalMin || intervalMin < 1) return out;
+  let cur = new Date(firstDt.getTime());
+  let guard = 0;
+  while (cur.getTime() <= endDt.getTime() && guard < 2000) {
+    out.push(new Date(cur.getTime()));
+    cur = new Date(cur.getTime() + intervalMin * 60 * 1000);
+    guard++;
+  }
+  return out;
+}
+
+function formatScheduleTimes(dts, baseYmd) {
+  const out = [];
+  for (const d of (Array.isArray(dts) ? dts : [])) {
+    const ymd = fmtYmd(d);
+    const hm = fmtHm(d);
+    if (ymd === baseYmd) out.push(hm);
+    else out.push(`${fmtBrDate(ymd)} ${hm}`);
+  }
+  return out;
+}
+
+function buildCabecalho(paciente, conferidoPor) {
+  const dt = new Date();
+  const ymd = fmtYmd(dt);
+  const hm = fmtHm(dt);
+
+  return {
+    paciente: safeStr(paciente?.nome || "não informado", 120),
+    data: safeStr(paciente?.data || "", 32) || ymd,
+    unidade: safeStr(paciente?.unidade || "não informado", 120),
+    peso: safeStr(paciente?.peso_kg ? `${paciente.peso_kg} kg` : "não informado", 32),
+    gerado_em: `${fmtBrDate(ymd)} ${hm}`,
+    conferido_por: safeStr(conferidoPor || "não informado", 120)
+  };
+}
+
+app.get("/api/aprazar/config", requirePaidOrAdmin, (req, res) => {
+  const unidadeKey = normalizeUnitKey(req.query?.unidadeKey || "");
+  const k = getAprazConfigKey(req.auth?.user?.id, unidadeKey);
+
+  const cfg = DB.aprazConfigs?.[k] || null;
+  const out = cfg && typeof cfg === "object" ? cfg : DEFAULT_APRAZ_CONFIG;
+
+  res.json({ ok: true, unidadeKey, config: out });
+});
+
+app.post("/api/aprazar/config", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const unidadeKey = normalizeUnitKey(req.body?.unidadeKey || "");
+    if (!unidadeKey) return res.status(400).json({ error: "unidadeKey é obrigatório." });
+
+    const cfg = req.body?.config;
+    if (!cfg || typeof cfg !== "object") return res.status(400).json({ error: "config inválido." });
+
+    const k = getAprazConfigKey(req.auth?.user?.id, unidadeKey);
+
+    DB.aprazConfigs = (DB.aprazConfigs && typeof DB.aprazConfigs === "object") ? DB.aprazConfigs : {};
+    DB.aprazConfigs[k] = cfg;
+
+    saveDb(DB, "apraz_config");
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: "Falha ao salvar configuração." });
+  }
+});
+
+app.post("/api/aprazar/extrair-prescricao-imagem", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const imgs = Array.isArray(req.body?.images_data_url) ? req.body.images_data_url.filter(Boolean).slice(0, 4) : [];
+    if (!imgs.length) return res.status(400).json({ error: "Nenhuma imagem recebida." });
+
+    const schema = {
+      name: "prescricao_para_aprazamento",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          itens: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                medicamento: { type: "string" },
+                dose: { type: "string" },
+                unidade: { type: "string" },
+                via: { type: "string" },
+                frequencia: { type: "string" },
+                inicio: { type: "string" },
+                duracao: { type: "string" },
+                observacoes: { type: "string" },
+                tipo: { type: "string", enum: ["regular", "sos", "infusao_continua"] }
+              },
+              required: ["medicamento", "dose", "unidade", "via", "frequencia", "inicio", "duracao", "observacoes", "tipo"]
+            }
+          },
+          limitacoes: { type: "string" }
+        },
+        required: ["itens", "limitacoes"]
+      }
+    };
+
+    const prompt = `
+Tarefa: transcrever e estruturar uma prescrição médica para aprazamento de medicações.
+
+Regras obrigatórias:
+- NÃO sugira horários e NÃO faça conduta clínica.
+- Extraia apenas o que está escrito, com máxima fidelidade.
+- Se um campo não estiver legível ou não estiver presente, preencha como "não informado".
+- Para itens SOS, marque tipo="sos" e mantenha frequencia como aparece (ex.: "SOS", "se dor").
+- Para infusão contínua (ex.: "infusão contínua", "bomba", "ml/h", "mcg/kg/min"), marque tipo="infusao_continua".
+- Para medicações regulares, tipo="regular".
+
+Retorne SOMENTE JSON com:
+- itens: lista por linha (medicamento, dose, unidade, via, frequencia, inicio, duracao, observacoes, tipo)
+- limitacoes: descreva limitações de leitura (ex.: ilegível, foto cortada, baixa resolução).`;
+
+    const allItems = [];
+    const limitations = [];
+
+    for (let i = 0; i < imgs.length; i++) {
+      const img = imgs[i];
+      const r = await callOpenAIVisionJson({
+        prompt,
+        imageDataUrl: img,
+        schema
+      });
+
+      const itens = Array.isArray(r?.itens) ? r.itens : [];
+      for (const it of itens) {
+        const obj = {
+          medicamento: safeStr(it?.medicamento || "não informado", 120),
+          dose: safeStr(it?.dose || "não informado", 80),
+          unidade: safeStr(it?.unidade || "não informado", 40),
+          via: safeStr(it?.via || "não informado", 40),
+          frequencia: safeStr(it?.frequencia || "não informado", 60),
+          inicio: safeStr(it?.inicio || "não informado", 40),
+          duracao: safeStr(it?.duracao || "não informado", 40),
+          observacoes: safeStr(it?.observacoes || "", 240),
+          tipo: ["regular", "sos", "infusao_continua"].includes(String(it?.tipo || "")) ? String(it.tipo) : "regular"
+        };
+        allItems.push(obj);
+      }
+
+      const lim = safeStr(r?.limitacoes || "", 300);
+      if (lim) limitations.push(`Página ${i + 1}: ${lim}`);
+    }
+
+    // Deduplicação simples por chave
+    const seen = new Set();
+    const unique = [];
+    for (const it of allItems) {
+      const k = [
+        it.medicamento?.toLowerCase(),
+        it.dose?.toLowerCase(),
+        it.unidade?.toLowerCase(),
+        it.via?.toLowerCase(),
+        it.frequencia?.toLowerCase(),
+        it.inicio?.toLowerCase(),
+        it.duracao?.toLowerCase(),
+        it.tipo
+      ].join("|");
+      if (seen.has(k)) continue;
+      seen.add(k);
+      unique.push(it);
+    }
+
+    res.json({ ok: true, itens: unique, limitacoes: limitations.join(" | ").trim() || "" });
+  } catch (e) {
+    res.status(500).json({ error: "Falha ao ler a prescrição." });
+  }
+});
+
+app.post("/api/aprazar/extrair-prescricao-texto", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const texto = safeStr(req.body?.texto || "", 20000);
+    if (!texto.trim()) return res.status(400).json({ error: "Texto vazio." });
+
+    const schema = {
+      name: "prescricao_para_aprazamento_texto",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          itens: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                medicamento: { type: "string" },
+                dose: { type: "string" },
+                unidade: { type: "string" },
+                via: { type: "string" },
+                frequencia: { type: "string" },
+                inicio: { type: "string" },
+                duracao: { type: "string" },
+                observacoes: { type: "string" },
+                tipo: { type: "string", enum: ["regular", "sos", "infusao_continua"] }
+              },
+              required: ["medicamento", "dose", "unidade", "via", "frequencia", "inicio", "duracao", "observacoes", "tipo"]
+            }
+          },
+          limitacoes: { type: "string" }
+        },
+        required: ["itens", "limitacoes"]
+      }
+    };
+
+    const prompt = `
+Tarefa: converter um texto de prescrição médica em uma lista estruturada de itens para aprazamento.
+
+Regras obrigatórias:
+- NÃO sugira horários e NÃO faça conduta clínica.
+- Extraia apenas o que está no texto.
+- Se faltar algum campo, preencha como "não informado".
+- Para itens SOS, tipo="sos".
+- Para infusão contínua, tipo="infusao_continua".
+- Para o restante, tipo="regular".
+
+Texto da prescrição:
+${texto}
+
+Retorne SOMENTE JSON com itens e limitacoes.`;
+
+    const r = await callOpenAIJson({
+      prompt,
+      schema,
+      maxOutputTokens: 1500
+    });
+
+    const itens = Array.isArray(r?.itens) ? r.itens : [];
+    const out = itens.map(it => ({
+      medicamento: safeStr(it?.medicamento || "não informado", 120),
+      dose: safeStr(it?.dose || "não informado", 80),
+      unidade: safeStr(it?.unidade || "não informado", 40),
+      via: safeStr(it?.via || "não informado", 40),
+      frequencia: safeStr(it?.frequencia || "não informado", 60),
+      inicio: safeStr(it?.inicio || "não informado", 40),
+      duracao: safeStr(it?.duracao || "não informado", 40),
+      observacoes: safeStr(it?.observacoes || "", 240),
+      tipo: ["regular", "sos", "infusao_continua"].includes(String(it?.tipo || "")) ? String(it.tipo) : "regular"
+    }));
+
+    res.json({ ok: true, itens: out, limitacoes: safeStr(r?.limitacoes || "", 300) });
+  } catch (e) {
+    res.status(500).json({ error: "Falha ao processar o texto." });
+  }
+});
+
+app.post("/api/aprazar/gerar-horarios", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const paciente = req.body?.paciente || {};
+    const itens = Array.isArray(req.body?.itens) ? req.body.itens : [];
+    const cfg = (req.body?.config && typeof req.body.config === "object") ? req.body.config : DEFAULT_APRAZ_CONFIG;
+
+    const baseYmd = safeStr(paciente?.data || "", 32) || fmtYmd(new Date());
+    const baseNow = new Date();
+    const nowHm = fmtHm(baseNow);
+
+    const horizonte = parseInt(String(req.body?.horizonte_horas || "24"), 10);
+    const horizonHours = Number.isFinite(horizonte) && horizonte > 0 && horizonte <= 168 ? horizonte : 24;
+
+    const avisos = [];
+    const pendencias = [];
+
+    const cabecalho = buildCabecalho(paciente, safeStr(req.body?.conferido_por || "", 120));
+
+    const regs = [];
+    const sos = [];
+    const inf = [];
+
+    // validação e cálculo item a item
+    for (const raw of itens) {
+      const item = {
+        medicamento: safeStr(raw?.medicamento || "", 120),
+        dose: safeStr(raw?.dose || "", 80),
+        unidade: safeStr(raw?.unidade || "", 40),
+        via: safeStr(raw?.via || "", 40),
+        frequencia: safeStr(raw?.frequencia || "", 80),
+        inicio: safeStr(raw?.inicio || "", 40),
+        duracao: safeStr(raw?.duracao || "", 40),
+        observacoes: safeStr(raw?.observacoes || "", 240),
+        tipo: safeStr(raw?.tipo || "", 40),
+        conferido: !!raw?.conferido
+      };
+
+      const tipo = classifyItemType(item);
+
+      if (!item.medicamento || item.medicamento.toLowerCase() === "não informado") pendencias.push("Medicamento ausente.");
+      if (!item.dose || item.dose.toLowerCase() === "não informado") pendencias.push(`Dose ausente em ${item.medicamento || "item"}.`);
+      if (!item.via || item.via.toLowerCase() === "não informado") pendencias.push(`Via ausente em ${item.medicamento || "item"}.`);
+
+      if (tipo === "sos") {
+        sos.push({
+          medicamento: item.medicamento || "não informado",
+          orientacao: safeStr(item.frequencia || item.observacoes || "SOS", 240)
+        });
+        continue;
+      }
+
+      if (tipo === "infusao_continua") {
+        const iniciar = parseTimeHHMM(item.inicio) ? parseTimeHHMM(item.inicio).str : (item.inicio && item.inicio.toLowerCase().includes("agora") ? nowHm : "não informado");
+        const params = [item.dose, item.unidade, item.via, item.frequencia].filter(Boolean).join(" | ");
+        inf.push({
+          medicamento: item.medicamento || "não informado",
+          iniciar_em: iniciar,
+          parametros: params
+        });
+        continue;
+      }
+
+      const parsed = parseFrequencyToIntervalHours(item.frequencia);
+      let intervalHours = parsed.intervalHours;
+
+      if (!intervalHours) {
+        // Caso "antes das refeições" nos ajude a sugerir 3 horários
+        if (/\bantes das refei[cç][oõ]es\b/i.test(item.observacoes || "")) {
+          avisos.push(`Frequência ausente em ${item.medicamento || "item"}; observação indica antes das refeições.`);
+          intervalHours = 8; // 3x/dia
+        } else {
+          pendencias.push(`Frequência ausente/inelegível em ${item.medicamento || "item"}.`);
+          continue;
+        }
+      }
+
+      const intervalMin = intervalHours * 60;
+      const minGap = parseInt(String(cfg?.min_gap_min || DEFAULT_APRAZ_CONFIG.min_gap_min), 10);
+      const minGapMin = Number.isFinite(minGap) && minGap >= 30 ? minGap : DEFAULT_APRAZ_CONFIG.min_gap_min;
+
+      if (intervalMin < minGapMin) {
+        pendencias.push(`Frequência incoerente em ${item.medicamento || "item"} (intervalo menor que a janela mínima).`);
+        continue;
+      }
+
+      // início
+      let startHm = null;
+      const inicioLower = String(item.inicio || "").toLowerCase();
+      const t0 = parseTimeHHMM(item.inicio);
+      if (t0) startHm = t0.str;
+      else if (inicioLower.includes("agora") || !inicioLower || inicioLower === "não informado") startHm = nowHm;
+
+      if (!startHm) startHm = nowHm;
+
+      const startDt = utcDateFromYmdHm(baseYmd, startHm) || utcDateFromYmdHm(fmtYmd(new Date()), nowHm);
+      const endDt = new Date((startDt ? startDt.getTime() : Date.now()) + horizonHours * 60 * 60 * 1000);
+
+      const strategy = String(cfg?.strategy || DEFAULT_APRAZ_CONFIG.strategy);
+      const nowMode = String(cfg?.now_mode || DEFAULT_APRAZ_CONFIG.now_mode);
+
+      const stdTimes = pickStandardTimes(intervalHours, cfg, item.observacoes) || pickStandardTimes(intervalHours, DEFAULT_APRAZ_CONFIG, item.observacoes);
+
+      let scheduleDts = [];
+
+      const isAgora = inicioLower.includes("agora") || !inicioLower || inicioLower === "não informado";
+
+      if (strategy === "contar") {
+        let firstDt = startDt;
+        if (isAgora && nowMode === "proximo_padrao" && stdTimes && stdTimes.length) {
+          const aligned = nextAlignedTimeAfter(startDt, baseYmd, stdTimes);
+          if (aligned) firstDt = aligned;
+        }
+        scheduleDts = generateCountingSchedule(firstDt, endDt, intervalMin);
+      } else {
+        // alinhar
+        if (isAgora && nowMode === "horario_real") {
+          // regra configurável: se "agora" e modo horário real, usa contagem real para evitar pular primeira dose
+          scheduleDts = generateCountingSchedule(startDt, endDt, intervalMin);
+          avisos.push(`"${item.medicamento || "item"}": início em horário real aplicado (modo "agora").`);
+        } else if (stdTimes && stdTimes.length) {
+          const firstAligned = nextAlignedTimeAfter(startDt, baseYmd, stdTimes) || startDt;
+          scheduleDts = generateAlignedSchedule(firstAligned, endDt, baseYmd, stdTimes);
+        } else {
+          // fallback: contagem
+          scheduleDts = generateCountingSchedule(startDt, endDt, intervalMin);
+          avisos.push(`"${item.medicamento || "item"}": sem horários padrão definidos para ${intervalHours}h; usado cálculo por intervalo.`);
+        }
+      }
+
+      const horarios = formatScheduleTimes(scheduleDts, baseYmd);
+
+      const descCurta = [
+        safeStr(item.dose || "", 80),
+        safeStr(item.unidade || "", 40),
+        safeStr(item.via || "", 40),
+        safeStr(item.frequencia || "", 80)
+      ].filter(Boolean).join(" | ");
+
+      regs.push({
+        medicamento: item.medicamento || "não informado",
+        descricao_curta: descCurta || "não informado",
+        horarios,
+        observacoes: item.observacoes || ""
+      });
+    }
+
+    // Observações gerais automáticas
+    const obsGerais = [];
+    obsGerais.push("Documento gerado a partir de prescrição capturada (imagem/arquivo/texto) e convertido em horários conforme regras configuradas da unidade.");
+    obsGerais.push("Conferência final obrigatória: medicamento, dose, via e frequência devem ser confirmados antes de qualquer administração.");
+    obsGerais.push(`Horizonte de geração: ${horizonHours} horas.`);
+
+    // Duplicidade simples
+    const medKey = new Map();
+    for (const r of regs) {
+      const key = String(r.medicamento || "").toLowerCase();
+      medKey.set(key, (medKey.get(key) || 0) + 1);
+    }
+    for (const [k, n] of medKey.entries()) {
+      if (n > 1) avisos.push(`Possível duplicidade: ${k} aparece ${n} vezes.`);
+    }
+
+    const folha = {
+      cabecalho,
+      medicacoes_regulares: regs,
+      medicacoes_sos: sos,
+      infusoes_continuas: inf,
+      observacoes_gerais: obsGerais
+    };
+
+    res.json({ ok: true, folha, avisos, pendencias });
+  } catch (e) {
+    res.status(500).json({ error: "Falha ao gerar horários." });
+  }
+});
+
+app.post("/api/aprazar/salvar", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const userId = req.auth?.user?.id;
+    if (!userId) return res.status(401).json({ error: "Não autorizado." });
+
+    const paciente = req.body?.paciente || {};
+    const itens = Array.isArray(req.body?.itens) ? req.body.itens : [];
+    const folha = req.body?.folha || null;
+
+    if (!folha || typeof folha !== "object") return res.status(400).json({ error: "Folha inválida." });
+
+    const id = crypto.randomUUID();
+    const entry = {
+      id,
+      createdAt: new Date().toISOString(),
+      createdBy: userId,
+      unidadeKey: normalizeUnitKey(req.body?.unidadeKey || paciente?.unidade || ""),
+      paciente: {
+        nome: safeStr(paciente?.nome || "", 120),
+        data: safeStr(paciente?.data || "", 32),
+        unidade: safeStr(paciente?.unidade || "", 120),
+        peso_kg: safeStr(paciente?.peso_kg || "", 20)
+      },
+      itens: itens.slice(0, 120).map(it => ({
+        medicamento: safeStr(it?.medicamento || "", 120),
+        dose: safeStr(it?.dose || "", 80),
+        unidade: safeStr(it?.unidade || "", 40),
+        via: safeStr(it?.via || "", 40),
+        frequencia: safeStr(it?.frequencia || "", 80),
+        inicio: safeStr(it?.inicio || "", 40),
+        duracao: safeStr(it?.duracao || "", 40),
+        observacoes: safeStr(it?.observacoes || "", 240),
+        tipo: safeStr(it?.tipo || "", 40),
+        conferido: !!it?.conferido
+      })),
+      folha,
+      conferido_por: safeStr(req.body?.conferido_por || "", 120)
+    };
+
+    DB.aprazamentos = Array.isArray(DB.aprazamentos) ? DB.aprazamentos : [];
+    DB.aprazamentos.push(entry);
+
+    saveDb(DB, "apraz_save");
+    res.json({ ok: true, id });
+  } catch (e) {
+    res.status(500).json({ error: "Falha ao salvar no prontuário." });
+  }
+});
+
+app.get("/api/aprazar/listar", requirePaidOrAdmin, (req, res) => {
+  try {
+    const userId = req.auth?.user?.id;
+    if (!userId) return res.status(401).json({ error: "Não autorizado." });
+
+    const all = Array.isArray(DB.aprazamentos) ? DB.aprazamentos : [];
+    const mine = all.filter(x => x && x.createdBy === userId).sort((a, b) => {
+      const ad = Date.parse(a.createdAt || "") || 0;
+      const bd = Date.parse(b.createdAt || "") || 0;
+      return bd - ad;
+    });
+
+    res.json({ ok: true, itens: mine.slice(0, 100) });
+  } catch {
+    res.status(500).json({ error: "Falha ao listar." });
+  }
+});
+
+
 // ROTA 5 – DÚVIDAS MÉDICAS (NOVA)
 // ======================================================================
 
