@@ -2194,11 +2194,6 @@
       <h2>Evolução de Enfermagem</h2>
       <textarea id="nursingEvolutionOutput" class="prescription-textarea"></textarea>
 
-      <div class="prescription-actions">
-        <button id="copyNursingEvolutionBtn" class="btn-copy">Copiar evolução de enfermagem</button>
-        <button id="printNursingEvolutionBtn" class="btn-print">Imprimir evolução de enfermagem</button>
-      </div>
-
       <h2>Plano de Cuidados (Prescrição de Enfermagem)</h2>
       <textarea id="prescriptionOutput" class="prescription-textarea"></textarea>
 
@@ -3258,20 +3253,6 @@ Ata de reunião:
       if (host === "localhost" || host === "127.0.0.1") return "http://localhost:3000";
       return norm(DEFAULT_BACKEND_URL);
     })();
-    async function fetchWithRetry(url, options = {}, retries = 2, delayMs = 1500) {
-      let lastErr = null;
-      for (let attempt = 0; attempt <= retries; attempt++) {
-        try {
-          return await fetch(url, options);
-        } catch (e) {
-          lastErr = e;
-          if (attempt >= retries) break;
-          await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)));
-        }
-      }
-      throw lastErr;
-    }
-
 
     // =========================
     // IMAGENS (Curativos e Prescrição) - estado por módulo (até 4 fotos)
@@ -3856,11 +3837,9 @@ const recordBtn = document.getElementById("recordBtn");
     const soapA = document.getElementById("soapA");
     const soapP = document.getElementById("soapP");
 
-    const prescriptionOutput = document.getElementById("prescriptionOutput");
     const nursingEvolutionOutput = document.getElementById("nursingEvolutionOutput");
-    const copyNursingEvolutionBtn = document.getElementById("copyNursingEvolutionBtn");
-    const printNursingEvolutionBtn = document.getElementById("printNursingEvolutionBtn");
 
+    const prescriptionOutput = document.getElementById("prescriptionOutput");
 
     const sbarOutput = document.getElementById("sbarOutput");
     const sbarRecordBtn = document.getElementById("sbarRecordBtn");
@@ -4121,12 +4100,10 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       const a = (soapA?.value || "").trim();
       const p = (soapP?.value || "").trim();
       const plano = (prescriptionOutput?.value || "").trim();
-      const evol = (nursingEvolutionOutput?.value || "").trim();
       const sbar = (sbarOutput?.value || "").trim();
       const parts = [];
       if (t) parts.push("TRANSCRIÇÃO:\n" + t);
       if (s || o || a || p) parts.push("EVOLUÇÃO (SOAP):\nS: " + s + "\nO: " + o + "\nA: " + a + "\nP: " + p);
-      if (evol) parts.push("EVOLUÇÃO DE ENFERMAGEM (texto):\n" + evol);
       if (plano) parts.push("PLANO DE CUIDADOS:\n" + plano);
       if (sbar) parts.push("SBAR:\n" + sbar);
       return parts.join("\n\n").trim();
@@ -4286,7 +4263,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       micStatus.classList.add("loading-dot");
 
       try {
-        const resp = await fetchWithRetry(BACKEND_URL + "/api/gerar-soap", {
+        const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcricao: t })
@@ -4303,15 +4280,11 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
         const data = await resp.json();
         const soap = data.soap || "";
-        const evolucaoEnfermagem = data.evolucao_enfermagem || "";
+        const evolucao_enfermagem = data.evolucao_enfermagem || "";
         const prescricao = data.prescricao || "";
 
         updateSoapFromString(soap);
-        nursingEvolutionOutput.value = (evolucaoEnfermagem || "").trim();
-        const hasNursingEvolution = !!(nursingEvolutionOutput.value || "").trim();
-        copyNursingEvolutionBtn.style.display = hasNursingEvolution ? "inline-block" : "none";
-        printNursingEvolutionBtn.style.display = hasNursingEvolution ? "inline-block" : "none";
-
+        if (nursingEvolutionOutput) nursingEvolutionOutput.value = evolucao_enfermagem;
         prescriptionOutput.value = normalizeNumberedParagraphs(prescricao);
         printBtn.style.display = prescricao ? "inline-block" : "none";
 
@@ -5789,11 +5762,11 @@ function initSpeech() {
 
         const data = await resp.json();
         const soap = data.soap || "";
+        const evolucao_enfermagem = data.evolucao_enfermagem || "";
         const prescricao = data.prescricao || "";
 
         updateSoapFromString(soap);
-
-        if (nursingEvolutionOutput) nursingEvolutionOutput.value = evolucaoEnfermagem;
+        if (nursingEvolutionOutput) nursingEvolutionOutput.value = evolucao_enfermagem;
 
         prescriptionOutput.value = prescricao;
         printBtn.style.display = prescricao ? "inline-block" : "none";
@@ -6157,15 +6130,13 @@ function initSpeech() {
 
         const data = await resp.json();
         const soap = data.soap || "";
-        const evolucaoEnfermagem = data.evolucao_enfermagem || "";
+        const evolucao_enfermagem = data.evolucao_enfermagem || "";
         const prescricao = data.prescricao || "";
 
         if (soap) {
           updateSoapFromString(soap);
         }
-        if (nursingEvolutionOutput && evolucaoEnfermagem) {
-          nursingEvolutionOutput.value = evolucaoEnfermagem;
-        }
+        if (nursingEvolutionOutput) nursingEvolutionOutput.value = evolucao_enfermagem;
         if (prescricao) {
           prescriptionOutput.value = prescricao;
           printBtn.style.display = "inline-block";
@@ -7971,29 +7942,6 @@ recordBtn.onclick = () => {
       }
       copyToClipboard(text);
     });
-
-    if (copyNursingEvolutionBtn) {
-      copyNursingEvolutionBtn.addEventListener("click", () => {
-        const text = nursingEvolutionOutput && nursingEvolutionOutput.value ? nursingEvolutionOutput.value.trim() : "";
-        if (!text) {
-          alert("Não há evolução de enfermagem para copiar.");
-          return;
-        }
-        copyToClipboard(text);
-      });
-    }
-
-    if (printNursingEvolutionBtn) {
-      printNursingEvolutionBtn.addEventListener("click", () => {
-        const text = nursingEvolutionOutput && nursingEvolutionOutput.value ? nursingEvolutionOutput.value : "";
-        if (!text.trim()) {
-          alert("Não há evolução de enfermagem para imprimir.");
-          return;
-        }
-        openPrintWindow("Evolução de Enfermagem", text);
-      });
-    }
-
     if (sbarRecordBtn) {
       sbarRecordBtn.addEventListener("click", async (e) => {
         e.preventDefault();

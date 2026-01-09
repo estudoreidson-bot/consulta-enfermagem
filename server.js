@@ -155,31 +155,18 @@ async function callOpenAI(prompt) {
 
 // Função para obter JSON do modelo com fallback (extrai o primeiro bloco {...})
 async function callOpenAIJson(prompt) {
-  // Tenta forçar saída JSON pelo próprio modelo (mais confiável e evita parsing frágil).
-  try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.2,
-      response_format: { type: "json_object" },
-      messages: [{ role: "user", content: prompt }],
-    });
-    const content = completion.choices?.[0]?.message?.content || "";
-    return JSON.parse(content);
-  } catch (e) {
-    // Fallback: usa o caminho antigo (texto livre) e tenta extrair JSON do conteúdo.
-    const raw = await callOpenAI(prompt);
+  const raw = await callOpenAI(prompt);
 
-    try {
-      return JSON.parse(raw);
-    } catch (e2) {
-      const firstBrace = raw.indexOf("{");
-      const lastBrace = raw.lastIndexOf("}");
-      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-        const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
-        return JSON.parse(jsonSlice);
-      }
-      throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    const firstBrace = raw.indexOf("{");
+    const lastBrace = raw.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
+      return JSON.parse(jsonSlice);
     }
+    throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
   }
 }
 
@@ -1442,7 +1429,7 @@ Seu usuário é sempre um enfermeiro (enfermagem na APS ou pronto atendimento).
 
 Tarefa:
 1) Gere uma EVOLUÇÃO em SOAP com foco de enfermagem, concisa e operacional.
-2) Gere uma EVOLUÇÃO DE ENFERMAGEM (narrativa), em texto corrido, adequada para prontuário, coerente com o SOAP e com foco em enfermagem.
+2) Gere a EVOLUÇÃO DE ENFERMAGEM (texto corrido), própria para prontuário, baseada exclusivamente na transcrição.
 3) Gere um PLANO DE CUIDADOS (prescrição de enfermagem), com itens objetivos, monitorização, educação em saúde e critérios claros para escalar para avaliação médica.
 
 Regras obrigatórias:
@@ -1454,11 +1441,8 @@ Regras obrigatórias:
 
 Formato de saída: JSON estrito, sem texto fora do JSON, com as chaves:
 {
-  "soap": "S: ...
-O: ...
-A: ...
-P: ...",
-  "evolucao_enfermagem": "Evolução de enfermagem narrativa, em texto corrido",
+  "soap": "S: ...\nO: ...\nA: ...\nP: ...",
+  "evolucao_enfermagem": "Evolução de enfermagem em texto corrido",
   "prescricao": "Plano de cuidados em texto corrido ou itens numerados"
 }
 
@@ -1469,8 +1453,12 @@ SOAP:
 - A: avaliação de enfermagem (problemas/necessidades), riscos (queda, LPP, desidratação etc) quando pertinentes.
 - P: intervenções e orientações de enfermagem, monitorização, encaminhamentos, retorno, sinais de alarme.
 
-EVOLUÇÃO DE ENFERMAGEM (narrativa):
-- Texto corrido (sem S/O/A/P), coerente com o SOAP, registrando evolução/avaliação de enfermagem, condutas realizadas/orientadas, monitorização, resposta quando aplicável, retorno e sinais de alarme.
+EVOLUÇÃO DE ENFERMAGEM (texto corrido):
+- Registro narrativo para prontuário, baseado apenas no que estiver na transcrição.
+- Deve refletir quadro atual, intervenções/condutas de enfermagem, resposta do paciente quando citada, e plano imediato.
+- Incluir segurança: sinais de alarme e critérios objetivos de reavaliação/encaminhamento quando pertinente.
+- Se dados essenciais não estiverem na transcrição (por exemplo: data/hora, sinais vitais, antecedentes), use "não informado".
+
 
 PLANO DE CUIDADOS (prescrição de enfermagem):
 - Monitorização (o que medir e quando).
@@ -1702,27 +1690,22 @@ app.post("/api/atualizar-soap-perguntas", requirePaidOrAdmin, async(req, res) =>
   try {
     const { soap_atual, perguntas_e_respostas, transcricao_base } = req.body || {};
     const safeSoap = normalizeText(soap_atual || "", 12000);
+    const safeQa = Array.isArray(perguntas_e_respostas) ? perguntas_e_respostas : [];
     const safeTranscricao = normalizeText(transcricao_base || "", 20000);
 
-    let qaText = "";
-    if (Array.isArray(perguntas_e_respostas)) {
-      const safeQa = perguntas_e_respostas;
-      qaText = safeQa
-        .map((x, i) => {
-          const p = normalizeText(x?.pergunta || "", 300);
-          const r = normalizeText(x?.resposta || "", 600);
-          return `Pergunta ${i + 1}: ${p}\nResposta ${i + 1}: ${r}`;
-        })
-        .join("\n\n");
-    } else if (typeof perguntas_e_respostas === "string") {
-      qaText = normalizeText(perguntas_e_respostas, 8000);
-    }
+    const qaText = safeQa
+      .map((x, i) => {
+        const p = normalizeText(x?.pergunta || "", 300);
+        const r = normalizeText(x?.resposta || "", 600);
+        return `Pergunta ${i + 1}: ${p}\nResposta ${i + 1}: ${r}`;
+      })
+      .join("\n\n");
 
     const prompt = `
 Você é um enfermeiro humano atualizando a documentação do atendimento após novas respostas complementares.
 Atualize:
 1) SOAP (S/O/A/P) com foco de enfermagem.
-2) Evolução de enfermagem (narrativa), em texto corrido, coerente com o SOAP.
+2) Evolução de enfermagem (texto corrido) para prontuário, baseada apenas nas informações disponíveis.
 3) Plano de cuidados (prescrição de enfermagem), mantendo-o objetivo e seguro.
 
 Regras:
@@ -1732,11 +1715,8 @@ Regras:
 
 Formato de saída: JSON estrito:
 {
-  "soap": "S: ...
-O: ...
-A: ...
-P: ...",
-  "evolucao_enfermagem": "Evolução de enfermagem narrativa, em texto corrido",
+  "soap": "S: ...\nO: ...\nA: ...\nP: ...",
+  "evolucao_enfermagem": "Evolução de enfermagem em texto corrido",
   "prescricao": "Plano de cuidados atualizado"
 }
 
