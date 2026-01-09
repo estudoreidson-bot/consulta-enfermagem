@@ -2191,6 +2191,14 @@
         <textarea id="soapP" class="soap-textarea"></textarea>
       </div>
 
+      <h2>Evolução de Enfermagem</h2>
+      <textarea id="nursingEvolutionOutput" class="prescription-textarea"></textarea>
+
+      <div class="prescription-actions">
+        <button id="copyNursingEvolutionBtn" class="btn-copy">Copiar evolução de enfermagem</button>
+        <button id="printNursingEvolutionBtn" class="btn-print">Imprimir evolução de enfermagem</button>
+      </div>
+
       <h2>Plano de Cuidados (Prescrição de Enfermagem)</h2>
       <textarea id="prescriptionOutput" class="prescription-textarea"></textarea>
 
@@ -3835,6 +3843,10 @@ const recordBtn = document.getElementById("recordBtn");
     const soapP = document.getElementById("soapP");
 
     const prescriptionOutput = document.getElementById("prescriptionOutput");
+    const nursingEvolutionOutput = document.getElementById("nursingEvolutionOutput");
+    const copyNursingEvolutionBtn = document.getElementById("copyNursingEvolutionBtn");
+    const printNursingEvolutionBtn = document.getElementById("printNursingEvolutionBtn");
+
 
     const sbarOutput = document.getElementById("sbarOutput");
     const sbarRecordBtn = document.getElementById("sbarRecordBtn");
@@ -4275,6 +4287,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
         const data = await resp.json();
         const soap = data.soap || "";
+        const evolucaoEnfermagem = data.evolucao_enfermagem || "";
         const prescricao = data.prescricao || "";
 
         updateSoapFromString(soap);
@@ -5759,6 +5772,8 @@ function initSpeech() {
 
         updateSoapFromString(soap);
 
+        if (nursingEvolutionOutput) nursingEvolutionOutput.value = evolucaoEnfermagem;
+
         prescriptionOutput.value = prescricao;
         printBtn.style.display = prescricao ? "inline-block" : "none";
 
@@ -6121,10 +6136,14 @@ function initSpeech() {
 
         const data = await resp.json();
         const soap = data.soap || "";
+        const evolucaoEnfermagem = data.evolucao_enfermagem || "";
         const prescricao = data.prescricao || "";
 
         if (soap) {
           updateSoapFromString(soap);
+        }
+        if (nursingEvolutionOutput && evolucaoEnfermagem) {
+          nursingEvolutionOutput.value = evolucaoEnfermagem;
         }
         if (prescricao) {
           prescriptionOutput.value = prescricao;
@@ -6268,6 +6287,7 @@ function initSpeech() {
       resultsCard.classList.add("hidden");
       printBtn.style.display = "none";
       prescriptionOutput.value = "";
+      if (nursingEvolutionOutput) nursingEvolutionOutput.value = "";
       soapS.value = "";
       soapO.value = "";
       soapA.value = "";
@@ -7930,6 +7950,29 @@ recordBtn.onclick = () => {
       }
       copyToClipboard(text);
     });
+
+    if (copyNursingEvolutionBtn) {
+      copyNursingEvolutionBtn.addEventListener("click", () => {
+        const text = nursingEvolutionOutput && nursingEvolutionOutput.value ? nursingEvolutionOutput.value.trim() : "";
+        if (!text) {
+          alert("Não há evolução de enfermagem para copiar.");
+          return;
+        }
+        copyToClipboard(text);
+      });
+    }
+
+    if (printNursingEvolutionBtn) {
+      printNursingEvolutionBtn.addEventListener("click", () => {
+        const text = nursingEvolutionOutput && nursingEvolutionOutput.value ? nursingEvolutionOutput.value : "";
+        if (!text.trim()) {
+          alert("Não há evolução de enfermagem para imprimir.");
+          return;
+        }
+        openPrintWindow("Evolução de Enfermagem", text);
+      });
+    }
+
     if (sbarRecordBtn) {
       sbarRecordBtn.addEventListener("click", async (e) => {
         e.preventDefault();

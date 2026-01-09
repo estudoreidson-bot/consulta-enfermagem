@@ -1429,7 +1429,8 @@ Seu usuário é sempre um enfermeiro (enfermagem na APS ou pronto atendimento).
 
 Tarefa:
 1) Gere uma EVOLUÇÃO em SOAP com foco de enfermagem, concisa e operacional.
-2) Gere um PLANO DE CUIDADOS (prescrição de enfermagem), com itens objetivos, monitorização, educação em saúde e critérios claros para escalar para avaliação médica.
+2) Gere uma EVOLUÇÃO DE ENFERMAGEM (narrativa), em texto corrido, adequada para prontuário, coerente com o SOAP e com foco em enfermagem.
+3) Gere um PLANO DE CUIDADOS (prescrição de enfermagem), com itens objetivos, monitorização, educação em saúde e critérios claros para escalar para avaliação médica.
 
 Regras obrigatórias:
 - Não invente dados. Se faltar informação, registre como "não informado" ou "não foi referido".
@@ -1440,7 +1441,11 @@ Regras obrigatórias:
 
 Formato de saída: JSON estrito, sem texto fora do JSON, com as chaves:
 {
-  "soap": "S: ...\nO: ...\nA: ...\nP: ...",
+  "soap": "S: ...
+O: ...
+A: ...
+P: ...",
+  "evolucao_enfermagem": "Evolução de enfermagem narrativa, em texto corrido",
   "prescricao": "Plano de cuidados em texto corrido ou itens numerados"
 }
 
@@ -1450,6 +1455,9 @@ SOAP:
 - O: sinais vitais se presentes, exame objetivo descrito, achados relevantes, contexto (gestante/lactante quando aplicável).
 - A: avaliação de enfermagem (problemas/necessidades), riscos (queda, LPP, desidratação etc) quando pertinentes.
 - P: intervenções e orientações de enfermagem, monitorização, encaminhamentos, retorno, sinais de alarme.
+
+EVOLUÇÃO DE ENFERMAGEM (narrativa):
+- Texto corrido (sem S/O/A/P), coerente com o SOAP, registrando evolução/avaliação de enfermagem, condutas realizadas/orientadas, monitorização, resposta quando aplicável, retorno e sinais de alarme.
 
 PLANO DE CUIDADOS (prescrição de enfermagem):
 - Monitorização (o que medir e quando).
@@ -1465,9 +1473,10 @@ Transcrição:
     const data = await callOpenAIJson(prompt);
 
     const soap = typeof data?.soap === "string" ? data.soap.trim() : "";
+    const evolucao_enfermagem = typeof data?.evolucao_enfermagem === "string" ? data.evolucao_enfermagem.trim() : "";
     const prescricao = typeof data?.prescricao === "string" ? data.prescricao.trim() : "";
 
-    return res.json({ soap, prescricao });
+    return res.json({ soap, evolucao_enfermagem, prescricao });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "Falha interna ao gerar evolução/plano de cuidados." });
@@ -1680,22 +1689,28 @@ app.post("/api/atualizar-soap-perguntas", requirePaidOrAdmin, async(req, res) =>
   try {
     const { soap_atual, perguntas_e_respostas, transcricao_base } = req.body || {};
     const safeSoap = normalizeText(soap_atual || "", 12000);
-    const safeQa = Array.isArray(perguntas_e_respostas) ? perguntas_e_respostas : [];
     const safeTranscricao = normalizeText(transcricao_base || "", 20000);
 
-    const qaText = safeQa
-      .map((x, i) => {
-        const p = normalizeText(x?.pergunta || "", 300);
-        const r = normalizeText(x?.resposta || "", 600);
-        return `Pergunta ${i + 1}: ${p}\nResposta ${i + 1}: ${r}`;
-      })
-      .join("\n\n");
+    let qaText = "";
+    if (Array.isArray(perguntas_e_respostas)) {
+      const safeQa = perguntas_e_respostas;
+      qaText = safeQa
+        .map((x, i) => {
+          const p = normalizeText(x?.pergunta || "", 300);
+          const r = normalizeText(x?.resposta || "", 600);
+          return `Pergunta ${i + 1}: ${p}\nResposta ${i + 1}: ${r}`;
+        })
+        .join("\n\n");
+    } else if (typeof perguntas_e_respostas === "string") {
+      qaText = normalizeText(perguntas_e_respostas, 8000);
+    }
 
     const prompt = `
 Você é um enfermeiro humano atualizando a documentação do atendimento após novas respostas complementares.
 Atualize:
 1) SOAP (S/O/A/P) com foco de enfermagem.
-2) Plano de cuidados (prescrição de enfermagem), mantendo-o objetivo e seguro.
+2) Evolução de enfermagem (narrativa), em texto corrido, coerente com o SOAP.
+3) Plano de cuidados (prescrição de enfermagem), mantendo-o objetivo e seguro.
 
 Regras:
 - Não invente dados.
@@ -1704,7 +1719,11 @@ Regras:
 
 Formato de saída: JSON estrito:
 {
-  "soap": "S: ...\nO: ...\nA: ...\nP: ...",
+  "soap": "S: ...
+O: ...
+A: ...
+P: ...",
+  "evolucao_enfermagem": "Evolução de enfermagem narrativa, em texto corrido",
   "prescricao": "Plano de cuidados atualizado"
 }
 
@@ -1720,8 +1739,9 @@ Novas perguntas e respostas:
 
     const data = await callOpenAIJson(prompt);
     const soap = typeof data?.soap === "string" ? data.soap.trim() : safeSoap;
+    const evolucao_enfermagem = typeof data?.evolucao_enfermagem === "string" ? data.evolucao_enfermagem.trim() : "";
     const prescricao = typeof data?.prescricao === "string" ? data.prescricao.trim() : "";
-    return res.json({ soap, prescricao });
+    return res.json({ soap, evolucao_enfermagem, prescricao });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "Falha interna ao atualizar evolução." });
