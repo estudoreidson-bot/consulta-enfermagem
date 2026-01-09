@@ -155,18 +155,31 @@ async function callOpenAI(prompt) {
 
 // Função para obter JSON do modelo com fallback (extrai o primeiro bloco {...})
 async function callOpenAIJson(prompt) {
-  const raw = await callOpenAI(prompt);
-
+  // Tenta forçar saída JSON pelo próprio modelo (mais confiável e evita parsing frágil).
   try {
-    return JSON.parse(raw);
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+      messages: [{ role: "user", content: prompt }],
+    });
+    const content = completion.choices?.[0]?.message?.content || "";
+    return JSON.parse(content);
   } catch (e) {
-    const firstBrace = raw.indexOf("{");
-    const lastBrace = raw.lastIndexOf("}");
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
-      return JSON.parse(jsonSlice);
+    // Fallback: usa o caminho antigo (texto livre) e tenta extrair JSON do conteúdo.
+    const raw = await callOpenAI(prompt);
+
+    try {
+      return JSON.parse(raw);
+    } catch (e2) {
+      const firstBrace = raw.indexOf("{");
+      const lastBrace = raw.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
+        return JSON.parse(jsonSlice);
+      }
+      throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
     }
-    throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
   }
 }
 
