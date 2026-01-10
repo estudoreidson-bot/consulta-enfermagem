@@ -1667,164 +1667,141 @@
     }
     
 
-    /* ======================================================================
-       APRAZAR MEDICAÇÕES
-       ====================================================================== */
-    .apraz-patient-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      width: 100%;
-      margin-top: 10px;
-    }
-    .apraz-patient-grid .form-row {
-      width: 100%;
-      margin: 0;
-    }
-    .apraz-patient-grid .form-row input {
-      width: 100%;
-    }
-    .apraz-config-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      width: 100%;
-      margin-top: 10px;
-    }
-    .apraz-config-grid .form-row {
-      width: 100%;
-      margin: 0;
-    }
-    .apraz-config-grid .form-row input,
-    .apraz-config-grid .form-row select {
-      width: 100%;
-    }
-    .apraz-review-box {
-      margin-top: 10px;
-      width: 100%;
-      background: #ffffff;
-      border: 1px solid #e6e6e6;
-      border-radius: 12px;
-      padding: 10px;
-    }
-    .apraz-table-wrap {
-      width: 100%;
-      overflow-x: auto;
-      border: 1px solid #e6e6e6;
-      border-radius: 10px;
-      background: #ffffff;
-      margin-top: 10px;
-    }
-    table.apraz-table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 920px;
-      font-size: 13px;
-    }
-    table.apraz-table th, table.apraz-table td {
-      border-bottom: 1px solid #f0f0f0;
-      padding: 8px;
-      vertical-align: top;
-    }
-    table.apraz-table th {
-      text-align: left;
-      background: #fafafa;
-      position: sticky;
-      top: 0;
-      z-index: 1;
-    }
-    table.apraz-table input[type="text"],
-    table.apraz-table input[type="time"],
-    table.apraz-table input[type="number"],
-    table.apraz-table select,
-    table.apraz-table textarea {
-      width: 100%;
-      font-size: 13px;
-      padding: 6px 8px;
-      border: 1px solid #d7d7d7;
-      border-radius: 8px;
-      outline: none;
-      background: #fff;
-    }
-    table.apraz-table textarea {
-      min-height: 60px;
-      resize: vertical;
-    }
-    .apraz-actions-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-      align-items: center;
-    }
-    .apraz-actions-row .form-row {
-      margin: 0;
-    }
-    .apraz-actions-row input[type="text"],
-    .apraz-actions-row select {
-      min-width: 180px;
-    }
-    .apraz-preview {
-      margin-top: 10px;
-      width: 100%;
-      border: 1px solid #e6e6e6;
-      border-radius: 12px;
-      padding: 10px;
-      background: #ffffff;
-    }
-    .apraz-preview h3 {
-      margin: 0 0 8px 0;
-    }
-    .apraz-print {
-      font-family: Arial, Helvetica, sans-serif;
-      color: #111;
-      padding: 18px;
-    }
-    .apraz-print h1 {
-      font-size: 18px;
-      margin: 0 0 8px 0;
-      text-align: left;
-    }
-    .apraz-print .meta {
-      font-size: 12px;
-      margin-bottom: 10px;
-      line-height: 1.35;
-    }
-    .apraz-print table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-      margin-top: 8px;
-    }
-    .apraz-print th, .apraz-print td {
-      border: 1px solid #d8d8d8;
-      padding: 6px;
-      vertical-align: top;
-    }
-    .apraz-print th {
-      background: #f2f2f2;
-      text-align: left;
-    }
-    .apraz-print .section-title {
-      font-weight: bold;
-      margin-top: 12px;
-    }
-    .apraz-print .muted {
-      color: #555;
-    }
-    .apraz-print .sign {
-      margin-top: 16px;
-      font-size: 12px;
-    }
-    .apraz-print .sign-line {
-      margin-top: 10px;
-      border-top: 1px solid #111;
-      width: 260px;
-      padding-top: 6px;
-    }
+/* =========================
+   MÓDULO: APRAZAMENTO DE PRESCRIÇÃO (folha editável e imprimível)
+   ========================= */
+.rx-sheet-wrapper{
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+}
+.rx-sheet-placeholder{
+  color: #6b7280;
+  font-size: 13px;
+  padding: 8px;
+}
+.rx-sheet{
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 14px;
+  font-family: Arial, sans-serif;
+  color: #111827;
+}
+.rx-sheet .rx-title{
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+}
+.rx-sheet .rx-subtitle{
+  font-size: 12px;
+  color: #374151;
+  margin: 0 0 10px 0;
+}
+.rx-grid{
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.rx-grid th, .rx-grid td{
+  border: 1px solid #d1d5db;
+  padding: 6px 6px;
+  font-size: 12px;
+  vertical-align: top;
+  word-break: break-word;
+}
+.rx-grid th{
+  background: #f3f4f6;
+  font-weight: 700;
+}
+.rx-kv{
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+.rx-kv td{
+  border: 1px solid #d1d5db;
+  padding: 6px 6px;
+  font-size: 12px;
+}
+.rx-kv .label{
+  width: 140px;
+  background: #f9fafb;
+  font-weight: 700;
+  color: #374151;
+}
+.rx-field{
+  outline: none;
+  min-height: 16px;
+}
+.rx-field[contenteditable="true"]:focus{
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.25);
+  border-radius: 4px;
+}
+.rx-hours{
+  margin-top: 10px;
+}
+.rx-hours-title{
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+}
+.rx-hours-grid{
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.rx-hours-grid th, .rx-hours-grid td{
+  border: 1px solid #d1d5db;
+  font-size: 10px;
+  padding: 4px 2px;
+  text-align: center;
+}
+.rx-hours-grid th{
+  background: #f3f4f6;
+  font-weight: 700;
+}
+.rx-hours-grid td.due{
+  background: #e5e7eb;
+}
+.rx-details{
+  margin-top: 10px;
+}
+.rx-original-grid{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.rx-original-grid img{
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+@media print{
+  body{
+    background: #ffffff !important;
+  }
+  .module-card, .top-bar, .tabs, .nav, .sidebar, .btn-print, .btn-copy, .photo-btn, .recommendations-panel{
+    display: none !important;
+  }
+  .rx-sheet-wrapper{
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  .rx-sheet{
+    border: 1px solid #111827 !important;
+    border-radius: 0 !important;
+    padding: 12px !important;
+  }
+  .rx-field[contenteditable="true"]:focus{
+    box-shadow: none !important;
+  }
+}
 
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 
@@ -2410,261 +2387,39 @@
 
       <input id="medCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
       <input id="medFileInput" class="hidden-input" type="file" accept="image/*" multiple />
-    
-    <div id="aprazarCard" class="module-card">
+    </div>
+
+
+    <div id="aprazamentoCard" class="module-card">
       <div class="section-header-row">
-        <h2>Aprazar medicações</h2>
-        <div class="soap-title-actions" style="justify-content: flex-end; gap: 8px;">
-          <button id="aprazConfigBtn" class="btn-print" type="button">Configurar horários</button>
-          <button id="aprazGuideBtn" class="btn-print" type="button">Guia</button>
-        </div>
+        <h2>Aprazamento de prescrição</h2>
+        <button id="aprazamentoGuideBtn" class="btn-print" type="button">Guia</button>
       </div>
 
       <p class="mini-status" style="margin-top: 0;">
-        Objetivo: reduzir trabalho repetitivo convertendo frequências em horários, sem automatizar a responsabilidade clínica. A geração do aprazamento exige conferência final item a item.
+        Tire uma foto ou selecione um arquivo da folha de prescrição. O sistema irá transcrever somente o que estiver legível, reconstruir a folha com os campos (hospital, leito, médico, enfermagem e demais informações visíveis) e organizar os medicamentos já aprazados. O resultado é editável e pode ser impresso para substituir a folha original, quando necessário.
       </p>
 
-      <div class="apraz-patient-grid">
-        <div class="form-row">
-          <label>Paciente</label>
-          <input id="aprazPatientName" type="text" placeholder="Nome do paciente" />
-        </div>
-
-        <div class="form-row">
-          <label>Data</label>
-          <input id="aprazDate" type="date" />
-        </div>
-
-        <div class="form-row">
-          <label>Leito/Unidade</label>
-          <input id="aprazUnit" type="text" placeholder="Ex.: Enfermaria A, Leito 03" />
-        </div>
-
-        <div class="form-row">
-          <label>Peso (kg, se pediatria)</label>
-          <input id="aprazWeight" type="number" step="0.1" min="0" placeholder="Opcional" />
-        </div>
+      <div class="prescription-actions">
+        <label for="aprazamentoCameraInput" class="photo-btn">Tirar foto</label>
+        <label for="aprazamentoFileInput" class="photo-btn">Escolher arquivo</label>
+        <button id="copyAprazamentoBtn" class="btn-copy hidden">Copiar folha aprazada</button>
+        <button id="printAprazamentoBtn" class="btn-print hidden">Imprimir folha aprazada</button>
       </div>
 
-      <div class="prescription-actions" style="margin-top: 10px;">
-        <label for="aprazCameraInput" class="photo-btn">Foto da prescrição</label>
-        <label for="aprazFileInput" class="photo-btn">Enviar arquivo</label>
-        <button id="aprazPasteToggleBtn" class="btn-print" type="button">Colar texto</button>
+      <div id="aprazamentoStatus" class="mini-status"></div>
+      <div id="aprazamentoSheetWrapper" class="rx-sheet-wrapper">
+        <div class="rx-sheet-placeholder">Nenhum conteúdo disponível.</div>
       </div>
 
-      <div id="aprazPasteBox" class="hidden" style="width: 100%; margin-top: 10px;">
-        <textarea id="aprazPasteText" class="textarea" placeholder="Cole aqui a prescrição digitada. Cada item em uma linha quando possível."></textarea>
-        <div class="prescription-actions" style="margin-top: 8px;">
-          <button id="aprazParseTextBtn" class="btn-copy" type="button">Ler texto colado</button>
-        </div>
-      </div>
+      <details id="aprazOriginalDetails" class="rx-details hidden">
+        <summary>Imagem original (para conferência)</summary>
+        <div id="aprazOriginalImages" class="rx-original-grid"></div>
+      </details>
 
-      <div class="apraz-actions-row">
-        <div class="form-row">
-          <label>Horizonte</label>
-          <select id="aprazHorizon">
-            <option value="24">24 horas</option>
-            <option value="48">48 horas</option>
-            <option value="72">72 horas</option>
-          </select>
-        </div>
-
-        <div class="form-row">
-          <label>Conferido por</label>
-          <input id="aprazCheckedBy" type="text" placeholder="Nome do responsável pela conferência" />
-        </div>
-      </div>
-
-      <div id="aprazStatus" class="mini-status"></div>
-
-      <div id="aprazReviewBox" class="apraz-review-box hidden">
-        <h3 style="margin: 0 0 6px 0;">Conferência da leitura</h3>
-        <p class="mini-status" style="margin: 0;">
-          Revise cada linha. Se faltar frequência, via, medicamento ou dose, o item fica pendente e a folha não é gerada até correção.
-        </p>
-
-        <div class="apraz-actions-row">
-          <div class="form-row">
-            <label>Frequência (lote)</label>
-            <input id="aprazBulkFreq" type="text" placeholder="Ex.: 8/8h" list="aprazFreqList" />
-          </div>
-
-          <div class="form-row">
-            <label>Via (lote)</label>
-            <input id="aprazBulkRoute" type="text" placeholder="Ex.: VO, EV" list="aprazRouteList" />
-          </div>
-
-          <button id="aprazApplyBulkBtn" class="btn-print" type="button">Aplicar ao selecionados</button>
-          <button id="aprazRecalcBtn" class="btn-copy" type="button">Recalcular horários</button>
-        </div>
-
-        <div class="apraz-table-wrap">
-          <table class="apraz-table" id="aprazItemsTable"></table>
-        </div>
-
-        <div id="aprazWarnings" class="mini-status" style="margin-top: 8px;"></div>
-
-        <div class="apraz-actions-row">
-          <label class="mini-status" style="display:flex; align-items:center; gap:8px; margin:0;">
-            <input id="aprazFinalConfirm" type="checkbox" />
-            Confirmo que conferi medicamento, dose, via e frequência antes de gerar a folha.
-          </label>
-        </div>
-
-        <div class="apraz-actions-row">
-          <button id="aprazPreviewBtn" class="btn-copy" type="button">Pré-visualizar folha</button>
-          <button id="aprazPdfBtn" class="btn-print" type="button">Gerar PDF</button>
-          <button id="aprazSaveBtn" class="btn-copy" type="button">Salvar no prontuário</button>
-        </div>
-
-        <div id="aprazPreview" class="apraz-preview hidden"></div>
-      </div>
-
-      <input id="aprazCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
-      <input id="aprazFileInput" class="hidden-input" type="file" accept="image/*,application/pdf" multiple />
+      <input id="aprazamentoCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
+      <input id="aprazamentoFileInput" class="hidden-input" type="file" accept="image/*" multiple />
     </div>
-
-    <datalist id="aprazFreqList">
-      <option value="1x/dia"></option>
-      <option value="12/12h"></option>
-      <option value="8/8h"></option>
-      <option value="6/6h"></option>
-      <option value="4/4h"></option>
-      <option value="SOS"></option>
-    </datalist>
-
-    <datalist id="aprazRouteList">
-      <option value="VO"></option>
-      <option value="EV"></option>
-      <option value="IM"></option>
-      <option value="SC"></option>
-      <option value="SL"></option>
-      <option value="IN"></option>
-      <option value="TÓPICO"></option>
-      <option value="RETAL"></option>
-    </datalist>
-
-    <div id="aprazConfigPanel" class="recommendations-panel hidden">
-      <div class="recommendations-header">
-        <h3>Configuração de aprazamento</h3>
-        <button id="closeAprazConfigBtn" class="close-panel-btn" aria-label="Fechar configuração de aprazamento">X</button>
-      </div>
-
-      <p class="mini-status" style="margin-top: 0;">
-        Defina horários-padrão e preferências. A configuração é salva por unidade para este usuário.
-      </p>
-
-      <div class="apraz-config-grid">
-        <div class="form-row">
-          <label>Chave da unidade</label>
-          <input id="aprazConfigUnitKey" type="text" placeholder="Ex.: Enfermaria A" />
-        </div>
-
-        <div class="form-row">
-          <label>Estratégia</label>
-          <select id="aprazStrategy">
-            <option value="alinhar">Alinhar para horários padrão</option>
-            <option value="contar">Contar a partir da primeira dose</option>
-          </select>
-        </div>
-
-        <div class="form-row">
-          <label>Início quando for "agora"</label>
-          <select id="aprazNowMode">
-            <option value="proximo_padrao">Encaixar no próximo horário padrão</option>
-            <option value="horario_real">Usar horário real</option>
-          </select>
-        </div>
-
-        <div class="form-row">
-          <label>Janela mínima entre doses (min)</label>
-          <input id="aprazMinGap" type="number" min="30" step="10" />
-        </div>
-
-        <div class="form-row">
-          <label>1x/dia padrão</label>
-          <input id="aprazT1" type="text" placeholder="08:00" />
-        </div>
-
-        <div class="form-row">
-          <label>12/12h padrão</label>
-          <input id="aprazT12" type="text" placeholder="08:00, 20:00" />
-        </div>
-
-        <div class="form-row">
-          <label>8/8h padrão</label>
-          <input id="aprazT8" type="text" placeholder="06:00, 14:00, 22:00" />
-        </div>
-
-        <div class="form-row">
-          <label>6/6h padrão</label>
-          <input id="aprazT6" type="text" placeholder="06:00, 12:00, 18:00, 00:00" />
-        </div>
-
-        <div class="form-row">
-          <label>4/4h padrão</label>
-          <input id="aprazT4" type="text" placeholder="06:00, 10:00, 14:00, 18:00, 22:00, 02:00" />
-        </div>
-
-        <div class="form-row">
-          <label>Referência "café"</label>
-          <input id="aprazMealBreakfast" type="text" placeholder="07:00" />
-        </div>
-
-        <div class="form-row">
-          <label>Referência "almoço"</label>
-          <input id="aprazMealLunch" type="text" placeholder="12:00" />
-        </div>
-
-        <div class="form-row">
-          <label>Referência "jantar"</label>
-          <input id="aprazMealDinner" type="text" placeholder="18:00" />
-        </div>
-
-        <div class="form-row">
-          <label>Referência "noite"</label>
-          <input id="aprazMealNight" type="text" placeholder="21:00" />
-        </div>
-      </div>
-
-      <div class="prescription-actions" style="margin-top: 10px;">
-        <button id="aprazLoadConfigBtn" class="btn-copy" type="button">Carregar da unidade</button>
-        <button id="aprazSaveConfigBtn" class="btn-print" type="button">Salvar configuração</button>
-      </div>
-
-      <div id="aprazConfigStatus" class="mini-status"></div>
-    </div>
-
-    <div id="aprazGuidePanel" class="recommendations-panel hidden">
-      <div class="recommendations-header">
-        <h3>Guia de aprazamento</h3>
-        <button id="closeAprazGuideBtn" class="close-panel-btn" aria-label="Fechar guia de aprazamento">X</button>
-      </div>
-
-      <div class="recommendations-content">
-        <p style="margin-top: 0;">
-          Fluxo recomendado:
-          1. Informe paciente, data e unidade.
-          2. Envie a prescrição por foto, arquivo ou texto.
-          3. Confira e corrija cada linha.
-          4. Recalcule os horários e revise avisos.
-          5. Gere o PDF somente após a conferência final.
-        </p>
-
-        <p>
-          Regras importantes:
-          - O sistema não substitui a checagem profissional.
-          - Itens SOS e infusão contínua não são convertidos em horários fixos.
-          - Se faltar frequência, via, medicamento ou dose, a folha não é gerada até correção.
-        </p>
-
-        <p>
-          Dica para foto: centralize o papel, evite sombras, use boa iluminação e tire mais de uma foto se houver várias páginas.
-        </p>
-      </div>
-    </div>
-
-</div>
 
     <div id="woundCard" class="module-card">
       <div class="section-header-row">
@@ -3584,6 +3339,24 @@ Ata de reunião:
     </div>
   </div>
 
+
+  <div id="aprazamentoGuidePanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Guia: Aprazamento de prescrição</h3>
+      <button id="closeAprazamentoGuideBtn" class="close-panel-btn" aria-label="Fechar guia de aprazamento de prescrição">X</button>
+    </div>
+    <div class="recommendations-status">
+      Como usar este módulo para refazer a folha de prescrição e aprazar os medicamentos com segurança.
+    </div>
+    <div class="recommendations-list">
+      <div class="recommendation-item"><strong>1) Foto nítida</strong><br>Garanta iluminação, foco e enquadramento. Inclua cabeçalho e a lista de medicamentos. Se houver mais de uma página, envie as páginas essenciais.</div>
+      <div class="recommendation-item"><strong>2) Conferência dos campos</strong><br>Revise hospital, unidade, leito, paciente, data, nome/CRM do médico e demais campos transcritos. O sistema não inventa: campos ilegíveis podem vir como "não informado".</div>
+      <div class="recommendation-item"><strong>3) Horários aprazados</strong><br>Quando a prescrição trouxer horários explícitos, eles são mantidos. Quando trouxer apenas frequência/intervalo, o sistema sugere horários padrão para facilitar o aprazamento. Ajuste conforme rotina do serviço e início de administração, se necessário.</div>
+      <div class="recommendation-item"><strong>4) Checagem e assinatura</strong><br>Use a grade de horários para checagem/assinatura. Ao final, assine no campo do enfermeiro e imprima a folha, se for substituir a original.</div>
+      <div class="recommendation-item"><strong>5) Segurança</strong><br>Antes de administrar, confirme via, dose, diluição/velocidade e restrições no documento oficial e no protocolo institucional. Em caso de divergência, priorize a prescrição oficial.</div>
+    </div>
+  </div>
+
   <div id="woundGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
       <h3>Guia: Curativos e feridas</h3>
@@ -3677,6 +3450,8 @@ Ata de reunião:
     let medAnalyzeTimer = null;
     let examAnalyzeTimer = null;
     let transcriptionAnalyzeTimer = null;
+    let aprazImages = [];
+    let aprazAnalyzeTimer = null;
 
     function scheduleWoundAnalysis() {
       if (woundAnalyzeTimer) clearTimeout(woundAnalyzeTimer);
@@ -3704,6 +3479,14 @@ Ata de reunião:
       transcriptionAnalyzeTimer = setTimeout(() => {
         if (transcriptionImages && transcriptionImages.length) analyzeTranscriptionWithImages(transcriptionImages.slice());
       }, 180);
+
+    function scheduleAprazAnalysis() {
+      if (aprazAnalyzeTimer) clearTimeout(aprazAnalyzeTimer);
+      aprazAnalyzeTimer = setTimeout(() => {
+        if (aprazImages && aprazImages.length) analyzeAprazamentoWithImages(aprazImages.slice());
+      }, 180);
+    }
+
     }
 
 // =========================
@@ -4193,6 +3976,20 @@ const recordBtn = document.getElementById("recordBtn");
     const medSafetyGuidePanel = document.getElementById("medSafetyGuidePanel");
     const closeMedSafetyGuideBtn = document.getElementById("closeMedSafetyGuideBtn");
 
+    const aprazamentoGuideBtn = document.getElementById("aprazamentoGuideBtn");
+    const aprazamentoGuidePanel = document.getElementById("aprazamentoGuidePanel");
+    const closeAprazamentoGuideBtn = document.getElementById("closeAprazamentoGuideBtn");
+
+    const aprazamentoStatus = document.getElementById("aprazamentoStatus");
+    const aprazamentoSheetWrapper = document.getElementById("aprazamentoSheetWrapper");
+    const copyAprazamentoBtn = document.getElementById("copyAprazamentoBtn");
+    const printAprazamentoBtn = document.getElementById("printAprazamentoBtn");
+    const aprazamentoCameraInput = document.getElementById("aprazamentoCameraInput");
+    const aprazamentoFileInput = document.getElementById("aprazamentoFileInput");
+    const aprazOriginalDetails = document.getElementById("aprazOriginalDetails");
+    const aprazOriginalImages = document.getElementById("aprazOriginalImages");
+
+
     const woundGuideBtn = document.getElementById("woundGuideBtn");
     const woundGuidePanel = document.getElementById("woundGuidePanel");
     const closeWoundGuideBtn = document.getElementById("closeWoundGuideBtn");
@@ -4395,6 +4192,13 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       setVisible(copyTranscriptionBtn, has);
       setVisible(printTranscriptionBtn, has);
     }
+
+    function updateAprazamentoActions() {
+      const has = !!(aprazamentoSheetWrapper && aprazamentoSheetWrapper.querySelector && aprazamentoSheetWrapper.querySelector(".rx-sheet"));
+      setVisible(copyAprazamentoBtn, has);
+      setVisible(printAprazamentoBtn, has);
+    }
+
 
     function updateReportActions() {
       const has = isMeaningfulText(reportOutput ? reportOutput.value : "");
@@ -6859,7 +6663,7 @@ async function addFilesToTarget(files, targetKey, mode) {
   const list = Array.from(files || []);
   if (!list.length) return;
 
-  const key = (targetKey === "wound" || targetKey === "med" || targetKey === "exam" || targetKey === "transcription") ? targetKey : "med";
+  const key = (targetKey === "wound" || targetKey === "med" || targetKey === "exam" || targetKey === "transcription" || targetKey === "apraz") ? targetKey : "med";
 
   const cfg = key === "wound"
     ? { arr: woundImages, statusEl: presentationsMaxDoseStatus, boxEl: presentationsMaxDoseBox, update: updateWoundActions, schedule: scheduleWoundAnalysis }
@@ -6867,6 +6671,8 @@ async function addFilesToTarget(files, targetKey, mode) {
       ? { arr: examImages, statusEl: examInterpretationStatus, boxEl: examInterpretationBox, update: updateExamActions, schedule: scheduleExamAnalysis }
       : key === "transcription"
         ? { arr: transcriptionImages, statusEl: transcriptionStatus, boxEl: transcriptionBox, update: updateTranscriptionActions, schedule: scheduleTranscriptionAnalysis }
+        : key === "apraz"
+        ? { arr: aprazImages, statusEl: aprazamentoStatus, boxEl: aprazamentoSheetWrapper, update: updateAprazamentoActions, schedule: scheduleAprazAnalysis }
         : { arr: medImages, statusEl: interactionsStatus, boxEl: interactionsBox, update: updateMedSafetyActions, schedule: scheduleMedAnalysis };
 
   const arr = cfg.arr;
@@ -7087,924 +6893,398 @@ async function addFilesToTarget(files, targetKey, mode) {
   }
 }
 
-    // ======================================================================
-    // APRAZAR MEDICAÇÕES
-    // ======================================================================
 
-    const aprazPatientName = document.getElementById("aprazPatientName");
-    const aprazDate = document.getElementById("aprazDate");
-    const aprazUnit = document.getElementById("aprazUnit");
-    const aprazWeight = document.getElementById("aprazWeight");
-    const aprazCameraInput = document.getElementById("aprazCameraInput");
-    const aprazFileInput = document.getElementById("aprazFileInput");
-    const aprazPasteToggleBtn = document.getElementById("aprazPasteToggleBtn");
-    const aprazPasteBox = document.getElementById("aprazPasteBox");
-    const aprazPasteText = document.getElementById("aprazPasteText");
-    const aprazParseTextBtn = document.getElementById("aprazParseTextBtn");
-    const aprazStatus = document.getElementById("aprazStatus");
-    const aprazReviewBox = document.getElementById("aprazReviewBox");
-    const aprazItemsTable = document.getElementById("aprazItemsTable");
-    const aprazWarnings = document.getElementById("aprazWarnings");
-    const aprazBulkFreq = document.getElementById("aprazBulkFreq");
-    const aprazBulkRoute = document.getElementById("aprazBulkRoute");
-    const aprazApplyBulkBtn = document.getElementById("aprazApplyBulkBtn");
-    const aprazRecalcBtn = document.getElementById("aprazRecalcBtn");
-    const aprazPreviewBtn = document.getElementById("aprazPreviewBtn");
-    const aprazPdfBtn = document.getElementById("aprazPdfBtn");
-    const aprazSaveBtn = document.getElementById("aprazSaveBtn");
-    const aprazPreview = document.getElementById("aprazPreview");
-    const aprazFinalConfirm = document.getElementById("aprazFinalConfirm");
-    const aprazCheckedBy = document.getElementById("aprazCheckedBy");
-    const aprazHorizon = document.getElementById("aprazHorizon");
-
-    const aprazConfigBtn = document.getElementById("aprazConfigBtn");
-    const aprazGuideBtn = document.getElementById("aprazGuideBtn");
-    const aprazConfigPanel = document.getElementById("aprazConfigPanel");
-    const aprazGuidePanel = document.getElementById("aprazGuidePanel");
-    const closeAprazConfigBtn = document.getElementById("closeAprazConfigBtn");
-    const closeAprazGuideBtn = document.getElementById("closeAprazGuideBtn");
-
-    const aprazConfigUnitKey = document.getElementById("aprazConfigUnitKey");
-    const aprazStrategy = document.getElementById("aprazStrategy");
-    const aprazNowMode = document.getElementById("aprazNowMode");
-    const aprazMinGap = document.getElementById("aprazMinGap");
-    const aprazT1 = document.getElementById("aprazT1");
-    const aprazT12 = document.getElementById("aprazT12");
-    const aprazT8 = document.getElementById("aprazT8");
-    const aprazT6 = document.getElementById("aprazT6");
-    const aprazT4 = document.getElementById("aprazT4");
-    const aprazMealBreakfast = document.getElementById("aprazMealBreakfast");
-    const aprazMealLunch = document.getElementById("aprazMealLunch");
-    const aprazMealDinner = document.getElementById("aprazMealDinner");
-    const aprazMealNight = document.getElementById("aprazMealNight");
-    const aprazLoadConfigBtn = document.getElementById("aprazLoadConfigBtn");
-    const aprazSaveConfigBtn = document.getElementById("aprazSaveConfigBtn");
-    const aprazConfigStatus = document.getElementById("aprazConfigStatus");
-
-    const DEFAULT_APRAZ_CONFIG = {
-      strategy: "alinhar",
-      now_mode: "proximo_padrao",
-      min_gap_min: 120,
-      horarios_padrao: {
-        "24": ["08:00"],
-        "12": ["08:00", "20:00"],
-        "8": ["06:00", "14:00", "22:00"],
-        "6": ["06:00", "12:00", "18:00", "00:00"],
-        "4": ["06:00", "10:00", "14:00", "18:00", "22:00", "02:00"]
-      },
-      refeicoes: {
-        cafe: "07:00",
-        almoco: "12:00",
-        jantar: "18:00",
-        noite: "21:00"
-      }
-    };
-
-    let aprazImages = [];
-    let aprazItems = [];
-    let aprazSheet = null;
-
-    function todayIsoDate() {
-      const d = new Date();
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${dd}`;
+    function asStr(v) {
+      if (v === null || v === undefined) return "";
+      return String(v);
     }
 
-    function normalizeUnitKey(raw) {
-      const s = (raw || "").trim();
+    function normalizeHHMM(t) {
+      const s = asStr(t).trim();
       if (!s) return "";
-      return s.toLowerCase().replace(/\s+/g, " ").slice(0, 80);
-    }
-
-    function aprazLocalConfigKey(unitKey) {
-      const u = normalizeUnitKey(unitKey);
-      return u ? ("apraz_config:" + u) : "apraz_config:default";
-    }
-
-    function readAprazConfigFromInputs() {
-      const unitKey = (aprazConfigUnitKey?.value || "").trim() || (aprazUnit?.value || "").trim() || "";
-      const cfg = JSON.parse(JSON.stringify(DEFAULT_APRAZ_CONFIG));
-
-      cfg.strategy = (aprazStrategy?.value || "alinhar");
-      cfg.now_mode = (aprazNowMode?.value || "proximo_padrao");
-
-      const mg = parseInt(String(aprazMinGap?.value || ""), 10);
-      cfg.min_gap_min = Number.isFinite(mg) && mg >= 30 ? mg : DEFAULT_APRAZ_CONFIG.min_gap_min;
-
-      const timesCsv = (v) => String(v || "")
-        .split(",")
-        .map(x => x.trim())
-        .filter(Boolean)
-        .map(x => x.length === 4 ? ("0" + x) : x);
-
-      const t1 = timesCsv(aprazT1?.value || "08:00");
-      const t12 = timesCsv(aprazT12?.value || "08:00, 20:00");
-      const t8 = timesCsv(aprazT8?.value || "06:00, 14:00, 22:00");
-      const t6 = timesCsv(aprazT6?.value || "06:00, 12:00, 18:00, 00:00");
-      const t4 = timesCsv(aprazT4?.value || "06:00, 10:00, 14:00, 18:00, 22:00, 02:00");
-
-      cfg.horarios_padrao["24"] = t1.length ? t1 : DEFAULT_APRAZ_CONFIG.horarios_padrao["24"].slice();
-      cfg.horarios_padrao["12"] = t12.length ? t12 : DEFAULT_APRAZ_CONFIG.horarios_padrao["12"].slice();
-      cfg.horarios_padrao["8"] = t8.length ? t8 : DEFAULT_APRAZ_CONFIG.horarios_padrao["8"].slice();
-      cfg.horarios_padrao["6"] = t6.length ? t6 : DEFAULT_APRAZ_CONFIG.horarios_padrao["6"].slice();
-      cfg.horarios_padrao["4"] = t4.length ? t4 : DEFAULT_APRAZ_CONFIG.horarios_padrao["4"].slice();
-
-      const bt = (aprazMealBreakfast?.value || "").trim();
-      const lt = (aprazMealLunch?.value || "").trim();
-      const dt = (aprazMealDinner?.value || "").trim();
-      const nt = (aprazMealNight?.value || "").trim();
-
-      cfg.refeicoes.cafe = bt || DEFAULT_APRAZ_CONFIG.refeicoes.cafe;
-      cfg.refeicoes.almoco = lt || DEFAULT_APRAZ_CONFIG.refeicoes.almoco;
-      cfg.refeicoes.jantar = dt || DEFAULT_APRAZ_CONFIG.refeicoes.jantar;
-      cfg.refeicoes.noite = nt || DEFAULT_APRAZ_CONFIG.refeicoes.noite;
-
-      return { unitKey, config: cfg };
-    }
-
-    function fillAprazConfigInputs(unitKey, cfg) {
-      const c = cfg && typeof cfg === "object" ? cfg : DEFAULT_APRAZ_CONFIG;
-
-      if (aprazConfigUnitKey) aprazConfigUnitKey.value = unitKey || "";
-      if (aprazStrategy) aprazStrategy.value = c.strategy || "alinhar";
-      if (aprazNowMode) aprazNowMode.value = c.now_mode || "proximo_padrao";
-      if (aprazMinGap) aprazMinGap.value = String(c.min_gap_min || DEFAULT_APRAZ_CONFIG.min_gap_min);
-
-      const hp = c.horarios_padrao || {};
-      const join = (arr) => Array.isArray(arr) ? arr.join(", ") : "";
-
-      if (aprazT1) aprazT1.value = join(hp["24"] || DEFAULT_APRAZ_CONFIG.horarios_padrao["24"]);
-      if (aprazT12) aprazT12.value = join(hp["12"] || DEFAULT_APRAZ_CONFIG.horarios_padrao["12"]);
-      if (aprazT8) aprazT8.value = join(hp["8"] || DEFAULT_APRAZ_CONFIG.horarios_padrao["8"]);
-      if (aprazT6) aprazT6.value = join(hp["6"] || DEFAULT_APRAZ_CONFIG.horarios_padrao["6"]);
-      if (aprazT4) aprazT4.value = join(hp["4"] || DEFAULT_APRAZ_CONFIG.horarios_padrao["4"]);
-
-      const r = c.refeicoes || {};
-      if (aprazMealBreakfast) aprazMealBreakfast.value = r.cafe || DEFAULT_APRAZ_CONFIG.refeicoes.cafe;
-      if (aprazMealLunch) aprazMealLunch.value = r.almoco || DEFAULT_APRAZ_CONFIG.refeicoes.almoco;
-      if (aprazMealDinner) aprazMealDinner.value = r.jantar || DEFAULT_APRAZ_CONFIG.refeicoes.jantar;
-      if (aprazMealNight) aprazMealNight.value = r.noite || DEFAULT_APRAZ_CONFIG.refeicoes.noite;
-    }
-
-    function loadAprazConfigLocal(unitKey) {
-      try {
-        const k = aprazLocalConfigKey(unitKey);
-        const raw = localStorage.getItem(k) || "";
-        if (!raw) return null;
-        const obj = JSON.parse(raw);
-        if (!obj || typeof obj !== "object") return null;
-        return obj;
-      } catch {
-        return null;
+      const m = s.match(/(\d{1,2})\s*[:hH]\s*(\d{2})/);
+      if (m) {
+        const hh = String(Math.min(23, Math.max(0, parseInt(m[1], 10)))).padStart(2, "0");
+        const mm = String(Math.min(59, Math.max(0, parseInt(m[2], 10)))).padStart(2, "0");
+        return `${hh}:${mm}`;
       }
+      const m2 = s.match(/^\s*(\d{1,2})\s*$/);
+      if (m2) {
+        const hh = String(Math.min(23, Math.max(0, parseInt(m2[1], 10)))).padStart(2, "0");
+        return `${hh}:00`;
+      }
+      return "";
     }
 
-    function saveAprazConfigLocal(unitKey, cfg) {
-      try {
-        const k = aprazLocalConfigKey(unitKey);
-        localStorage.setItem(k, JSON.stringify(cfg));
-      } catch {}
-    }
-
-    async function fetchAprazConfigFromServer(unitKey) {
-      const u = encodeURIComponent(unitKey || "");
-      const resp = await fetch(BACKEND_URL + "/api/aprazar/config?unidadeKey=" + u, { method: "GET" });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(data?.error || "Falha ao carregar configuração.");
-      return data?.config || null;
-    }
-
-    async function saveAprazConfigToServer(unitKey, cfg) {
-      const resp = await fetch(BACKEND_URL + "/api/aprazar/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ unidadeKey: unitKey || "", config: cfg || {} })
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(data?.error || "Falha ao salvar configuração.");
-      return true;
-    }
-
-    function showPanel(panelEl) {
-      if (!panelEl) return;
-      panelEl.classList.remove("hidden");
-    }
-    function hidePanel(panelEl) {
-      if (!panelEl) return;
-      panelEl.classList.add("hidden");
-    }
-
-    function setAprazStatus(text, loading) {
-      if (!aprazStatus) return;
-      aprazStatus.textContent = text || "";
-      if (loading) aprazStatus.classList.add("loading-dot");
-      else aprazStatus.classList.remove("loading-dot");
-    }
-
-    function setAprazWarnings(text) {
-      if (!aprazWarnings) return;
-      aprazWarnings.textContent = text || "";
-    }
-
-    function clampItems(items) {
-      const arr = Array.isArray(items) ? items : [];
-      return arr.slice(0, 80);
-    }
-
-    function escapeAttr(s) {
-      return String(s || "").replace(/"/g, "&quot;");
-    }
-
-    function renderAprazItemsTable(items) {
-      if (!aprazItemsTable) return;
-      const list = clampItems(items);
-
-      const headers = [
-        "Sel",
-        "Medicamento",
-        "Dose",
-        "Unidade",
-        "Via",
-        "Frequência",
-        "Início",
-        "Duração",
-        "Observações",
-        "Tipo",
-        "Conferido"
-      ];
-
-      let html = "<thead><tr>";
-      for (const h of headers) html += "<th>" + escapeHtml(h) + "</th>";
-      html += "</tr></thead><tbody>";
-
-      list.forEach((it, idx) => {
-        const med = it.medicamento || "";
-        const dose = it.dose || "";
-        const unidade = it.unidade || "";
-        const via = it.via || "";
-        const freq = it.frequencia || "";
-        const inicio = it.inicio || "";
-        const dur = it.duracao || "";
-        const obs = it.observacoes || "";
-        const tipo = it.tipo || "regular";
-        const conf = it.conferido ? "checked" : "";
-
-        html += "<tr data-idx=\"" + idx + "\">";
-        html += "<td><input type=\"checkbox\" class=\"apraz-sel\" /></td>";
-        html += "<td><input type=\"text\" class=\"apraz-med\" value=\"" + escapeAttr(med) + "\" /></td>";
-        html += "<td><input type=\"text\" class=\"apraz-dose\" value=\"" + escapeAttr(dose) + "\" /></td>";
-        html += "<td><input type=\"text\" class=\"apraz-unit\" value=\"" + escapeAttr(unidade) + "\" /></td>";
-        html += "<td><input type=\"text\" class=\"apraz-via\" value=\"" + escapeAttr(via) + "\" list=\"aprazRouteList\" /></td>";
-        html += "<td><input type=\"text\" class=\"apraz-freq\" value=\"" + escapeAttr(freq) + "\" list=\"aprazFreqList\" /></td>";
-        html += "<td><input type=\"text\" class=\"apraz-inicio\" value=\"" + escapeAttr(inicio) + "\" placeholder=\"agora ou 14:00\" /></td>";
-        html += "<td><input type=\"text\" class=\"apraz-dur\" value=\"" + escapeAttr(dur) + "\" placeholder=\"Ex.: 5 dias\" /></td>";
-        html += "<td><textarea class=\"apraz-obs\">" + escapeHtml(obs) + "</textarea></td>";
-        html += "<td><select class=\"apraz-tipo\">";
-        html += "<option value=\"regular\"" + (tipo === "regular" ? " selected" : "") + ">Regular</option>";
-        html += "<option value=\"sos\"" + (tipo === "sos" ? " selected" : "") + ">SOS</option>";
-        html += "<option value=\"infusao_continua\"" + (tipo === "infusao_continua" ? " selected" : "") + ">Infusão contínua</option>";
-        html += "</select></td>";
-        html += "<td style=\"text-align:center;\"><input type=\"checkbox\" class=\"apraz-conf\" " + conf + " /></td>";
-        html += "</tr>";
-      });
-
-      html += "</tbody>";
-      aprazItemsTable.innerHTML = html;
-    }
-
-    function readItemsFromTable() {
-      if (!aprazItemsTable) return [];
-      const rows = Array.from(aprazItemsTable.querySelectorAll("tbody tr"));
+    function uniq(list) {
       const out = [];
-      for (const r of rows) {
-        const med = (r.querySelector(".apraz-med")?.value || "").trim();
-        const dose = (r.querySelector(".apraz-dose")?.value || "").trim();
-        const unidade = (r.querySelector(".apraz-unit")?.value || "").trim();
-        const via = (r.querySelector(".apraz-via")?.value || "").trim();
-        const freq = (r.querySelector(".apraz-freq")?.value || "").trim();
-        const inicio = (r.querySelector(".apraz-inicio")?.value || "").trim();
-        const dur = (r.querySelector(".apraz-dur")?.value || "").trim();
-        const obs = (r.querySelector(".apraz-obs")?.value || "").trim();
-        const tipo = (r.querySelector(".apraz-tipo")?.value || "regular").trim();
-        const conf = !!r.querySelector(".apraz-conf")?.checked;
+      const seen = new Set();
+      for (const x of (Array.isArray(list) ? list : [])) {
+        const v = String(x || "").trim();
+        if (!v) continue;
+        const k = v.toLowerCase();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(v);
+      }
+      return out;
+    }
 
-        out.push({
-          medicamento: med,
+    function inferIntervalHours(freqText) {
+      const t = asStr(freqText).toLowerCase();
+      if (!t) return null;
+
+      const mA = t.match(/(\d{1,2})\s*\/\s*(\d{1,2})\s*h/);
+      if (mA) {
+        const n = parseInt(mA[2], 10);
+        if (Number.isFinite(n) && n > 0 && n <= 24) return n;
+      }
+
+      const mB = t.match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
+      if (mB) {
+        const n = parseInt(mB[2], 10);
+        if (Number.isFinite(n) && n > 0 && n <= 24) return n;
+      }
+
+      const mC = t.match(/\b(q|a cada)\s*(\d{1,2})\s*h\b/);
+      if (mC) {
+        const n = parseInt(mC[2], 10);
+        if (Number.isFinite(n) && n > 0 && n <= 24) return n;
+      }
+
+      const mD = t.match(/\bde\s*(\d{1,2})\s*\/\s*de\s*(\d{1,2})\s*h\b/);
+      if (mD) {
+        const n = parseInt(mD[2], 10);
+        if (Number.isFinite(n) && n > 0 && n <= 24) return n;
+      }
+
+      return null;
+    }
+
+    function inferTimesPerDay(freqText) {
+      const t = asStr(freqText).toLowerCase();
+      if (!t) return null;
+
+      const m1 = t.match(/\b(\d)\s*x\s*ao\s*dia\b/);
+      if (m1) {
+        const n = parseInt(m1[1], 10);
+        if (Number.isFinite(n) && n >= 1 && n <= 12) return n;
+      }
+
+      const m2 = t.match(/\b(\d)\s*vez(es)?\s*ao\s*dia\b/);
+      if (m2) {
+        const n = parseInt(m2[1], 10);
+        if (Number.isFinite(n) && n >= 1 && n <= 12) return n;
+      }
+
+      return null;
+    }
+
+    function suggestStandardTimes(intervalHours, timesPerDay, freqText) {
+      const t = asStr(freqText).toLowerCase();
+
+      if (/\b(se necess[aá]rio|s\/n|sn|prn|acm|quando necess[aá]rio)\b/.test(t)) return [];
+      if (/\b(cont[ií]nuo|bomba|infus[aã]o cont[ií]nua)\b/.test(t)) return [];
+
+      const hasHs = /\b(hs|ao deitar|noite)\b/.test(t);
+      if (hasHs) return ["22:00"];
+
+      const hasManha = /\b(man[hã]a)\b/.test(t);
+      const hasTarde = /\b(tarde)\b/.test(t);
+
+      if (!intervalHours && timesPerDay) {
+        if (timesPerDay === 1) return ["06:00"];
+        if (timesPerDay === 2) return ["06:00", "18:00"];
+        if (timesPerDay === 3) return ["06:00", "14:00", "22:00"];
+        if (timesPerDay === 4) return ["06:00", "12:00", "18:00", "00:00"];
+      }
+
+      if (intervalHours === 24) return ["06:00"];
+      if (intervalHours === 12) return ["06:00", "18:00"];
+      if (intervalHours === 8) return ["06:00", "14:00", "22:00"];
+      if (intervalHours === 6) return ["06:00", "12:00", "18:00", "00:00"];
+      if (intervalHours === 4) return ["06:00", "10:00", "14:00", "18:00", "22:00", "02:00"];
+      if (intervalHours === 3) return ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
+      if (intervalHours === 2) return ["00:00", "02:00", "04:00", "06:00", "08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"];
+      if (intervalHours === 1) {
+        const arr = [];
+        for (let h = 0; h < 24; h++) arr.push(String(h).padStart(2, "0") + ":00");
+        return arr;
+      }
+
+      if (hasManha && !hasTarde) return ["08:00"];
+      if (hasTarde && !hasManha) return ["14:00"];
+
+      return [];
+    }
+
+    function buildHourColumns2h() {
+      const cols = [];
+      for (let h = 0; h < 24; h += 2) {
+        cols.push(String(h).padStart(2, "0") + ":00");
+      }
+      return cols;
+    }
+
+    function timesToText(times) {
+      const arr = uniq((Array.isArray(times) ? times : []).map(normalizeHHMM).filter(Boolean));
+      return arr.join(", ");
+    }
+
+    function isDue(colHHMM, times) {
+      const col = normalizeHHMM(colHHMM);
+      if (!col) return false;
+      const colH = col.slice(0, 2);
+      const colM = col.slice(3, 5);
+
+      for (const t of (Array.isArray(times) ? times : [])) {
+        const tt = normalizeHHMM(t);
+        if (!tt) continue;
+        if (tt.slice(0, 2) === colH && tt.slice(3, 5) === colM) return true;
+      }
+      return false;
+    }
+
+    function safeField(v) {
+      const s = asStr(v).trim();
+      return s ? s : "não informado";
+    }
+
+    function normalizeFolhaData(rawFolha) {
+      const folha = rawFolha && typeof rawFolha === "object" ? rawFolha : {};
+      const cab = (folha.cabecalho && typeof folha.cabecalho === "object") ? folha.cabecalho : {};
+      const meds = Array.isArray(folha.medicamentos) ? folha.medicamentos : [];
+      const outMeds = [];
+
+      for (const it of meds.slice(0, 60)) {
+        const nome = safeField(it?.medicamento || it?.nome);
+        const dose = safeField(it?.dose);
+        const via = safeField(it?.via);
+        const freq = safeField(it?.frequencia || it?.posologia);
+        const obs = safeField(it?.observacoes || it?.observacao || it?.notas);
+
+        const horariosExpl = Array.isArray(it?.horarios_explicitados) ? it.horarios_explicitados : (Array.isArray(it?.horarios) ? it.horarios : []);
+        const horariosLegiveis = uniq(horariosExpl.map(normalizeHHMM).filter(Boolean));
+
+        const intervalo = (typeof it?.intervalo_horas === "number" && Number.isFinite(it.intervalo_horas)) ? it.intervalo_horas : inferIntervalHours(freq);
+        const vezesDia = (typeof it?.vezes_ao_dia === "number" && Number.isFinite(it.vezes_ao_dia)) ? it.vezes_ao_dia : inferTimesPerDay(freq);
+
+        const sugeridos = horariosLegiveis.length ? horariosLegiveis : suggestStandardTimes(intervalo, vezesDia, freq);
+        outMeds.push({
+          medicamento: nome,
           dose,
-          unidade,
           via,
           frequencia: freq,
-          inicio,
-          duracao: dur,
           observacoes: obs,
-          tipo,
-          conferido: conf
+          horarios: sugeridos
         });
       }
-      return out;
-    }
 
-    function applyBulkToSelected() {
-      if (!aprazItemsTable) return;
-      const bf = (aprazBulkFreq?.value || "").trim();
-      const br = (aprazBulkRoute?.value || "").trim();
-      const rows = Array.from(aprazItemsTable.querySelectorAll("tbody tr"));
-      for (const r of rows) {
-        const sel = !!r.querySelector(".apraz-sel")?.checked;
-        if (!sel) continue;
-        if (bf) {
-          const el = r.querySelector(".apraz-freq");
-          if (el) el.value = bf;
-        }
-        if (br) {
-          const el = r.querySelector(".apraz-via");
-          if (el) el.value = br;
-        }
-      }
-    }
-
-    async function ensurePdfJsWorker() {
-      try {
-        if (!window.pdfjsLib) return false;
-        if (window.pdfjsLib?.GlobalWorkerOptions && !window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
-          window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-        }
-        return true;
-      } catch {
-        return false;
-      }
-    }
-
-    async function pdfFileToImagesDataUrls(file, maxPages = 3) {
-      const ok = await ensurePdfJsWorker();
-      if (!ok) throw new Error("Leitura de PDF indisponível neste ambiente.");
-
-      const ab = await file.arrayBuffer();
-      const loadingTask = window.pdfjsLib.getDocument({ data: ab });
-      const pdf = await loadingTask.promise;
-
-      const out = [];
-      const total = Math.min(pdf.numPages || 0, maxPages);
-
-      for (let p = 1; p <= total; p++) {
-        const page = await pdf.getPage(p);
-        const viewport = page.getViewport({ scale: 1.6 });
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        if (!ctx) continue;
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-        if (dataUrl && dataUrl.startsWith("data:image/")) out.push(dataUrl);
-      }
-      return out;
-    }
-
-    async function filesToAprazImages(files) {
-      const list = Array.from(files || []);
-      if (!list.length) return [];
-
-      const out = [];
-
-      for (const f of list) {
-        if (out.length >= 4) break;
-        const type = String(f.type || "").toLowerCase();
-
-        if (type === "application/pdf" || (f.name || "").toLowerCase().endsWith(".pdf")) {
-          const pages = await pdfFileToImagesDataUrls(f, 3);
-          for (const img of pages) {
-            if (out.length >= 4) break;
-            out.push(img);
-          }
-          continue;
-        }
-
-        let dataUrl = await fileToCompressedDataUrl(f);
-        if (!dataUrl) dataUrl = await fileToDataUrl(f);
-        if (dataUrl && dataUrl.startsWith("data:image/")) out.push(dataUrl);
-      }
-
-      return out;
-    }
-
-    async function extractPrescriptionFromImages(images) {
-      const imgs = Array.isArray(images) ? images.filter(Boolean).slice(0, 4) : [];
-      if (!imgs.length) throw new Error("Nenhuma imagem válida.");
-
-      const resp = await fetch(BACKEND_URL + "/api/aprazar/extrair-prescricao-imagem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images_data_url: imgs })
-      });
-
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(data?.error || "Falha ao ler a prescrição.");
-
-      return data;
-    }
-
-    async function extractPrescriptionFromText(text) {
-      const t = (text || "").trim();
-      if (!t) throw new Error("Texto vazio.");
-
-      const resp = await fetch(BACKEND_URL + "/api/aprazar/extrair-prescricao-texto", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texto: t })
-      });
-
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(data?.error || "Falha ao ler o texto.");
-
-      return data;
-    }
-
-    function normalizeAprazItems(items) {
-      const list = Array.isArray(items) ? items : [];
-      return list.map(it => ({
-        medicamento: (it?.medicamento || "").trim(),
-        dose: (it?.dose || "").trim(),
-        unidade: (it?.unidade || "").trim(),
-        via: (it?.via || "").trim(),
-        frequencia: (it?.frequencia || "").trim(),
-        inicio: (it?.inicio || "").trim(),
-        duracao: (it?.duracao || "").trim(),
-        observacoes: (it?.observacoes || "").trim(),
-        tipo: (it?.tipo || "").trim() || "regular",
-        conferido: false
-      }));
-    }
-
-    function ensureReviewVisible() {
-      if (aprazReviewBox) aprazReviewBox.classList.remove("hidden");
-    }
-
-    function resetAprazOutput() {
-      aprazSheet = null;
-      if (aprazPreview) aprazPreview.classList.add("hidden");
-      if (aprazPreview) aprazPreview.innerHTML = "";
-      if (aprazFinalConfirm) aprazFinalConfirm.checked = false;
-      setAprazWarnings("");
-    }
-
-    async function handleAprazImageInput(files) {
-      resetAprazOutput();
-      setAprazStatus("Preparando arquivo(s).", true);
-
-      try {
-        const imgs = await filesToAprazImages(files);
-        if (!imgs.length) {
-          setAprazStatus("Nenhuma imagem válida foi detectada.", false);
-          return;
-        }
-        aprazImages = imgs;
-
-        setAprazStatus("Lendo prescrição e extraindo itens.", true);
-        const data = await extractPrescriptionFromImages(imgs);
-
-        aprazItems = normalizeAprazItems(data?.itens || []);
-        renderAprazItemsTable(aprazItems);
-        ensureReviewVisible();
-
-        const lim = (data?.limitacoes || "").trim();
-        if (lim) setAprazWarnings(lim);
-
-        setAprazStatus("Leitura concluída. Revise cada linha antes de gerar a folha.", false);
-      } catch (e) {
-        setAprazStatus("Falha ao processar. " + (e?.message || ""), false);
-      }
-    }
-
-    async function handleAprazTextInput() {
-      resetAprazOutput();
-      const t = (aprazPasteText?.value || "").trim();
-      if (!t) {
-        setAprazStatus("Cole o texto da prescrição.", false);
-        return;
-      }
-      setAprazStatus("Lendo texto e extraindo itens.", true);
-
-      try {
-        const data = await extractPrescriptionFromText(t);
-        aprazItems = normalizeAprazItems(data?.itens || []);
-        renderAprazItemsTable(aprazItems);
-        ensureReviewVisible();
-
-        const lim = (data?.limitacoes || "").trim();
-        if (lim) setAprazWarnings(lim);
-
-        setAprazStatus("Leitura concluída. Revise cada linha antes de gerar a folha.", false);
-      } catch (e) {
-        setAprazStatus("Falha ao processar. " + (e?.message || ""), false);
-      }
-    }
-
-    function currentConfigForGeneration() {
-      const unitKey = (aprazUnit?.value || "").trim() || (aprazConfigUnitKey?.value || "").trim() || "";
-      const localCfg = loadAprazConfigLocal(unitKey);
-      const cfg = localCfg && typeof localCfg === "object" ? localCfg : DEFAULT_APRAZ_CONFIG;
-      return { unitKey, config: cfg };
-    }
-
-    function getPatientPayload() {
       return {
-        nome: (aprazPatientName?.value || "").trim(),
-        data: (aprazDate?.value || "").trim() || todayIsoDate(),
-        unidade: (aprazUnit?.value || "").trim(),
-        peso_kg: (aprazWeight?.value || "").trim()
+        cabecalho: cab,
+        medicamentos: outMeds,
+        observacoes_folha: safeField(folha?.observacoes_folha || folha?.observacoes_gerais),
+        limitacoes: safeField(folha?.limitacoes)
       };
     }
 
-    async function generateAprazSheet(previewAfter) {
-      resetAprazOutput();
+    function buildAprazamentoSheetHtml(rawFolha) {
+      const data = normalizeFolhaData(rawFolha);
+      const cab = data.cabecalho || {};
+      const meds = Array.isArray(data.medicamentos) ? data.medicamentos : [];
+      const cols = buildHourColumns2h();
 
-      const patient = getPatientPayload();
-      const items = readItemsFromTable();
+      const kvRows = [
+        ["Hospital/Unidade", safeField(cab.hospital || cab.unidade || cab.estabelecimento)],
+        ["Setor/Clínica", safeField(cab.setor || cab.clinica || cab.ala)],
+        ["Leito", safeField(cab.leito)],
+        ["Paciente", safeField(cab.paciente || cab.paciente_nome || cab.nome_paciente)],
+        ["Prontuário", safeField(cab.prontuario || cab.registro)],
+        ["Data", safeField(cab.data || cab.data_prescricao)],
+        ["Médico", safeField(cab.medico || cab.medico_nome)],
+        ["CRM", safeField(cab.crm || cab.medico_crm)],
+        ["Enfermeiro", safeField(cab.enfermeiro || cab.enfermeiro_nome)],
+        ["COREN", safeField(cab.coren || cab.enfermeiro_coren)]
+      ];
 
-      if (!items.length) {
-        setAprazStatus("Não há itens para aprazar.", false);
-        return;
+      let html = "";
+      html += `<div class="rx-sheet">`;
+      html += `<div class="rx-title">Folha de prescrição aprazada</div>`;
+      html += `<div class="rx-subtitle">Transcrição somente do que estiver legível. Ajuste os campos e horários conforme a prescrição oficial e a rotina do serviço.</div>`;
+
+      html += `<table class="rx-kv" aria-label="Identificação da prescrição">`;
+      for (const [label, value] of kvRows) {
+        html += `<tr><td class="label">${escapeHtml(label)}</td><td><div class="rx-field" contenteditable="true">${escapeHtml(value)}</div></td></tr>`;
       }
+      html += `</table>`;
 
-      const { unitKey, config } = currentConfigForGeneration();
+      html += `<table class="rx-grid" aria-label="Medicamentos e horários aprazados">`;
+      html += `<thead><tr>`;
+      html += `<th style="width: 36px;">Item</th>`;
+      html += `<th>Medicamento</th>`;
+      html += `<th style="width: 100px;">Dose</th>`;
+      html += `<th style="width: 70px;">Via</th>`;
+      html += `<th style="width: 120px;">Frequência</th>`;
+      html += `<th style="width: 140px;">Horários aprazados</th>`;
+      html += `<th style="width: 220px;">Observações</th>`;
+      html += `</tr></thead><tbody>`;
 
-      setAprazStatus("Gerando horários.", true);
-
-      try {
-        const horizonte = parseInt(String(aprazHorizon?.value || "24"), 10);
-        const resp = await fetch(BACKEND_URL + "/api/aprazar/gerar-horarios", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            paciente: patient,
-            itens: items,
-            config,
-            unidadeKey: unitKey,
-            horizonte_horas: Number.isFinite(horizonte) ? horizonte : 24
-          })
-        });
-
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(data?.error || "Falha ao gerar horários.");
-
-        aprazSheet = data?.folha || null;
-
-        const avisos = Array.isArray(data?.avisos) ? data.avisos : [];
-        const pend = Array.isArray(data?.pendencias) ? data.pendencias : [];
-        let msg = "";
-        if (pend.length) msg += "Pendências: " + pend.join(" | ");
-        if (avisos.length) msg += (msg ? "\n" : "") + "Avisos: " + avisos.join(" | ");
-        setAprazWarnings(msg);
-
-        setAprazStatus("Horários gerados. Revise avisos e pré-visualize a folha antes de imprimir.", false);
-
-        if (previewAfter) {
-          showAprazPreview();
-        }
-      } catch (e) {
-        setAprazStatus("Falha ao gerar horários. " + (e?.message || ""), false);
-      }
-    }
-
-    function buildAprazPrintHtml(folha) {
-      const f = folha || {};
-      const cab = f.cabecalho || {};
-      const regs = Array.isArray(f.medicacoes_regulares) ? f.medicacoes_regulares : [];
-      const sos = Array.isArray(f.medicacoes_sos) ? f.medicacoes_sos : [];
-      const inf = Array.isArray(f.infusoes_continuas) ? f.infusoes_continuas : [];
-      const obs = Array.isArray(f.observacoes_gerais) ? f.observacoes_gerais : [];
-
-      let html = "<div class=\"apraz-print\">";
-      html += "<h1>APRAZAMENTO DE MEDICAÇÕES</h1>";
-      html += "<div class=\"meta\">";
-      html += "Paciente: " + escapeHtml(cab.paciente || "não informado") + "<br>";
-      html += "Data: " + escapeHtml(cab.data || "não informado") + "<br>";
-      html += "Leito/Unidade: " + escapeHtml(cab.unidade || "não informado") + "<br>";
-      html += "Peso: " + escapeHtml(cab.peso || "não informado") + "<br>";
-      html += "Gerado em: " + escapeHtml(cab.gerado_em || "não informado") + "<br>";
-      html += "Conferido por: " + escapeHtml(cab.conferido_por || "não informado") + "<br>";
-      html += "</div>";
-
-      html += "<div class=\"section-title\">Medicações com horários</div>";
-      if (!regs.length) {
-        html += "<div class=\"muted\">não informado</div>";
+      if (!meds.length) {
+        html += `<tr><td colspan="7"><div class="rx-field" contenteditable="true">não informado</div></td></tr>`;
       } else {
-        html += "<table><thead><tr><th>Medicamento</th><th>Dose/Via/Frequência</th><th>Horários</th><th>Observações</th><th>Checagem</th></tr></thead><tbody>";
-        for (const r of regs) {
-          const horarios = Array.isArray(r.horarios) ? r.horarios : [];
-          html += "<tr>";
-          html += "<td>" + escapeHtml(r.medicamento || "não informado") + "</td>";
-          html += "<td>" + escapeHtml(r.descricao_curta || "não informado") + "</td>";
-          html += "<td>" + escapeHtml(horarios.join(", ") || "não informado") + "</td>";
-          html += "<td>" + escapeHtml(r.observacoes || "") + "</td>";
-          html += "<td>____________________</td>";
-          html += "</tr>";
+        let i = 1;
+        for (const m of meds) {
+          const timesText = timesToText(m.horarios);
+          html += `<tr>`;
+          html += `<td>${i}</td>`;
+          html += `<td><div class="rx-field" contenteditable="true">${escapeHtml(m.medicamento)}</div></td>`;
+          html += `<td><div class="rx-field" contenteditable="true">${escapeHtml(m.dose)}</div></td>`;
+          html += `<td><div class="rx-field" contenteditable="true">${escapeHtml(m.via)}</div></td>`;
+          html += `<td><div class="rx-field" contenteditable="true">${escapeHtml(m.frequencia)}</div></td>`;
+          html += `<td><div class="rx-field" contenteditable="true">${escapeHtml(timesText || "não informado")}</div></td>`;
+          html += `<td><div class="rx-field" contenteditable="true">${escapeHtml(m.observacoes)}</div></td>`;
+          html += `</tr>`;
+          i += 1;
         }
-        html += "</tbody></table>";
       }
+      html += `</tbody></table>`;
 
-      html += "<div class=\"section-title\">Medicações SOS</div>";
-      if (!sos.length) {
-        html += "<div class=\"muted\">não informado</div>";
+      html += `<div class="rx-hours">`;
+      html += `<div class="rx-hours-title">Grade de horários (24 horas) para checagem/assinatura</div>`;
+      html += `<table class="rx-hours-grid" aria-label="Grade de horários para checagem">`;
+      html += `<thead><tr><th style="width: 120px; text-align: left;">Medicamento</th>`;
+      for (const c of cols) html += `<th>${escapeHtml(c.slice(0,2))}</th>`;
+      html += `</tr></thead><tbody>`;
+
+      if (!meds.length) {
+        html += `<tr><td colspan="${1 + cols.length}"><div class="rx-field" contenteditable="true">não informado</div></td></tr>`;
       } else {
-        html += "<table><thead><tr><th>Medicamento</th><th>Orientação</th><th>Registro</th></tr></thead><tbody>";
-        for (const r of sos) {
-          html += "<tr>";
-          html += "<td>" + escapeHtml(r.medicamento || "não informado") + "</td>";
-          html += "<td>" + escapeHtml(r.orientacao || "não informado") + "</td>";
-          html += "<td>Data/Hora: __________  Dose: __________  Ass.: __________</td>";
-          html += "</tr>";
+        for (const m of meds) {
+          html += `<tr>`;
+          html += `<td style="text-align: left;"><div class="rx-field" contenteditable="true">${escapeHtml(m.medicamento)}</div></td>`;
+          for (const c of cols) {
+            const due = isDue(c, m.horarios);
+            html += `<td class="${due ? "due" : ""}"><div class="rx-field" contenteditable="true"></div></td>`;
+          }
+          html += `</tr>`;
         }
-        html += "</tbody></table>";
       }
 
-      html += "<div class=\"section-title\">Infusão contínua</div>";
-      if (!inf.length) {
-        html += "<div class=\"muted\">não informado</div>";
-      } else {
-        html += "<table><thead><tr><th>Medicamento</th><th>Iniciar em</th><th>Parâmetros</th><th>Checagem por turno</th></tr></thead><tbody>";
-        for (const r of inf) {
-          html += "<tr>";
-          html += "<td>" + escapeHtml(r.medicamento || "não informado") + "</td>";
-          html += "<td>" + escapeHtml(r.iniciar_em || "não informado") + "</td>";
-          html += "<td>" + escapeHtml(r.parametros || "") + "</td>";
-          html += "<td>Manhã: ____  Tarde: ____  Noite: ____  Madrugada: ____</td>";
-          html += "</tr>";
-        }
-        html += "</tbody></table>";
-      }
+      html += `</tbody></table>`;
+      html += `</div>`;
 
-      html += "<div class=\"section-title\">Observações</div>";
-      if (!obs.length) {
-        html += "<div class=\"muted\">não informado</div>";
-      } else {
-        html += "<div class=\"meta\">";
-        for (const o of obs) html += "- " + escapeHtml(String(o || "")) + "<br>";
-        html += "</div>";
-      }
+      html += `<table class="rx-kv" style="margin-top: 10px;" aria-label="Observações e assinaturas">`;
+      html += `<tr><td class="label">Observações da folha</td><td><div class="rx-field" contenteditable="true">${escapeHtml(data.observacoes_folha)}</div></td></tr>`;
+      html += `<tr><td class="label">Limitações</td><td><div class="rx-field" contenteditable="true">${escapeHtml(data.limitacoes)}</div></td></tr>`;
+      html += `<tr><td class="label">Assinatura do enfermeiro</td><td><div class="rx-field" contenteditable="true" style="min-height: 40px;"></div></td></tr>`;
+      html += `</table>`;
 
-      html += "<div class=\"sign\">";
-      html += "<div>Data/Hora da conferência: ____/____/____  ____:____</div>";
-      html += "<div class=\"sign-line\">Assinatura/Carimbo</div>";
-      html += "</div>";
-
-      html += "</div>";
+      html += `</div>`;
       return html;
     }
 
-    function openPrintHtmlWindow(title, html) {
-      const w = window.open("", "_blank", "width=980,height=700");
+    function renderAprazamentoSheet(rawFolha, images) {
+      if (!aprazamentoSheetWrapper) return;
+
+      const html = buildAprazamentoSheetHtml(rawFolha);
+      aprazamentoSheetWrapper.innerHTML = html;
+
+      if (aprazOriginalDetails && aprazOriginalImages) {
+        const imgs = Array.isArray(images) ? images.filter(Boolean) : [];
+        if (!imgs.length) {
+          aprazOriginalImages.innerHTML = "";
+          aprazOriginalDetails.classList.add("hidden");
+        } else {
+          aprazOriginalImages.innerHTML = imgs.slice(0, 4).map((src) => `<img src="${src}" alt="Imagem original da prescrição">`).join("");
+          aprazOriginalDetails.classList.remove("hidden");
+        }
+      }
+
+      updateAprazamentoActions();
+    }
+
+    function getRxPrintCss() {
+      return `
+        body{ font-family: Arial, sans-serif; margin: 0; padding: 16px; color: #111827; }
+        .rx-sheet{ border: 1px solid #111827; padding: 12px; }
+        .rx-title{ font-size: 16px; font-weight: 700; margin: 0 0 8px 0; }
+        .rx-subtitle{ font-size: 12px; margin: 0 0 10px 0; }
+        .rx-kv{ width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        .rx-kv td{ border: 1px solid #111827; padding: 6px 6px; font-size: 12px; }
+        .rx-kv .label{ width: 140px; font-weight: 700; }
+        .rx-grid{ width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .rx-grid th, .rx-grid td{ border: 1px solid #111827; padding: 6px 6px; font-size: 12px; vertical-align: top; word-break: break-word; }
+        .rx-grid th{ background: #f3f4f6; font-weight: 700; }
+        .rx-hours-title{ font-size: 12px; font-weight: 700; margin: 10px 0 6px 0; }
+        .rx-hours-grid{ width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .rx-hours-grid th, .rx-hours-grid td{ border: 1px solid #111827; font-size: 10px; padding: 4px 2px; text-align: center; }
+        .rx-hours-grid th{ background: #f3f4f6; font-weight: 700; }
+        .rx-hours-grid td.due{ background: #e5e7eb; }
+        .rx-field{ white-space: pre-wrap; }
+      `;
+    }
+
+    function openPrintWindowHtml(title, html) {
+      const content = String(html || "").trim();
+      if (!content) {
+        alert("Não há conteúdo para imprimir.");
+        return;
+      }
+      const w = window.open("", "_blank", "width=900,height=700");
       if (!w) {
         alert("Não foi possível abrir a janela de impressão.");
         return;
       }
-      w.document.write("<html><head><title>" + escapeHtml(title || "Impressão") + "</title>");
-      w.document.write("<meta charset=\"UTF-8\" />");
-      w.document.write("<style>");
-      w.document.write("body{margin:0;padding:0;} @media print{ body{margin:0;} }");
-      w.document.write("</style>");
+      w.document.write("<html><head><title>" + escapeHtml(title) + "</title>");
+      w.document.write("<style>" + getRxPrintCss() + "</style>");
       w.document.write("</head><body>");
-      w.document.write(html || "");
+      w.document.write(content);
       w.document.write("</body></html>");
       w.document.close();
       w.focus();
       w.print();
     }
 
-    function showAprazPreview() {
-      if (!aprazPreview) return;
-      if (!aprazSheet) {
-        setAprazStatus("Gere os horários antes de pré-visualizar.", false);
+    async function analyzeAprazamentoWithImages(dataUrls) {
+      if (!aprazamentoStatus || !aprazamentoSheetWrapper) return;
+
+      const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
+      if (!images.length) {
+        aprazamentoStatus.textContent = "Nenhuma imagem selecionada.";
+        aprazamentoSheetWrapper.innerHTML = '<div class="rx-sheet-placeholder">Nenhum conteúdo disponível.</div>';
+        updateAprazamentoActions();
         return;
       }
-      const html = buildAprazPrintHtml(aprazSheet);
-      aprazPreview.innerHTML = html;
-      aprazPreview.classList.remove("hidden");
-    }
 
-    function validateBeforePdfOrSave() {
-      const checkedBy = (aprazCheckedBy?.value || "").trim();
-      if (!checkedBy) {
-        setAprazStatus("Informe o responsável pela conferência.", false);
-        return { ok: false, checkedBy: "" };
-      }
-      if (!aprazFinalConfirm?.checked) {
-        setAprazStatus("Marque a confirmação de conferência final antes de gerar a folha.", false);
-        return { ok: false, checkedBy };
-      }
-
-      const items = readItemsFromTable();
-      const pending = [];
-      for (const it of items) {
-        if (it.tipo !== "regular") continue;
-        const reqOk = !!(it.medicamento && it.dose && it.via && it.frequencia);
-        if (!reqOk) pending.push("Item com campos obrigatórios ausentes: " + (it.medicamento || "não informado"));
-        if (!it.conferido) pending.push("Item não marcado como conferido: " + (it.medicamento || "não informado"));
-      }
-
-      if (pending.length) {
-        setAprazStatus("Há pendências na conferência. Corrija antes de gerar/salvar.", false);
-        setAprazWarnings(pending.join(" | "));
-        return { ok: false, checkedBy };
-      }
-
-      return { ok: true, checkedBy };
-    }
-
-    async function saveAprazToServer() {
-      if (!aprazSheet) {
-        setAprazStatus("Gere a folha antes de salvar.", false);
-        return;
-      }
-      const v = validateBeforePdfOrSave();
-      if (!v.ok) return;
-
-      const patient = getPatientPayload();
-      const items = readItemsFromTable();
-      const { unitKey, config } = currentConfigForGeneration();
-
-      setAprazStatus("Salvando no prontuário.", true);
+      aprazamentoStatus.textContent = "Lendo a folha e aprazando os medicamentos (imagem(ns)).";
+      aprazamentoSheetWrapper.innerHTML = '<div class="rx-sheet-placeholder">Processando.</div>';
+      updateAprazamentoActions();
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/aprazar/salvar", {
+        const payload = {
+          images_data_url: images,
+          image_data_url: images[0]
+        };
+
+        const resp = await fetch(BACKEND_URL + "/api/aprazar-prescricao-imagem", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            paciente: patient,
-            itens: items,
-            config,
-            unidadeKey: unitKey,
-            folha: aprazSheet,
-            conferido_por: (aprazCheckedBy?.value || "").trim()
-          })
+          body: JSON.stringify(payload)
         });
 
         const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(data?.error || "Falha ao salvar.");
+        if (!resp.ok) throw new Error(data?.error || "Falha ao aprazar a prescrição.");
 
-        setAprazStatus("Salvo no prontuário. ID: " + (data?.id || "não informado"), false);
+        const folha = data?.folha || data?.prescricao || data;
+        renderAprazamentoSheet(folha, images);
+        aprazamentoStatus.textContent = "Folha aprazada gerada. Revise e edite antes de imprimir.";
+        updateAprazamentoActions();
       } catch (e) {
-        setAprazStatus("Falha ao salvar. " + (e?.message || ""), false);
+        aprazamentoStatus.textContent = "Falha ao aprazar a prescrição. " + (e && e.message ? e.message : "");
+        aprazamentoSheetWrapper.innerHTML = '<div class="rx-sheet-placeholder">Nenhum conteúdo disponível.</div>';
+        updateAprazamentoActions();
       }
     }
-
-    function initAprazDefaults() {
-      if (aprazDate && !aprazDate.value) aprazDate.value = todayIsoDate();
-
-      const unitKey = (aprazUnit?.value || "").trim() || "default";
-      const local = loadAprazConfigLocal(unitKey);
-      fillAprazConfigInputs(unitKey, local || DEFAULT_APRAZ_CONFIG);
-      if (aprazConfigStatus) aprazConfigStatus.textContent = "";
-    }
-
-    if (aprazPasteToggleBtn && aprazPasteBox) {
-      aprazPasteToggleBtn.addEventListener("click", () => {
-        aprazPasteBox.classList.toggle("hidden");
-      });
-    }
-
-    if (aprazParseTextBtn) {
-      aprazParseTextBtn.addEventListener("click", async () => {
-        await handleAprazTextInput();
-      });
-    }
-
-    if (aprazCameraInput) {
-      aprazCameraInput.addEventListener("change", async (e) => {
-        const files = e?.target?.files || [];
-        await handleAprazImageInput(files);
-        try { aprazCameraInput.value = ""; } catch {}
-      });
-    }
-
-    if (aprazFileInput) {
-      aprazFileInput.addEventListener("change", async (e) => {
-        const files = e?.target?.files || [];
-        await handleAprazImageInput(files);
-        try { aprazFileInput.value = ""; } catch {}
-      });
-    }
-
-    if (aprazApplyBulkBtn) {
-      aprazApplyBulkBtn.addEventListener("click", () => {
-        applyBulkToSelected();
-      });
-    }
-
-    if (aprazRecalcBtn) {
-      aprazRecalcBtn.addEventListener("click", async () => {
-        await generateAprazSheet(false);
-      });
-    }
-
-    if (aprazPreviewBtn) {
-      aprazPreviewBtn.addEventListener("click", async () => {
-        if (!aprazSheet) await generateAprazSheet(true);
-        else showAprazPreview();
-      });
-    }
-
-    if (aprazPdfBtn) {
-      aprazPdfBtn.addEventListener("click", async () => {
-        if (!aprazSheet) await generateAprazSheet(true);
-        const v = validateBeforePdfOrSave();
-        if (!v.ok) return;
-
-        if (!aprazSheet) return;
-
-        // Injeta "conferido por" no cabeçalho para impressão
-        try {
-          if (aprazSheet.cabecalho) aprazSheet.cabecalho.conferido_por = (aprazCheckedBy?.value || "").trim();
-        } catch {}
-
-        const html = buildAprazPrintHtml(aprazSheet);
-        openPrintHtmlWindow("Aprazamento de medicações", html);
-      });
-    }
-
-    if (aprazSaveBtn) {
-      aprazSaveBtn.addEventListener("click", async () => {
-        if (!aprazSheet) await generateAprazSheet(false);
-        await saveAprazToServer();
-      });
-    }
-
-    if (aprazConfigBtn) {
-      aprazConfigBtn.addEventListener("click", () => {
-        initAprazDefaults();
-        showPanel(aprazConfigPanel);
-      });
-    }
-
-    if (aprazGuideBtn) {
-      aprazGuideBtn.addEventListener("click", () => {
-        showPanel(aprazGuidePanel);
-      });
-    }
-
-    if (closeAprazConfigBtn) closeAprazConfigBtn.addEventListener("click", () => hidePanel(aprazConfigPanel));
-    if (closeAprazGuideBtn) closeAprazGuideBtn.addEventListener("click", () => hidePanel(aprazGuidePanel));
-
-    if (aprazLoadConfigBtn) {
-      aprazLoadConfigBtn.addEventListener("click", async () => {
-        if (!aprazConfigStatus) return;
-
-        const unitKey = (aprazConfigUnitKey?.value || "").trim() || (aprazUnit?.value || "").trim() || "default";
-        aprazConfigStatus.textContent = "Carregando configuração.";
-        aprazConfigStatus.classList.add("loading-dot");
-
-        try {
-          // 1) tenta servidor
-          let cfg = null;
-          try {
-            cfg = await fetchAprazConfigFromServer(unitKey);
-          } catch {
-            cfg = null;
-          }
-          // 2) fallback local
-          if (!cfg) cfg = loadAprazConfigLocal(unitKey) || DEFAULT_APRAZ_CONFIG;
-
-          fillAprazConfigInputs(unitKey, cfg);
-          aprazConfigStatus.textContent = "Configuração carregada.";
-        } catch (e) {
-          aprazConfigStatus.textContent = "Falha ao carregar. " + (e?.message || "");
-        } finally {
-          aprazConfigStatus.classList.remove("loading-dot");
-        }
-      });
-    }
-
-    if (aprazSaveConfigBtn) {
-      aprazSaveConfigBtn.addEventListener("click", async () => {
-        if (!aprazConfigStatus) return;
-
-        const { unitKey, config } = readAprazConfigFromInputs();
-        if (!unitKey) {
-          aprazConfigStatus.textContent = "Informe a chave da unidade.";
-          return;
-        }
-
-        aprazConfigStatus.textContent = "Salvando configuração.";
-        aprazConfigStatus.classList.add("loading-dot");
-
-        try {
-          saveAprazConfigLocal(unitKey, config);
-          try { await saveAprazConfigToServer(unitKey, config); } catch {}
-          aprazConfigStatus.textContent = "Configuração salva.";
-        } catch (e) {
-          aprazConfigStatus.textContent = "Falha ao salvar. " + (e?.message || "");
-        } finally {
-          aprazConfigStatus.classList.remove("loading-dot");
-        }
-      });
-    }
-
-    // Inicializa valores padrão quando a visão do enfermeiro carrega
-    try { initAprazDefaults(); } catch {}
 
     function getSoapSectionText(letter) {
       switch (letter) {
@@ -9071,6 +8351,18 @@ if (closeMedSafetyGuideBtn) {
   });
 }
 
+if (aprazamentoGuideBtn) {
+  aprazamentoGuideBtn.addEventListener("click", () => {
+    setPanelVisible(aprazamentoGuidePanel, true);
+  });
+}
+if (closeAprazamentoGuideBtn) {
+  closeAprazamentoGuideBtn.addEventListener("click", () => {
+    setPanelVisible(aprazamentoGuidePanel, false);
+  });
+}
+
+
 if (woundGuideBtn) {
   woundGuideBtn.addEventListener("click", () => {
     setPanelVisible(woundGuidePanel, true);
@@ -9273,6 +8565,27 @@ recordBtn.onclick = () => {
       }
       copyToClipboard(text);
     });
+
+    if (copyAprazamentoBtn) {
+      copyAprazamentoBtn.addEventListener("click", () => {
+        const el = aprazamentoSheetWrapper ? aprazamentoSheetWrapper.querySelector(".rx-sheet") : null;
+        const text = el ? (el.innerText || "").trim() : "";
+        if (!text) {
+          alert("Não há folha aprazada para copiar.");
+          return;
+        }
+        copyToClipboard(text);
+      });
+    }
+
+    if (printAprazamentoBtn) {
+      printAprazamentoBtn.addEventListener("click", () => {
+        const el = aprazamentoSheetWrapper ? aprazamentoSheetWrapper.querySelector(".rx-sheet") : null;
+        const html = el ? el.outerHTML : "";
+        openPrintWindowHtml("Folha de prescrição aprazada", html);
+      });
+    }
+
     if (sbarRecordBtn) {
       sbarRecordBtn.addEventListener("click", async (e) => {
         e.preventDefault();
@@ -9418,6 +8731,9 @@ if (runImageAnalysisBtn) {
     updateMedSafetyActions();
     updateWoundActions();
     updateReportActions();
+    updateExamActions();
+    updateTranscriptionActions();
+    updateAprazamentoActions();
 
     if (cancelImageChoiceBtn) {
       cancelImageChoiceBtn.addEventListener("click", () => {
@@ -9458,6 +8774,7 @@ function getImageUiByKey(key) {
       if (k === "wound") return { statusEl: presentationsMaxDoseStatus, boxEl: presentationsMaxDoseBox };
       if (k === "exam") return { statusEl: examInterpretationStatus, boxEl: examInterpretationBox };
       if (k === "transcription") return { statusEl: transcriptionStatus, boxEl: transcriptionBox };
+      if (k === "apraz") return { statusEl: aprazamentoStatus, boxEl: aprazamentoSheetWrapper };
       return { statusEl: interactionsStatus, boxEl: interactionsBox };
     }
 
@@ -9501,6 +8818,8 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
     if (examFileInput) bindImageInput(examFileInput, "exam", "replace");
     if (transcriptionCameraInput) bindImageInput(transcriptionCameraInput, "transcription", "append");
     if (transcriptionFileInput) bindImageInput(transcriptionFileInput, "transcription", "replace");
+    if (aprazamentoCameraInput) bindImageInput(aprazamentoCameraInput, "apraz", "append");
+    if (aprazamentoFileInput) bindImageInput(aprazamentoFileInput, "apraz", "replace");
 
     // =========================
     // ADMIN (cadastro, mensalidade, histórico e auditoria)
