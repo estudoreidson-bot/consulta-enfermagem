@@ -3479,14 +3479,13 @@ Ata de reunião:
       transcriptionAnalyzeTimer = setTimeout(() => {
         if (transcriptionImages && transcriptionImages.length) analyzeTranscriptionWithImages(transcriptionImages.slice());
       }, 180);
+    }
 
     function scheduleAprazAnalysis() {
       if (aprazAnalyzeTimer) clearTimeout(aprazAnalyzeTimer);
       aprazAnalyzeTimer = setTimeout(() => {
         if (aprazImages && aprazImages.length) analyzeAprazamentoWithImages(aprazImages.slice());
       }, 180);
-    }
-
     }
 
 // =========================
