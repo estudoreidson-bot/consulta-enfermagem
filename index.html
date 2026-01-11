@@ -1763,8 +1763,12 @@
   font-weight: 700;
 }
 .rx-hours-grid td.due{
-  background: #e5e7eb;
+  background: #d32f2f;
+  color: #ffffff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
+.rx-hours-grid td.due .rx-field{ color: #ffffff; }
 .rx-details{
   margin-top: 10px;
 }
@@ -2397,19 +2401,24 @@
       </div>
 
       <p class="mini-status" style="margin-top: 0;">
-        Tire uma foto ou selecione um arquivo da folha de prescrição. O sistema irá transcrever somente o que estiver legível, reconstruir a folha com os campos (hospital, leito, médico, enfermagem e demais informações visíveis) e organizar os medicamentos já aprazados. O resultado é editável e pode ser impresso para substituir a folha original, quando necessário.
+              Tire uma foto ou selecione um arquivo da folha de prescrição. O sistema irá transcrever somente o que estiver legível e gerar apenas a grade de horários de 24 horas, já preenchida conforme a frequência/horários descritos na prescrição. O resultado é editável e pode ser impresso para uso no prontuário.
+      
       </p>
 
       <div class="prescription-actions">
         <label for="aprazamentoCameraInput" class="photo-btn">Tirar foto</label>
         <label for="aprazamentoFileInput" class="photo-btn">Escolher arquivo</label>
-        <button id="copyAprazamentoBtn" class="btn-copy hidden">Copiar folha aprazada</button>
-        <button id="printAprazamentoBtn" class="btn-print hidden">Imprimir folha aprazada</button>
       </div>
 
       <div id="aprazamentoStatus" class="mini-status"></div>
+ class="mini-status"></div>
       <div id="aprazamentoSheetWrapper" class="rx-sheet-wrapper">
         <div class="rx-sheet-placeholder">Nenhum conteúdo disponível.</div>
+      </div>
+
+
+      <div class="prescription-actions" style="justify-content: flex-start; gap: 10px; margin-top: 10px;">
+        <button id="printAprazGridBtn" class="btn-print hidden" type="button">Imprimir grade de horários</button>
       </div>
 
       <details id="aprazOriginalDetails" class="rx-details hidden">
@@ -3983,6 +3992,7 @@ const recordBtn = document.getElementById("recordBtn");
     const aprazamentoSheetWrapper = document.getElementById("aprazamentoSheetWrapper");
     const copyAprazamentoBtn = document.getElementById("copyAprazamentoBtn");
     const printAprazamentoBtn = document.getElementById("printAprazamentoBtn");
+    const printAprazGridBtn = document.getElementById("printAprazGridBtn");
     const aprazamentoCameraInput = document.getElementById("aprazamentoCameraInput");
     const aprazamentoFileInput = document.getElementById("aprazamentoFileInput");
     const aprazOriginalDetails = document.getElementById("aprazOriginalDetails");
@@ -4193,9 +4203,8 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
     }
 
     function updateAprazamentoActions() {
-      const has = !!(aprazamentoSheetWrapper && aprazamentoSheetWrapper.querySelector && aprazamentoSheetWrapper.querySelector(".rx-sheet"));
-      setVisible(copyAprazamentoBtn, has);
-      setVisible(printAprazamentoBtn, has);
+      const hasGrid = !!(aprazamentoSheetWrapper && aprazamentoSheetWrapper.querySelector && aprazamentoSheetWrapper.querySelector("#aprazHoursGrid"));
+      setVisible(printAprazGridBtn, hasGrid);
     }
 
 
@@ -6933,6 +6942,12 @@ async function addFilesToTarget(files, targetKey, mode) {
       const t = asStr(freqText).toLowerCase();
       if (!t) return null;
 
+      const m0 = t.match(/\b(\d{1,2})\s*\/\s*h\b/);
+      if (m0) {
+        const n = parseInt(m0[1], 10);
+        if (Number.isFinite(n) && n > 0 && n <= 24) return n;
+      }
+
       const mA = t.match(/(\d{1,2})\s*\/\s*(\d{1,2})\s*h/);
       if (mA) {
         const n = parseInt(mA[2], 10);
@@ -7001,8 +7016,8 @@ async function addFilesToTarget(files, targetKey, mode) {
       if (intervalHours === 24) return ["06:00"];
       if (intervalHours === 12) return ["06:00", "18:00"];
       if (intervalHours === 8) return ["06:00", "14:00", "22:00"];
-      if (intervalHours === 6) return ["06:00", "12:00", "18:00", "00:00"];
-      if (intervalHours === 4) return ["06:00", "10:00", "14:00", "18:00", "22:00", "02:00"];
+      if (intervalHours === 6) return ["00:00", "06:00", "12:00", "18:00"];
+      if (intervalHours === 4) return ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00"];
       if (intervalHours === 3) return ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
       if (intervalHours === 2) return ["00:00", "02:00", "04:00", "06:00", "08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"];
       if (intervalHours === 1) {
@@ -7089,69 +7104,17 @@ async function addFilesToTarget(files, targetKey, mode) {
 
     function buildAprazamentoSheetHtml(rawFolha) {
       const data = normalizeFolhaData(rawFolha);
-      const cab = data.cabecalho || {};
       const meds = Array.isArray(data.medicamentos) ? data.medicamentos : [];
       const cols = buildHourColumns2h();
 
-      const kvRows = [
-        ["Hospital/Unidade", safeField(cab.hospital || cab.unidade || cab.estabelecimento)],
-        ["Setor/Clínica", safeField(cab.setor || cab.clinica || cab.ala)],
-        ["Leito", safeField(cab.leito)],
-        ["Paciente", safeField(cab.paciente || cab.paciente_nome || cab.nome_paciente)],
-        ["Prontuário", safeField(cab.prontuario || cab.registro)],
-        ["Data", safeField(cab.data || cab.data_prescricao)],
-        ["Médico", safeField(cab.medico || cab.medico_nome)],
-        ["CRM", safeField(cab.crm || cab.medico_crm)],
-        ["Enfermeiro", safeField(cab.enfermeiro || cab.enfermeiro_nome)],
-        ["COREN", safeField(cab.coren || cab.enfermeiro_coren)]
-      ];
-
       let html = "";
-      html += `<div class="rx-sheet">`;
-      html += `<div class="rx-title">Folha de prescrição aprazada</div>`;
-      html += `<div class="rx-subtitle">Transcrição somente do que estiver legível. Ajuste os campos e horários conforme a prescrição oficial e a rotina do serviço.</div>`;
+      html += `<div class="rx-sheet" id="aprazGridSheet">`;
+      html += `<div class="rx-title">Grade de horários (24 horas) para checagem/assinatura</div>`;
+      html += `<div class="rx-subtitle">Transcrição somente do que estiver legível. Ajuste os nomes e preencha os quadrinhos conforme a prescrição oficial e a rotina do serviço.</div>`;
 
-      html += `<table class="rx-kv" aria-label="Identificação da prescrição">`;
-      for (const [label, value] of kvRows) {
-        html += `<tr><td class="label">${escapeHtml(label)}</td><td><div class="rx-field" contenteditable="true">${escapeHtml(value)}</div></td></tr>`;
-      }
-      html += `</table>`;
-
-      html += `<table class="rx-grid" aria-label="Medicamentos e horários aprazados">`;
-      html += `<thead><tr>`;
-      html += `<th style="width: 36px;">Item</th>`;
-      html += `<th>Medicamento</th>`;
-      html += `<th style="width: 100px;">Dose</th>`;
-      html += `<th style="width: 70px;">Via</th>`;
-      html += `<th style="width: 120px;">Frequência</th>`;
-      html += `<th style="width: 140px;">Horários aprazados</th>`;
-      html += `<th style="width: 220px;">Observações</th>`;
-      html += `</tr></thead><tbody>`;
-
-      if (!meds.length) {
-        html += `<tr><td colspan="7"><div class="rx-field" contenteditable="true">não informado</div></td></tr>`;
-      } else {
-        let i = 1;
-        for (const m of meds) {
-          const timesText = timesToText(m.horarios);
-          html += `<tr>`;
-          html += `<td>${i}</td>`;
-          html += `<td><div class="rx-field" contenteditable="true">${escapeHtml(m.medicamento)}</div></td>`;
-          html += `<td><div class="rx-field" contenteditable="true">${escapeHtml(m.dose)}</div></td>`;
-          html += `<td><div class="rx-field" contenteditable="true">${escapeHtml(m.via)}</div></td>`;
-          html += `<td><div class="rx-field" contenteditable="true">${escapeHtml(m.frequencia)}</div></td>`;
-          html += `<td><div class="rx-field" contenteditable="true">${escapeHtml(timesText || "não informado")}</div></td>`;
-          html += `<td><div class="rx-field" contenteditable="true">${escapeHtml(m.observacoes)}</div></td>`;
-          html += `</tr>`;
-          i += 1;
-        }
-      }
-      html += `</tbody></table>`;
-
-      html += `<div class="rx-hours">`;
-      html += `<div class="rx-hours-title">Grade de horários (24 horas) para checagem/assinatura</div>`;
-      html += `<table class="rx-hours-grid" aria-label="Grade de horários para checagem">`;
-      html += `<thead><tr><th style="width: 120px; text-align: left;">Medicamento</th>`;
+      html += `<div class="rx-hours" id="aprazGridContainer">`;
+      html += `<table class="rx-hours-grid" id="aprazHoursGrid" aria-label="Grade de horários para checagem">`;
+      html += `<thead><tr><th style="width: 180px; text-align: left;">Medicamento</th>`;
       for (const c of cols) html += `<th>${escapeHtml(c.slice(0,2))}</th>`;
       html += `</tr></thead><tbody>`;
 
@@ -7163,7 +7126,7 @@ async function addFilesToTarget(files, targetKey, mode) {
           html += `<td style="text-align: left;"><div class="rx-field" contenteditable="true">${escapeHtml(m.medicamento)}</div></td>`;
           for (const c of cols) {
             const due = isDue(c, m.horarios);
-            html += `<td class="${due ? "due" : ""}"><div class="rx-field" contenteditable="true"></div></td>`;
+            html += `<td class="${due ? "due" : ""}" data-hour="${escapeHtml(c)}"><div class="rx-field" contenteditable="true"></div></td>`;
           }
           html += `</tr>`;
         }
@@ -7172,9 +7135,7 @@ async function addFilesToTarget(files, targetKey, mode) {
       html += `</tbody></table>`;
       html += `</div>`;
 
-      html += `<table class="rx-kv" style="margin-top: 10px;" aria-label="Observações e assinaturas">`;
-      html += `<tr><td class="label">Observações da folha</td><td><div class="rx-field" contenteditable="true">${escapeHtml(data.observacoes_folha)}</div></td></tr>`;
-      html += `<tr><td class="label">Limitações</td><td><div class="rx-field" contenteditable="true">${escapeHtml(data.limitacoes)}</div></td></tr>`;
+      html += `<table class="rx-kv" style="margin-top: 10px;" aria-label="Assinatura">`;
       html += `<tr><td class="label">Assinatura do enfermeiro</td><td><div class="rx-field" contenteditable="true" style="min-height: 40px;"></div></td></tr>`;
       html += `</table>`;
 
@@ -7218,7 +7179,7 @@ async function addFilesToTarget(files, targetKey, mode) {
         .rx-hours-grid{ width: 100%; border-collapse: collapse; table-layout: fixed; }
         .rx-hours-grid th, .rx-hours-grid td{ border: 1px solid #111827; font-size: 10px; padding: 4px 2px; text-align: center; }
         .rx-hours-grid th{ background: #f3f4f6; font-weight: 700; }
-        .rx-hours-grid td.due{ background: #e5e7eb; }
+        .rx-hours-grid td.due{ background: #d32f2f; color: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .rx-field{ white-space: pre-wrap; }
       `;
     }
@@ -7255,7 +7216,7 @@ async function addFilesToTarget(files, targetKey, mode) {
         return;
       }
 
-      aprazamentoStatus.textContent = "Lendo a folha e aprazando os medicamentos (imagem(ns)).";
+      aprazamentoStatus.textContent = "Lendo a prescrição e montando a grade de horários (imagem(ns)).";
       aprazamentoSheetWrapper.innerHTML = '<div class="rx-sheet-placeholder">Processando.</div>';
       updateAprazamentoActions();
 
@@ -7276,7 +7237,7 @@ async function addFilesToTarget(files, targetKey, mode) {
 
         const folha = data?.folha || data?.prescricao || data;
         renderAprazamentoSheet(folha, images);
-        aprazamentoStatus.textContent = "Folha aprazada gerada. Revise e edite antes de imprimir.";
+        aprazamentoStatus.textContent = "Grade de horários gerada. Revise e edite antes de imprimir.";
         updateAprazamentoActions();
       } catch (e) {
         aprazamentoStatus.textContent = "Falha ao aprazar a prescrição. " + (e && e.message ? e.message : "");
@@ -8564,26 +8525,14 @@ recordBtn.onclick = () => {
       }
       copyToClipboard(text);
     });
-
-    if (copyAprazamentoBtn) {
-      copyAprazamentoBtn.addEventListener("click", () => {
-        const el = aprazamentoSheetWrapper ? aprazamentoSheetWrapper.querySelector(".rx-sheet") : null;
-        const text = el ? (el.innerText || "").trim() : "";
-        if (!text) {
-          alert("Não há folha aprazada para copiar.");
-          return;
-        }
-        copyToClipboard(text);
-      });
-    }
-
-    if (printAprazamentoBtn) {
-      printAprazamentoBtn.addEventListener("click", () => {
-        const el = aprazamentoSheetWrapper ? aprazamentoSheetWrapper.querySelector(".rx-sheet") : null;
+    if (printAprazGridBtn) {
+      printAprazGridBtn.addEventListener("click", () => {
+        const el = aprazamentoSheetWrapper ? aprazamentoSheetWrapper.querySelector("#aprazGridSheet") : null;
         const html = el ? el.outerHTML : "";
-        openPrintWindowHtml("Folha de prescrição aprazada", html);
+        openPrintWindowHtml("Grade de horários (24 horas)", html);
       });
     }
+
 
     if (sbarRecordBtn) {
       sbarRecordBtn.addEventListener("click", async (e) => {
