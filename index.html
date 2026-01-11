@@ -2514,7 +2514,14 @@
       </div>
 
 
-      <div class="roster-shell" id="rosterShell">
+      
+      <div class="roster-shell" id="rosterToggleShell">
+        <div class="roster-actions" style="margin-top:0;">
+          <button id="rosterToggleBtn" type="button">Gerar escala de plantão</button>
+        </div>
+      </div>
+
+<div class="roster-shell" id="rosterShell" style="display:none;">
         <div class="roster-step-title">Passo 1: Configuração do mês</div>
 
         <div class="roster-grid">
@@ -10945,7 +10952,33 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
     // ============================================================
         // MÓDULO: Escala de plantão (geração local + persistência no backend)
-    // ============================================================
+    // =========================================
+
+    // Ocultar/mostrar o módulo "Escala de plantão" para economizar espaço na página
+    const rosterToggleBtn = document.getElementById("rosterToggleBtn");
+    const rosterPanelEl = document.getElementById("rosterShell");
+    function setRosterOpen(open, doScroll) {
+      if (!rosterToggleBtn || !rosterPanelEl) return;
+      rosterPanelEl.style.display = open ? "block" : "none";
+      rosterToggleBtn.textContent = open ? "Ocultar escala de plantão" : "Gerar escala de plantão";
+      try { localStorage.setItem("roster_open", open ? "1" : "0"); } catch (e) {}
+      if (open && doScroll) {
+        setTimeout(() => {
+          try { rosterPanelEl.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {}
+        }, 80);
+      }
+    }
+    if (rosterToggleBtn && rosterPanelEl) {
+      let open = false;
+      try { open = localStorage.getItem("roster_open") === "1"; } catch (e) { open = false; }
+      setRosterOpen(open, false);
+      rosterToggleBtn.addEventListener("click", () => {
+        const currentlyOpen = rosterPanelEl.style.display !== "none";
+        setRosterOpen(!currentlyOpen, true);
+      });
+    }
+
+===================
 
     const rosterMonthEl = document.getElementById("rosterMonth");
     const rosterShiftModelEl = document.getElementById("rosterShiftModel");
