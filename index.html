@@ -3516,8 +3516,28 @@ Ata de reunião:
     // AUTENTICAÇÃO (sem escolha de perfil)
     // =========================
     const TOKEN_KEY = "ae_token_v1";
+    const DEVICE_KEY = "ae_device_id_v1";
 
-    // Diagnóstico visível: se algum erro de JS impedir o login, ele aparece aqui
+    function getDeviceId() {
+      try {
+        let id = localStorage.getItem(DEVICE_KEY) || "";
+        id = String(id || "").trim();
+        if (!id || id.length < 8) {
+          // id simples para amarrar a sessão a um navegador/dispositivo
+          const bytes = (window.crypto && window.crypto.getRandomValues)
+            ? window.crypto.getRandomValues(new Uint8Array(16))
+            : Array.from({ length: 16 }, () => Math.floor(Math.random() * 256));
+          const rnd = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+          id = "dev-" + rnd;
+          localStorage.setItem(DEVICE_KEY, id);
+        }
+        return id;
+      } catch {
+        return "";
+      }
+    }
+
+// Diagnóstico visível: se algum erro de JS impedir o login, ele aparece aqui
     function showFatalError(msg) {
       const el = document.getElementById("loginError");
       if (el && msg) el.textContent = String(msg);
@@ -3657,11 +3677,32 @@ Ata de reunião:
         const headers = Object.assign({}, (init && init.headers) ? init.headers : {});
         const token = getToken();
         if (token) headers["Authorization"] = "Bearer " + token;
+         const deviceId = getDeviceId();
+         if (deviceId) headers["X-Device-Id"] = deviceId;
         const resp = await nativeFetch(input, Object.assign({}, init || {}, { headers }));
 
         if (resp && resp.status === 401) {
+          let code = "";
+          let msg = "";
+          try {
+            const data = await resp.clone().json();
+            code = (data && data.code) ? String(data.code) : "";
+            msg = (data && data.error) ? String(data.error) : "";
+          } catch {}
+
           setToken("");
           showLogin();
+
+          if (code === "SESSION_REPLACED") {
+            const el = document.getElementById("loginError");
+            const text = msg || "Sessão encerrada porque esta conta foi acessada em outro dispositivo.";
+            if (el) el.textContent = text;
+            else alert(text);
+          } else if (code === "SESSION_EXPIRED") {
+            const el = document.getElementById("loginError");
+            const text = msg || "Sessão expirada. Faça login novamente.";
+            if (el) el.textContent = text;
+          }
         }
         return resp;
       } catch (e) {
@@ -3689,7 +3730,7 @@ Ata de reunião:
       try {
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/login", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
           body: JSON.stringify({ login, senha })
         });
         const data = await resp.json().catch(() => ({}));
@@ -3765,12 +3806,15 @@ Ata de reunião:
       }
     }
 
-    function logoutAll() {
+    async function logoutAll() {
+      try {
+        await fetch(BACKEND_URL + "/api/auth/logout", { method: "POST" });
+      } catch {}
       setToken("");
       showLogin();
     }
 
-    // Heartbeat para status online
+// Heartbeat para status online
     let heartbeatTimer = null;
     function startHeartbeat() {
       if (heartbeatTimer) clearInterval(heartbeatTimer);

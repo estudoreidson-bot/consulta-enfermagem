@@ -770,6 +770,7 @@ let DB = loadDb();
 // Sessões em memória
 const SESSIONS = new Map(); // token -> { role, userId, createdAt, lastSeenAt }
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12; // 12h
+const SESSION_IDLE_TTL_MS = 1000 * 60 * 30; // 30 min sem heartbeat
 
 // Credenciais fixas do administrador (como solicitado), com possibilidade de override por variáveis
 const ADMIN_LOGIN = "027-315-125-80";
@@ -793,30 +794,99 @@ function audit(action, target, details) {
   } catch {}
 }
 
-function createSession(role, userId) {
+function createSession(role, userId, deviceId = "") {
   const token = crypto.randomBytes(32).toString("hex");
   const now = Date.now();
-  SESSIONS.set(token, { role, userId, createdAt: now, lastSeenAt: now });
+  SESSIONS.set(token, { role, userId, deviceId: String(deviceId || ""), createdAt: now, lastSeenAt: now });
   return token;
 }
 
+function invalidateUserSessions(userId) {
+  try {
+    for (const [t, s] of SESSIONS.entries()) {
+      if (!s) continue;
+      if (s.role === "nurse" && s.userId === userId) SESSIONS.delete(t);
+    }
+  } catch {}
+}
+
+function tokenHash(token) {
+  return sha256Hex(String(token || ""));
+}
+
+function isUserActiveSessionValid(user) {
+  try {
+    if (!user) return false;
+    const h = String(user.activeSessionHash || "");
+    const dev = String(user.activeDeviceId || "");
+    if (!h || !dev) return false;
+
+    const expMs = Date.parse(user.activeSessionExpiresAt || "") || 0;
+    const lastMs = Date.parse(user.activeSessionLastSeenAt || "") || 0;
+    if (!expMs || !lastMs) return false;
+
+    const now = Date.now();
+    if (now > expMs) return false;
+    if ((now - lastMs) > SESSION_IDLE_TTL_MS) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearUserActiveSession(user, reason = "expired") {
+  if (!user) return;
+  user.activeSessionHash = "";
+  user.activeDeviceId = "";
+  user.activeSessionCreatedAt = "";
+  user.activeSessionLastSeenAt = "";
+  user.activeSessionExpiresAt = "";
+}
+
+function setUserActiveSession(user, token, deviceId) {
+  if (!user) return;
+  const nowIsoStr = nowIso();
+  user.activeSessionHash = tokenHash(token);
+  user.activeDeviceId = String(deviceId || "");
+  user.activeSessionCreatedAt = nowIsoStr;
+  user.activeSessionLastSeenAt = nowIsoStr;
+  user.activeSessionExpiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+}
 function getSession(token) {
   if (!token) return null;
   const s = SESSIONS.get(token);
   if (!s) return null;
   const now = Date.now();
-  if (now - s.createdAt > SESSION_TTL_MS) {
+  const createdAt = Number(s.createdAt || 0);
+  const lastSeenAt = Number(s.lastSeenAt || 0);
+
+  if ((createdAt && (now - createdAt > SESSION_TTL_MS)) || (lastSeenAt && (now - lastSeenAt > SESSION_IDLE_TTL_MS))) {
     SESSIONS.delete(token);
     return null;
   }
   return s;
 }
-
 function cleanupSessions() {
   const now = Date.now();
+
+  // Limpa sessões em memória (TTL absoluto e inatividade)
   for (const [token, s] of SESSIONS.entries()) {
-    if (now - s.createdAt > SESSION_TTL_MS) SESSIONS.delete(token);
+    const createdAt = Number(s?.createdAt || 0);
+    const lastSeenAt = Number(s?.lastSeenAt || 0);
+    const expired = (createdAt && (now - createdAt > SESSION_TTL_MS)) || (lastSeenAt && (now - lastSeenAt > SESSION_IDLE_TTL_MS));
+    if (expired) SESSIONS.delete(token);
   }
+
+  // Limpa sessões persistidas (para liberar login em outro dispositivo quando o usuário fecha o navegador)
+  let dirty = false;
+  for (const u of (Array.isArray(DB?.users) ? DB.users : [])) {
+    if (!u || u.isDeleted) continue;
+    if (u.activeSessionHash && !isUserActiveSessionValid(u)) {
+      clearUserActiveSession(u, "auto_expire");
+      dirty = true;
+    }
+  }
+  if (dirty) saveDb(DB, "session_cleanup");
 }
 setInterval(cleanupSessions, 1000 * 60 * 10).unref?.();
 
@@ -841,6 +911,19 @@ function isUserOnline(user) {
   return (Date.now() - last) <= 1000 * 60 * 2; // 2 minutos
 }
 
+function getDeviceIdFromReq(req) {
+  try {
+    const raw = req && req.headers ? (req.headers["x-device-id"] || req.headers["X-Device-Id"] || req.headers["x-device-id".toLowerCase()] || "") : "";
+    const id = String(raw || "").trim();
+    if (!id) return "";
+    if (id.length < 8 || id.length > 120) return "";
+    if (!/^[A-Za-z0-9._:-]+$/.test(id)) return "";
+    return id;
+  } catch {
+    return "";
+  }
+}
+
 function authFromReq(req) {
   const h = req.headers["authorization"] || "";
   const m = String(h).match(/^Bearer\s+(.+)$/i);
@@ -849,21 +932,78 @@ function authFromReq(req) {
     const xt = req.headers["x-auth-token"] || req.headers["X-Auth-Token"] || "";
     token = String(xt || "").trim();
   }
-  const sess = getSession(token);
+
+  const deviceId = getDeviceIdFromReq(req);
+
+  let sess = getSession(token);
+
+  // Fallback: sessão persistida no usuário (sobrevive a restart e permite bloqueio de 1 dispositivo por conta)
+  if (!sess && token) {
+    const h = tokenHash(token);
+    const user = (Array.isArray(DB?.users) ? DB.users : []).find(u => u && !u.isDeleted && String(u.activeSessionHash || "") === h && isUserActiveSessionValid(u)) || null;
+    if (user) {
+      const createdAtMs = Date.parse(user.activeSessionCreatedAt || "") || Date.now();
+      const lastSeenAtMs = Date.parse(user.activeSessionLastSeenAt || "") || Date.now();
+      sess = { role: "nurse", userId: user.id, deviceId: String(user.activeDeviceId || ""), createdAt: createdAtMs, lastSeenAt: lastSeenAtMs };
+      SESSIONS.set(token, sess);
+    }
+  }
+
   if (!sess) return null;
 
   if (sess.role === "admin") {
     return { role: "admin", token, user: { id: "admin", login: ADMIN_LOGIN } };
   }
 
+  // Nurse: exige deviceId e valida contra sessão ativa persistida
+  if (!deviceId) return { invalidReason: "DEVICE_INVALID" };
+
   const user = DB.users.find(u => u.id === sess.userId) || null;
   if (!user || user.isDeleted) return null;
+
+  const expectedHash = String(user.activeSessionHash || "");
+  const expectedDev = String(user.activeDeviceId || "");
+
+  if (!expectedHash || !expectedDev) return null;
+
+  if (expectedHash !== tokenHash(token) || expectedDev !== deviceId) {
+    try { SESSIONS.delete(token); } catch {}
+    return { invalidReason: "SESSION_REPLACED" };
+  }
+
+  if (!isUserActiveSessionValid(user)) {
+    try { SESSIONS.delete(token); } catch {}
+    try {
+      clearUserActiveSession(user, "expired");
+      saveDb(DB, "session_expired");
+    } catch {}
+    return { invalidReason: "SESSION_EXPIRED" };
+  }
+
+  try { sess.lastSeenAt = Date.now(); } catch {}
+
   return { role: "nurse", token, user };
+}
+
+
+function sendAuthFailure(res, ctx) {
+  const code = String(ctx?.invalidReason || "");
+  if (code === "SESSION_REPLACED") {
+    return res.status(401).json({ error: "Sessão encerrada porque esta conta foi acessada em outro dispositivo.", code: "SESSION_REPLACED" });
+  }
+  if (code === "SESSION_EXPIRED") {
+    return res.status(401).json({ error: "Sessão expirada. Faça login novamente.", code: "SESSION_EXPIRED" });
+  }
+  if (code === "DEVICE_INVALID") {
+    return res.status(401).json({ error: "Dispositivo inválido. Atualize a página e faça login novamente.", code: "DEVICE_INVALID" });
+  }
+  return res.status(401).json({ error: "Não autenticado.", code: code || "UNAUTH" });
 }
 
 function requireAuth(req, res, next) {
   const ctx = authFromReq(req);
-  if (!ctx) return res.status(401).json({ error: "Não autenticado." });
+  if (!ctx) return res.status(401).json({ error: "Não autenticado.", code: "UNAUTH" });
+  if (ctx.invalidReason) return sendAuthFailure(res, ctx);
   req.auth = ctx;
   next();
 }
@@ -878,7 +1018,8 @@ function requirePaidOrAdmin(req, res, next) {
   // (algumas rotas a chamam sem passar antes por requireAuth).
   if (!req.auth) {
     const ctx = authFromReq(req);
-    if (!ctx) return res.status(401).json({ error: "Não autenticado." });
+    if (!ctx) return res.status(401).json({ error: "Não autenticado.", code: "UNAUTH" });
+    if (ctx.invalidReason) return sendAuthFailure(res, ctx);
     req.auth = ctx;
   }
 
@@ -942,7 +1083,12 @@ app.post("/api/auth/signup", (req, res) => {
       isDeleted: false,
       createdAt: nowIso(),
       lastLoginAt: "",
-      lastSeenAt: ""
+      lastSeenAt: "",
+      activeSessionHash: "",
+      activeDeviceId: "",
+      activeSessionCreatedAt: "",
+      activeSessionLastSeenAt: "",
+      activeSessionExpiresAt: ""
     };
 
     DB.users.push(user);
@@ -961,11 +1107,14 @@ app.post("/api/auth/login", (req, res) => {
     const senha = String(req.body?.senha || "").trim();
     if (!login || !senha) return res.status(400).json({ error: "Login e senha são obrigatórios." });
 
+    const deviceId = getDeviceIdFromReq(req);
+    if (!deviceId) return res.status(400).json({ error: "Dispositivo inválido. Atualize a página e tente novamente." });
+
     // Admin (aceita com ou sem pontuação)
     const loginN = onlyDigits(login);
     const senhaN = onlyDigits(senha);
     if ((login === ADMIN_LOGIN && senha === ADMIN_PASSWORD) || (loginN && senhaN && loginN === ADMIN_LOGIN_N && (senhaN === ADMIN_PASSWORD_N || senhaN === ADMIN_PASSWORD_ALT_N))) {
-      const token = createSession("admin", "admin");
+      const token = createSession("admin", "admin", deviceId);
       audit("admin_login", "admin", "Login do administrador");
       return res.json({ token, role: "admin", login: ADMIN_LOGIN, currentMonth: currentYYYYMM() });
     }
@@ -973,21 +1122,37 @@ app.post("/api/auth/login", (req, res) => {
     // Usuário enfermeiro
     const user = findUserByLogin(login);
     if (!user || user.isDeleted) return res.status(401).json({ error: "Credenciais inválidas." });
-    if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
+    if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: usuário inativo. Procure o administrador." });
 
     const computed = sha256(`${user.salt || ""}:${senha}`);
     if (computed !== user.passwordHash) return res.status(401).json({ error: "Credenciais inválidas." });
 
-
     // Bloqueio por mensalidade em débito
     if (!isUserPaidThisMonth(user.id)) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
 
+    // Regra 1 pessoa por conta (1 dispositivo por vez)
+    // - Ao fazer login em um novo dispositivo, a sessão anterior é encerrada automaticamente.
+    // - O dispositivo antigo será deslogado na próxima requisição (401 com code SESSION_REPLACED).
+    if (user.activeSessionHash) {
+      if (!isUserActiveSessionValid(user)) {
+        clearUserActiveSession(user, "auto_expire_on_login");
+      } else if (String(user.activeDeviceId || "") !== deviceId) {
+        audit("nurse_session_replaced", user.id, `Sessão substituída: ${user.activeDeviceId || "-"} -> ${deviceId}`);
+      }
+    }
+
+    // Remove tokens antigos em memória (se existirem) e cria nova sessão
+    invalidateUserSessions(user.id);
+
+    const token = createSession("nurse", user.id, deviceId);
+    setUserActiveSession(user, token, deviceId);
+
     user.lastLoginAt = nowIso();
     user.lastSeenAt = nowIso();
-    saveDb(DB);
 
-    const token = createSession("nurse", user.id);
+    saveDb(DB, "nurse_login");
     audit("nurse_login", user.id, `Login do usuário ${user.login}`);
+
     return res.json({
       token,
       role: "nurse",
@@ -1004,6 +1169,7 @@ app.post("/api/auth/login", (req, res) => {
     return res.status(500).json({ error: "Falha no login." });
   }
 });
+
 
 app.get("/api/auth/me", requireAuth, (req, res) => {
   const role = req.auth.role;
@@ -1023,24 +1189,50 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
 });
 
 app.post("/api/auth/logout", requireAuth, (req, res) => {
+  const token = req?.auth?.token || "";
+  try { SESSIONS.delete(token); } catch {}
+
   try {
-    SESSIONS.delete(req.auth.token);
+    if (req.auth && req.auth.role === "nurse") {
+      const u = req.auth.user;
+      if (u && String(u.activeSessionHash || "") === tokenHash(token)) {
+        clearUserActiveSession(u, "logout");
+        u.lastSeenAt = nowIso();
+        saveDb(DB, "logout");
+        audit("nurse_logout", u.id, `Logout do usuário ${u.login}`);
+      }
+    } else if (req.auth && req.auth.role === "admin") {
+      audit("admin_logout", "admin", "Logout do administrador");
+    }
   } catch {}
+
   return res.json({ ok: true });
 });
+
 
 app.post("/api/auth/heartbeat", requireAuth, (req, res) => {
   try {
     const sess = getSession(req.auth.token);
     if (sess) sess.lastSeenAt = Date.now();
+
     if (req.auth.role === "nurse") {
       const u = req.auth.user;
-      u.lastSeenAt = nowIso();
-      saveDb(DB);
+      const nowIsoStr = nowIso();
+      u.lastSeenAt = nowIsoStr;
+
+      // Mantém sessão ativa (1 dispositivo) viva enquanto houver heartbeat
+      if (String(u.activeSessionHash || "") === tokenHash(req.auth.token)) {
+        u.activeSessionLastSeenAt = nowIsoStr;
+        u.activeSessionExpiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+      }
+
+      saveDb(DB, "heartbeat");
     }
   } catch {}
+
   return res.json({ ok: true });
 });
+
 
 // Rotas administrativas
 app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
@@ -1091,7 +1283,12 @@ app.post("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
       isDeleted: false,
       createdAt: nowIso(),
       lastLoginAt: "",
-      lastSeenAt: ""
+      lastSeenAt: "",
+      activeSessionHash: "",
+      activeDeviceId: "",
+      activeSessionCreatedAt: "",
+      activeSessionLastSeenAt: "",
+      activeSessionExpiresAt: ""
     };
 
     DB.users.push(user);
