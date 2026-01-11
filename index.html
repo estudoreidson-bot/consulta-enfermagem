@@ -3462,6 +3462,10 @@ Ata de reunião:
     let aprazImages = [];
     let aprazAnalyzeTimer = null;
 
+    // Aprazamento: horário de referência do início da geração (baseado no relógio local)
+    let aprazStartTs = null;
+    let aprazStartInfo = null;
+
     function scheduleWoundAnalysis() {
       if (woundAnalyzeTimer) clearTimeout(woundAnalyzeTimer);
       woundAnalyzeTimer = setTimeout(() => {
@@ -3492,6 +3496,9 @@ Ata de reunião:
 
     function scheduleAprazAnalysis() {
       if (aprazAnalyzeTimer) clearTimeout(aprazAnalyzeTimer);
+      // Congela o horário de referência no momento em que o enfermeiro solicita a grade
+      aprazStartTs = new Date();
+      aprazStartInfo = getAprazStartInfo(aprazStartTs);
       aprazAnalyzeTimer = setTimeout(() => {
         if (aprazImages && aprazImages.length) analyzeAprazamentoWithImages(aprazImages.slice());
       }, 180);
@@ -7032,12 +7039,61 @@ async function addFilesToTarget(files, targetKey, mode) {
       return [];
     }
 
-    function buildHourColumns2h() {
+    function formatMinutesToHHMM(totalMinutes) {
+      const m = ((Number(totalMinutes) || 0) % 1440 + 1440) % 1440;
+      const hh = String(Math.floor(m / 60) % 24).padStart(2, "0");
+      const mm = String(m % 60).padStart(2, "0");
+      return `${hh}:${mm}`;
+    }
+
+    // Define o primeiro horário da grade baseado no relógio local.
+    // Regra:
+    // - A grade trabalha em blocos de 2 horas.
+    // - Se o horário atual estiver até 15 minutos após um bloco, usa o bloco anterior.
+    // - Caso contrário, arredonda para o próximo bloco.
+    function getAprazStartInfo(dateObj) {
+      const now = (dateObj instanceof Date) ? dateObj : new Date();
+      const nowMin = (now.getHours() * 60) + now.getMinutes();
+      const stepMin = 120;
+      const graceMin = 15;
+      const floor = Math.floor(nowMin / stepMin) * stepMin;
+      const useFloor = (nowMin - floor) <= graceMin;
+      const startMin = (useFloor ? floor : (Math.ceil(nowMin / stepMin) * stepMin)) % 1440;
+      return {
+        nowMin,
+        startMin,
+        nowHHMM: formatMinutesToHHMM(nowMin),
+        startHHMM: formatMinutesToHHMM(startMin),
+        stepMin,
+        graceMin
+      };
+    }
+
+    function buildHourColumnsFromStart(startMin, stepMin) {
       const cols = [];
-      for (let h = 0; h < 24; h += 2) {
-        cols.push(String(h).padStart(2, "0") + ":00");
+      const step = (Number(stepMin) || 120);
+      const start = (Number(startMin) || 0);
+      for (let i = 0; i < 1440; i += step) {
+        cols.push(formatMinutesToHHMM(start + i));
       }
       return cols;
+    }
+
+    function buildHourColumns2h(startInfo) {
+      const info = (startInfo && typeof startInfo === "object") ? startInfo : getAprazStartInfo(new Date());
+      return buildHourColumnsFromStart(info.startMin, 120);
+    }
+
+    function generateTimesFromStart(startMin, intervalHours) {
+      const ih = Number(intervalHours);
+      if (!Number.isFinite(ih) || ih <= 0) return [];
+      const step = Math.round(ih * 60);
+      if (!step || step <= 0) return [];
+      const arr = [];
+      for (let offset = 0; offset < 1440; offset += step) {
+        arr.push(formatMinutesToHHMM((Number(startMin) || 0) + offset));
+      }
+      return arr;
     }
 
     function timesToText(times) {
@@ -7064,11 +7120,14 @@ async function addFilesToTarget(files, targetKey, mode) {
       return s ? s : "não informado";
     }
 
-    function normalizeFolhaData(rawFolha) {
+    function normalizeFolhaData(rawFolha, startInfo) {
       const folha = rawFolha && typeof rawFolha === "object" ? rawFolha : {};
       const cab = (folha.cabecalho && typeof folha.cabecalho === "object") ? folha.cabecalho : {};
       const meds = Array.isArray(folha.medicamentos) ? folha.medicamentos : [];
       const outMeds = [];
+
+      const info = (startInfo && typeof startInfo === "object") ? startInfo : getAprazStartInfo(new Date());
+      const startMin = info.startMin;
 
       for (const it of meds.slice(0, 60)) {
         const nome = safeField(it?.medicamento || it?.nome);
@@ -7083,7 +7142,36 @@ async function addFilesToTarget(files, targetKey, mode) {
         const intervalo = (typeof it?.intervalo_horas === "number" && Number.isFinite(it.intervalo_horas)) ? it.intervalo_horas : inferIntervalHours(freq);
         const vezesDia = (typeof it?.vezes_ao_dia === "number" && Number.isFinite(it.vezes_ao_dia)) ? it.vezes_ao_dia : inferTimesPerDay(freq);
 
-        const sugeridos = horariosLegiveis.length ? horariosLegiveis : suggestStandardTimes(intervalo, vezesDia, freq);
+        let sugeridos = [];
+
+        if (horariosLegiveis.length) {
+          sugeridos = horariosLegiveis;
+        } else {
+          const ft = asStr(freq).toLowerCase();
+          const isPrn = /\b(se necess[aá]rio|s\/n|sn|prn|acm|quando necess[aá]rio)\b/.test(ft);
+          const isContinuous = /\b(cont[ií]nuo|bomba|infus[aã]o cont[ií]nua)\b/.test(ft);
+          if (isPrn || isContinuous) {
+            sugeridos = [];
+          } else {
+            // Casos especiais (ex.: hs/noite, manhã, tarde) mantêm padrão.
+            const special = suggestStandardTimes(null, null, freq);
+            if (Array.isArray(special) && special.length) {
+              sugeridos = special;
+            } else {
+              // Se houver intervalo (explícito ou inferido), gera a partir do horário de início.
+              let intervalToUse = (typeof intervalo === "number" && Number.isFinite(intervalo)) ? intervalo : null;
+              if (!intervalToUse && typeof vezesDia === "number" && Number.isFinite(vezesDia) && vezesDia >= 1 && vezesDia <= 4) {
+                intervalToUse = 24 / vezesDia;
+              }
+
+              if (intervalToUse && Number.isFinite(intervalToUse) && intervalToUse > 0) {
+                sugeridos = generateTimesFromStart(startMin, intervalToUse);
+              } else {
+                sugeridos = suggestStandardTimes(intervalo, vezesDia, freq);
+              }
+            }
+          }
+        }
         outMeds.push({
           medicamento: nome,
           dose,
@@ -7102,15 +7190,16 @@ async function addFilesToTarget(files, targetKey, mode) {
       };
     }
 
-    function buildAprazamentoSheetHtml(rawFolha) {
-      const data = normalizeFolhaData(rawFolha);
+    function buildAprazamentoSheetHtml(rawFolha, startInfo) {
+      const info = (startInfo && typeof startInfo === "object") ? startInfo : ((aprazStartInfo && typeof aprazStartInfo === "object") ? aprazStartInfo : getAprazStartInfo(new Date()));
+      const data = normalizeFolhaData(rawFolha, info);
       const meds = Array.isArray(data.medicamentos) ? data.medicamentos : [];
-      const cols = buildHourColumns2h();
+      const cols = buildHourColumns2h(info);
 
       let html = "";
       html += `<div class="rx-sheet" id="aprazGridSheet">`;
       html += `<div class="rx-title">Grade de horários (24 horas) para checagem/assinatura</div>`;
-      html += `<div class="rx-subtitle">Transcrição somente do que estiver legível. Ajuste os nomes e preencha os quadrinhos conforme a prescrição oficial e a rotina do serviço.</div>`;
+      html += `<div class="rx-subtitle">Horário local no início da geração: ${escapeHtml(info.nowHHMM)}. Primeiro horário sugerido: ${escapeHtml(info.startHHMM)}. Transcrição somente do que estiver legível. Ajuste os nomes e preencha os quadrinhos conforme a prescrição oficial e a rotina do serviço.</div>`;
 
       html += `<div class="rx-hours" id="aprazGridContainer">`;
       html += `<table class="rx-hours-grid" id="aprazHoursGrid" aria-label="Grade de horários para checagem">`;
@@ -7146,7 +7235,8 @@ async function addFilesToTarget(files, targetKey, mode) {
     function renderAprazamentoSheet(rawFolha, images) {
       if (!aprazamentoSheetWrapper) return;
 
-      const html = buildAprazamentoSheetHtml(rawFolha);
+      const info = (aprazStartInfo && typeof aprazStartInfo === "object") ? aprazStartInfo : getAprazStartInfo(new Date());
+      const html = buildAprazamentoSheetHtml(rawFolha, info);
       aprazamentoSheetWrapper.innerHTML = html;
 
       if (aprazOriginalDetails && aprazOriginalImages) {
@@ -7207,6 +7297,9 @@ async function addFilesToTarget(files, targetKey, mode) {
 
     async function analyzeAprazamentoWithImages(dataUrls) {
       if (!aprazamentoStatus || !aprazamentoSheetWrapper) return;
+
+      if (!aprazStartTs) aprazStartTs = new Date();
+      if (!aprazStartInfo) aprazStartInfo = getAprazStartInfo(aprazStartTs);
 
       const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
       if (!images.length) {
