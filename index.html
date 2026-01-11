@@ -1805,6 +1805,7 @@
   }
 }
 
+
     /* MÓDULO: Escala de plantão */
     .roster-shell {
       width: 100%;
@@ -1814,13 +1815,19 @@
       padding: 12px;
       margin-top: 10px;
     }
+    .roster-step-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1f2937;
+      margin: 8px 0 8px 0;
+    }
     .roster-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
       width: 100%;
     }
-    @media (max-width: 640px) {
+    @media (max-width: 720px) {
       .roster-grid { grid-template-columns: 1fr; }
     }
     .roster-field label {
@@ -1863,6 +1870,40 @@
       opacity: 0.6;
       cursor: not-allowed;
     }
+    .roster-note {
+      font-size: 12px;
+      color: #555;
+      margin-top: 8px;
+      line-height: 1.45;
+    }
+    .roster-coverage-box {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid #d7e6ff;
+      background: #f9fbff;
+      font-size: 12px;
+      color: #1f2937;
+      line-height: 1.45;
+    }
+    .roster-coverage-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    @media (max-width: 720px) {
+      .roster-coverage-grid { grid-template-columns: 1fr; }
+    }
+    .roster-coverage-item {
+      background: #ffffff;
+      border-radius: 10px;
+      border: 1px solid #e4eefc;
+      padding: 8px;
+      font-size: 12px;
+    }
+
     .roster-table-wrap {
       width: 100%;
       overflow: auto;
@@ -1897,16 +1938,6 @@
       font-size: 13px;
       background: #fff;
     }
-    .roster-output {
-      margin-top: 12px;
-      width: 100%;
-    }
-    .roster-note {
-      font-size: 12px;
-      color: #555;
-      margin-top: 8px;
-      line-height: 1.4;
-    }
     .roster-warn {
       font-size: 12px;
       color: #8a3b12;
@@ -1917,6 +1948,84 @@
       margin-top: 10px;
       white-space: pre-wrap;
     }
+
+    .roster-team-cards {
+      display: none;
+      width: 100%;
+      margin-top: 10px;
+      gap: 10px;
+    }
+    .roster-team-card {
+      background: #ffffff;
+      border: 1px solid #e7e7e7;
+      border-radius: 14px;
+      padding: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .roster-team-card-title {
+      font-weight: bold;
+      font-size: 13px;
+      color: #1f2937;
+      margin: 0 0 8px 0;
+    }
+    .roster-team-card-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .roster-team-card-actions {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .roster-output {
+      margin-top: 12px;
+      width: 100%;
+    }
+    .roster-output-mobile {
+      display: none;
+      width: 100%;
+      margin-top: 10px;
+      gap: 10px;
+    }
+    .roster-out-card {
+      background: #ffffff;
+      border: 1px solid #e7e7e7;
+      border-radius: 14px;
+      padding: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      font-size: 13px;
+      color: #1f2937;
+      line-height: 1.45;
+    }
+    .roster-out-card-title {
+      font-weight: bold;
+      margin: 0 0 6px 0;
+      font-size: 13px;
+    }
+    .roster-out-card-line {
+      margin: 0 0 6px 0;
+    }
+    .roster-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid #e4eefc;
+      background: #f9fbff;
+      font-size: 12px;
+      color: #1f2937;
+      margin-right: 6px;
+    }
+
+    @media (max-width: 720px) {
+      .roster-table-wrap.roster-desktop-only { display: none; }
+      table.roster-table { min-width: 0; }
+      .roster-team-cards { display: flex; flex-direction: column; }
+      .roster-output-mobile { display: flex; flex-direction: column; }
+    }
+
   </style>
 </head>
 <body>
@@ -2310,84 +2419,178 @@
         Cadastre a equipe, defina regras simples e gere a escala do mês com um clique. Você pode salvar a configuração e reaproveitar no próximo mês.
       </p>
 
+      
       <div id="rosterHelpDrawer" class="consult-guide-drawer hidden" style="margin-bottom: 10px;">
         <div class="consult-guide-header">
           <div>
-            <p class="consult-guide-title">Como usar a escala em 3 passos</p>
-            <p class="consult-guide-subtitle">Fluxo rápido para montar e repetir escalas</p>
+            <p class="consult-guide-title">Guia completo do gerador de escala</p>
+            <p class="consult-guide-subtitle">Passo a passo simples para qualquer pessoa gerar a escala com segurança</p>
           </div>
           <button id="closeRosterHelpBtn" class="consult-guide-close" type="button">Fechar</button>
         </div>
 
         <div class="consult-guide-content">
           <div class="consult-guide-card">
-            <div class="consult-guide-card-title">1) Cadastre a equipe</div>
+            <div class="consult-guide-card-title">Visão geral</div>
             <div class="consult-guide-card-text">
-              Clique em "Adicionar pessoa" ou em "Colar lista". Você pode informar folgas por data (AAAA-MM-DD) e o máximo de plantões no mês.
+              O gerador funciona em três passos: configurar o mês e o modelo, cadastrar a equipe e gerar a escala. 
+              O sistema tenta distribuir os plantões de forma equilibrada e respeitar folgas e limites mensais. 
+              Se faltar gente ou se houver muitas restrições, o sistema gera avisos e pode relaxar regras para não deixar buracos.
             </div>
           </div>
+
           <div class="consult-guide-card">
-            <div class="consult-guide-card-title">2) Defina mês e turnos</div>
+            <div class="consult-guide-card-title">Passo 1. Escolha do mês</div>
             <div class="consult-guide-card-text">
-              Selecione o mês e o modelo de turnos. Ajuste quantas pessoas por turno.
+              Selecione o mês no campo "Mês da escala". Sempre escolha o mês antes de gerar, porque as folgas por data precisam bater com o mês certo.
             </div>
           </div>
+
           <div class="consult-guide-card">
-            <div class="consult-guide-card-title">3) Gerar e salvar</div>
+            <div class="consult-guide-card-title">Passo 2. Escolha do modelo</div>
             <div class="consult-guide-card-text">
-              Clique em "Gerar escala". Depois, salve e exporte (CSV) ou imprima. Se faltar gente para cumprir alguma regra, o sistema mostra avisos.
+              Selecione um dos modelos.
+              No 12x36, você informa quantas pessoas precisa no turno 07:00–19:00 e no turno 19:00–07:00. A escala aparece como ciclos de 24 horas iniciando às 07:00 ou às 19:00, conforme a "Hora de início do ciclo".
+              No 18x36 e no 24x48, você informa "Pessoas por plantão". O sistema cria uma sequência automática de plantões e rotaciona as pessoas em rodízio, respeitando o descanso.
+              No modelo Manhã, Tarde e Noite, a escala é por dia e você informa quantas pessoas precisa em cada turno.
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Hora de início do ciclo</div>
+            <div class="consult-guide-card-text">
+              Use 07:00 se a sua unidade considera o dia como 07:00–07:00. Use 19:00 se a sua unidade considera o ciclo como 19:00–19:00. 
+              No 12x36, isso muda como a tabela é exibida. Por exemplo, com 19:00, a linha do dia 2026-01-01 mostra o plantão 19:00–07:00 e o plantão 07:00–19:00 do dia seguinte.
+              No 18x36 e 24x48, isso define o horário do primeiro plantão e alinha o rodízio.
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Passo 3. Quantas pessoas por plantão</div>
+            <div class="consult-guide-card-text">
+              Informe o número de profissionais necessários por turno na sua unidade.
+              Esse número varia por unidade e por serviço (exemplo: 2, 4, 8, 10, 15). O sistema mostra automaticamente um "mínimo estimado" e um "recomendado com reserva". No 12x36, o mínimo estimado é 2 vezes (necessidade do dia + necessidade da noite). No 18x36 e 24x48, o mínimo estimado é 3 vezes (pessoas por plantão). 
+              Se a equipe cadastrada estiver abaixo do mínimo, a escala pode sair com repetição de nomes e avisos.
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Passo 4. Cadastro da equipe</div>
+            <div class="consult-guide-card-text">
+              Clique em "Adicionar pessoa" para inserir um por um, ou use "Colar lista" para colar vários nomes de uma vez.
+              Em "Folgas (datas)", escreva as datas no formato AAAA-MM-DD separadas por vírgula.
+              Em "Máx plantões/mês", deixe em branco se não quiser limitar, ou coloque um número para evitar sobrecarga.
+              Nos modelos com plantão noturno (12x36 e Manhã/Tarde/Noite), você pode marcar "Somente dia", "Somente noite" e se a pessoa "Pode noite".
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Passo 5. Gerar e revisar</div>
+            <div class="consult-guide-card-text">
+              Clique em "Gerar escala". 
+              Revise a tabela e a "Distribuição por pessoa" (resumo no final) para verificar se a carga ficou equilibrada.
+              Se houver avisos, eles aparecem em destaque. Em geral, os avisos indicam falta de profissionais, folgas em excesso no mesmo período, limite mensal muito baixo ou muitas pessoas sem possibilidade de noite.
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Passo 6. Salvar, baixar e imprimir</div>
+            <div class="consult-guide-card-text">
+              "Salvar configuração" guarda seus parâmetros e equipe para reutilizar. "Carregar configuração" recupera.
+              Depois de gerar, você pode "Salvar escala gerada" no servidor, "Baixar CSV" para abrir no Excel, e "Imprimir" para assinar e fixar na unidade.
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Como evitar avisos e gerar uma escala mais perfeita</div>
+            <div class="consult-guide-card-text">
+              Confira se as folgas foram digitadas no formato correto e se realmente pertencem ao mês escolhido.
+              Em 12x36, se você precisa de muitas pessoas à noite, cadastre gente suficiente com "Pode noite" e evite marcar muitos como "Somente dia".
+              Se você colocou "Máx plantões/mês" muito baixo para vários profissionais, a escala fica impossível de fechar sem repetição.
+              Se a unidade trabalha com equipes fixas (ex.: equipe A e equipe B), você pode cadastrar os nomes na ordem desejada e usar o rodízio automático como base, ajustando manualmente no CSV se necessário.
             </div>
           </div>
         </div>
       </div>
 
-      <div class="roster-shell">
+
+      <div class="roster-shell" id="rosterShell">
+        <div class="roster-step-title">Passo 1: Configuração do mês</div>
+
         <div class="roster-grid">
           <div class="roster-field">
             <label for="rosterMonth">Mês da escala</label>
             <input id="rosterMonth" type="month" />
           </div>
+
           <div class="roster-field">
-            <label for="rosterShiftModel">Modelo de turnos</label>
+            <label for="rosterShiftModel">Modelo de escala</label>
             <select id="rosterShiftModel">
-              <option value="dayNight12">Dia e Noite (12h)</option>
+              <option value="12x36">12x36 (12h de trabalho, 36h de descanso)</option>
+              <option value="18x36">18x36 (18h de trabalho, 36h de descanso)</option>
+              <option value="24x48">24x48 (24h de trabalho, 48h de descanso)</option>
               <option value="mtn">Manhã, Tarde e Noite</option>
             </select>
           </div>
+
           <div class="roster-field">
-            <label for="rosterNeedDay">Pessoas por turno (Dia ou Manhã)</label>
+            <label for="rosterStartTime">Hora de início do ciclo</label>
+            <select id="rosterStartTime">
+              <option value="07:00">07:00</option>
+              <option value="19:00">19:00</option>
+            </select>
+          </div>
+
+          <div class="roster-field" id="rosterNeedPerShiftWrap">
+            <label for="rosterNeedPerShift">Pessoas por plantão</label>
+            <input id="rosterNeedPerShift" type="number" min="1" max="50" value="1" />
+          </div>
+
+          <div class="roster-field" id="rosterNeedDayWrap">
+            <label for="rosterNeedDay">Pessoas 07:00–19:00</label>
             <input id="rosterNeedDay" type="number" min="1" max="50" value="1" />
           </div>
-          <div class="roster-field">
-            <label for="rosterNeedNight">Pessoas por turno (Noite)</label>
+
+          <div class="roster-field" id="rosterNeedNightWrap">
+            <label for="rosterNeedNight">Pessoas 19:00–07:00</label>
             <input id="rosterNeedNight" type="number" min="1" max="50" value="1" />
           </div>
-          <div class="roster-field">
+
+          <div class="roster-field" id="rosterNeedAfternoonWrap">
             <label for="rosterNeedAfternoon">Pessoas por turno (Tarde)</label>
             <input id="rosterNeedAfternoon" type="number" min="0" max="50" value="1" />
           </div>
-          <div class="roster-field">
+
+          <div class="roster-field" id="rosterMaxConsecNightsWrap">
             <label for="rosterMaxConsecNights">Máximo de noites consecutivas</label>
             <input id="rosterMaxConsecNights" type="number" min="1" max="14" value="2" />
           </div>
         </div>
+
+        <div id="rosterCoverageBox" class="roster-coverage-box"></div>
+
+        <div class="roster-note" id="rosterModelNote">
+          No modelo 12x36, a saída é exibida como ciclo de 24 horas. Se você escolher início 19:00, cada linha da escala mostra o plantão 19:00–07:00 e o plantão 07:00–19:00 do dia seguinte.
+        </div>
+
+        <div class="module-divider"></div>
+
+        <div class="roster-step-title">Passo 2: Equipe</div>
 
         <div class="roster-actions">
           <button id="rosterAddPersonBtn" type="button">Adicionar pessoa</button>
           <button id="rosterBulkAddBtn" class="secondary" type="button">Colar lista</button>
           <button id="rosterSaveConfigBtn" class="secondary" type="button">Salvar configuração</button>
           <button id="rosterLoadConfigBtn" class="secondary" type="button">Carregar configuração</button>
-          <button id="rosterGenerateBtn" type="button">Gerar escala</button>
-          <button id="rosterSaveScheduleBtn" class="secondary" type="button" disabled>Salvar escala gerada</button>
-          <button id="rosterExportCsvBtn" class="secondary" type="button" disabled>Baixar CSV</button>
-          <button id="rosterPrintBtn" class="secondary" type="button" disabled>Imprimir</button>
         </div>
 
         <div class="roster-note">
           Folgas por data: use AAAA-MM-DD separadas por vírgula (ex.: 2026-01-05, 2026-01-20). Se o campo "Máx plantões/mês" ficar em branco, não limita.
         </div>
 
-        <div class="roster-table-wrap">
+        <div id="rosterTeamCards" class="roster-team-cards"></div>
+
+        <div class="roster-table-wrap roster-desktop-only">
           <table class="roster-table">
             <thead>
               <tr>
@@ -2403,16 +2606,29 @@
           </table>
         </div>
 
+        <div class="module-divider"></div>
+
+        <div class="roster-step-title">Passo 3: Gerar, revisar e exportar</div>
+
+        <div class="roster-actions">
+          <button id="rosterGenerateBtn" type="button">Gerar escala</button>
+          <button id="rosterSaveScheduleBtn" class="secondary" type="button" disabled>Salvar escala gerada</button>
+          <button id="rosterExportCsvBtn" class="secondary" type="button" disabled>Baixar CSV</button>
+          <button id="rosterPrintBtn" class="secondary" type="button" disabled>Imprimir</button>
+        </div>
+
         <div id="rosterWarnBox" class="roster-warn hidden"></div>
 
         <div id="rosterOutput" class="roster-output hidden">
-          <div class="roster-table-wrap">
+          <div class="roster-table-wrap roster-desktop-only">
             <table id="rosterTableOut" class="roster-table"></table>
           </div>
 
+          <div id="rosterOutputMobile" class="roster-output-mobile"></div>
+
           <div style="height: 12px;"></div>
 
-          <div class="roster-table-wrap">
+          <div class="roster-table-wrap roster-desktop-only">
             <table id="rosterSummaryOut" class="roster-table"></table>
           </div>
         </div>
@@ -10728,19 +10944,37 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
 
     // ============================================================
-    // MÓDULO: Escala de plantão (geração local + persistência no backend)
+        // MÓDULO: Escala de plantão (geração local + persistência no backend)
     // ============================================================
 
     const rosterMonthEl = document.getElementById("rosterMonth");
     const rosterShiftModelEl = document.getElementById("rosterShiftModel");
+    const rosterStartTimeEl = document.getElementById("rosterStartTime");
+
+    const rosterNeedPerShiftWrap = document.getElementById("rosterNeedPerShiftWrap");
+    const rosterNeedPerShiftEl = document.getElementById("rosterNeedPerShift");
+
+    const rosterNeedDayWrap = document.getElementById("rosterNeedDayWrap");
     const rosterNeedDayEl = document.getElementById("rosterNeedDay");
+
+    const rosterNeedNightWrap = document.getElementById("rosterNeedNightWrap");
     const rosterNeedNightEl = document.getElementById("rosterNeedNight");
+
+    const rosterNeedAfternoonWrap = document.getElementById("rosterNeedAfternoonWrap");
     const rosterNeedAfternoonEl = document.getElementById("rosterNeedAfternoon");
+
+    const rosterMaxConsecNightsWrap = document.getElementById("rosterMaxConsecNightsWrap");
     const rosterMaxConsecNightsEl = document.getElementById("rosterMaxConsecNights");
 
+    const rosterCoverageBox = document.getElementById("rosterCoverageBox");
+    const rosterModelNote = document.getElementById("rosterModelNote");
+
     const rosterTeamTbody = document.getElementById("rosterTeamTbody");
+    const rosterTeamCards = document.getElementById("rosterTeamCards");
+
     const rosterWarnBox = document.getElementById("rosterWarnBox");
     const rosterOutput = document.getElementById("rosterOutput");
+    const rosterOutputMobile = document.getElementById("rosterOutputMobile");
     const rosterTableOut = document.getElementById("rosterTableOut");
     const rosterSummaryOut = document.getElementById("rosterSummaryOut");
 
@@ -10748,6 +10982,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     const rosterBulkAddBtn = document.getElementById("rosterBulkAddBtn");
     const rosterSaveConfigBtn = document.getElementById("rosterSaveConfigBtn");
     const rosterLoadConfigBtn = document.getElementById("rosterLoadConfigBtn");
+
     const rosterGenerateBtn = document.getElementById("rosterGenerateBtn");
     const rosterSaveScheduleBtn = document.getElementById("rosterSaveScheduleBtn");
     const rosterExportCsvBtn = document.getElementById("rosterExportCsvBtn");
@@ -10758,7 +10993,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     const rosterHelpDrawer = document.getElementById("rosterHelpDrawer");
 
     let rosterTeam = [];
-    let rosterLastGenerated = null; // { month: "YYYY-MM", shiftModel, days: [...], summary: {...}, csv: string }
+    let rosterLastGenerated = null; // { month, shiftModel, startTime, rows:[], summary:[], warnings:[], csv, printableTitle }
 
     function rosterTodayYYYYMM() {
       const d = new Date();
@@ -10774,12 +11009,6 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       return `${y}-${m}-${day}`;
     }
 
-    function rosterIsWeekend(dateIso) {
-      const d = new Date(dateIso + "T00:00:00");
-      const wd = d.getDay();
-      return wd === 0 || wd === 6;
-    }
-
     function rosterDaysInMonth(yyyyMM) {
       const [yStr, mStr] = String(yyyyMM || "").split("-");
       const y = Number(yStr);
@@ -10793,6 +11022,24 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
         days.push(rosterIsoDate(d));
       }
       return days;
+    }
+
+
+    function rosterIsWeekend(dateIso) {
+      try {
+        const d = new Date(String(dateIso || "") + "T00:00:00");
+        const wd = d.getDay(); // 0 dom, 6 sáb
+        return wd === 0 || wd === 6;
+      } catch {
+        return false;
+      }
+    }
+
+
+    function rosterNextDate(dateIso) {
+      const d = new Date(dateIso + "T00:00:00");
+      d.setDate(d.getDate() + 1);
+      return rosterIsoDate(d);
     }
 
     function rosterSafeInt(v, defVal) {
@@ -10817,7 +11064,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       for (const p of parts) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(p)) continue;
         out.push(p);
-        if (out.length >= 80) break;
+        if (out.length >= 120) break;
       }
       return out;
     }
@@ -10831,110 +11078,6 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
         offDates: [],
         maxShifts: ""
       };
-    }
-
-    function rosterRenderTeam() {
-      if (!rosterTeamTbody) return;
-      rosterTeamTbody.innerHTML = "";
-
-      rosterTeam.forEach((m, idx) => {
-        const tr = document.createElement("tr");
-
-        const tdName = document.createElement("td");
-        const inpName = document.createElement("input");
-        inpName.className = "roster-mini-input";
-        inpName.value = m.name || "";
-        inpName.placeholder = "Nome";
-        inpName.addEventListener("input", () => {
-          m.name = rosterTrim(inpName.value, 90);
-        });
-        tdName.appendChild(inpName);
-
-        const tdPref = document.createElement("td");
-        const selPref = document.createElement("select");
-        selPref.className = "roster-mini-input";
-        selPref.innerHTML = `
-          <option value="any">Indiferente</option>
-          <option value="day">Somente dia</option>
-          <option value="night">Somente noite</option>
-        `;
-        selPref.value = m.preference || "any";
-        selPref.addEventListener("change", () => {
-          m.preference = String(selPref.value || "any");
-          if (m.preference === "night") m.canNight = true;
-          rosterRenderTeam();
-        });
-        tdPref.appendChild(selPref);
-
-        const tdCanNight = document.createElement("td");
-        const selNight = document.createElement("select");
-        selNight.className = "roster-mini-input";
-        selNight.innerHTML = `
-          <option value="yes">Sim</option>
-          <option value="no">Não</option>
-        `;
-        selNight.value = m.canNight ? "yes" : "no";
-        selNight.disabled = (m.preference === "night");
-        selNight.addEventListener("change", () => {
-          m.canNight = (selNight.value === "yes");
-        });
-        tdCanNight.appendChild(selNight);
-
-        const tdOff = document.createElement("td");
-        const inpOff = document.createElement("input");
-        inpOff.className = "roster-mini-input";
-        inpOff.placeholder = "2026-01-05, 2026-01-20";
-        inpOff.value = (Array.isArray(m.offDates) ? m.offDates.join(", ") : "");
-        inpOff.addEventListener("input", () => {
-          m.offDates = rosterParseOffDates(inpOff.value);
-        });
-        tdOff.appendChild(inpOff);
-
-        const tdMax = document.createElement("td");
-        const inpMax = document.createElement("input");
-        inpMax.className = "roster-mini-input";
-        inpMax.type = "number";
-        inpMax.min = "0";
-        inpMax.max = "60";
-        inpMax.placeholder = "Opcional";
-        inpMax.value = String(m.maxShifts || "");
-        inpMax.addEventListener("input", () => {
-          const v = rosterTrim(inpMax.value, 3);
-          m.maxShifts = v;
-        });
-        tdMax.appendChild(inpMax);
-
-        const tdRm = document.createElement("td");
-        const rmBtn = document.createElement("button");
-        rmBtn.type = "button";
-        rmBtn.className = "secondary";
-        rmBtn.textContent = "Remover";
-        rmBtn.addEventListener("click", () => {
-          rosterTeam.splice(idx, 1);
-          rosterRenderTeam();
-        });
-        tdRm.appendChild(rmBtn);
-
-        tr.appendChild(tdName);
-        tr.appendChild(tdPref);
-        tr.appendChild(tdCanNight);
-        tr.appendChild(tdOff);
-        tr.appendChild(tdMax);
-        tr.appendChild(tdRm);
-
-        rosterTeamTbody.appendChild(tr);
-      });
-    }
-
-    function rosterReadSettings() {
-      const month = rosterTrim(rosterMonthEl?.value || "", 7);
-      const shiftModel = rosterTrim(rosterShiftModelEl?.value || "dayNight12", 20);
-      const needDay = rosterSafeInt(rosterNeedDayEl?.value, 1);
-      const needNight = rosterSafeInt(rosterNeedNightEl?.value, 1);
-      const needAfternoon = rosterSafeInt(rosterNeedAfternoonEl?.value, 1);
-      const maxConsecNights = Math.max(1, rosterSafeInt(rosterMaxConsecNightsEl?.value, 2));
-
-      return { month, shiftModel, needDay, needNight, needAfternoon, maxConsecNights };
     }
 
     function rosterValidatedTeam() {
@@ -10955,348 +11098,399 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
         if (maxShifts === "") maxShifts = "";
         else {
           const n = rosterSafeInt(maxShifts, 0);
-          maxShifts = n > 0 ? String(Math.min(60, n)) : "";
+          maxShifts = n > 0 ? String(Math.min(80, n)) : "";
         }
 
         clean.push({ id: m?.id || ("mem_" + Math.random().toString(16).slice(2)), name, preference, canNight, offDates, maxShifts });
-        if (clean.length >= 120) break;
+        if (clean.length >= 200) break;
       }
       return clean;
     }
 
-    function rosterCanDoShift(member, shift) {
+    function rosterCanDoShift(member, shiftKind, shiftModel) {
       if (!member) return false;
-      if (shift === "night") {
-        if (member.preference === "day") return false;
-        return !!member.canNight;
+      if (shiftModel === "12x36") {
+        if (shiftKind === "night") {
+          if (member.preference === "day") return false;
+          return !!member.canNight;
+        }
+        if (shiftKind === "day") {
+          if (member.preference === "night") return false;
+          return true;
+        }
       }
-      if (shift === "day" || shift === "morning" || shift === "afternoon") {
-        if (member.preference === "night") return false;
-        return true;
+      if (shiftModel === "mtn") {
+        if (shiftKind === "night") {
+          if (member.preference === "day") return false;
+          return !!member.canNight;
+        }
+        if (shiftKind === "morning" || shiftKind === "afternoon") {
+          if (member.preference === "night") return false;
+          return true;
+        }
       }
+      // 18x36 e 24x48: não usa preferência; apenas respeita folga e limite mensal.
       return true;
     }
 
-    function rosterGenerate(yyyyMM, shiftModel, needDay, needNight, needAfternoon, maxConsecNights) {
-      const days = rosterDaysInMonth(yyyyMM);
+    function rosterReadSettings() {
+      const month = rosterTrim(rosterMonthEl?.value || "", 7);
+      const shiftModel = rosterTrim(rosterShiftModelEl?.value || "12x36", 20);
+      const startTime = rosterTrim(rosterStartTimeEl?.value || "07:00", 5);
+
+      const needPerShift = Math.max(1, rosterSafeInt(rosterNeedPerShiftEl?.value, 1));
+      const needDay = Math.max(1, rosterSafeInt(rosterNeedDayEl?.value, 1));
+      const needNight = Math.max(1, rosterSafeInt(rosterNeedNightEl?.value, 1));
+      const needAfternoon = Math.max(0, rosterSafeInt(rosterNeedAfternoonEl?.value, 1));
+      const maxConsecNights = Math.max(1, rosterSafeInt(rosterMaxConsecNightsEl?.value, 2));
+
+      return { month, shiftModel, startTime, needPerShift, needDay, needNight, needAfternoon, maxConsecNights };
+    }
+
+    function rosterModelMinStaff(settings) {
+      const s = settings || rosterReadSettings();
+      if (s.shiftModel === "12x36") {
+        const min = 2 * (Math.max(1, s.needDay) + Math.max(1, s.needNight));
+        return { min, recommended: Math.ceil(min * 1.15) };
+      }
+      if (s.shiftModel === "24x48") {
+        const min = 3 * Math.max(1, s.needPerShift);
+        return { min, recommended: Math.ceil(min * 1.15) };
+      }
+      if (s.shiftModel === "18x36") {
+        const min = 3 * Math.max(1, s.needPerShift);
+        return { min, recommended: Math.ceil(min * 1.15) };
+      }
+      return { min: 0, recommended: 0 };
+    }
+
+    function rosterUpdateCoverageUI() {
+      if (!rosterCoverageBox) return;
+      const s = rosterReadSettings();
       const team = rosterValidatedTeam();
-      if (!days.length) return { ok: false, error: "Selecione um mês válido." };
-      if (team.length < 1) return { ok: false, error: "Cadastre pelo menos 1 pessoa." };
 
-      const shifts = (shiftModel === "mtn") ? ["morning", "afternoon", "night"] : ["day", "night"];
+      const calc = rosterModelMinStaff(s);
+      const modelName = (s.shiftModel === "12x36") ? "12x36" :
+                        (s.shiftModel === "18x36") ? "18x36" :
+                        (s.shiftModel === "24x48") ? "24x48" :
+                        "Manhã/Tarde/Noite";
 
-      const needByShift = {
-        day: Math.max(1, needDay),
-        night: Math.max(1, needNight),
-        morning: Math.max(1, needDay),
-        afternoon: Math.max(0, needAfternoon)
-      };
+      const startTxt = String(s.startTime || "07:00");
+      const teamCount = team.length;
 
-      const stats = {};
-      for (const m of team) {
-        stats[m.id] = {
-          name: m.name,
-          total: 0,
-          day: 0,
-          night: 0,
-          morning: 0,
-          afternoon: 0,
-          weekend: 0,
-          consecNights: 0,
-          lastShift: "",
-          lastDate: "",
-          assignedDates: new Set()
-        };
+      let lines = [];
+      lines.push(`<div><strong>Resumo automático</strong></div>`);
+      lines.push(`<div>Modelo: ${escapeHtml(modelName)}. Início do ciclo: ${escapeHtml(startTxt)}.</div>`);
+
+      if (s.shiftModel === "12x36") {
+        lines.push(`<div>Necessidade informada: 07:00–19:00 = ${Math.max(1, s.needDay)} pessoa(s); 19:00–07:00 = ${Math.max(1, s.needNight)} pessoa(s).</div>`);
+      } else if (s.shiftModel === "18x36" || s.shiftModel === "24x48") {
+        lines.push(`<div>Necessidade informada: ${Math.max(1, s.needPerShift)} pessoa(s) por plantão.</div>`);
+      } else {
+        lines.push(`<div>Necessidade informada: Manhã = ${Math.max(1, s.needDay)}; Tarde = ${Math.max(0, s.needAfternoon)}; Noite = ${Math.max(1, s.needNight)}.</div>`);
       }
 
-      const assignments = {}; // date -> { shift -> [memberId] }
-      const warnings = [];
+      if (calc.min > 0) {
+        const status = (teamCount >= calc.min) ? "Equipe suficiente para gerar (mínimo atingido)." :
+                      (teamCount >= calc.recommended) ? "Equipe suficiente (com reserva)." :
+                      "Equipe abaixo do mínimo: o sistema vai precisar relaxar regras ou ficará com vagas.";
+        const status2 = (teamCount >= calc.recommended) ? "Boa folga para cobrir folgas, licenças e imprevistos." :
+                       (teamCount >= calc.min) ? "Sugestão: aumentar equipe ou reduzir necessidade por plantão se houver muitos avisos." :
+                       "Sugestão: aumentar equipe cadastrada ou reduzir a necessidade por plantão.";
 
-      function hadOff(member, dateIso) {
-        return Array.isArray(member.offDates) && member.offDates.includes(dateIso);
+        lines.push(`
+          <div class="roster-coverage-grid">
+            <div class="roster-coverage-item"><strong>Mínimo estimado</strong><div>${calc.min} colaborador(es)</div></div>
+            <div class="roster-coverage-item"><strong>Recomendado (com reserva 15%)</strong><div>${calc.recommended} colaborador(es)</div></div>
+            <div class="roster-coverage-item"><strong>Equipe cadastrada</strong><div>${teamCount} colaborador(es)</div></div>
+            <div class="roster-coverage-item"><strong>Status</strong><div>${escapeHtml(status)}</div><div style="margin-top:6px;">${escapeHtml(status2)}</div></div>
+          </div>
+        `);
+      } else {
+        lines.push(`<div style="margin-top:8px;">Para Manhã/Tarde/Noite, o mínimo depende do tempo de jornada adotado na unidade. Cadastre a equipe e gere para validar se fecha sem avisos.</div>`);
       }
 
-      function maxShiftsExceeded(memberId) {
-        const m = team.find(x => x.id === memberId);
-        if (!m) return false;
-        const mx = String(m.maxShifts || "").trim();
-        if (!mx) return false;
-        const limit = rosterSafeInt(mx, 0);
-        if (!limit) return false;
-        return (stats[memberId]?.total || 0) >= limit;
+      rosterCoverageBox.innerHTML = lines.join("");
+    }
+
+    function rosterUpdateModelUI() {
+      const s = rosterReadSettings();
+
+      const is12 = s.shiftModel === "12x36";
+      const is18 = s.shiftModel === "18x36";
+      const is24 = s.shiftModel === "24x48";
+      const isMTN = s.shiftModel === "mtn";
+
+      if (rosterNeedPerShiftWrap) rosterNeedPerShiftWrap.style.display = (is18 || is24) ? "" : "none";
+      if (rosterNeedDayWrap) rosterNeedDayWrap.style.display = (is12 || isMTN) ? "" : "none";
+      if (rosterNeedNightWrap) rosterNeedNightWrap.style.display = (is12 || isMTN) ? "" : "none";
+      if (rosterNeedAfternoonWrap) rosterNeedAfternoonWrap.style.display = (isMTN) ? "" : "none";
+      if (rosterMaxConsecNightsWrap) rosterMaxConsecNightsWrap.style.display = (is12 || isMTN) ? "" : "none";
+
+      if (rosterModelNote) {
+        if (is12) {
+          rosterModelNote.textContent =
+            (s.startTime === "19:00")
+              ? "No 12x36, cada linha é um ciclo iniciado às 19:00: primeiro plantão 19:00–07:00 e depois 07:00–19:00 do dia seguinte."
+              : "No 12x36, cada linha é um ciclo iniciado às 07:00: primeiro plantão 07:00–19:00 e depois 19:00–07:00.";
+        } else if (is24) {
+          rosterModelNote.textContent = "No 24x48, a escala é uma sequência de plantões de 24 horas. O sistema rotaciona automaticamente para respeitar o descanso de 48 horas, usando rodízio em 3 equipes por posto.";
+        } else if (is18) {
+          rosterModelNote.textContent = "No 18x36, a escala é uma sequência de plantões de 18 horas. O sistema rotaciona automaticamente para respeitar o descanso de 36 horas, usando rodízio em 3 equipes por posto.";
+        } else {
+          rosterModelNote.textContent = "No modelo Manhã/Tarde/Noite, a escala é por dia. Informe quantas pessoas precisa em cada turno e gere para validar.";
+        }
       }
 
-      function violatesRest(memberId, dateIso, shift) {
-        const s = stats[memberId];
-        if (!s) return false;
+      rosterRenderTeam();
+      rosterUpdateCoverageUI();
+    }
 
-        // Não permite dois turnos no mesmo dia
-        if (s.assignedDates.has(dateIso)) return true;
+    function rosterRenderTeam() {
+      const s = rosterReadSettings();
+      const is12 = s.shiftModel === "12x36";
+      const isMTN = s.shiftModel === "mtn";
+      const showNightControls = (is12 || isMTN);
 
-        // Regra mínima: se fez noite no dia anterior, não pode fazer dia/manhã no dia atual
-        if ((shift === "day" || shift === "morning") && s.lastShift === "night" && s.lastDate) {
-          const prev = new Date(s.lastDate + "T00:00:00");
-          const cur = new Date(dateIso + "T00:00:00");
-          const diffDays = Math.round((cur - prev) / (1000 * 60 * 60 * 24));
-          if (diffDays === 1) return true;
+      if (rosterTeamTbody) rosterTeamTbody.innerHTML = "";
+      if (rosterTeamCards) rosterTeamCards.innerHTML = "";
+
+      rosterTeam.forEach((m, idx) => {
+        // Desktop row
+        if (rosterTeamTbody) {
+          const tr = document.createElement("tr");
+
+          const tdName = document.createElement("td");
+          const inpName = document.createElement("input");
+          inpName.className = "roster-mini-input";
+          inpName.value = m.name || "";
+          inpName.placeholder = "Nome";
+          inpName.addEventListener("input", () => { m.name = rosterTrim(inpName.value, 90); rosterUpdateCoverageUI(); });
+          tdName.appendChild(inpName);
+
+          const tdPref = document.createElement("td");
+          const selPref = document.createElement("select");
+          selPref.className = "roster-mini-input";
+          selPref.innerHTML = `
+            <option value="any">Indiferente</option>
+            <option value="day">Somente dia</option>
+            <option value="night">Somente noite</option>
+          `;
+          selPref.value = m.preference || "any";
+          selPref.disabled = !showNightControls;
+          selPref.addEventListener("change", () => {
+            m.preference = String(selPref.value || "any");
+            if (m.preference === "night") m.canNight = true;
+            rosterRenderTeam();
+          });
+          tdPref.appendChild(selPref);
+
+          const tdCanNight = document.createElement("td");
+          const selNight = document.createElement("select");
+          selNight.className = "roster-mini-input";
+          selNight.innerHTML = `<option value="yes">Sim</option><option value="no">Não</option>`;
+          selNight.value = m.canNight ? "yes" : "no";
+          selNight.disabled = (!showNightControls) || (m.preference === "night");
+          selNight.addEventListener("change", () => { m.canNight = (selNight.value === "yes"); });
+          tdCanNight.appendChild(selNight);
+
+          const tdOff = document.createElement("td");
+          const inpOff = document.createElement("input");
+          inpOff.className = "roster-mini-input";
+          inpOff.placeholder = "2026-01-05, 2026-01-20";
+          inpOff.value = (Array.isArray(m.offDates) ? m.offDates.join(", ") : "");
+          inpOff.addEventListener("input", () => { m.offDates = rosterParseOffDates(inpOff.value); });
+          tdOff.appendChild(inpOff);
+
+          const tdMax = document.createElement("td");
+          const inpMax = document.createElement("input");
+          inpMax.className = "roster-mini-input";
+          inpMax.type = "number";
+          inpMax.min = "0";
+          inpMax.max = "80";
+          inpMax.placeholder = "Opcional";
+          inpMax.value = String(m.maxShifts || "");
+          inpMax.addEventListener("input", () => { m.maxShifts = rosterTrim(inpMax.value, 3); });
+          tdMax.appendChild(inpMax);
+
+          const tdRm = document.createElement("td");
+          const rmBtn = document.createElement("button");
+          rmBtn.type = "button";
+          rmBtn.className = "secondary";
+          rmBtn.textContent = "Remover";
+          rmBtn.addEventListener("click", () => { rosterTeam.splice(idx, 1); rosterRenderTeam(); rosterUpdateCoverageUI(); });
+          tdRm.appendChild(rmBtn);
+
+          tr.appendChild(tdName);
+          tr.appendChild(tdPref);
+          tr.appendChild(tdCanNight);
+          tr.appendChild(tdOff);
+          tr.appendChild(tdMax);
+          tr.appendChild(tdRm);
+
+          rosterTeamTbody.appendChild(tr);
         }
 
-        // Limite de noites consecutivas
-        if (shift === "night") {
-          if (s.lastShift === "night" && s.lastDate) {
-            const prev = new Date(s.lastDate + "T00:00:00");
-            const cur = new Date(dateIso + "T00:00:00");
-            const diffDays = Math.round((cur - prev) / (1000 * 60 * 60 * 24));
-            if (diffDays === 1 && s.consecNights >= maxConsecNights) return true;
+        // Mobile card
+        if (rosterTeamCards) {
+          const card = document.createElement("div");
+          card.className = "roster-team-card";
+
+          const title = document.createElement("div");
+          title.className = "roster-team-card-title";
+          title.textContent = `Colaborador ${idx + 1}`;
+          card.appendChild(title);
+
+          const grid = document.createElement("div");
+          grid.className = "roster-team-card-grid";
+
+          const mkField = (labelTxt, el) => {
+            const wrap = document.createElement("div");
+            wrap.className = "roster-field";
+            const lab = document.createElement("label");
+            lab.textContent = labelTxt;
+            wrap.appendChild(lab);
+            wrap.appendChild(el);
+            return wrap;
+          };
+
+          const inpName2 = document.createElement("input");
+          inpName2.value = m.name || "";
+          inpName2.placeholder = "Nome";
+          inpName2.addEventListener("input", () => { m.name = rosterTrim(inpName2.value, 90); rosterUpdateCoverageUI(); });
+          grid.appendChild(mkField("Nome", inpName2));
+
+          if (showNightControls) {
+            const selPref2 = document.createElement("select");
+            selPref2.innerHTML = `<option value="any">Indiferente</option><option value="day">Somente dia</option><option value="night">Somente noite</option>`;
+            selPref2.value = m.preference || "any";
+            selPref2.addEventListener("change", () => { m.preference = String(selPref2.value || "any"); if (m.preference === "night") m.canNight = true; rosterRenderTeam(); });
+            grid.appendChild(mkField("Preferência", selPref2));
+
+            const selNight2 = document.createElement("select");
+            selNight2.innerHTML = `<option value="yes">Sim</option><option value="no">Não</option>`;
+            selNight2.value = m.canNight ? "yes" : "no";
+            selNight2.disabled = (m.preference === "night");
+            selNight2.addEventListener("change", () => { m.canNight = (selNight2.value === "yes"); });
+            grid.appendChild(mkField("Pode noite", selNight2));
           }
+
+          const inpOff2 = document.createElement("input");
+          inpOff2.placeholder = "2026-01-05, 2026-01-20";
+          inpOff2.value = (Array.isArray(m.offDates) ? m.offDates.join(", ") : "");
+          inpOff2.addEventListener("input", () => { m.offDates = rosterParseOffDates(inpOff2.value); });
+          grid.appendChild(mkField("Folgas (datas)", inpOff2));
+
+          const inpMax2 = document.createElement("input");
+          inpMax2.type = "number";
+          inpMax2.min = "0";
+          inpMax2.max = "80";
+          inpMax2.placeholder = "Opcional";
+          inpMax2.value = String(m.maxShifts || "");
+          inpMax2.addEventListener("input", () => { m.maxShifts = rosterTrim(inpMax2.value, 3); });
+          grid.appendChild(mkField("Máx plantões/mês", inpMax2));
+
+          card.appendChild(grid);
+
+          const actions = document.createElement("div");
+          actions.className = "roster-team-card-actions";
+          const rm2 = document.createElement("button");
+          rm2.type = "button";
+          rm2.className = "danger";
+          rm2.textContent = "Remover";
+          rm2.addEventListener("click", () => { rosterTeam.splice(idx, 1); rosterRenderTeam(); rosterUpdateCoverageUI(); });
+          actions.appendChild(rm2);
+          card.appendChild(actions);
+
+          rosterTeamCards.appendChild(card);
         }
-
-        return false;
-      }
-
-      function scoreCandidate(memberId, dateIso, shift) {
-        const s = stats[memberId];
-        const weekend = rosterIsWeekend(dateIso) ? 1 : 0;
-
-        let score = 0;
-        score += (s.total || 0) * 10;
-        score += (s.weekend || 0) * 3;
-        score += weekend * 2;
-
-        // Penaliza repetição de mesmo turno em dias seguidos (quando houver alternativas)
-        if (s.lastShift === shift && s.lastDate) {
-          const prev = new Date(s.lastDate + "T00:00:00");
-          const cur = new Date(dateIso + "T00:00:00");
-          const diffDays = Math.round((cur - prev) / (1000 * 60 * 60 * 24));
-          if (diffDays === 1) score += 8;
-        }
-
-        // Preferência (soft)
-        const member = team.find(x => x.id === memberId);
-        if (member) {
-          if (member.preference === "day" && (shift === "day" || shift === "morning" || shift === "afternoon")) score -= 4;
-          if (member.preference === "night" && shift === "night") score -= 4;
-        }
-
-        return score;
-      }
-
-      function pickForShift(dateIso, shift, needed) {
-        const chosen = [];
-        if (needed <= 0) return chosen;
-
-        const strictCandidates = [];
-        const relaxedCandidates = [];
-
-        for (const m of team) {
-          if (!rosterCanDoShift(m, shift)) continue;
-          if (hadOff(m, dateIso)) continue;
-          if (maxShiftsExceeded(m.id)) continue;
-
-          const restViolated = violatesRest(m.id, dateIso, shift);
-          const sc = scoreCandidate(m.id, dateIso, shift);
-
-          if (!restViolated) strictCandidates.push({ id: m.id, score: sc });
-          relaxedCandidates.push({ id: m.id, score: sc + (restViolated ? 60 : 0) });
-        }
-
-        strictCandidates.sort((a, b) => a.score - b.score);
-        relaxedCandidates.sort((a, b) => a.score - b.score);
-
-        const tryFill = (pool, label) => {
-          for (const c of pool) {
-            if (chosen.length >= needed) break;
-            if (chosen.includes(c.id)) continue;
-            // revalida no momento da escolha
-            const member = team.find(x => x.id === c.id);
-            if (!member) continue;
-            if (!rosterCanDoShift(member, shift)) continue;
-            if (hadOff(member, dateIso)) continue;
-            if (maxShiftsExceeded(c.id)) continue;
-            if (label === "strict" && violatesRest(c.id, dateIso, shift)) continue;
-            chosen.push(c.id);
-          }
-        };
-
-        tryFill(strictCandidates, "strict");
-        if (chosen.length < needed) {
-          tryFill(relaxedCandidates, "relaxed");
-          if (chosen.length < needed) {
-            warnings.push(`${dateIso}: faltaram ${needed - chosen.length} pessoa(s) no turno "${shift}".`);
-          } else {
-            warnings.push(`${dateIso}: houve relaxamento de regras (descanso/limites) para completar o turno "${shift}".`);
-          }
-        }
-
-        return chosen.slice(0, needed);
-      }
-
-      for (const dateIso of days) {
-        assignments[dateIso] = {};
-        for (const shift of shifts) {
-          const need = needByShift[shift] ?? 0;
-          const picked = pickForShift(dateIso, shift, need);
-          assignments[dateIso][shift] = picked;
-
-          for (const mid of picked) {
-            const s = stats[mid];
-            if (!s) continue;
-            s.total += 1;
-            s[shift] = (s[shift] || 0) + 1;
-            if (rosterIsWeekend(dateIso)) s.weekend += 1;
-
-            // noites consecutivas
-            if (shift === "night") {
-              if (s.lastShift === "night" && s.lastDate) {
-                const prev = new Date(s.lastDate + "T00:00:00");
-                const cur = new Date(dateIso + "T00:00:00");
-                const diffDays = Math.round((cur - prev) / (1000 * 60 * 60 * 24));
-                s.consecNights = (diffDays === 1) ? (s.consecNights + 1) : 1;
-              } else {
-                s.consecNights = 1;
-              }
-            } else {
-              s.consecNights = 0;
-            }
-
-            s.lastShift = shift;
-            s.lastDate = dateIso;
-            s.assignedDates.add(dateIso);
-          }
-        }
-      }
-
-      const viewDays = days.map(dateIso => {
-        const item = assignments[dateIso] || {};
-        const out = { date: dateIso };
-        for (const shift of shifts) {
-          const ids = Array.isArray(item[shift]) ? item[shift] : [];
-          out[shift] = ids.map(id => stats[id]?.name || "").filter(Boolean);
-        }
-        return out;
       });
+    }
 
-      const summaryRows = Object.values(stats).map(s => ({
-        name: s.name,
-        total: s.total,
-        day: s.day || 0,
-        night: s.night || 0,
-        morning: s.morning || 0,
-        afternoon: s.afternoon || 0,
-        weekend: s.weekend || 0
-      })).sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+    function rosterBulkAdd() {
+      const raw = prompt(
+        "Cole uma lista (1 por linha). Formatos aceitos:\n" +
+        "1) Nome\n" +
+        "2) Nome;preferencia(day|night|any);podeNoite(yes|no);folgas(AAAA-MM-DD, ...);max\n\n" +
+        "Exemplo:\nMaria;day;yes;2026-01-05,2026-01-20;14\n\n" +
+        "Dica: se você estiver usando 24x48 ou 18x36, pode colar apenas os nomes."
+      );
+      if (!raw) return;
 
-      return {
-        ok: true,
-        month: yyyyMM,
-        shiftModel,
-        shifts,
-        needByShift,
-        days: viewDays,
-        summary: summaryRows,
-        warnings
-      };
+      const lines = String(raw).split("\n").map(l => l.trim()).filter(Boolean);
+      const added = [];
+      for (const line of lines) {
+        const parts = line.split(";").map(x => x.trim());
+        const name = rosterTrim(parts[0] || "", 90);
+        if (!name) continue;
+
+        const prefRaw = String(parts[1] || "any").toLowerCase();
+        const preference = (prefRaw === "day" || prefRaw === "night" || prefRaw === "any") ? prefRaw : "any";
+
+        const canNightRaw = String(parts[2] || "yes").toLowerCase();
+        const canNight = (preference === "night") ? true : (canNightRaw !== "no");
+
+        const offDates = rosterParseOffDates(parts[3] || "");
+        let maxShifts = String(parts[4] || "").trim();
+        if (maxShifts !== "") {
+          const n = rosterSafeInt(maxShifts, 0);
+          maxShifts = n > 0 ? String(Math.min(80, n)) : "";
+        }
+
+        added.push({ id: "mem_" + Math.random().toString(16).slice(2), name, preference, canNight, offDates, maxShifts });
+      }
+
+      if (!added.length) return;
+      rosterTeam = rosterTeam.concat(added);
+      rosterRenderTeam();
+      rosterUpdateCoverageUI();
+    }
+
+    function rosterSetWarnBox(warnings) {
+      if (!rosterWarnBox) return;
+      const list = Array.isArray(warnings) ? warnings.filter(Boolean) : [];
+      if (!list.length) {
+        rosterWarnBox.classList.add("hidden");
+        rosterWarnBox.textContent = "";
+        return;
+      }
+      rosterWarnBox.classList.remove("hidden");
+      rosterWarnBox.textContent = list.join("\n");
     }
 
     function rosterRenderOutput(result) {
-      rosterWarnBox?.classList.add("hidden");
-      rosterWarnBox.textContent = "";
+      rosterSetWarnBox(result?.warnings || []);
 
-      if (!result || !result.ok) {
+      if (!result) {
         rosterOutput?.classList.add("hidden");
-        rosterLastGenerated = null;
+        if (rosterTableOut) rosterTableOut.innerHTML = "";
+        if (rosterSummaryOut) rosterSummaryOut.innerHTML = "";
+        if (rosterOutputMobile) rosterOutputMobile.innerHTML = "";
         rosterSaveScheduleBtn.disabled = true;
         rosterExportCsvBtn.disabled = true;
         rosterPrintBtn.disabled = true;
+        rosterLastGenerated = null;
         return;
       }
 
-      if (Array.isArray(result.warnings) && result.warnings.length) {
-        rosterWarnBox.textContent = result.warnings.join("\n");
-        rosterWarnBox.classList.remove("hidden");
-      } else {
-        rosterWarnBox.classList.add("hidden");
-      }
+      // Desktop tables
+      if (rosterTableOut) rosterTableOut.innerHTML = result.desktopTableHtml || "";
+      if (rosterSummaryOut) rosterSummaryOut.innerHTML = result.summaryTableHtml || "";
 
-      const shifts = result.shifts || [];
-      const header = ["Data"].concat(shifts.map(s => {
-        if (s === "day") return "Dia";
-        if (s === "night") return "Noite";
-        if (s === "morning") return "Manhã";
-        if (s === "afternoon") return "Tarde";
-        return s;
-      }));
+      // Mobile cards
+      if (rosterOutputMobile) rosterOutputMobile.innerHTML = result.mobileCardsHtml || "";
 
-      const t = [];
-      t.push("<thead><tr>" + header.map(h => `<th>${h}</th>`).join("") + "</tr></thead>");
-      t.push("<tbody>");
-      for (const row of (result.days || [])) {
-        const cells = [];
-        cells.push(`<td>${row.date || ""}</td>`);
-        for (const s of shifts) {
-          const names = Array.isArray(row[s]) ? row[s] : [];
-          cells.push(`<td>${names.map(n => escapeHtml(String(n))).join("<br>")}</td>`);
-        }
-        t.push("<tr>" + cells.join("") + "</tr>");
-      }
-      t.push("</tbody>");
-      rosterTableOut.innerHTML = t.join("");
-
-      // Summary
-      const sumHeader = (result.shiftModel === "mtn")
-        ? ["Pessoa", "Total", "Manhã", "Tarde", "Noite", "Finais de semana"]
-        : ["Pessoa", "Total", "Dia", "Noite", "Finais de semana"];
-
-      const sRows = [];
-      sRows.push("<thead><tr>" + sumHeader.map(h => `<th>${h}</th>`).join("") + "</tr></thead>");
-      sRows.push("<tbody>");
-      for (const r of (result.summary || [])) {
-        if (result.shiftModel === "mtn") {
-          sRows.push("<tr>" + [
-            `<td>${escapeHtml(r.name || "")}</td>`,
-            `<td>${r.total || 0}</td>`,
-            `<td>${r.morning || 0}</td>`,
-            `<td>${r.afternoon || 0}</td>`,
-            `<td>${r.night || 0}</td>`,
-            `<td>${r.weekend || 0}</td>`
-          ].join("") + "</tr>");
-        } else {
-          sRows.push("<tr>" + [
-            `<td>${escapeHtml(r.name || "")}</td>`,
-            `<td>${r.total || 0}</td>`,
-            `<td>${r.day || 0}</td>`,
-            `<td>${r.night || 0}</td>`,
-            `<td>${r.weekend || 0}</td>`
-          ].join("") + "</tr>");
-        }
-      }
-      sRows.push("</tbody>");
-      rosterSummaryOut.innerHTML = sRows.join("");
-
-      rosterOutput.classList.remove("hidden");
-
-      // CSV
-      const csvLines = [];
-      csvLines.push(header.join(";"));
-      for (const row of (result.days || [])) {
-        const line = [row.date || ""];
-        for (const s of shifts) {
-          const names = Array.isArray(row[s]) ? row[s] : [];
-          line.push(names.join(" | "));
-        }
-        csvLines.push(line.join(";"));
-      }
-      const csv = csvLines.join("\n");
+      rosterOutput?.classList.remove("hidden");
 
       rosterLastGenerated = {
         month: result.month,
         shiftModel: result.shiftModel,
-        shifts: result.shifts,
-        needByShift: result.needByShift,
-        days: result.days,
+        startTime: result.startTime,
+        rows: result.rows,
         summary: result.summary,
         warnings: result.warnings,
-        csv
+        csv: result.csv,
+        printableTitle: result.printableTitle || (`Escala ${result.month}`)
       };
 
       rosterSaveScheduleBtn.disabled = false;
@@ -11304,16 +11498,615 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       rosterPrintBtn.disabled = false;
     }
 
+    function rosterGenerateDayNight(yyyyMM, needDay, needNight, maxConsecNights) {
+      const days = rosterDaysInMonth(yyyyMM);
+      const team = rosterValidatedTeam();
+      if (!days.length) return { ok: false, error: "Selecione um mês válido." };
+      if (team.length < 1) return { ok: false, error: "Cadastre pelo menos 1 pessoa." };
+
+      const needByShift = { day: Math.max(1, needDay), night: Math.max(1, needNight) };
+
+      const counts = {};
+      const nightStreak = {};
+      const warnings = [];
+      const rowsByDate = {};
+
+      for (const m of team) {
+        counts[m.id] = { total: 0, day: 0, night: 0, weekend: 0 };
+        nightStreak[m.id] = 0;
+      }
+
+      const lastDateAssigned = {}; // memberId -> last dateIso (independente do tipo)
+
+      function hitMonthlyLimit(member) {
+        const maxShifts = member.maxShifts ? rosterSafeInt(member.maxShifts, 0) : 0;
+        if (maxShifts > 0 && counts[member.id].total >= maxShifts) return true;
+        return false;
+      }
+
+      function hasConsecutiveDay(member, dateIso) {
+        const last = lastDateAssigned[member.id];
+        if (!last) return false;
+        return (dateIso === rosterNextDate(last)) || (last === rosterNextDate(dateIso));
+      }
+
+      function eligible(member, dateIso, kind, excludeIds) {
+        if (!member) return false;
+        if (excludeIds && excludeIds.has(member.id)) return false;
+
+        if (!rosterCanDoShift(member, kind, "12x36")) return false;
+        if (Array.isArray(member.offDates) && member.offDates.includes(dateIso)) return false;
+        if (hitMonthlyLimit(member)) return false;
+
+        // regra conservadora: evita plantões em dias consecutivos no 12x36
+        if (hasConsecutiveDay(member, dateIso)) return false;
+
+        if (kind === "night" && nightStreak[member.id] >= maxConsecNights) return false;
+
+        return true;
+      }
+
+      function pick(dateIso, kind, excludeIds) {
+        const pool = team.slice().filter(m => eligible(m, dateIso, kind, excludeIds));
+        pool.sort((a, b) => {
+          const ca = counts[a.id];
+          const cb = counts[b.id];
+          if (ca.total !== cb.total) return ca.total - cb.total;
+
+          if (kind === "night") {
+            if (ca.night !== cb.night) return ca.night - cb.night;
+          } else {
+            if (ca.day !== cb.day) return ca.day - cb.day;
+          }
+          return String(a.name || "").localeCompare(String(b.name || ""));
+        });
+        return pool[0] || null;
+      }
+
+      function pickRelaxed(dateIso, kind, excludeIds) {
+        const pool = team.slice().filter(m => {
+          if (!m) return false;
+          if (excludeIds && excludeIds.has(m.id)) return false;
+          if (!rosterCanDoShift(m, kind, "12x36")) return false;
+          if (Array.isArray(m.offDates) && m.offDates.includes(dateIso)) return false;
+          if (hitMonthlyLimit(m)) return false;
+          return true;
+        });
+        pool.sort((a, b) => (counts[a.id].total - counts[b.id].total) || String(a.name || "").localeCompare(String(b.name || "")));
+        return pool[0] || null;
+      }
+
+      for (const dateIso of days) {
+        const usedDay = new Set();
+        const usedNight = new Set();
+
+        const dayAssigned = [];
+        const nightAssigned = [];
+
+        for (let i = 0; i < needByShift.day; i++) {
+          let mem = pick(dateIso, "day", usedDay);
+          if (!mem) {
+            warnings.push(`${dateIso}: houve relaxamento de regras para completar 07:00–19:00.`);
+            mem = pickRelaxed(dateIso, "day", usedDay);
+          }
+          if (!mem) break;
+
+          usedDay.add(mem.id);
+          dayAssigned.push(mem.name);
+
+          counts[mem.id].total += 1;
+          counts[mem.id].day += 1;
+          if (rosterIsWeekend(dateIso)) counts[mem.id].weekend += 1;
+
+          nightStreak[mem.id] = 0;
+          lastDateAssigned[mem.id] = dateIso;
+        }
+
+        for (let i = 0; i < needByShift.night; i++) {
+          let mem = pick(dateIso, "night", usedNight);
+          if (!mem) {
+            warnings.push(`${dateIso}: houve relaxamento de regras para completar 19:00–07:00.`);
+            mem = pickRelaxed(dateIso, "night", usedNight);
+          }
+          if (!mem) break;
+
+          usedNight.add(mem.id);
+          nightAssigned.push(mem.name);
+
+          counts[mem.id].total += 1;
+          counts[mem.id].night += 1;
+          if (rosterIsWeekend(dateIso)) counts[mem.id].weekend += 1;
+
+          nightStreak[mem.id] = (nightStreak[mem.id] || 0) + 1;
+          lastDateAssigned[mem.id] = dateIso;
+        }
+
+        rowsByDate[dateIso] = { date: dateIso, day: dayAssigned, night: nightAssigned };
+      }
+
+      const summary = team.map(m => ({
+        name: m.name,
+        total: counts[m.id].total,
+        day: counts[m.id].day,
+        night: counts[m.id].night,
+        weekend: counts[m.id].weekend
+      })).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+
+      return { ok: true, month: yyyyMM, days, rowsByDate, summary, warnings };
+    }
+
+    function rosterGenerateMTN(yyyyMM, needMorning, needAfternoon, needNight, maxConsecNights) {
+      const days = rosterDaysInMonth(yyyyMM);
+      const team = rosterValidatedTeam();
+      if (!days.length) return { ok: false, error: "Selecione um mês válido." };
+      if (team.length < 1) return { ok: false, error: "Cadastre pelo menos 1 pessoa." };
+
+      const needByShift = { morning: Math.max(1, needMorning), afternoon: Math.max(0, needAfternoon), night: Math.max(1, needNight) };
+
+      const counts = {};
+      const nightStreak = {};
+      const warnings = [];
+      const rows = [];
+
+      for (const m of team) {
+        counts[m.id] = { total: 0, morning: 0, afternoon: 0, night: 0, weekend: 0 };
+        nightStreak[m.id] = 0;
+      }
+
+      function hitMonthlyLimit(member) {
+        const maxShifts = member.maxShifts ? rosterSafeInt(member.maxShifts, 0) : 0;
+        if (maxShifts > 0 && counts[member.id].total >= maxShifts) return true;
+        return false;
+      }
+
+      function eligible(member, dateIso, kind, excludeIds) {
+        if (!member) return false;
+        if (excludeIds && excludeIds.has(member.id)) return false;
+
+        if (!rosterCanDoShift(member, kind, "mtn")) return false;
+        if (Array.isArray(member.offDates) && member.offDates.includes(dateIso)) return false;
+        if (hitMonthlyLimit(member)) return false;
+
+        if (kind === "night" && nightStreak[member.id] >= maxConsecNights) return false;
+        return true;
+      }
+
+      function pick(dateIso, kind, excludeIds) {
+        const pool = team.slice().filter(m => eligible(m, dateIso, kind, excludeIds));
+        pool.sort((a, b) => {
+          const ca = counts[a.id];
+          const cb = counts[b.id];
+          if (ca.total !== cb.total) return ca.total - cb.total;
+          return String(a.name || "").localeCompare(String(b.name || ""));
+        });
+        return pool[0] || null;
+      }
+
+      function pickRelaxed(dateIso, kind, excludeIds) {
+        const pool = team.slice().filter(m => {
+          if (!m) return false;
+          if (excludeIds && excludeIds.has(m.id)) return false;
+          if (!rosterCanDoShift(m, kind, "mtn")) return false;
+          if (Array.isArray(m.offDates) && m.offDates.includes(dateIso)) return false;
+          if (hitMonthlyLimit(m)) return false;
+          return true;
+        });
+        pool.sort((a, b) => (counts[a.id].total - counts[b.id].total) || String(a.name || "").localeCompare(String(b.name || "")));
+        return pool[0] || null;
+      }
+
+      for (const dateIso of days) {
+        const usedMorning = new Set();
+        const usedAfternoon = new Set();
+        const usedNight = new Set();
+
+        const row = { date: dateIso, morning: [], afternoon: [], night: [] };
+
+        for (let i = 0; i < needByShift.morning; i++) {
+          let mem = pick(dateIso, "morning", usedMorning);
+          if (!mem) {
+            warnings.push(`${dateIso}: houve relaxamento de regras para completar manhã.`);
+            mem = pickRelaxed(dateIso, "morning", usedMorning);
+          }
+          if (!mem) break;
+
+          usedMorning.add(mem.id);
+          row.morning.push(mem.name);
+
+          counts[mem.id].total += 1;
+          counts[mem.id].morning += 1;
+          if (rosterIsWeekend(dateIso)) counts[mem.id].weekend += 1;
+          nightStreak[mem.id] = 0;
+        }
+
+        for (let i = 0; i < needByShift.afternoon; i++) {
+          let mem = pick(dateIso, "afternoon", usedAfternoon);
+          if (!mem) {
+            warnings.push(`${dateIso}: houve relaxamento de regras para completar tarde.`);
+            mem = pickRelaxed(dateIso, "afternoon", usedAfternoon);
+          }
+          if (!mem) break;
+
+          usedAfternoon.add(mem.id);
+          row.afternoon.push(mem.name);
+
+          counts[mem.id].total += 1;
+          counts[mem.id].afternoon += 1;
+          if (rosterIsWeekend(dateIso)) counts[mem.id].weekend += 1;
+          nightStreak[mem.id] = 0;
+        }
+
+        for (let i = 0; i < needByShift.night; i++) {
+          let mem = pick(dateIso, "night", usedNight);
+          if (!mem) {
+            warnings.push(`${dateIso}: houve relaxamento de regras para completar noite.`);
+            mem = pickRelaxed(dateIso, "night", usedNight);
+          }
+          if (!mem) break;
+
+          usedNight.add(mem.id);
+          row.night.push(mem.name);
+
+          counts[mem.id].total += 1;
+          counts[mem.id].night += 1;
+          if (rosterIsWeekend(dateIso)) counts[mem.id].weekend += 1;
+          nightStreak[mem.id] = (nightStreak[mem.id] || 0) + 1;
+        }
+
+        rows.push(row);
+      }
+
+      const summary = team.map(m => ({
+        name: m.name,
+        total: counts[m.id].total,
+        morning: counts[m.id].morning,
+        afternoon: counts[m.id].afternoon,
+        night: counts[m.id].night,
+        weekend: counts[m.id].weekend
+      })).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+
+      return { ok: true, month: yyyyMM, rows, summary, warnings };
+    }
+
+    function rosterFormatDateTime(d) {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mi = String(d.getMinutes()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+    }
+
+    function rosterGenerateContinuous(yyyyMM, startTime, shiftHours, restHours, needPerShift) {
+      const team = rosterValidatedTeam();
+      if (!team.length) return { ok: false, error: "Cadastre pelo menos 1 pessoa." };
+
+      const m = /^\d{4}-\d{2}$/.test(yyyyMM || "") ? yyyyMM : "";
+      if (!m) return { ok: false, error: "Selecione um mês válido." };
+
+      const [yStr, moStr] = m.split("-");
+      const y = Number(yStr), mo = Number(moStr);
+      const monthStart = new Date(y, mo - 1, 1, 0, 0, 0);
+      const monthEnd = new Date(y, mo, 1, 0, 0, 0);
+
+      const [hhStr, mmStr] = String(startTime || "07:00").split(":");
+      const startH = rosterSafeInt(hhStr, 7);
+      const startM = rosterSafeInt(mmStr, 0);
+
+      // Passo entre inícios: igual ao tempo de trabalho (para cobrir continuamente).
+      const stepHours = shiftHours;
+      let cursor = new Date(y, mo - 1, 1, startH, startM, 0);
+
+      // Ajuste para pegar o último início antes (ou igual) ao início do mês, para não deixar buracos na virada do mês.
+      while (cursor > monthStart) {
+        cursor = new Date(cursor.getTime() - stepHours * 3600 * 1000);
+      }
+
+      const shifts = [];
+      for (let guard = 0; guard < 2000; guard++) {
+        const start = new Date(cursor.getTime());
+        const end = new Date(start.getTime() + shiftHours * 3600 * 1000);
+        const overlaps = (start < monthEnd) && (end > monthStart);
+        if (overlaps) shifts.push({ start, end });
+        cursor = new Date(cursor.getTime() + stepHours * 3600 * 1000);
+        if (start >= monthEnd) break;
+        if (cursor > new Date(monthEnd.getTime() + 10 * 24 * 3600 * 1000)) break;
+      }
+
+      const warnings = [];
+      const need = Math.max(1, rosterSafeInt(needPerShift, 1));
+
+      const teamsPerSlot = 3; // 18x36 e 24x48
+      const minNeeded = teamsPerSlot * need;
+      if (team.length < minNeeded) {
+        warnings.push(`Equipe cadastrada (${team.length}) abaixo do mínimo estimado (${minNeeded}) para ${need} posto(s). O sistema pode preencher com repetição e avisos.`);
+      }
+
+      // grupos por posto
+      const groups = [];
+      const pool = team.slice();
+      for (let slot = 0; slot < need; slot++) {
+        groups.push(pool.slice(slot * teamsPerSlot, slot * teamsPerSlot + teamsPerSlot));
+      }
+
+      // contadores
+      const counts = {};
+      const lastEnd = {};
+      for (const m of team) { counts[m.id] = 0; lastEnd[m.id] = null; }
+
+      function canAssign(member, shiftStartDateIso, shiftStartTs) {
+        if (!member) return false;
+        // folga (considera data de início)
+        if (Array.isArray(member.offDates) && member.offDates.includes(shiftStartDateIso)) return false;
+
+        // limite mensal
+        const maxShifts = member.maxShifts ? rosterSafeInt(member.maxShifts, 0) : 0;
+        if (maxShifts > 0 && counts[member.id] >= maxShifts) return false;
+
+        // descanso mínimo (conservador)
+        const le = lastEnd[member.id];
+        if (le && typeof le === "number") {
+          const minRestMs = restHours * 3600 * 1000;
+          if (shiftStartTs < le + minRestMs) return false;
+        }
+        return true;
+      }
+
+      function pickFallback(shiftStartDateIso, shiftStartTs) {
+        const sorted = team.slice().sort((a, b) => (counts[a.id] - counts[b.id]) || String(a.name).localeCompare(String(b.name)));
+        for (const cand of sorted) {
+          if (canAssign(cand, shiftStartDateIso, shiftStartTs)) return cand;
+        }
+        return null;
+      }
+
+      const rows = [];
+
+      for (let i = 0; i < shifts.length; i++) {
+        const sh = shifts[i];
+        const startIso = rosterIsoDate(sh.start);
+        const startTs = sh.start.getTime();
+
+        const assignedNames = [];
+
+        for (let slot = 0; slot < need; slot++) {
+          const group = groups[slot] || [];
+          let chosen = null;
+
+          // prioridade: rodízio dentro do grupo (A/B/C) para manter descanso
+          const preferred = group.length ? group[i % teamsPerSlot] : null;
+          if (preferred && canAssign(preferred, startIso, startTs)) chosen = preferred;
+
+          if (!chosen && group.length) {
+            for (const cand of group) {
+              if (canAssign(cand, startIso, startTs)) { chosen = cand; break; }
+            }
+          }
+
+          // fallback: pega da equipe geral
+          if (!chosen) {
+            chosen = pickFallback(startIso, startTs);
+            if (chosen) warnings.push(`${rosterFormatDateTime(sh.start)}: houve relaxamento de regras (descanso/limites/folgas) para completar posto ${slot + 1}.`);
+          }
+
+          if (!chosen) {
+            assignedNames.push("VAGO");
+            warnings.push(`${rosterFormatDateTime(sh.start)}: não foi possível preencher posto ${slot + 1}.`);
+            continue;
+          }
+
+          assignedNames.push(chosen.name);
+          counts[chosen.id] += 1;
+          lastEnd[chosen.id] = sh.end.getTime();
+        }
+
+        rows.push({
+          start: rosterFormatDateTime(sh.start),
+          end: rosterFormatDateTime(sh.end),
+          people: assignedNames
+        });
+      }
+
+      const summary = team.map(m => ({ name: m.name, total: counts[m.id] || 0 })).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+
+      return { ok: true, month: yyyyMM, rows, summary, warnings };
+    }
+
+    function rosterBuildTablesAndCards(settings, result) {
+      const s = settings;
+      const model = s.shiftModel;
+      const startTime = s.startTime;
+
+      const warnings = Array.isArray(result.warnings) ? result.warnings : [];
+      const month = result.month || s.month;
+
+      const printableTitle = `Escala ${month} (${model})`;
+
+      // Desktop table HTML (string de <thead>+<tbody> para inserir no <table>)
+      let desktopTableHtml = "";
+      let mobileCardsHtml = "";
+      let csv = "";
+      let rowsForSave = [];
+
+      if (model === "12x36") {
+        const days = result.days || rosterDaysInMonth(month);
+        const map = result.rowsByDate || {};
+
+        // Monta ciclos (B): cada linha inicia na hora escolhida
+        const cycles = [];
+        for (const d of days) {
+          if (startTime === "19:00") {
+            const night = (map[d]?.night || []);
+            const d2 = rosterNextDate(d);
+            const day2 = (map[d2]?.day || []);
+            cycles.push({
+              cycleStart: `${d} 19:00`,
+              part1Label: "19:00–07:00",
+              part1: night,
+              part2Label: "07:00–19:00",
+              part2: day2,
+              note: (d2.startsWith(month)) ? "" : "2º plantão fora do mês"
+            });
+          } else {
+            const day = (map[d]?.day || []);
+            const night = (map[d]?.night || []);
+            cycles.push({
+              cycleStart: `${d} 07:00`,
+              part1Label: "07:00–19:00",
+              part1: day,
+              part2Label: "19:00–07:00",
+              part2: night,
+              note: ""
+            });
+          }
+        }
+
+        const header = ["Início do ciclo", "Plantão 1", "Plantão 2"];
+        desktopTableHtml += "<thead><tr>" + header.map(h => `<th>${escapeHtml(h)}</th>`).join("") + "</tr></thead><tbody>";
+        for (const c of cycles) {
+          const p1 = (c.part1 || []).join(" | ");
+          const p2 = (c.part2 || []).join(" | ");
+          desktopTableHtml += "<tr>" + [
+            `<td>${escapeHtml(c.cycleStart)}${c.note ? `<div style="font-size:12px;color:#666;margin-top:4px;">${escapeHtml(c.note)}</div>` : ""}</td>`,
+            `<td><span class="roster-pill">${escapeHtml(c.part1Label)}</span>${escapeHtml(p1)}</td>`,
+            `<td><span class="roster-pill">${escapeHtml(c.part2Label)}</span>${escapeHtml(p2)}</td>`
+          ].join("") + "</tr>";
+
+          mobileCardsHtml += `
+            <div class="roster-out-card">
+              <div class="roster-out-card-title">${escapeHtml(c.cycleStart)}</div>
+              ${c.note ? `<div class="roster-out-card-line" style="font-size:12px;color:#666;">${escapeHtml(c.note)}</div>` : ""}
+              <div class="roster-out-card-line"><span class="roster-pill">${escapeHtml(c.part1Label)}</span>${escapeHtml(p1 || "")}</div>
+              <div class="roster-out-card-line"><span class="roster-pill">${escapeHtml(c.part2Label)}</span>${escapeHtml(p2 || "")}</div>
+            </div>
+          `;
+
+          rowsForSave.push({ cycleStart: c.cycleStart, part1Label: c.part1Label, part1: c.part1, part2Label: c.part2Label, part2: c.part2, note: c.note });
+        }
+        desktopTableHtml += "</tbody>";
+
+        const sumHeader = ["Nome", "Total", "Dia", "Noite", "Finais de semana"];
+        let summaryTableHtml = "<thead><tr>" + sumHeader.map(h => `<th>${escapeHtml(h)}</th>`).join("") + "</tr></thead><tbody>";
+        for (const r of (result.summary || [])) {
+          summaryTableHtml += "<tr>" + [
+            `<td>${escapeHtml(r.name || "")}</td>`,
+            `<td>${r.total || 0}</td>`,
+            `<td>${r.day || 0}</td>`,
+            `<td>${r.night || 0}</td>`,
+            `<td>${r.weekend || 0}</td>`
+          ].join("") + "</tr>";
+        }
+        summaryTableHtml += "</tbody>";
+
+        // CSV
+        const csvLines = [];
+        csvLines.push(header.join(";"));
+        for (const c of cycles) {
+          csvLines.push([c.cycleStart, (c.part1 || []).join(" | "), (c.part2 || []).join(" | ")].join(";"));
+        }
+        csv = csvLines.join("\n");
+
+        return { month, printableTitle, desktopTableHtml, summaryTableHtml, mobileCardsHtml, csv, rows: rowsForSave, summary: result.summary || [], warnings };
+      }
+
+      if (model === "mtn") {
+        const header = ["Data", "Manhã", "Tarde", "Noite"];
+        desktopTableHtml += "<thead><tr>" + header.map(h => `<th>${escapeHtml(h)}</th>`).join("") + "</tr></thead><tbody>";
+        for (const row of (result.rows || [])) {
+          const m = (row.morning || []).join(" | ");
+          const a = (row.afternoon || []).join(" | ");
+          const n = (row.night || []).join(" | ");
+          desktopTableHtml += "<tr>" + [
+            `<td>${escapeHtml(row.date || "")}</td>`,
+            `<td>${escapeHtml(m)}</td>`,
+            `<td>${escapeHtml(a)}</td>`,
+            `<td>${escapeHtml(n)}</td>`
+          ].join("") + "</tr>";
+
+          mobileCardsHtml += `
+            <div class="roster-out-card">
+              <div class="roster-out-card-title">${escapeHtml(row.date || "")}</div>
+              <div class="roster-out-card-line"><span class="roster-pill">Manhã</span>${escapeHtml(m || "")}</div>
+              <div class="roster-out-card-line"><span class="roster-pill">Tarde</span>${escapeHtml(a || "")}</div>
+              <div class="roster-out-card-line"><span class="roster-pill">Noite</span>${escapeHtml(n || "")}</div>
+            </div>
+          `;
+          rowsForSave.push({ date: row.date, morning: row.morning, afternoon: row.afternoon, night: row.night });
+        }
+        desktopTableHtml += "</tbody>";
+
+        const sumHeader = ["Nome", "Total", "Manhã", "Tarde", "Noite", "Finais de semana"];
+        let summaryTableHtml = "<thead><tr>" + sumHeader.map(h => `<th>${escapeHtml(h)}</th>`).join("") + "</tr></thead><tbody>";
+        for (const r of (result.summary || [])) {
+          summaryTableHtml += "<tr>" + [
+            `<td>${escapeHtml(r.name || "")}</td>`,
+            `<td>${r.total || 0}</td>`,
+            `<td>${r.morning || 0}</td>`,
+            `<td>${r.afternoon || 0}</td>`,
+            `<td>${r.night || 0}</td>`,
+            `<td>${r.weekend || 0}</td>`
+          ].join("") + "</tr>";
+        }
+        summaryTableHtml += "</tbody>";
+
+        // CSV
+        const csvLines = [];
+        csvLines.push(header.join(";"));
+        for (const row of (result.rows || [])) {
+          csvLines.push([row.date || "", (row.morning || []).join(" | "), (row.afternoon || []).join(" | "), (row.night || []).join(" | ")].join(";"));
+        }
+        csv = csvLines.join("\n");
+
+        return { month, printableTitle, desktopTableHtml, summaryTableHtml, mobileCardsHtml, csv, rows: rowsForSave, summary: result.summary || [], warnings };
+      }
+
+      // 18x36 e 24x48
+      const header = ["Início", "Fim", "Pessoas"];
+      desktopTableHtml += "<thead><tr>" + header.map(h => `<th>${escapeHtml(h)}</th>`).join("") + "</tr></thead><tbody>";
+      for (const row of (result.rows || [])) {
+        const ppl = (row.people || []).join(" | ");
+        desktopTableHtml += "<tr>" + [
+          `<td>${escapeHtml(row.start || "")}</td>`,
+          `<td>${escapeHtml(row.end || "")}</td>`,
+          `<td>${escapeHtml(ppl)}</td>`
+        ].join("") + "</tr>";
+
+        mobileCardsHtml += `
+          <div class="roster-out-card">
+            <div class="roster-out-card-title">${escapeHtml(row.start || "")}</div>
+            <div class="roster-out-card-line"><span class="roster-pill">Fim</span>${escapeHtml(row.end || "")}</div>
+            <div class="roster-out-card-line"><span class="roster-pill">Equipe</span>${escapeHtml(ppl || "")}</div>
+          </div>
+        `;
+        rowsForSave.push({ start: row.start, end: row.end, people: row.people });
+      }
+      desktopTableHtml += "</tbody>";
+
+      const sumHeader = ["Nome", "Total"];
+      let summaryTableHtml = "<thead><tr>" + sumHeader.map(h => `<th>${escapeHtml(h)}</th>`).join("") + "</tr></thead><tbody>";
+      for (const r of (result.summary || [])) {
+        summaryTableHtml += "<tr>" + [
+          `<td>${escapeHtml(r.name || "")}</td>`,
+          `<td>${r.total || 0}</td>`
+        ].join("") + "</tr>";
+      }
+      summaryTableHtml += "</tbody>";
+
+      const csvLines = [];
+      csvLines.push(header.join(";"));
+      for (const row of (result.rows || [])) {
+        csvLines.push([row.start || "", row.end || "", (row.people || []).join(" | ")].join(";"));
+      }
+      csv = csvLines.join("\n");
+
+      return { month, printableTitle, desktopTableHtml, summaryTableHtml, mobileCardsHtml, csv, rows: rowsForSave, summary: result.summary || [], warnings };
+    }
+
     async function rosterSaveConfig() {
       const settings = rosterReadSettings();
       const team = rosterValidatedTeam();
 
-      const payload = {
-        config: {
-          settings,
-          team
-        }
-      };
+      const payload = { config: { settings, team } };
 
       try {
         rosterSaveConfigBtn.disabled = true;
@@ -11350,6 +12143,9 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
         if (rosterMonthEl && settings.month) rosterMonthEl.value = settings.month;
         if (rosterShiftModelEl && settings.shiftModel) rosterShiftModelEl.value = settings.shiftModel;
+        if (rosterStartTimeEl && settings.startTime) rosterStartTimeEl.value = settings.startTime;
+
+        if (rosterNeedPerShiftEl && Number.isFinite(Number(settings.needPerShift))) rosterNeedPerShiftEl.value = String(settings.needPerShift);
         if (rosterNeedDayEl && Number.isFinite(Number(settings.needDay))) rosterNeedDayEl.value = String(settings.needDay);
         if (rosterNeedNightEl && Number.isFinite(Number(settings.needNight))) rosterNeedNightEl.value = String(settings.needNight);
         if (rosterNeedAfternoonEl && Number.isFinite(Number(settings.needAfternoon))) rosterNeedAfternoonEl.value = String(settings.needAfternoon);
@@ -11364,7 +12160,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
           maxShifts: (t.maxShifts === "" || t.maxShifts === null || typeof t.maxShifts === "undefined") ? "" : String(t.maxShifts)
         }));
 
-        rosterRenderTeam();
+        rosterUpdateModelUI();
         alert("Configuração carregada.");
       } catch (e) {
         alert(String(e?.message || e || "Falha ao carregar."));
@@ -11376,15 +12172,14 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     async function rosterSaveSchedule() {
       if (!rosterLastGenerated || !rosterLastGenerated.month) return;
 
-      const title = `Escala ${rosterLastGenerated.month}`;
+      const title = rosterLastGenerated.printableTitle || `Escala ${rosterLastGenerated.month}`;
       const payload = {
         title,
         month: rosterLastGenerated.month,
         shiftModel: rosterLastGenerated.shiftModel,
         data: {
-          shifts: rosterLastGenerated.shifts,
-          needByShift: rosterLastGenerated.needByShift,
-          days: rosterLastGenerated.days
+          startTime: rosterLastGenerated.startTime,
+          rows: rosterLastGenerated.rows
         },
         summary: rosterLastGenerated.summary,
         warnings: rosterLastGenerated.warnings
@@ -11413,7 +12208,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `escala_${rosterLastGenerated.month}.csv`;
+      a.download = `escala_${rosterLastGenerated.month}_${rosterLastGenerated.shiftModel}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -11422,7 +12217,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
     function rosterPrint() {
       if (!rosterLastGenerated) return;
-      const title = `Escala ${rosterLastGenerated.month}`;
+      const title = rosterLastGenerated.printableTitle || `Escala ${rosterLastGenerated.month}`;
       const html = `
         <html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
         <style>
@@ -11434,9 +12229,9 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
         </style>
         </head><body>
         <h1>${escapeHtml(title)}</h1>
-        ${rosterTableOut?.outerHTML || ""}
+        <table>${rosterTableOut?.innerHTML || ""}</table>
         <div style="height: 14px;"></div>
-        ${rosterSummaryOut?.outerHTML || ""}
+        <table>${rosterSummaryOut?.innerHTML || ""}</table>
         </body></html>
       `;
       const w = window.open("", "_blank");
@@ -11451,78 +12246,98 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       setTimeout(() => { try { w.print(); } catch {} }, 350);
     }
 
-    function rosterBulkAdd() {
-      const raw = prompt(
-        "Cole uma lista (1 por linha). Formatos aceitos:\n" +
-        "1) Nome\n" +
-        "2) Nome;preferencia(day|night|any);podeNoite(yes|no);folgas(AAAA-MM-DD, ...);max\n\n" +
-        "Exemplo:\nMaria;day;yes;2026-01-05,2026-01-20;14"
-      );
-      if (!raw) return;
+    function rosterGenerateNow() {
+      const s = rosterReadSettings();
 
-      const lines = String(raw).split("\n").map(l => l.trim()).filter(Boolean);
-      const added = [];
-      for (const line of lines) {
-        const parts = line.split(";").map(x => x.trim());
-        const name = rosterTrim(parts[0] || "", 90);
-        if (!name) continue;
-
-        const prefRaw = String(parts[1] || "any").toLowerCase();
-        const preference = (prefRaw === "day" || prefRaw === "night" || prefRaw === "any") ? prefRaw : "any";
-
-        const canNightRaw = String(parts[2] || "yes").toLowerCase();
-        const canNight = (preference === "night") ? true : (canNightRaw !== "no");
-
-        const offDates = rosterParseOffDates(parts[3] || "");
-        let maxShifts = String(parts[4] || "").trim();
-        if (maxShifts !== "") {
-          const n = rosterSafeInt(maxShifts, 0);
-          maxShifts = n > 0 ? String(Math.min(60, n)) : "";
-        }
-
-        added.push({ id: "mem_" + Math.random().toString(16).slice(2), name, preference, canNight, offDates, maxShifts });
+      if (!s.month || !/^\d{4}-\d{2}$/.test(s.month)) {
+        alert("Selecione um mês válido.");
+        rosterRenderOutput(null);
+        return;
       }
 
-      if (!added.length) return;
+      const team = rosterValidatedTeam();
+      if (!team.length) {
+        alert("Cadastre pelo menos 1 pessoa.");
+        rosterRenderOutput(null);
+        return;
+      }
 
-      // merge com dedupe
-      rosterTeam = rosterTeam.concat(added);
-      rosterRenderTeam();
+      let gen = null;
+
+      if (s.shiftModel === "12x36") {
+        gen = rosterGenerateDayNight(s.month, s.needDay, s.needNight, s.maxConsecNights);
+        if (!gen.ok) { alert(gen.error || "Falha ao gerar."); rosterRenderOutput(null); return; }
+        const built = rosterBuildTablesAndCards(s, gen);
+        rosterRenderOutput({ ...built, shiftModel: s.shiftModel, startTime: s.startTime, warnings: gen.warnings || [] });
+        return;
+      }
+
+      if (s.shiftModel === "mtn") {
+        gen = rosterGenerateMTN(s.month, s.needDay, s.needAfternoon, s.needNight, s.maxConsecNights);
+        if (!gen.ok) { alert(gen.error || "Falha ao gerar."); rosterRenderOutput(null); return; }
+        const built = rosterBuildTablesAndCards(s, gen);
+        rosterRenderOutput({ ...built, shiftModel: s.shiftModel, startTime: s.startTime, warnings: gen.warnings || [] });
+        return;
+      }
+
+      if (s.shiftModel === "24x48") {
+        gen = rosterGenerateContinuous(s.month, s.startTime, 24, 48, s.needPerShift);
+        if (!gen.ok) { alert(gen.error || "Falha ao gerar."); rosterRenderOutput(null); return; }
+        const built = rosterBuildTablesAndCards(s, gen);
+        rosterRenderOutput({ ...built, shiftModel: s.shiftModel, startTime: s.startTime, warnings: gen.warnings || [] });
+        return;
+      }
+
+      if (s.shiftModel === "18x36") {
+        gen = rosterGenerateContinuous(s.month, s.startTime, 18, 36, s.needPerShift);
+        if (!gen.ok) { alert(gen.error || "Falha ao gerar."); rosterRenderOutput(null); return; }
+        const built = rosterBuildTablesAndCards(s, gen);
+        rosterRenderOutput({ ...built, shiftModel: s.shiftModel, startTime: s.startTime, warnings: gen.warnings || [] });
+        return;
+      }
+
+      alert("Modelo inválido.");
+      rosterRenderOutput(null);
     }
 
     function rosterInitDefaults() {
       if (rosterMonthEl && !rosterMonthEl.value) rosterMonthEl.value = rosterTodayYYYYMM();
+      if (rosterShiftModelEl && !rosterShiftModelEl.value) rosterShiftModelEl.value = "12x36";
+      if (rosterStartTimeEl && !rosterStartTimeEl.value) rosterStartTimeEl.value = "07:00";
+
       if (!rosterTeam.length) {
         rosterTeam = [rosterNewMember(), rosterNewMember(), rosterNewMember()];
       }
-      rosterRenderTeam();
+      rosterUpdateModelUI();
+      rosterRenderOutput(null);
     }
 
     function rosterWireUI() {
       rosterAddPersonBtn?.addEventListener("click", () => {
         rosterTeam.push(rosterNewMember());
         rosterRenderTeam();
+        rosterUpdateCoverageUI();
       });
 
       rosterBulkAddBtn?.addEventListener("click", rosterBulkAdd);
 
-      rosterGenerateBtn?.addEventListener("click", () => {
-        const s = rosterReadSettings();
-        const res = rosterGenerate(s.month, s.shiftModel, s.needDay, s.needNight, s.needAfternoon, s.maxConsecNights);
-        if (!res.ok) {
-          alert(res.error || "Falha ao gerar.");
-          rosterRenderOutput(null);
-          return;
-        }
-        rosterRenderOutput(res);
-      });
-
       rosterSaveConfigBtn?.addEventListener("click", rosterSaveConfig);
       rosterLoadConfigBtn?.addEventListener("click", rosterLoadConfig);
+
+      rosterGenerateBtn?.addEventListener("click", rosterGenerateNow);
 
       rosterSaveScheduleBtn?.addEventListener("click", rosterSaveSchedule);
       rosterExportCsvBtn?.addEventListener("click", rosterDownloadCsv);
       rosterPrintBtn?.addEventListener("click", rosterPrint);
+
+      rosterShiftModelEl?.addEventListener("change", rosterUpdateModelUI);
+      rosterStartTimeEl?.addEventListener("change", rosterUpdateModelUI);
+
+      rosterNeedPerShiftEl?.addEventListener("input", rosterUpdateCoverageUI);
+      rosterNeedDayEl?.addEventListener("input", rosterUpdateCoverageUI);
+      rosterNeedNightEl?.addEventListener("input", rosterUpdateCoverageUI);
+      rosterNeedAfternoonEl?.addEventListener("input", rosterUpdateCoverageUI);
+      rosterMaxConsecNightsEl?.addEventListener("input", rosterUpdateCoverageUI);
 
       rosterHelpBtn?.addEventListener("click", () => {
         rosterHelpDrawer?.classList.toggle("hidden");
