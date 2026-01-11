@@ -536,6 +536,8 @@ function normalizeDb(db) {
   out.users = Array.isArray(out.users) ? out.users : [];
   out.payments = Array.isArray(out.payments) ? out.payments : [];
   out.audit = Array.isArray(out.audit) ? out.audit : [];
+  out.rosterConfigs = (out.rosterConfigs && typeof out.rosterConfigs === "object") ? out.rosterConfigs : {};
+  out.rosterSchedules = Array.isArray(out.rosterSchedules) ? out.rosterSchedules : [];
   return out;
 }
 
@@ -3114,6 +3116,171 @@ Transcrição:
 // ======================================================================
 // SAÚDE DO BACKEND (TESTE RÁPIDO)
 // ======================================================================
+// ======================================================================
+// MÓDULO: Escala de plantão (persistência)
+// - Geração pode ser feita no frontend; o backend apenas guarda configuração e escalas geradas.
+// ======================================================================
+
+function rosterUserKey(req) {
+  try {
+    if (!req || !req.auth) return "";
+    if (req.auth.role === "admin") return "admin";
+    return String(req.auth.user?.id || "");
+  } catch {
+    return "";
+  }
+}
+
+function rosterLimitJsonSize(obj, maxChars) {
+  try {
+    const s = JSON.stringify(obj);
+    return s.length <= maxChars;
+  } catch {
+    return false;
+  }
+}
+
+app.get("/api/escala/config", requireAuth, (req, res) => {
+  try {
+    const key = rosterUserKey(req);
+    if (!key) return res.status(400).json({ error: "Usuário inválido." });
+
+    const cfg = (DB.rosterConfigs && DB.rosterConfigs[key]) ? DB.rosterConfigs[key] : null;
+    return res.json({ config: cfg ? (cfg.config || null) : null, updatedAt: cfg ? (cfg.updatedAt || "") : "" });
+  } catch (e) {
+    return res.status(500).json({ error: "Falha ao carregar configuração." });
+  }
+});
+
+app.post("/api/escala/config", requireAuth, (req, res) => {
+  try {
+    const key = rosterUserKey(req);
+    if (!key) return res.status(400).json({ error: "Usuário inválido." });
+
+    const config = req.body?.config;
+    if (!config || typeof config !== "object") return res.status(400).json({ error: "Config inválida." });
+
+    // Proteção simples contra payload gigante
+    if (!rosterLimitJsonSize(config, 250_000)) return res.status(413).json({ error: "Config muito grande." });
+
+    DB.rosterConfigs[key] = { updatedAt: nowIso(), config };
+    saveDb(DB, "roster_config");
+    audit("roster_config_save", key, "Config de escala salva");
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: "Falha ao salvar configuração." });
+  }
+});
+
+app.get("/api/escala/schedules", requireAuth, (req, res) => {
+  try {
+    const key = rosterUserKey(req);
+    if (!key) return res.status(400).json({ error: "Usuário inválido." });
+
+    const list = (Array.isArray(DB.rosterSchedules) ? DB.rosterSchedules : [])
+      .filter(x => x && x.userKey === key)
+      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+      .slice(0, 60)
+      .map(x => ({ id: x.id, title: x.title, month: x.month, shiftModel: x.shiftModel, createdAt: x.createdAt }));
+
+    return res.json({ items: list });
+  } catch (e) {
+    return res.status(500).json({ error: "Falha ao listar escalas." });
+  }
+});
+
+app.post("/api/escala/schedules", requireAuth, (req, res) => {
+  try {
+    const key = rosterUserKey(req);
+    if (!key) return res.status(400).json({ error: "Usuário inválido." });
+
+    const title = normalizeText(req.body?.title, 120) || "Escala";
+    const month = normalizeText(req.body?.month, 7);
+    const shiftModel = normalizeText(req.body?.shiftModel, 20);
+    const data = req.body?.data;
+    const summary = req.body?.summary;
+    const warnings = req.body?.warnings;
+
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: "Mês inválido." });
+    if (!data || typeof data !== "object") return res.status(400).json({ error: "Dados inválidos." });
+
+    const payload = { title, month, shiftModel, data, summary, warnings };
+
+    if (!rosterLimitJsonSize(payload, 600_000)) return res.status(413).json({ error: "Escala muito grande." });
+
+    const item = {
+      id: makeId("ros"),
+      userKey: key,
+      title,
+      month,
+      shiftModel,
+      data,
+      summary,
+      warnings,
+      createdAt: nowIso()
+    };
+
+    DB.rosterSchedules = Array.isArray(DB.rosterSchedules) ? DB.rosterSchedules : [];
+    DB.rosterSchedules.push(item);
+
+    // Limite por usuário: mantém as 200 mais recentes
+    const byUser = DB.rosterSchedules.filter(x => x && x.userKey === key)
+      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    const keepIds = new Set(byUser.slice(0, 200).map(x => x.id));
+    DB.rosterSchedules = DB.rosterSchedules.filter(x => !x || x.userKey !== key || keepIds.has(x.id));
+
+    saveDb(DB, "roster_schedule_save");
+    audit("roster_schedule_save", key, `Escala salva: ${month}`);
+    return res.json({ ok: true, id: item.id });
+  } catch (e) {
+    return res.status(500).json({ error: "Falha ao salvar escala." });
+  }
+});
+
+app.get("/api/escala/schedules/:id", requireAuth, (req, res) => {
+  try {
+    const key = rosterUserKey(req);
+    if (!key) return res.status(400).json({ error: "Usuário inválido." });
+
+    const id = normalizeText(req.params?.id, 50);
+    const item = (Array.isArray(DB.rosterSchedules) ? DB.rosterSchedules : []).find(x => x && x.id === id) || null;
+    if (!item) return res.status(404).json({ error: "Escala não encontrada." });
+
+    if (item.userKey !== key && req.auth.role !== "admin") return res.status(403).json({ error: "Acesso negado." });
+
+    return res.json({ item });
+  } catch (e) {
+    return res.status(500).json({ error: "Falha ao carregar escala." });
+  }
+});
+
+app.delete("/api/escala/schedules/:id", requireAuth, (req, res) => {
+  try {
+    const key = rosterUserKey(req);
+    if (!key) return res.status(400).json({ error: "Usuário inválido." });
+
+    const id = normalizeText(req.params?.id, 50);
+    const before = Array.isArray(DB.rosterSchedules) ? DB.rosterSchedules.length : 0;
+
+    DB.rosterSchedules = (Array.isArray(DB.rosterSchedules) ? DB.rosterSchedules : []).filter(x => {
+      if (!x) return false;
+      if (x.id !== id) return true;
+      if (req.auth.role === "admin") return false;
+      return x.userKey !== key; // remove apenas se for do usuário
+    });
+
+    const after = DB.rosterSchedules.length;
+
+    if (before === after) return res.status(404).json({ error: "Escala não encontrada." });
+
+    saveDb(DB, "roster_schedule_delete");
+    audit("roster_schedule_delete", key, `Escala removida: ${id}`);
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: "Falha ao remover escala." });
+  }
+});
+
 app.get("/api/health", async (req, res) => {
   let storage = "file";
   let pg_ok = false;
