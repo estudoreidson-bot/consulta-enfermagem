@@ -120,7 +120,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Configurações básicas
-app.use(cors());
+app.use(cors({ origin: true, credentials: true, allowedHeaders: ["Content-Type","Authorization","X-Device-Id"] }));
 app.use(bodyParser.json({ limit: "25mb" }));
 app.use(bodyParser.urlencoded({ limit: "25mb", extended: true }));
 
@@ -1390,7 +1390,7 @@ app.post("/api/auth/login", (req, res) => {
   try {
     const cpfRaw = String(req.body?.cpf || req.body?.login || "").trim();
     const login = normalizeCpf(cpfRaw);
-    const senha = String(req.body?.senha || "").trim();
+    const senha = String(req.body?.senha || req.body?.password || "").trim();
     if (!login || !senha) return res.status(400).json({ error: "CPF e senha são obrigatórios." });
 
     const deviceId = getDeviceIdFromReq(req);

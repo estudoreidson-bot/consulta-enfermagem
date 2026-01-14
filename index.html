@@ -4682,7 +4682,7 @@ Ata de reunião:
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
-          body: JSON.stringify({ cpf, senha })
+          body: JSON.stringify({ cpf, senha, password: senha, login: cpf })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
@@ -4690,7 +4690,15 @@ Ata de reunião:
           return;
         }
         setToken(data.token || "");
-        await restoreSession();
+        try {
+          await restoreSession();
+          // Se por algum motivo continuou no login, avisa.
+          const stillLogin = document.getElementById("loginView") && !document.getElementById("loginView").classList.contains("hidden");
+          if (stillLogin && errEl) errEl.textContent = "Login realizado, mas não foi possível carregar a sessão. Recarregue a página.";
+        } catch (e) {
+          if (errEl) errEl.textContent = "Login realizado, mas ocorreu um erro ao carregar sua sessão.";
+          showLogin();
+        }
     // Atualiza contador do trial no login (quando aplicável)
     setTimeout(() => { try { scheduleLoginTrialCheck(); } catch {} }, 300);
       } catch (e) {
@@ -4823,28 +4831,30 @@ Ata de reunião:
 
       if (pay) {
         pay.textContent = "-";
-        pay.classList.remove("green","red");
-      }
-    }
+        pay.classList.remove("green// Eventos de login/logout (inicializados com segurança)
+function initAuthBindings() {
+  document.getElementById("loginBtn")?.addEventListener("click", doLogin);
+  document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+  document.getElementById("loginField")?.addEventListener("input", scheduleLoginTrialCheck);
+  document.getElementById("loginField")?.addEventListener("blur", scheduleLoginTrialCheck);
 
-    // Eventos de login/logout
-    document.getElementById("loginBtn")?.addEventListener("click", doLogin);
-    document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
-    document.getElementById("loginField")?.addEventListener("input", scheduleLoginTrialCheck);
-    document.getElementById("loginField")?.addEventListener("blur", scheduleLoginTrialCheck);
+  document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
 
-    document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
-    document.getElementById("openSignupBtn")?.addEventListener("click", () => {
-      resetSignupForm();
-      showSignup();
-    });
-    document.getElementById("signupBackBtn")?.addEventListener("click", () => {
-      showLogin();
-    });
-    document.getElementById("signupBtn")?.addEventListener("click", doSignup);
-    document.getElementById("signupPassword")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doSignup(); });
-    document.getElementById("nurseLogoutBtn")?.addEventListener("click", logoutAll);
-    document.getElementById("adminLogoutBtn")?.addEventListener("click", logoutAll);
+  document.getElementById("openSignupBtn")?.addEventListener("click", () => {
+    resetSignupForm();
+    showSignup();
+  });
+  document.getElementById("signupBackBtn")?.addEventListener("click", () => {
+    showLogin();
+  });
+  document.getElementById("signupBtn")?.addEventListener("click", doSignup);
+  document.getElementById("signupPassword")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doSignup(); });
+
+  document.getElementById("nurseLogoutBtn")?.addEventListener("click", logoutAll);
+  document.getElementById("adminLogoutBtn")?.addEventListener("click", logoutAll);
+}
+
+r("click", logoutAll);
 
 
     let recognition;
@@ -10468,7 +10478,15 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     });
 
     // Inicializa a sessão ao carregar
-    restoreSession();
+    window.addEventListener("DOMContentLoaded", () => {
+      try {
+        initAuthBindings();
+        restoreSession();
+      } catch (e) {
+        showFatalError("Erro no sistema: " + (e && e.message ? e.message : String(e)));
+        showLogin();
+      }
+    });
 
     // Failsafe: se nenhuma view estiver visível após 1s, mostra login
     setTimeout(() => {
