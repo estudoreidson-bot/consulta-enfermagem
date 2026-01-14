@@ -4,11 +4,13 @@
 <head>
   <meta charset="UTF-8" />
   <title>Atendimento de Enfermagem</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <style>
     * {
       box-sizing: border-box;
     }
+    html { -webkit-text-size-adjust: 100%; }
+    body { -webkit-text-size-adjust: 100%; }
     body {
       font-family: Arial, Helvetica, sans-serif;
       margin: 0;
@@ -23,6 +25,10 @@
       width: 100%;
       max-width: 800px;
       padding: 20px;
+      padding-left: calc(20px + env(safe-area-inset-left, 0px));
+      padding-right: calc(20px + env(safe-area-inset-right, 0px));
+      padding-top: calc(20px + env(safe-area-inset-top, 0px));
+      padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -1211,6 +1217,10 @@
       justify-content: center;
       align-items: flex-start;
       padding: 20px;
+      padding-left: calc(20px + env(safe-area-inset-left, 0px));
+      padding-right: calc(20px + env(safe-area-inset-right, 0px));
+      padding-top: calc(20px + env(safe-area-inset-top, 0px));
+      padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     }
     .auth-card {
       width: 100%;
@@ -1268,6 +1278,37 @@
       font-size: 12px;
       color: #666;
     }
+
+    .auth-btn.secondary { background: #6c757d; }
+    .auth-btn.outline { background: #ffffff; color: #0c5460; border: 1px solid #0c5460; }
+
+    .promo-box {
+      width: 100%;
+      margin-top: 10px;
+      margin-bottom: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #d7e6ff;
+      background: #f9fbff;
+      font-size: 12px;
+      color: #1f2937;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+    .promo-box b { color: #0c5460; }
+    .billing-banner {
+      width: 100%;
+      margin-top: 10px;
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #ffeeba;
+      background: #fff3cd;
+      font-size: 12px;
+      color: #1f2937;
+      line-height: 1.45;
+    }
+    .billing-banner.hidden { display: none; }
 
     .nurse-bar {
       width: 100%;
@@ -1423,7 +1464,7 @@
 
     @media (max-width: 720px) {
       body { align-items: flex-start; }
-      .page { padding: 12px; }
+      .page { padding: 16px; padding-left: calc(16px + env(safe-area-inset-left, 0px)); padding-right: calc(16px + env(safe-area-inset-right, 0px)); padding-top: calc(16px + env(safe-area-inset-top, 0px)); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
       h1 { font-size: 26px; margin-top: 14px; }
       .center-card { padding: 18px 14px; max-width: 100%; }
       .results-card { padding: 16px 14px; }
@@ -1437,7 +1478,7 @@
     }
 
     @media (max-width: 420px) {
-      .page { padding: 10px; }
+      .page { padding: 16px; padding-left: calc(16px + env(safe-area-inset-left, 0px)); padding-right: calc(16px + env(safe-area-inset-right, 0px)); padding-top: calc(16px + env(safe-area-inset-top, 0px)); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
       h1 { font-size: 24px; }
       #recordBtn { width: 145px; height: 145px; }
     }
@@ -1481,7 +1522,7 @@
 
     @media (max-width: 720px) {
       h1 { font-size: 22px; margin: 14px 0 8px 0; }
-      .page { padding: 12px; }
+      .page { padding: 16px; padding-left: calc(16px + env(safe-area-inset-left, 0px)); padding-right: calc(16px + env(safe-area-inset-right, 0px)); padding-top: calc(16px + env(safe-area-inset-top, 0px)); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
       .center-card { padding: 16px 12px 14px 12px; }
       .results-card, .module-card { padding: 14px; }
       .nurse-bar { padding: 10px; }
@@ -2036,6 +2077,10 @@
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
 
+      <div id="loginBillingBanner" class="billing-banner hidden"></div>
+      <div class="promo-box" id="loginPromoBox"><b>1 mês gratuito</b> para novos cadastros de enfermeiro(a). No cadastro, você pode escolher participar da promoção <b>Parceiro</b> ou <b>Cliente Amigo</b>.</div>
+
+
       <label class="auth-label" for="loginField">Login</label>
       <input id="loginField" class="auth-input" autocomplete="username" inputmode="text" />
 
@@ -2058,6 +2103,24 @@
       <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
       <h1>Cadastro de enfermeiro(a)</h1>
       <p class="auth-subtitle">Preencha os dados para criar seu cadastro.</p>
+      <div class="promo-box">
+        <b>1 mês gratuito:</b> todo novo cadastro inicia com 30 dias de acesso gratuito.
+<br><br>
+        <b>Promoção Parceiro:</b> indique pessoas e receba 25% da mensalidade de cada indicado (enquanto ele(a) estiver pagando em dia).
+<br><br>
+        <b>Cliente Amigo:</b> a cada amigo indicado e pagando em dia, você ganha 25% de desconto. Com 4 amigos pagando em dia, sua mensalidade fica 100% gratuita enquanto os 4 estiverem em dia.
+      </div>
+
+      <label class="auth-label" for="signupPromoType">Quero participar da promoção</label>
+      <select id="signupPromoType" class="auth-input">
+        <option value="none">Não</option>
+        <option value="partner">Parceiro</option>
+        <option value="friend">Cliente Amigo</option>
+      </select>
+
+      <label class="auth-label" for="signupReferralCode">Código de indicação (opcional)</label>
+      <input id="signupReferralCode" class="auth-input" inputmode="text" autocomplete="off" placeholder="Ex.: ABC123" />
+
 
       <label class="auth-label" for="signupFullName">Nome completo</label>
       <input id="signupFullName" class="auth-input" autocomplete="name" inputmode="text" />
@@ -2246,12 +2309,17 @@
         <div class="nurse-bar-line"><span class="nurse-bar-label">Usuário:</span><span id="nurseUserLabel">-</span></div>
         <div class="nurse-bar-line"><span class="nurse-bar-label">Login:</span><span id="nurseLoginLabel">-</span></div>
         <div class="nurse-bar-line"><span class="nurse-bar-label">Mensalidade:</span><span id="nursePaymentLabel" class="pill">-</span></div>
+        <div class="nurse-bar-line"><span class="nurse-bar-label">Gratuidade:</span><span id="nurseTrialLabel">-</span></div>
+        <div class="nurse-bar-line"><span class="nurse-bar-label">Promoção:</span><span id="nursePromoLabel">-</span></div>
+        <div class="nurse-bar-line"><span class="nurse-bar-label">Código:</span><span id="nurseReferralCodeLabel">-</span></div>
       </div>
       <div class="nurse-bar-actions">
+        <button id="openBillingBtn" type="button" class="admin-btn secondary">Mensalidade</button>
         <button id="nurseLogoutBtn" type="button" class="danger-btn">Sair</button>
       </div>
     </div>
 
+    <div id="nurseBillingAlert" class="billing-banner hidden"></div>
 
     <div class="center-card">
 
@@ -3885,6 +3953,24 @@ Ata de reunião:
     </div>
   </div>
 
+
+  <div id="billingModal" class="modal-overlay hidden">
+    <div class="modal" style="max-width: 720px;">
+      <h3 style="margin:0 0 8px 0;">Mensalidade e promoções</h3>
+      <div id="billingModalBody" style="font-size: 13px; color:#1f2937; line-height:1.45;"></div>
+
+      <div class="admin-row" style="justify-content:flex-end; margin-top: 12px; gap: 8px;">
+        <button id="payPixBtn" class="admin-btn secondary" type="button">Pagar por Pix</button>
+        <button id="payCardBtn" class="admin-btn" type="button">Pagar por cartão</button>
+        <button id="closeBillingBtn" class="admin-btn secondary" type="button">Fechar</button>
+      </div>
+
+      <div style="margin-top: 10px; font-size: 12px; color:#666;">
+  Para liberar Pix e cartão com cobrança automática, configure um provedor de pagamentos no servidor (integração pendente).
+      </div>
+    </div>
+  </div>
+
 <script>
 
     const DEFAULT_BACKEND_URL = "https://consulta-enfermagem-1.onrender.com";
@@ -4210,6 +4296,8 @@ Ata de reunião:
       set("signupPhone", "");
       set("signupLogin", "");
       set("signupPassword", "");
+      set("signupPromoType", "none");
+      set("signupReferralCode", "");
       const err = document.getElementById("signupError");
       if (err) err.textContent = "";
       const btn = document.getElementById("signupBtn");
@@ -4222,6 +4310,8 @@ Ata de reunião:
       const phone = (document.getElementById("signupPhone")?.value || "").trim();
       const login = (document.getElementById("signupLogin")?.value || "").trim();
       const password = (document.getElementById("signupPassword")?.value || "").trim();
+      const promoType = (document.getElementById("signupPromoType")?.value || "none").trim();
+      const referralCode = (document.getElementById("signupReferralCode")?.value || "").trim();
 
       const errEl = document.getElementById("signupError");
       const btn = document.getElementById("signupBtn");
@@ -4238,7 +4328,7 @@ Ata de reunião:
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, phone, login, password })
+          body: JSON.stringify({ fullName, dob, phone, login, password, promoType, referralCode })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
@@ -4311,16 +4401,27 @@ Ata de reunião:
       const u = (me && me.user && typeof me.user === "object") ? me.user : (me || {});
       const name = (u.fullName || u.login || "-");
       const login = (u.login || "-");
-      const paidFlag = (u.isPaidThisMonth !== undefined) ? !!u.isPaidThisMonth
+
+      const billing = (me && me.billing) ? me.billing : (u.billing || null);
+
+      const month = (billing && billing.month) ? billing.month
+        : (me && me.currentMonth) ? me.currentMonth
+        : (u.currentMonth || "");
+
+      const paidFlag = (billing && billing.paidThisMonth !== undefined) ? !!billing.paidThisMonth
+        : (u.isPaidThisMonth !== undefined) ? !!u.isPaidThisMonth
         : (u.paidCurrentMonth !== undefined) ? !!u.paidCurrentMonth
         : (me && me.isPaidThisMonth !== undefined) ? !!me.isPaidThisMonth
         : (me && me.paidCurrentMonth !== undefined) ? !!me.paidCurrentMonth
         : false;
 
-      const month = (me && me.currentMonth) ? me.currentMonth : (u.currentMonth || "");
       const lbl = document.getElementById("nurseUserLabel");
       const lblLogin = document.getElementById("nurseLoginLabel");
       const pay = document.getElementById("nursePaymentLabel");
+      const trialEl = document.getElementById("nurseTrialLabel");
+      const promoEl = document.getElementById("nursePromoLabel");
+      const codeEl = document.getElementById("nurseReferralCodeLabel");
+      const alertEl = document.getElementById("nurseBillingAlert");
 
       if (lbl) lbl.textContent = name;
       if (lblLogin) lblLogin.textContent = login;
@@ -4330,6 +4431,46 @@ Ata de reunião:
         pay.classList.remove("green","red");
         pay.classList.add(paidFlag ? "green" : "red");
       }
+
+      if (trialEl) {
+        if (billing && billing.trialActive) {
+          const d = (billing.trialDaysLeft !== null && billing.trialDaysLeft !== undefined) ? billing.trialDaysLeft : "-";
+          trialEl.textContent = "Ativa (" + d + " dia(s) restantes)";
+        } else {
+          trialEl.textContent = "Não";
+        }
+      }
+
+      if (promoEl) {
+        if (!billing) promoEl.textContent = "-";
+        else if (billing.promoType === "partner") {
+          promoEl.textContent = "Parceiro (" + (billing.partner?.count || 0) + " indicado(s) pagando em dia neste mês)";
+        } else if (billing.promoType === "friend") {
+          const dPct = Math.round((billing.friend?.discountBp || 0) / 100);
+          promoEl.textContent = "Cliente Amigo (" + (billing.friend?.count || 0) + " amigo(s) pagando em dia; desconto " + dPct + "%)";
+        } else {
+          promoEl.textContent = "Não";
+        }
+      }
+
+      if (codeEl) {
+        codeEl.textContent = (billing && billing.referralCode) ? billing.referralCode : "-";
+      }
+
+      if (alertEl) {
+        if (billing && billing.warn && billing.warn.daysLeft !== undefined) {
+          if (billing.warn.type === "trial") {
+            alertEl.textContent = "Aviso: sua gratuidade termina em " + billing.warn.daysLeft + " dia(s).";
+          } else {
+            alertEl.textContent = "Aviso: faltam " + billing.warn.daysLeft + " dia(s) para o vencimento deste mês.";
+          }
+          alertEl.classList.remove("hidden");
+        } else {
+          alertEl.classList.add("hidden");
+          alertEl.textContent = "";
+        }
+      }
+    }
     }
 
     // Eventos de login/logout
@@ -4346,6 +4487,96 @@ Ata de reunião:
     document.getElementById("signupBtn")?.addEventListener("click", doSignup);
     document.getElementById("signupPassword")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doSignup(); });
     document.getElementById("nurseLogoutBtn")?.addEventListener("click", logoutAll);
+
+    document.getElementById("openBillingBtn")?.addEventListener("click", async () => {
+      try {
+        const modal = document.getElementById("billingModal");
+        const body = document.getElementById("billingModalBody");
+        if (body) body.textContent = "Carregando...";
+        if (modal) modal.classList.remove("hidden");
+
+        const billingResp = await nativeFetch(BACKEND_URL + "/api/billing/me", { headers: authHeaders() });
+        const billingData = await billingResp.json().catch(() => ({}));
+
+        const refResp = await nativeFetch(BACKEND_URL + "/api/referrals/me", { headers: authHeaders() });
+        const refData = await refResp.json().catch(() => ({}));
+
+        const b = billingData?.billing || {};
+        const price = centsToBRL(b.monthlyPriceCents || 0);
+        const eff = centsToBRL(b.effectivePriceCents || 0);
+        const promo = (b.promoType === "partner") ? "Parceiro" : (b.promoType === "friend") ? "Cliente Amigo" : "Não";
+
+        let html = "";
+        html += "<div><b>Mês atual:</b> " + (b.month || "-") + "</div>";
+        html += "<div><b>Preço base:</b> " + price + "</div>";
+        if (b.promoType === "friend") {
+          const dPct = Math.round((b.friend?.discountBp || 0) / 100);
+          html += "<div><b>Desconto Cliente Amigo:</b> " + dPct + "% (" + (b.friend?.count || 0) + " amigo(s) pagando em dia)</div>";
+          html += "<div><b>Valor deste mês:</b> " + eff + "</div>";
+        }
+        if (b.promoType === "partner") {
+          html += "<div><b>Indicações pagando em dia:</b> " + (b.partner?.count || 0) + "</div>";
+          html += "<div><b>Comissão estimada neste mês:</b> " + centsToBRL(b.partner?.amountCents || 0) + "</div>";
+        }
+        html += "<div><b>Promoção:</b> " + promo + "</div>";
+        html += "<div><b>Seu código de indicação:</b> " + (b.referralCode || "-") + "</div>";
+
+        if (b.trialActive) {
+          html += "<div style='margin-top:8px;'><b>Gratuidade:</b> ativa até " + (b.trialEndsAt || "-") + " (" + (b.trialDaysLeft ?? "-") + " dia(s) restantes)</div>";
+        } else {
+          html += "<div style='margin-top:8px;'><b>Gratuidade:</b> não</div>";
+        }
+
+        const paid = !!b.paidThisMonth || !!b.isFreeThisMonthByReferral;
+        html += "<div style='margin-top:8px;'><b>Status do mês:</b> " + (paid ? "Em dia" : "Em aberto") + "</div>";
+        if (!paid) {
+          html += "<div><b>Vencimento:</b> " + (b.monthEndsAt || "-") + "</div>";
+        }
+
+        if (refData && Array.isArray(refData.referrals) && refData.referrals.length) {
+          const paidCount = refData.referrals.filter(r => r.paidThisMonth).length;
+          html += "<div style='margin-top:10px;'><b>Seus indicados:</b> " + refData.referrals.length + " (pagando em dia neste mês: " + paidCount + ")</div>";
+        }
+
+        if (body) body.innerHTML = html;
+      } catch (e) {
+        const body = document.getElementById("billingModalBody");
+        if (body) body.textContent = "Falha ao carregar informações.";
+      }
+    });
+
+    document.getElementById("closeBillingBtn")?.addEventListener("click", () => {
+      document.getElementById("billingModal")?.classList.add("hidden");
+    });
+
+    document.getElementById("payPixBtn")?.addEventListener("click", async () => {
+      try {
+        const resp = await nativeFetch(BACKEND_URL + "/api/billing/checkout", {
+          method: "POST",
+          headers: { ...authHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ method: "pix" })
+        });
+        const data = await resp.json().catch(() => ({}));
+        alert(data.error || "Pagamento por Pix indisponível no momento. Procure o administrador.");
+      } catch {
+        alert("Falha ao iniciar pagamento por Pix.");
+      }
+    });
+
+    document.getElementById("payCardBtn")?.addEventListener("click", async () => {
+      try {
+        const resp = await nativeFetch(BACKEND_URL + "/api/billing/checkout", {
+          method: "POST",
+          headers: { ...authHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ method: "card" })
+        });
+        const data = await resp.json().catch(() => ({}));
+        alert(data.error || "Pagamento por cartão indisponível no momento. Procure o administrador.");
+      } catch {
+        alert("Falha ao iniciar pagamento por cartão.");
+      }
+    });
+
     document.getElementById("adminLogoutBtn")?.addEventListener("click", logoutAll);
 
 
