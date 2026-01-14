@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Atendimento de Enfermagem</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <style>
     * {
       box-sizing: border-box;
@@ -2026,7 +2026,64 @@
       .roster-output-mobile { display: flex; flex-direction: column; }
     }
 
-  </style>
+  
+    /* =========================
+       CORREÇÕES IPHONE (SAFE-AREA E ESTOURO HORIZONTAL)
+       ========================= */
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    /* Safe-area (notch) */
+    body {
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+    .page {
+      padding-left: calc(12px + env(safe-area-inset-left));
+      padding-right: calc(12px + env(safe-area-inset-right));
+      padding-top: calc(12px + env(safe-area-inset-top));
+      padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    }
+
+    /* Evitar zoom e quebras estranhas no iOS por fonte pequena em inputs */
+    @supports (-webkit-touch-callout: none) {
+      input, textarea, select { font-size: 16px; }
+    }
+
+    /* Badges e linhas do topo não podem estourar a largura */
+    .nurse-bar-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 6px;
+      min-width: 0;
+    }
+    .pill {
+      white-space: normal;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    /* Títulos e textos longos sempre quebram e nunca “empurram” a tela */
+    h1, .module-title, .module-subtitle, .site-verse,
+    .live-guidance-title, .live-guidance-status, .live-guidance-item,
+    #startNotice, #finishHint, #micStatus {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    /* Ajuste fino de padding em telas bem estreitas (iPhone) */
+    @media (max-width: 420px) {
+      .page {
+        padding-left: calc(10px + env(safe-area-inset-left));
+        padding-right: calc(10px + env(safe-area-inset-right));
+      }
+    }
+
+</style>
 </head>
 <body>
 
@@ -7794,7 +7851,64 @@ async function addFilesToTarget(files, targetKey, mode) {
         return;
       }
       w.document.write("<html><head><title>" + escapeHtml(title) + "</title>");
-      w.document.write("<style>" + getRxPrintCss() + "</style>");
+      w.document.write("<style>" + getRxPrintCss() + "
+    /* =========================
+       CORREÇÕES IPHONE (SAFE-AREA E ESTOURO HORIZONTAL)
+       ========================= */
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    /* Safe-area (notch) */
+    body {
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+    .page {
+      padding-left: calc(12px + env(safe-area-inset-left));
+      padding-right: calc(12px + env(safe-area-inset-right));
+      padding-top: calc(12px + env(safe-area-inset-top));
+      padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    }
+
+    /* Evitar zoom e quebras estranhas no iOS por fonte pequena em inputs */
+    @supports (-webkit-touch-callout: none) {
+      input, textarea, select { font-size: 16px; }
+    }
+
+    /* Badges e linhas do topo não podem estourar a largura */
+    .nurse-bar-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 6px;
+      min-width: 0;
+    }
+    .pill {
+      white-space: normal;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    /* Títulos e textos longos sempre quebram e nunca “empurram” a tela */
+    h1, .module-title, .module-subtitle, .site-verse,
+    .live-guidance-title, .live-guidance-status, .live-guidance-item,
+    #startNotice, #finishHint, #micStatus {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    /* Ajuste fino de padding em telas bem estreitas (iPhone) */
+    @media (max-width: 420px) {
+      .page {
+        padding-left: calc(10px + env(safe-area-inset-left));
+        padding-right: calc(10px + env(safe-area-inset-right));
+      }
+    }
+
+</style>");
       w.document.write("</head><body>");
       w.document.write(content);
       w.document.write("</body></html>");
@@ -12267,7 +12381,64 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
           table{border-collapse: collapse; width: 100%;}
           th,td{border: 1px solid #ccc; padding: 6px; font-size: 12px; vertical-align: top;}
           th{background: #f1f1f1;}
-        </style>
+        
+    /* =========================
+       CORREÇÕES IPHONE (SAFE-AREA E ESTOURO HORIZONTAL)
+       ========================= */
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    /* Safe-area (notch) */
+    body {
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+    .page {
+      padding-left: calc(12px + env(safe-area-inset-left));
+      padding-right: calc(12px + env(safe-area-inset-right));
+      padding-top: calc(12px + env(safe-area-inset-top));
+      padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    }
+
+    /* Evitar zoom e quebras estranhas no iOS por fonte pequena em inputs */
+    @supports (-webkit-touch-callout: none) {
+      input, textarea, select { font-size: 16px; }
+    }
+
+    /* Badges e linhas do topo não podem estourar a largura */
+    .nurse-bar-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 6px;
+      min-width: 0;
+    }
+    .pill {
+      white-space: normal;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    /* Títulos e textos longos sempre quebram e nunca “empurram” a tela */
+    h1, .module-title, .module-subtitle, .site-verse,
+    .live-guidance-title, .live-guidance-status, .live-guidance-item,
+    #startNotice, #finishHint, #micStatus {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    /* Ajuste fino de padding em telas bem estreitas (iPhone) */
+    @media (max-width: 420px) {
+      .page {
+        padding-left: calc(10px + env(safe-area-inset-left));
+        padding-right: calc(10px + env(safe-area-inset-right));
+      }
+    }
+
+</style>
         </head><body>
         <h1>${escapeHtml(title)}</h1>
         <table>${rosterTableOut?.innerHTML || ""}</table>
