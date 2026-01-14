@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Atendimento de Enfermagem</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     * {
       box-sizing: border-box;
@@ -2026,64 +2026,7 @@
       .roster-output-mobile { display: flex; flex-direction: column; }
     }
 
-  
-    /* =========================
-       CORREÇÕES IPHONE (SAFE-AREA E ESTOURO HORIZONTAL)
-       ========================= */
-    html {
-      -webkit-text-size-adjust: 100%;
-      text-size-adjust: 100%;
-    }
-
-    /* Safe-area (notch) */
-    body {
-      padding-left: env(safe-area-inset-left);
-      padding-right: env(safe-area-inset-right);
-    }
-    .page {
-      padding-left: calc(12px + env(safe-area-inset-left));
-      padding-right: calc(12px + env(safe-area-inset-right));
-      padding-top: calc(12px + env(safe-area-inset-top));
-      padding-bottom: calc(12px + env(safe-area-inset-bottom));
-    }
-
-    /* Evitar zoom e quebras estranhas no iOS por fonte pequena em inputs */
-    @supports (-webkit-touch-callout: none) {
-      input, textarea, select { font-size: 16px; }
-    }
-
-    /* Badges e linhas do topo não podem estourar a largura */
-    .nurse-bar-line {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 6px;
-      min-width: 0;
-    }
-    .pill {
-      white-space: normal;
-      max-width: 100%;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-
-    /* Títulos e textos longos sempre quebram e nunca “empurram” a tela */
-    h1, .module-title, .module-subtitle, .site-verse,
-    .live-guidance-title, .live-guidance-status, .live-guidance-item,
-    #startNotice, #finishHint, #micStatus {
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-
-    /* Ajuste fino de padding em telas bem estreitas (iPhone) */
-    @media (max-width: 420px) {
-      .page {
-        padding-left: calc(10px + env(safe-area-inset-left));
-        padding-right: calc(10px + env(safe-area-inset-right));
-      }
-    }
-
-</style>
+  </style>
 </head>
 <body>
 
@@ -2093,16 +2036,14 @@
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
 
-      <form id="loginForm" autocomplete="on" style="width: 100%;">
-        <label class="auth-label" for="loginField">Login</label>
-        <input id="loginField" class="auth-input" autocomplete="username" inputmode="text" />
+      <label class="auth-label" for="loginField">Login</label>
+      <input id="loginField" class="auth-input" autocomplete="username" inputmode="text" />
 
-        <label class="auth-label" for="passwordField">Senha</label>
-        <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
+      <label class="auth-label" for="passwordField">Senha</label>
+      <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
 
-        <button id="loginBtn" class="auth-btn" type="submit">Entrar</button>
-        <div id="loginError" class="auth-error"></div>
-      </form>
+      <button id="loginBtn" class="auth-btn" type="button">Entrar</button>
+      <div id="loginError" class="auth-error"></div>
 
       <button id="openSignupBtn" class="auth-btn outline" type="button">Cadastrar enfermeiro(a)</button>
 
@@ -2123,9 +2064,6 @@
 
       <label class="auth-label" for="signupDob">Data de nascimento</label>
       <input id="signupDob" class="auth-input" type="date" />
-
-      <label class="auth-label" for="signupCpf">CPF</label>
-      <input id="signupCpf" class="auth-input" inputmode="numeric" autocomplete="off" placeholder="Somente números" />
 
       <label class="auth-label" for="signupPhone">Telefone</label>
       <input id="signupPhone" class="auth-input" type="tel" autocomplete="tel" inputmode="tel" />
@@ -4269,7 +4207,6 @@ Ata de reunião:
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
       set("signupFullName", "");
       set("signupDob", "");
-      set("signupCpf", "");
       set("signupPhone", "");
       set("signupLogin", "");
       set("signupPassword", "");
@@ -4282,7 +4219,6 @@ Ata de reunião:
     async function doSignup() {
       const fullName = (document.getElementById("signupFullName")?.value || "").trim();
       const dob = (document.getElementById("signupDob")?.value || "").trim();
-      const cpf = (document.getElementById("signupCpf")?.value || "").trim();
       const phone = (document.getElementById("signupPhone")?.value || "").trim();
       const login = (document.getElementById("signupLogin")?.value || "").trim();
       const password = (document.getElementById("signupPassword")?.value || "").trim();
@@ -4290,8 +4226,8 @@ Ata de reunião:
       const errEl = document.getElementById("signupError");
       const btn = document.getElementById("signupBtn");
 
-      if (!fullName || !dob || !cpf || !phone || !login || !password) {
-        if (errEl) errEl.textContent = "Preencha: nome completo, data de nascimento, CPF, telefone, login e senha.";
+      if (!fullName || !dob || !phone || !login || !password) {
+        if (errEl) errEl.textContent = "Preencha: nome completo, data de nascimento, telefone, login e senha.";
         return;
       }
 
@@ -4302,7 +4238,7 @@ Ata de reunião:
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, cpf, phone, login, password })
+          body: JSON.stringify({ fullName, dob, phone, login, password })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
@@ -4397,10 +4333,9 @@ Ata de reunião:
     }
 
     // Eventos de login/logout
-    document.getElementById("loginForm")?.addEventListener("submit", (e) => {
-      e.preventDefault();
-      doLogin();
-    });
+    document.getElementById("loginBtn")?.addEventListener("click", doLogin);
+    document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
     document.getElementById("openSignupBtn")?.addEventListener("click", () => {
       resetSignupForm();
       showSignup();
@@ -7851,64 +7786,7 @@ async function addFilesToTarget(files, targetKey, mode) {
         return;
       }
       w.document.write("<html><head><title>" + escapeHtml(title) + "</title>");
-      w.document.write("<style>" + getRxPrintCss() + "
-    /* =========================
-       CORREÇÕES IPHONE (SAFE-AREA E ESTOURO HORIZONTAL)
-       ========================= */
-    html {
-      -webkit-text-size-adjust: 100%;
-      text-size-adjust: 100%;
-    }
-
-    /* Safe-area (notch) */
-    body {
-      padding-left: env(safe-area-inset-left);
-      padding-right: env(safe-area-inset-right);
-    }
-    .page {
-      padding-left: calc(12px + env(safe-area-inset-left));
-      padding-right: calc(12px + env(safe-area-inset-right));
-      padding-top: calc(12px + env(safe-area-inset-top));
-      padding-bottom: calc(12px + env(safe-area-inset-bottom));
-    }
-
-    /* Evitar zoom e quebras estranhas no iOS por fonte pequena em inputs */
-    @supports (-webkit-touch-callout: none) {
-      input, textarea, select { font-size: 16px; }
-    }
-
-    /* Badges e linhas do topo não podem estourar a largura */
-    .nurse-bar-line {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 6px;
-      min-width: 0;
-    }
-    .pill {
-      white-space: normal;
-      max-width: 100%;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-
-    /* Títulos e textos longos sempre quebram e nunca “empurram” a tela */
-    h1, .module-title, .module-subtitle, .site-verse,
-    .live-guidance-title, .live-guidance-status, .live-guidance-item,
-    #startNotice, #finishHint, #micStatus {
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-
-    /* Ajuste fino de padding em telas bem estreitas (iPhone) */
-    @media (max-width: 420px) {
-      .page {
-        padding-left: calc(10px + env(safe-area-inset-left));
-        padding-right: calc(10px + env(safe-area-inset-right));
-      }
-    }
-
-</style>");
+      w.document.write("<style>" + getRxPrintCss() + "</style>");
       w.document.write("</head><body>");
       w.document.write(content);
       w.document.write("</body></html>");
@@ -12381,64 +12259,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
           table{border-collapse: collapse; width: 100%;}
           th,td{border: 1px solid #ccc; padding: 6px; font-size: 12px; vertical-align: top;}
           th{background: #f1f1f1;}
-        
-    /* =========================
-       CORREÇÕES IPHONE (SAFE-AREA E ESTOURO HORIZONTAL)
-       ========================= */
-    html {
-      -webkit-text-size-adjust: 100%;
-      text-size-adjust: 100%;
-    }
-
-    /* Safe-area (notch) */
-    body {
-      padding-left: env(safe-area-inset-left);
-      padding-right: env(safe-area-inset-right);
-    }
-    .page {
-      padding-left: calc(12px + env(safe-area-inset-left));
-      padding-right: calc(12px + env(safe-area-inset-right));
-      padding-top: calc(12px + env(safe-area-inset-top));
-      padding-bottom: calc(12px + env(safe-area-inset-bottom));
-    }
-
-    /* Evitar zoom e quebras estranhas no iOS por fonte pequena em inputs */
-    @supports (-webkit-touch-callout: none) {
-      input, textarea, select { font-size: 16px; }
-    }
-
-    /* Badges e linhas do topo não podem estourar a largura */
-    .nurse-bar-line {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 6px;
-      min-width: 0;
-    }
-    .pill {
-      white-space: normal;
-      max-width: 100%;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-
-    /* Títulos e textos longos sempre quebram e nunca “empurram” a tela */
-    h1, .module-title, .module-subtitle, .site-verse,
-    .live-guidance-title, .live-guidance-status, .live-guidance-item,
-    #startNotice, #finishHint, #micStatus {
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-
-    /* Ajuste fino de padding em telas bem estreitas (iPhone) */
-    @media (max-width: 420px) {
-      .page {
-        padding-left: calc(10px + env(safe-area-inset-left));
-        padding-right: calc(10px + env(safe-area-inset-right));
-      }
-    }
-
-</style>
+        </style>
         </head><body>
         <h1>${escapeHtml(title)}</h1>
         <table>${rosterTableOut?.innerHTML || ""}</table>

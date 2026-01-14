@@ -119,10 +119,6 @@ async function hydrateDbFromPgIfAvailable() {
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Rate limit simples (memória) para reduzir abuso de auto-cadastro.
-// Em produção com múltiplas instâncias, o ideal é Redis.
-const SIGNUP_RATE = new Map();
-
 // Configurações básicas
 app.use(cors());
 app.use(bodyParser.json({ limit: "25mb" }));
@@ -489,23 +485,6 @@ function sha256(s) {
 
 function onlyDigits(v) {
   return String(v || "").replace(/\D+/g, "");
-}
-
-function isValidCpfDigits(cpfDigits) {
-  const cpf = onlyDigits(cpfDigits);
-  if (cpf.length !== 11) return false;
-  if (/^(\d)\1{10}$/.test(cpf)) return false;
-  const calc = (base) => {
-    let sum = 0;
-    for (let i = 0; i < base.length; i++) {
-      sum += Number(base[i]) * ((base.length + 1) - i);
-    }
-    const mod = sum % 11;
-    return mod < 2 ? 0 : (11 - mod);
-  };
-  const d1 = calc(cpf.slice(0, 9));
-  const d2 = calc(cpf.slice(0, 9) + String(d1));
-  return cpf === (cpf.slice(0, 9) + String(d1) + String(d2));
 }
 
 function makeId(prefix) {
@@ -923,27 +902,9 @@ function findUserByLogin(login) {
   return DB.users.find(u => onlyDigits(String(u.login || "").trim()) === ln) || null;
 }
 
-function findUserByCpf(cpfDigits) {
-  const c = onlyDigits(cpfDigits);
-  if (!c || c.length !== 11) return null;
-  return DB.users.find(u => onlyDigits(String(u.cpf || "")) === c) || null;
-}
-
 function isUserPaidThisMonth(userId) {
   const month = currentYYYYMM();
   return DB.payments.some(p => p.userId === userId && p.month === month);
-}
-
-function isUserInTrial(user) {
-  try {
-    const t = String(user?.trialEndsAt || "").trim();
-    if (!t) return false;
-    const end = new Date(t).getTime();
-    if (!Number.isFinite(end) || end <= 0) return false;
-    return Date.now() < end;
-  } catch {
-    return false;
-  }
 }
 
 function isUserOnline(user) {
@@ -1070,8 +1031,7 @@ function requirePaidOrAdmin(req, res, next) {
   if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
   if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
 
-  // Libera acesso se estiver em período de gratuidade
-  if (!isUserPaidThisMonth(user.id) && !isUserInTrial(user)) {
+  if (!isUserPaidThisMonth(user.id)) {
     return res.status(402).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
   }
   next();
@@ -1083,48 +1043,14 @@ function requirePaidOrAdmin(req, res, next) {
 // Observação: o acesso ao sistema continua condicionado à liberação e mensalidade (pagamento do mês).
 app.post("/api/auth/signup", (req, res) => {
   try {
-    // Proteção simples contra abuso de auto-cadastro (in-memory)
-    // Observação: em ambiente com múltiplas instâncias, isso deve ir para Redis.
-    const ip = String((req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "") || "").split(",")[0].trim();
-    const now = Date.now();
-    const slot = SIGNUP_RATE.get(ip) || { count: 0, resetAt: now + 60 * 60 * 1000 };
-    if (now > slot.resetAt) {
-      slot.count = 0;
-      slot.resetAt = now + 60 * 60 * 1000;
-    }
-    slot.count += 1;
-    SIGNUP_RATE.set(ip, slot);
-    if (slot.count > 8) {
-      return res.status(429).json({ error: "Muitas tentativas de cadastro. Tente novamente mais tarde." });
-    }
-
     const fullName = String(req.body?.fullName || "").trim();
     const dob = String(req.body?.dob || "").trim();
-    const cpf = String(req.body?.cpf || "").trim();
     const phone = String(req.body?.phone || "").trim();
     const login = String(req.body?.login || "").trim();
     const password = String(req.body?.password || "").trim();
 
-    if (!fullName || !dob || !cpf || !phone || !login || !password) {
-      return res.status(400).json({ error: "Nome completo, data de nascimento, CPF, telefone, login e senha são obrigatórios." });
-    }
-
-    const cpfDigits = onlyDigits(cpf);
-    if (!isValidCpfDigits(cpfDigits)) {
-      return res.status(400).json({ error: "CPF inválido." });
-    }
-    if (findUserByCpf(cpfDigits)) {
-      return res.status(409).json({ error: "Já existe usuário cadastrado com este CPF." });
-    }
-
-    const phoneDigits = onlyDigits(phone);
-    if (phoneDigits.length < 10 || phoneDigits.length > 13) {
-      return res.status(400).json({ error: "Telefone inválido." });
-    }
-    // Evita múltiplas contas com o mesmo telefone
-    const phoneTaken = DB.users.find(u => onlyDigits(String(u.phone || "")) === phoneDigits);
-    if (phoneTaken) {
-      return res.status(409).json({ error: "Já existe usuário cadastrado com este telefone." });
+    if (!fullName || !dob || !phone || !login || !password) {
+      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, login e senha são obrigatórios." });
     }
 
     // Login não precisa ser CPF. Permite letras, números e alguns caracteres seguros.
@@ -1151,15 +1077,12 @@ app.post("/api/auth/signup", (req, res) => {
       id: makeId("usr"),
       fullName,
       dob,
-      cpf: cpfDigits,
       phone,
       login,
       salt,
       passwordHash,
       isActive: true,
       isDeleted: false,
-      // 1 mês de gratuidade a partir do cadastro
-      trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       createdAt: nowIso(),
       lastLoginAt: "",
       lastSeenAt: "",
