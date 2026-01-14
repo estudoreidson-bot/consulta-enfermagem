@@ -2026,88 +2026,6 @@
       .roster-output-mobile { display: flex; flex-direction: column; }
     }
 
-    /* Assinatura: trial 15 dias */
-    .trial-banner {
-      width: 100%;
-      margin-top: 12px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid #d7e6ff;
-      background: #f9fbff;
-      font-size: 13px;
-      color: #1f2937;
-      line-height: 1.35;
-    }
-    .trial-warning {
-      width: 100%;
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid #ffeeba;
-      background: #fff3cd;
-      font-size: 13px;
-      color: #1f2937;
-      line-height: 1.35;
-    }
-    .trial-promo {
-      width: 100%;
-      margin-top: 12px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid #e7e7e7;
-      background: #ffffff;
-      font-size: 13px;
-      color: #1f2937;
-      line-height: 1.35;
-    }
-    .hidden { display: none !important; }
-    .pill.gray { background: #f2f2f2; border-color: #ddd; color: #555; }
-    .pill.blue { background: #eef5ff; border-color: #cfe0ff; color: #1f3b7a; }
-
-    .billing-box {
-      width: 100%;
-      margin-top: 12px;
-      padding: 12px;
-      border-radius: 14px;
-      border: 1px solid #e7e7e7;
-      background: #ffffff;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-      font-size: 13px;
-      color: #1f2937;
-      line-height: 1.4;
-    }
-    .billing-line { margin: 0 0 8px 0; }
-    .billing-label { font-weight: 800; margin-right: 8px; }
-    .billing-text { color: #374151; }
-    .billing-actions { display: flex; justify-content: flex-end; }
-
-    .friends-box {
-      width: 100%;
-      margin-top: 12px;
-      padding: 12px;
-      border-radius: 14px;
-      border: 1px solid #e7e7e7;
-      background: #ffffff;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-      font-size: 13px;
-      color: #1f2937;
-      line-height: 1.4;
-    }
-    .friends-header { display:flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
-    .friends-title { font-weight: 800; }
-    .friends-subtitle { font-size: 12px; color: #6b7280; margin-top: 2px; }
-    .friends-row { margin-top: 10px; display:flex; align-items:center; gap: 8px; flex-wrap: wrap; }
-    .friends-label { font-weight: 800; }
-    .friends-list { margin-top: 10px; border-top: 1px solid #efefef; padding-top: 10px; }
-    .friend-item { display:flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f3f3f3; }
-    .friend-item:last-child { border-bottom: none; }
-    .friend-main { display:flex; flex-direction: column; gap: 3px; }
-    .friend-name { font-weight: 800; }
-    .friend-meta { font-size: 12px; color: #6b7280; }
-    .friends-empty { font-size: 12px; color: #6b7280; }
-
-
-
   </style>
 </head>
 <body>
@@ -2118,17 +2036,16 @@
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
 
-      <div id="loginTrialBanner" class="trial-banner hidden"></div>
-      <div id="loginTrialWarning" class="trial-warning hidden"></div>
-
       <label class="auth-label" for="loginField">CPF</label>
-      <input id="loginField" class="auth-input" autocomplete="username" inputmode="numeric" pattern="\d*" placeholder="Somente números" />
+      <input id="loginField" class="auth-input" autocomplete="username" inputmode="numeric" />
 
       <label class="auth-label" for="passwordField">Senha</label>
       <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
 
       <button id="loginBtn" class="auth-btn" type="button">Entrar</button>
       <div id="loginError" class="auth-error"></div>
+      <div id="loginTrialBanner" class="trial-banner" style="display:none;"></div>
+      <div id="loginTrialWarning" class="trial-warning" style="display:none;"></div>
 
       <button id="openSignupBtn" class="auth-btn outline" type="button">Cadastrar enfermeiro(a)</button>
 
@@ -2144,20 +2061,6 @@
       <h1>Cadastro de enfermeiro(a)</h1>
       <p class="auth-subtitle">Preencha os dados para criar seu cadastro.</p>
 
-      <div id="signupTrialBanner" class="trial-banner">15 dias grátis para novos cadastros. Avisaremos quando faltar 5 dias para vencer.</div>
-      <div class="trial-promo">Cliente Amigo: cada amigo pagando em dia reduz 25% da sua mensalidade, até ficar grátis com 4 amigos.</div>
-      <div class="trial-promo">Parceiro: você indica clientes e recebe 25% todo mês da mensalidade de cada cliente que estiver pagando em dia.</div>
-
-      <label class="auth-label" for="signupRefType">Promoção (opcional)</label>
-      <select id="signupRefType" class="auth-input">
-        <option value="">Nenhuma</option>
-        <option value="friend">Cliente Amigo</option>
-        <option value="partner">Parceiro</option>
-      </select>
-
-      <label class="auth-label" for="signupReferralCode">Código de indicação (opcional)</label>
-      <input id="signupReferralCode" class="auth-input" inputmode="text" placeholder="Cole o código (friendCode ou partnerCode)" />
-
       <label class="auth-label" for="signupFullName">Nome completo</label>
       <input id="signupFullName" class="auth-input" autocomplete="name" inputmode="text" />
 
@@ -2167,8 +2070,8 @@
       <label class="auth-label" for="signupPhone">Telefone</label>
       <input id="signupPhone" class="auth-input" type="tel" autocomplete="tel" inputmode="tel" />
 
-      <label class="auth-label" for="signupLogin">CPF</label>
-      <input id="signupLogin" class="auth-input" autocomplete="username" inputmode="numeric" pattern="\d*" placeholder="Somente números" />
+      <label class="auth-label" for="signupLogin">Login</label>
+      <input id="signupLogin" class="auth-input" autocomplete="username" inputmode="numeric" />
 
       <label class="auth-label" for="signupPassword">Senha</label>
       <input id="signupPassword" class="auth-input" type="password" autocomplete="new-password" />
@@ -2176,6 +2079,28 @@
       <button id="signupBtn" class="auth-btn" type="button">Cadastrar</button>
       <button id="signupBackBtn" class="auth-btn secondary" type="button">Voltar</button>
       <div id="signupError" class="auth-error"></div>
+      <div class="auth-row">
+        <div class="auth-hint" style="margin-top:6px;">
+          15 dias grátis para novos cadastros. Avisaremos quando faltar 5 dias para vencer.
+        </div>
+      </div>
+      <div class="auth-row">
+        <label class="auth-label">Promoção (opcional)</label>
+        <select id="signupRefType" class="auth-input">
+          <option value="">Nenhuma</option>
+          <option value="friend">Cliente Amigo (desconto)</option>
+          <option value="partner">Parceiro (comissão)</option>
+        </select>
+      </div>
+      <div class="auth-row">
+        <label class="auth-label">Código de indicação (opcional)</label>
+        <input id="signupReferralCode" class="auth-input" autocomplete="off" inputmode="text" />
+        <div class="auth-hint">
+          Cliente Amigo: cada amigo pagando em dia reduz 25% da sua mensalidade, até ficar grátis com 4 amigos.
+          Parceiro: você indica clientes e recebe 25% todo mês da mensalidade de cada cliente que estiver pagando em dia.
+        </div>
+      </div>
+
 
       <div class="auth-help">
         Após o cadastro, o acesso ao sistema pode depender de liberação/regularização com o administrador.
@@ -2218,20 +2143,8 @@
             <input id="newPhone" type="tel" />
           </div>
           <div class="admin-field">
-            <label for="newLogin">CPF</label>
+            <label for="newLogin">Login</label>
             <input id="newLogin" type="text" />
-          </div>
-          <div class="admin-field">
-            <label for="newRefType">Tipo de indicação (opcional)</label>
-            <select id="newRefType">
-              <option value="">Sem indicação</option>
-              <option value="friend">Cliente Amigo</option>
-              <option value="partner">Parceiro</option>
-            </select>
-          </div>
-          <div class="admin-field">
-            <label for="newReferralCode">Código de indicação (opcional)</label>
-            <input id="newReferralCode" type="text" />
           </div>
           <div class="admin-field">
             <label for="newPassword">Senha</label>
@@ -2247,14 +2160,14 @@
       <div class="admin-card">
         <div class="admin-row" style="justify-content: space-between;">
           <h2 style="margin: 0;">Enfermeiros cadastrados</h2>
-          <input id="adminSearch" class="auth-input" placeholder="Buscar por nome, CPF ou telefone" style="max-width: 360px;" />
+          <input id="adminSearch" class="auth-input" placeholder="Buscar por nome, login ou telefone" style="max-width: 360px;" />
         </div>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>CPF</th>
+                <th>Login</th>
                 <th>Telefone</th>
                 <th>Online</th>
                 <th>Mensalidade</th>
@@ -2327,7 +2240,7 @@
           <input id="editPhone" class="auth-input" placeholder="Telefone" />
         </div>
         <div>
-          <label class="auth-label">CPF</label>
+          <label class="auth-label">Login</label>
           <input id="editLogin" class="auth-input" placeholder="Login" />
         </div>
         <div style="grid-column: 1 / -1;">
@@ -2352,51 +2265,26 @@
      <h1>Atendimento de Enfermagem</h1>
 
 
-    <div id="nurseTrialBanner" class="trial-banner hidden"></div>
-    <div id="nurseTrialWarning" class="trial-warning hidden"></div>
-
     <div class="nurse-bar" id="nurseBar">
       <div>
         <div class="nurse-bar-line"><span class="nurse-bar-label">Usuário:</span><span id="nurseUserLabel">-</span></div>
-        <div class="nurse-bar-line"><span class="nurse-bar-label">CPF:</span><span id="nurseLoginLabel">-</span></div>
-        <div class="nurse-bar-line"><span class="nurse-bar-label">Gratuidade:</span><span id="nurseTrialInlineLabel" class="pill">-</span></div>
-        <div class="nurse-bar-line"><span class="nurse-bar-label">Mensalidade:</span><span id="nursePaymentLabel" class="pill">-</span></div>
+        <div class="nurse-bar-line"><span class="nurse-bar-label">Login:</span><span id="nurseLoginLabel">-</span></div>
+        <div class="nurse-bar-line"><span class="nurse-bar-label">Gratuidade:</span><span id="nurseTrialLabel" class="pill">-</span></div>
+        <div id="nurseTrialWarning" class="trial-warning" style="display:none; margin-top:8px;"></div>
+<div class="nurse-bar-line"><span class="nurse-bar-label">Mensalidade:</span><span id="nursePaymentLabel" class="pill">-</span></div>
+        <div id="nursePaymentInfo" class="pay-info" style="margin-top:10px;">
+          <div class="pay-info-title">Pagamento</div>
+          <div class="pay-info-line">Pix mensal: R$ 25,00</div>
+          <div class="pay-info-line">Pix anual: R$ 200,00</div>
+          <div class="pay-info-line">Cartão mensal: R$ 25,00</div>
+          <div class="pay-info-line">Cartão anual: R$ 240,00</div>
+          <button id="openPayModalBtn" type="button" class="auth-btn" style="margin-top:10px;">Opções de pagamento</button>
+        </div>
+
       </div>
       <div class="nurse-bar-actions">
         <button id="nurseLogoutBtn" type="button" class="danger-btn">Sair</button>
-      
-    <div id="nurseBillingBox" class="billing-box">
-      <div class="billing-line">
-        <span class="billing-label">Pagamento:</span>
-        <span class="billing-text">Pix mensal R$ 25, Pix anual R$ 200, Cartão mensal R$ 25, Cartão anual R$ 240.</span>
       </div>
-      <div class="billing-line">
-        <span class="billing-label">Cliente Amigo:</span>
-        <span id="nurseDiscountLabel" class="billing-text">-</span>
-      </div>
-      <div class="billing-actions">
-        <button id="openNursePaymentModalBtn" type="button" class="admin-btn">Opções de pagamento</button>
-      </div>
-    </div>
-
-    <div id="nurseFriendsBox" class="friends-box">
-      <div class="friends-header">
-        <div>
-          <div class="friends-title">Amigos cadastrados pelo Cliente Amigo</div>
-          <div class="friends-subtitle">Cada amigo pagando em dia reduz 25% da sua mensalidade, até 100% com 4 amigos.</div>
-        </div>
-        <button id="openAddFriendModalBtn" type="button" class="admin-btn">Adicionar amigo</button>
-      </div>
-      <div class="friends-row">
-        <span class="friends-label">Seu código para indicar:</span>
-        <span id="nurseFriendCodeInline" class="pill">-</span>
-      </div>
-      <div id="friendsListWrap" class="friends-list">
-        <div class="friends-empty">Nenhum amigo cadastrado.</div>
-      </div>
-    </div>
-
-</div>
     </div>
 
 
@@ -4034,6 +3922,7 @@ Ata de reunião:
 
 <script>
 
+
     const DEFAULT_BACKEND_URL = "https://consulta-enfermagem-1.onrender.com";
     // Backend principal (Render). Pode ser sobrescrito por:
     // 1) Querystring ?backend=https://...  (útil para testes)
@@ -4052,354 +3941,6 @@ Ata de reunião:
     })();
 
     // =========================
-    // Assinatura: trial, aviso 5 dias e status mensal
-    // =========================
-    function normalizeCpfOnlyDigits(v) {
-      return String(v || "").replace(/\D/g, "");
-    }
-
-    function formatTrialRemaining(seconds) {
-      const s = Math.max(0, Math.floor(Number(seconds) || 0));
-      const days = Math.floor(s / 86400);
-      const hours = Math.floor((s % 86400) / 3600);
-      return { days, hours, text: `${days} dias e ${hours} horas` };
-    }
-
-    function setElText(id, text) {
-      const el = document.getElementById(id);
-      if (el) el.textContent = text;
-    }
-
-    function showEl(id, show) {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.classList.toggle("hidden", !show);
-    }
-
-    async function fetchPublicSubscriptionStatus(cpfDigits) {
-      const cpf = normalizeCpfOnlyDigits(cpfDigits);
-      if (!cpf || cpf.length < 11) return null;
-      const resp = await nativeFetch(BACKEND_URL + "/api/public/subscription/status?cpf=" + encodeURIComponent(cpf), { method: "GET" });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) return { error: data.error || "Falha ao consultar status." };
-      return data;
-    }
-
-    function renderLoginTrialStatus(data) {
-      // data pode ser null, {error}, ou status válido
-      if (!data) {
-        showEl("loginTrialBanner", false);
-        showEl("loginTrialWarning", false);
-        return;
-      }
-      if (data.error) {
-        // Usuário não encontrado ou CPF inválido: não exibe banner (cadastro é o caminho)
-        showEl("loginTrialBanner", false);
-        showEl("loginTrialWarning", false);
-        return;
-      }
-
-      const rem = Number(data.trialRemainingSeconds || 0);
-      const paid = !!data.isPaidThisMonth;
-      const warning = !!data.warning5Days;
-
-      if (rem > 0) {
-        const f = formatTrialRemaining(rem);
-        setElText("loginTrialBanner", "Gratuidade: faltam " + f.text);
-        showEl("loginTrialBanner", true);
-        if (warning) {
-          setElText("loginTrialWarning", "Aviso: sua gratuidade termina em até 5 dias. Regularize o pagamento para não perder o acesso.");
-          showEl("loginTrialWarning", true);
-        } else {
-          showEl("loginTrialWarning", false);
-        }
-        return;
-      }
-
-      // Trial encerrado
-      setElText("loginTrialBanner", paid ? "Gratuidade encerrada. Mensalidade do mês está em dia." : "Gratuidade encerrada. Faça o pagamento para continuar.");
-      showEl("loginTrialBanner", true);
-      showEl("loginTrialWarning", false);
-    }
-
-    let loginTrialDebounceTimer = null;
-    function scheduleLoginTrialCheck() {
-      const cpf = normalizeCpfOnlyDigits(document.getElementById("loginField")?.value || "");
-      if (!cpf || cpf.length < 11) {
-        renderLoginTrialStatus(null);
-        return;
-      }
-      if (loginTrialDebounceTimer) clearTimeout(loginTrialDebounceTimer);
-      loginTrialDebounceTimer = setTimeout(async () => {
-        try {
-          const data = await fetchPublicSubscriptionStatus(cpf);
-          renderLoginTrialStatus(data);
-        } catch {
-          // Silencioso: não travar login por status
-          renderLoginTrialStatus(null);
-        }
-      }, 350);
-    }
-
-    async function fetchPrivateSubscriptionStatus() {
-      const resp = await fetch(BACKEND_URL + "/api/subscription/status", { method: "GET" });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) return { error: data.error || "Falha ao consultar status." };
-      return data;
-    }
-
-    function renderNurseTrialStatus(data) {
-      const trialInline = document.getElementById("nurseTrialInlineLabel");
-      const pay = document.getElementById("nursePaymentLabel");
-      const discountEl = document.getElementById("nurseDiscountLabel");
-      const friendCodeEl = document.getElementById("nurseFriendCodeInline");
-
-      if (!data || data.error) {
-        showEl("nurseTrialBanner", false);
-        showEl("nurseTrialWarning", false);
-        if (trialInline) { trialInline.textContent = "-"; trialInline.classList.remove("blue","gray"); }
-        if (pay) { pay.textContent = "-"; pay.classList.remove("green","gray"); }
-        if (discountEl) discountEl.textContent = "-";
-        if (friendCodeEl) friendCodeEl.textContent = "-";
-        return;
-      }
-
-      const rem = Number(data.trialRemainingSeconds || 0);
-      const warning = !!data.warning5Days;
-      const paid = !!data.isPaidThisMonth;
-      const needsPayment = !!data.needsPayment;
-      const month = String((data.currentMonth || "")).trim();
-
-      // Gratuidade (mostrar inline, e manter banners apenas para aviso)
-      if (rem > 0) {
-        const f = formatTrialRemaining(rem);
-        if (trialInline) {
-          trialInline.textContent = "Faltam " + f.text;
-          trialInline.classList.remove("gray");
-          trialInline.classList.add("blue");
-        }
-        showEl("nurseTrialBanner", false);
-
-        if (warning) {
-          setElText("nurseTrialWarning", "Aviso: sua gratuidade termina em até 5 dias. Regularize o pagamento para não perder o acesso.");
-          showEl("nurseTrialWarning", true);
-        } else {
-          showEl("nurseTrialWarning", false);
-        }
-      } else {
-        if (trialInline) {
-          trialInline.textContent = "Encerrada";
-          trialInline.classList.remove("blue");
-          trialInline.classList.add("gray");
-        }
-        showEl("nurseTrialBanner", false);
-
-        if (needsPayment) {
-          setElText("nurseTrialWarning", "Gratuidade encerrada. Faça o pagamento para continuar.");
-          showEl("nurseTrialWarning", true);
-        } else {
-          showEl("nurseTrialWarning", false);
-        }
-      }
-
-      // Mensalidade (sem vermelho)
-      if (pay) {
-        const paidFlag = !!paid;
-        pay.textContent = paidFlag ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Pendente" + (month ? " (" + month + ")" : ""));
-        pay.classList.remove("green","red","gray");
-        pay.classList.add(paidFlag ? "green" : "gray");
-      }
-
-      // Cliente Amigo: desconto
-      const friendsN = Number(data.activeFriendsThisMonth || 0);
-      const rate = Math.max(0, Math.min(1, Number(data.discountRateThisMonth || 0)));
-      const pct = Math.round(rate * 100);
-      let discountText = friendsN + " amigo(s) pagante(s) este mês. Desconto: " + pct + "%.";
-      if (pct >= 100) discountText += " Mensalidade gratuita enquanto os 4 estiverem pagando em dia.";
-      if (discountEl) discountEl.textContent = discountText;
-
-      // Código do Cliente Amigo
-      const fc = String(data.friendCode || "").trim();
-      if (friendCodeEl) friendCodeEl.textContent = fc || "-";
-    }
-
-    async function refreshSubscriptionUIAfterLogin() {
-      try {
-        const data = await fetchPrivateSubscriptionStatus();
-        renderNurseTrialStatus(data);
-        try { await refreshFriendsList(); } catch {}
-      } catch {
-        renderNurseTrialStatus(null);
-      }
-    }
-
-
-    // =========================
-    // Pagamento e Cliente Amigo (nurseView)
-    // =========================
-    function fmtMoneyBRL(v) {
-      const n = Number(v);
-      if (!isFinite(n)) return "R$ 0,00";
-      return "R$ " + n.toFixed(2).replace(".", ",");
-    }
-
-    function openModal(id) {
-      const el = document.getElementById(id);
-      if (el) el.classList.remove("hidden");
-    }
-    function closeModal(id) {
-      const el = document.getElementById(id);
-      if (el) el.classList.add("hidden");
-    }
-
-    async function refreshFriendsList() {
-      const wrap = document.getElementById("friendsListWrap");
-      if (!wrap) return;
-      wrap.innerHTML = '<div class="friends-empty">Carregando...</div>';
-
-      const resp = await fetch(BACKEND_URL + "/api/friends/list", { method: "GET" });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        wrap.innerHTML = '<div class="friends-empty">' + escapeHtml(data.error || "Falha ao listar amigos.") + "</div>";
-        return;
-      }
-
-      const friends = Array.isArray(data.friends) ? data.friends : [];
-      if (!friends.length) {
-        wrap.innerHTML = '<div class="friends-empty">Nenhum amigo cadastrado.</div>';
-        return;
-      }
-
-      wrap.innerHTML = "";
-      for (const f of friends) {
-        const item = document.createElement("div");
-        item.className = "friend-item";
-
-        const main = document.createElement("div");
-        main.className = "friend-main";
-
-        const nm = document.createElement("div");
-        nm.className = "friend-name";
-        nm.textContent = f.fullName || "-";
-
-        const meta = document.createElement("div");
-        meta.className = "friend-meta";
-        meta.textContent = "CPF: " + (f.cpf || f.login || "-");
-
-        main.appendChild(nm);
-        main.appendChild(meta);
-
-        const status = document.createElement("span");
-        status.className = "pill " + (f.isPaidThisMonth ? "green" : "gray");
-        status.textContent = f.isPaidThisMonth ? "Em dia" : "Pendente";
-
-        item.appendChild(main);
-        item.appendChild(status);
-        wrap.appendChild(item);
-      }
-    }
-
-    document.getElementById("openNursePaymentModalBtn")?.addEventListener("click", () => {
-      setElText("nursePaymentModalStatus", "");
-      showEl("pixOrderBox", false);
-      openModal("nursePaymentModal");
-    });
-    document.getElementById("closeNursePaymentModalBtn")?.addEventListener("click", () => closeModal("nursePaymentModal"));
-
-    async function createPix(plan) {
-      const st = document.getElementById("nursePaymentModalStatus");
-      if (st) st.textContent = "Gerando pedido Pix...";
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/payments/pix/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ plan })
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(data.error || "Falha ao criar pedido Pix.");
-
-        setElText("pixKeyText", data.pixKey || "-");
-        setElText("pixOrderIdText", data.orderId || "-");
-        setElText("pixAmountText", fmtMoneyBRL(data.amount));
-        setElText("pixInstructionsText", data.instructions || "");
-        showEl("pixOrderBox", true);
-
-        if (st) st.textContent = "Pedido Pix gerado. Após o pagamento, aguarde a confirmação do administrador.";
-      } catch (e) {
-        if (st) st.textContent = String(e?.message || e || "Falha ao criar Pix.");
-      }
-    }
-
-    document.getElementById("pixMonthlyBtn")?.addEventListener("click", () => createPix("monthly"));
-    document.getElementById("pixAnnualBtn")?.addEventListener("click", () => createPix("annual"));
-
-    async function subscribeCard(plan) {
-      const st = document.getElementById("nursePaymentModalStatus");
-      if (st) st.textContent = "Processando assinatura no cartão...";
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/payments/card/subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ plan })
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(data.error || "Falha ao assinar no cartão.");
-        if (st) st.textContent = "Assinatura registrada. Status: " + (data.status || "-") + ".";
-        await refreshSubscriptionUIAfterLogin();
-      } catch (e) {
-        if (st) st.textContent = String(e?.message || e || "Falha ao assinar no cartão.");
-      }
-    }
-
-    document.getElementById("cardMonthlyBtn")?.addEventListener("click", () => subscribeCard("monthly"));
-    document.getElementById("cardAnnualBtn")?.addEventListener("click", () => subscribeCard("annual"));
-
-    document.getElementById("openAddFriendModalBtn")?.addEventListener("click", () => {
-      setElText("addFriendModalStatus", "");
-      ["friendFullName","friendDob","friendPhone","friendCpf","friendPassword"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = "";
-      });
-      openModal("addFriendModal");
-    });
-    document.getElementById("closeAddFriendModalBtn")?.addEventListener("click", () => closeModal("addFriendModal"));
-
-    document.getElementById("createFriendBtn")?.addEventListener("click", async () => {
-      const st = document.getElementById("addFriendModalStatus");
-      const fullName = (document.getElementById("friendFullName")?.value || "").trim();
-      const dob = (document.getElementById("friendDob")?.value || "").trim();
-      const phone = (document.getElementById("friendPhone")?.value || "").trim();
-      const cpf = normalizeCpfOnlyDigits((document.getElementById("friendCpf")?.value || "").trim());
-      const password = (document.getElementById("friendPassword")?.value || "").trim();
-
-      if (!fullName || !dob || !phone || !cpf || !password) {
-        if (st) st.textContent = "Preencha nome completo, data de nascimento, telefone, CPF e senha.";
-        return;
-      }
-      if (cpf.length < 11) {
-        if (st) st.textContent = "CPF inválido.";
-        return;
-      }
-
-      if (st) st.textContent = "Cadastrando amigo...";
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/friends/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, phone, cpf, password })
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(data.error || "Falha ao cadastrar amigo.");
-
-        if (st) st.textContent = "Amigo cadastrado com sucesso.";
-        closeModal("addFriendModal");
-        await refreshSubscriptionUIAfterLogin();
-      } catch (e) {
-        if (st) st.textContent = String(e?.message || e || "Falha ao cadastrar amigo.");
-      }
-    });
-
-// =========================
     // IMAGENS (Curativos e Prescrição) - estado por módulo (até 4 fotos)
     // =========================
     let woundImages = [];
@@ -4487,6 +4028,18 @@ Ata de reunião:
         return "";
       }
     }
+
+    function onlyDigits(s){ return String(s||"").replace(/\D+/g,""); }
+
+    function formatRemaining(sec){
+      const n = Math.max(0, Math.floor(Number(sec)||0));
+      const days = Math.floor(n / 86400);
+      const hours = Math.floor((n % 86400) / 3600);
+      return { days, hours };
+    }
+
+    function setElText(id, text){ const el=document.getElementById(id); if(el) el.textContent=text; }
+    function showEl(id, show){ const el=document.getElementById(id); if(el) el.style.display = show ? "" : "none"; }
 
 // Diagnóstico visível: se algum erro de JS impedir o login, ele aparece aqui
     function showFatalError(msg) {
@@ -4668,11 +4221,12 @@ Ata de reunião:
     }
 
     async function doLogin() {
-      const cpf = ((document.getElementById("loginField")?.value || "").trim()).replace(/\D/g, "");
+      const login = (document.getElementById("loginField")?.value || "").trim();
+      const cpf = onlyDigits(login);
       const senha = (document.getElementById("passwordField")?.value || "").trim();
       const errEl = document.getElementById("loginError");
       const btn = document.getElementById("loginBtn");
-      if (!cpf || !senha) {
+      if (!cpf || cpf.length !== 11 || !senha) {
         if (errEl) errEl.textContent = "Informe CPF e senha.";
         return;
       }
@@ -4682,7 +4236,7 @@ Ata de reunião:
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
-          body: JSON.stringify({ cpf, senha, password: senha, login: cpf })
+          body: JSON.stringify({ cpf, login: cpf, senha })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
@@ -4690,17 +4244,7 @@ Ata de reunião:
           return;
         }
         setToken(data.token || "");
-        try {
-          await restoreSession();
-          // Se por algum motivo continuou no login, avisa.
-          const stillLogin = document.getElementById("loginView") && !document.getElementById("loginView").classList.contains("hidden");
-          if (stillLogin && errEl) errEl.textContent = "Login realizado, mas não foi possível carregar a sessão. Recarregue a página.";
-        } catch (e) {
-          if (errEl) errEl.textContent = "Login realizado, mas ocorreu um erro ao carregar sua sessão.";
-          showLogin();
-        }
-    // Atualiza contador do trial no login (quando aplicável)
-    setTimeout(() => { try { scheduleLoginTrialCheck(); } catch {} }, 300);
+        await restoreSession();
       } catch (e) {
         if (errEl) errEl.textContent = "Falha ao conectar no servidor.";
       } finally {
@@ -4715,8 +4259,6 @@ Ata de reunião:
       set("signupPhone", "");
       set("signupLogin", "");
       set("signupPassword", "");
-      set("signupRefType", "");
-      set("signupReferralCode", "");
       const err = document.getElementById("signupError");
       if (err) err.textContent = "";
       const btn = document.getElementById("signupBtn");
@@ -4727,15 +4269,16 @@ Ata de reunião:
       const fullName = (document.getElementById("signupFullName")?.value || "").trim();
       const dob = (document.getElementById("signupDob")?.value || "").trim();
       const phone = (document.getElementById("signupPhone")?.value || "").trim();
-      const cpf = ((document.getElementById("signupLogin")?.value || "").trim()).replace(/\D/g, "");
-      const password = (document.getElementById("signupPassword")?.value || "").trim();
+      const login = (document.getElementById("signupLogin")?.value || "").trim();
+      const cpf = onlyDigits(login);
       const refType = (document.getElementById("signupRefType")?.value || "").trim();
       const referralCode = (document.getElementById("signupReferralCode")?.value || "").trim();
+      const password = (document.getElementById("signupPassword")?.value || "").trim();
 
       const errEl = document.getElementById("signupError");
       const btn = document.getElementById("signupBtn");
 
-      if (!fullName || !dob || !phone || !cpf || !password) {
+      if (!fullName || !dob || !phone || !cpf || cpf.length !== 11 || !password) {
         if (errEl) errEl.textContent = "Preencha: nome completo, data de nascimento, telefone, CPF e senha.";
         return;
       }
@@ -4747,7 +4290,7 @@ Ata de reunião:
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, phone, cpf, password, refType, referralCode })
+          body: JSON.stringify({ fullName, dob, phone, cpf, login: cpf, password, refType, referralCode })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
@@ -4762,7 +4305,7 @@ Ata de reunião:
         const pf = document.getElementById("passwordField");
         if (pf) pf.value = "";
         const loginErr = document.getElementById("loginError");
-        if (loginErr) loginErr.textContent = "Cadastro realizado. Para liberar o acesso, regularize com o administrador e, depois, faça login.";
+        if (loginErr) loginErr.textContent = "Cadastro realizado. Você tem 15 dias grátis. Faça login para continuar.";
         resetSignupForm();
       } catch (e) {
         if (errEl) errEl.textContent = "Falha ao conectar no servidor.";
@@ -4807,7 +4350,7 @@ Ata de reunião:
           showNurse();
           startHeartbeat();
           updateNurseBar(me);
-          await refreshSubscriptionUIAfterLogin();
+          refreshNurseSubscriptionUI();
         } else {
           showLogin();
         }
@@ -4816,12 +4359,18 @@ Ata de reunião:
       }
     }
 
-    
     function updateNurseBar(me) {
+      // Aceita tanto o formato {role, user:{...}} quanto formato "achatado"
       const u = (me && me.user && typeof me.user === "object") ? me.user : (me || {});
       const name = (u.fullName || u.login || "-");
       const login = (u.login || "-");
+      const paidFlag = (u.isPaidThisMonth !== undefined) ? !!u.isPaidThisMonth
+        : (u.paidCurrentMonth !== undefined) ? !!u.paidCurrentMonth
+        : (me && me.isPaidThisMonth !== undefined) ? !!me.isPaidThisMonth
+        : (me && me.paidCurrentMonth !== undefined) ? !!me.paidCurrentMonth
+        : false;
 
+      const month = (me && me.currentMonth) ? me.currentMonth : (u.currentMonth || "");
       const lbl = document.getElementById("nurseUserLabel");
       const lblLogin = document.getElementById("nurseLoginLabel");
       const pay = document.getElementById("nursePaymentLabel");
@@ -4830,31 +4379,163 @@ Ata de reunião:
       if (lblLogin) lblLogin.textContent = login;
 
       if (pay) {
-        pay.textContent = "-";
-        pay.classList.remove("green// Eventos de login/logout (inicializados com segurança)
-function initAuthBindings() {
-  document.getElementById("loginBtn")?.addEventListener("click", doLogin);
-  document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
-  document.getElementById("loginField")?.addEventListener("input", scheduleLoginTrialCheck);
-  document.getElementById("loginField")?.addEventListener("blur", scheduleLoginTrialCheck);
+        pay.textContent = paidFlag ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Em atraso" + (month ? " (" + month + ")" : ""));
+        pay.classList.remove("green","red");
+        pay.classList.add(paidFlag ? "green" : "red");
+      }
+    }
 
-  document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    
+    let _trialDebounce = null;
+    async function refreshLoginTrialBanner() {
+      const raw = (document.getElementById("loginField")?.value || "").trim();
+      const cpf = onlyDigits(raw);
+      if (!cpf || cpf.length !== 11) { showEl("loginTrialBanner", false); showEl("loginTrialWarning", false); return; }
+      try {
+        const resp = await nativeFetch(BACKEND_URL + "/api/public/subscription/status?cpf=" + encodeURIComponent(cpf), { method: "GET" });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) { showEl("loginTrialBanner", false); showEl("loginTrialWarning", false); return; }
+        const rem = Number(data.trialRemainingSeconds || 0);
+        if (rem > 0) {
+          const t = formatRemaining(rem);
+          setElText("loginTrialBanner", "Gratuidade: faltam " + t.days + " dias e " + t.hours + " horas");
+          showEl("loginTrialBanner", true);
+          if (data.warning5Days) {
+            setElText("loginTrialWarning", "Aviso: faltam 5 dias ou menos para encerrar a gratuidade.");
+            showEl("loginTrialWarning", true);
+          } else {
+            showEl("loginTrialWarning", false);
+          }
+        } else {
+          setElText("loginTrialBanner", "Gratuidade encerrada. Faça o pagamento para continuar.");
+          showEl("loginTrialBanner", true);
+          showEl("loginTrialWarning", false);
+        }
+      } catch {}
+    }
 
-  document.getElementById("openSignupBtn")?.addEventListener("click", () => {
-    resetSignupForm();
-    showSignup();
-  });
-  document.getElementById("signupBackBtn")?.addEventListener("click", () => {
-    showLogin();
-  });
-  document.getElementById("signupBtn")?.addEventListener("click", doSignup);
-  document.getElementById("signupPassword")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doSignup(); });
+// Eventos de login/logout
+    document.getElementById("loginBtn")?.addEventListener("click", doLogin);
+    document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    document.getElementById("loginField")?.addEventListener("input", () => { if (_trialDebounce) clearTimeout(_trialDebounce); _trialDebounce = setTimeout(refreshLoginTrialBanner, 250); });
+    document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    document.getElementById("openSignupBtn")?.addEventListener("click", () => {
+      resetSignupForm();
+      showSignup();
+    });
+    document.getElementById("signupBackBtn")?.addEventListener("click", () => {
+      showLogin();
+    });
+    document.getElementById("signupBtn")?.addEventListener("click", doSignup);
+    document.getElementById("signupPassword")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doSignup(); });
+    document.getElementById("nurseLogoutBtn")?.addEventListener("click", logoutAll);
+    document.getElementById("adminLogoutBtn")?.addEventListener("click", logoutAll);
 
-  document.getElementById("nurseLogoutBtn")?.addEventListener("click", logoutAll);
-  document.getElementById("adminLogoutBtn")?.addEventListener("click", logoutAll);
-}
+    document.getElementById("openPayModalBtn")?.addEventListener("click", openPayModal);
+    document.getElementById("closePayModalBtn")?.addEventListener("click", closePayModal);
+    document.getElementById("payModalBackdrop")?.addEventListener("click", (e)=>{ if(e.target && e.target.id==="payModalBackdrop") closePayModal(); });
 
-r("click", logoutAll);
+    document.getElementById("openAddFriendBtn")?.addEventListener("click", openAddFriendModal);
+    document.getElementById("closeAddFriendModalBtn")?.addEventListener("click", closeAddFriendModal);
+    document.getElementById("addFriendModalBackdrop")?.addEventListener("click", (e)=>{ if(e.target && e.target.id==="addFriendModalBackdrop") closeAddFriendModal(); });
+
+    async function createPix(kind){
+      const resp = await fetch(BACKEND_URL + "/api/payments/pix/create", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ kind })
+      });
+      const data = await resp.json().catch(()=>({}));
+      if (!resp.ok) throw new Error(data.error || "Falha ao gerar Pix.");
+      return data;
+    }
+
+    document.getElementById("pixMonthlyBtn")?.addEventListener("click", async ()=>{
+      const box = document.getElementById("pixBox");
+      try {
+        const data = await createPix("monthly");
+        if (box) {
+          box.innerHTML = "Pedido Pix gerado. Identificador: <b>" + (data.orderId||"-") + "</b><br/>Envie o comprovante ao administrador para confirmação.";
+          box.style.display = "";
+        }
+      } catch (e) {
+        if (box) { box.textContent = e.message || "Falha ao gerar Pix."; box.style.display=""; }
+      }
+    });
+
+    document.getElementById("pixAnnualBtn")?.addEventListener("click", async ()=>{
+      const box = document.getElementById("pixBox");
+      try {
+        const data = await createPix("annual");
+        if (box) {
+          box.innerHTML = "Pedido Pix anual gerado. Identificador: <b>" + (data.orderId||"-") + "</b><br/>Envie o comprovante ao administrador para confirmação.";
+          box.style.display = "";
+        }
+      } catch (e) {
+        if (box) { box.textContent = e.message || "Falha ao gerar Pix."; box.style.display=""; }
+      }
+    });
+
+    async function cardSubscribe(plan){
+      const resp = await fetch(BACKEND_URL + "/api/payments/card/subscribe", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ plan })
+      });
+      const data = await resp.json().catch(()=>({}));
+      if (!resp.ok) throw new Error(data.error || "Falha ao assinar cartão.");
+      return data;
+    }
+    async function cardCancel(){
+      const resp = await fetch(BACKEND_URL + "/api/payments/card/cancel", { method:"POST" });
+      const data = await resp.json().catch(()=>({}));
+      if (!resp.ok) throw new Error(data.error || "Falha ao cancelar.");
+      return data;
+    }
+
+    document.getElementById("cardMonthlyBtn")?.addEventListener("click", async ()=>{
+      const box = document.getElementById("cardBox");
+      try { const data = await cardSubscribe("monthly"); if (box) { box.textContent = "Assinatura mensal iniciada. Status: " + (data.status||"active"); box.style.display=""; } }
+      catch (e) { if (box) { box.textContent = e.message || "Falha."; box.style.display=""; } }
+    });
+    document.getElementById("cardAnnualBtn")?.addEventListener("click", async ()=>{
+      const box = document.getElementById("cardBox");
+      try { const data = await cardSubscribe("annual"); if (box) { box.textContent = "Assinatura anual iniciada. Status: " + (data.status||"active"); box.style.display=""; } }
+      catch (e) { if (box) { box.textContent = e.message || "Falha."; box.style.display=""; } }
+    });
+    document.getElementById("cardCancelBtn")?.addEventListener("click", async ()=>{
+      const box = document.getElementById("cardBox");
+      try { await cardCancel(); if (box) { box.textContent = "Assinatura cancelada."; box.style.display=""; } }
+      catch (e) { if (box) { box.textContent = e.message || "Falha."; box.style.display=""; } }
+    });
+
+    document.getElementById("createFriendBtn")?.addEventListener("click", async ()=>{
+      const err = document.getElementById("friendError");
+      const fullName = (document.getElementById("friendFullName")?.value || "").trim();
+      const dob = (document.getElementById("friendDob")?.value || "").trim();
+      const phone = (document.getElementById("friendPhone")?.value || "").trim();
+      const cpf = onlyDigits((document.getElementById("friendCpf")?.value || "").trim());
+      const password = (document.getElementById("friendPassword")?.value || "").trim();
+      if (!fullName || !dob || !phone || !cpf || cpf.length !== 11 || !password) {
+        if (err) err.textContent = "Preencha: nome, nascimento, telefone, CPF e senha.";
+        return;
+      }
+      if (err) err.textContent = "Cadastrando amigo...";
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/friends/create", {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ fullName, dob, phone, cpf, password })
+        });
+        const data = await resp.json().catch(()=>({}));
+        if (!resp.ok) { if (err) err.textContent = data.error || "Falha ao cadastrar amigo."; return; }
+        if (err) err.textContent = "Amigo cadastrado com sucesso.";
+        setTimeout(()=>{ closeAddFriendModal(); if (err) err.textContent=""; }, 700);
+        refreshNurseSubscriptionUI();
+      } catch {
+        if (err) err.textContent = "Falha ao conectar no servidor.";
+      }
+    });
 
 
     let recognition;
@@ -8297,93 +7978,7 @@ async function addFilesToTarget(files, targetKey, mode) {
       w.document.write("<style>" + getRxPrintCss() + "</style>");
       w.document.write("</head><body>");
       w.document.write(content);
-      w.document.write("
-  <div id="nursePaymentModal" class="modal-overlay hidden">
-    <div class="modal" style="max-width: 720px;">
-      <h3 style="margin:0 0 8px 0;">Pagamento</h3>
-      <div style="font-size: 13px; color:#444; line-height:1.4; margin-bottom: 10px;">
-        Escolha uma opção. Para Pix, será exibido um identificador do pedido. Para cartão, a assinatura será registrada e o pagamento do mês será liberado conforme o status.
-      </div>
-
-      <div class="admin-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
-        <div class="admin-card" style="margin:0; padding: 12px;">
-          <div style="font-weight: 800; margin-bottom: 6px;">Pix</div>
-          <div style="font-size: 13px; color:#555; margin-bottom: 10px;">Mensal R$ 25 ou Anual R$ 200</div>
-          <div style="display:flex; gap: 10px; flex-wrap: wrap;">
-            <button id="pixMonthlyBtn" class="admin-btn" type="button">Gerar Pix mensal</button>
-            <button id="pixAnnualBtn" class="admin-btn secondary" type="button">Gerar Pix anual</button>
-          </div>
-          <div id="pixOrderBox" class="trial-promo hidden" style="margin-top: 10px;">
-            <div><strong>Chave Pix:</strong> <span id="pixKeyText">-</span></div>
-            <div><strong>Pedido:</strong> <span id="pixOrderIdText">-</span></div>
-            <div><strong>Valor:</strong> <span id="pixAmountText">-</span></div>
-            <div style="margin-top:6px;" id="pixInstructionsText"></div>
-          </div>
-        </div>
-
-        <div class="admin-card" style="margin:0; padding: 12px;">
-          <div style="font-weight: 800; margin-bottom: 6px;">Cartão de crédito</div>
-          <div style="font-size: 13px; color:#555; margin-bottom: 10px;">Mensal R$ 25 (com desconto Cliente Amigo) ou Anual R$ 240</div>
-          <div style="display:flex; gap: 10px; flex-wrap: wrap;">
-            <button id="cardMonthlyBtn" class="admin-btn" type="button">Assinar mensal</button>
-            <button id="cardAnnualBtn" class="admin-btn secondary" type="button">Assinar anual</button>
-          </div>
-          <div style="margin-top: 10px; font-size: 12px; color:#666;">
-            Esta integração de cartão pode depender do provedor configurado no backend. Caso o provedor ainda não esteja ativo, o administrador poderá confirmar manualmente o pagamento.
-          </div>
-        </div>
-      </div>
-
-      <div id="nursePaymentModalStatus" class="admin-status" style="margin-top: 10px;"></div>
-
-      <div class="admin-row" style="justify-content:flex-end; margin-top: 12px;">
-        <button id="closeNursePaymentModalBtn" class="admin-btn secondary" type="button">Fechar</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="addFriendModal" class="modal-overlay hidden">
-    <div class="modal" style="max-width: 720px;">
-      <h3 style="margin:0 0 8px 0;">Adicionar amigo</h3>
-      <div style="font-size: 13px; color:#444; line-height:1.4; margin-bottom: 10px;">
-        Cadastre o amigo com os mesmos dados exigidos no cadastro padrão. O amigo ficará automaticamente vinculado ao seu cadastro.
-      </div>
-
-      <div class="admin-grid">
-        <div class="admin-field">
-          <label for="friendFullName">Nome completo</label>
-          <input id="friendFullName" type="text" />
-        </div>
-        <div class="admin-field">
-          <label for="friendDob">Data de nascimento</label>
-          <input id="friendDob" type="date" />
-        </div>
-        <div class="admin-field">
-          <label for="friendPhone">Telefone</label>
-          <input id="friendPhone" type="tel" />
-        </div>
-        <div class="admin-field">
-          <label for="friendCpf">CPF</label>
-          <input id="friendCpf" type="text" inputmode="numeric" />
-        </div>
-        <div class="admin-field">
-          <label for="friendPassword">Senha</label>
-          <input id="friendPassword" type="text" />
-        </div>
-        <div class="admin-field" style="display:flex; align-items:flex-end;">
-          <button id="createFriendBtn" class="admin-btn" type="button" style="width:100%;">Cadastrar amigo</button>
-        </div>
-      </div>
-
-      <div id="addFriendModalStatus" class="admin-status"></div>
-
-      <div class="admin-row" style="justify-content:flex-end; margin-top: 12px;">
-        <button id="closeAddFriendModalBtn" class="admin-btn secondary" type="button">Fechar</button>
-      </div>
-    </div>
-  </div>
-
-</body></html>");
+      w.document.write("</body></html>");
       w.document.close();
       w.focus();
       w.print();
@@ -10095,7 +9690,7 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
       const q = (document.getElementById("adminSearch")?.value || "").trim().toLowerCase();
       const rows = ADMIN_CACHE_USERS.filter(u => {
         if (!q) return true;
-        const s = `${u.fullName||""} ${(u.cpf||u.login||"")} ${u.phone||""}`.toLowerCase();
+        const s = `${u.fullName||""} ${u.login||""} ${u.phone||""}`.toLowerCase();
         return s.includes(q);
       });
 
@@ -10105,20 +9700,9 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
 
         const tdName = document.createElement("td");
         tdName.textContent = u.fullName || "-";
-        if (u && Array.isArray(u.friends) && u.friends.length) {
-          const wrap = document.createElement("div");
-          wrap.style.marginTop = "6px";
-          wrap.style.fontSize = "12px";
-          wrap.style.color = "#6b7280";
-
-          const names = u.friends.slice(0, 4).map(f => f.fullName || (f.cpf || "-"));
-          const extra = u.friends.length > 4 ? ` +${u.friends.length - 4}` : "";
-          wrap.textContent = "Amigos: " + names.join(", ") + extra;
-          tdName.appendChild(wrap);
-        }
 
         const tdLogin = document.createElement("td");
-        tdLogin.textContent = (u.cpf || u.login) || "-";
+        tdLogin.textContent = u.login || "-";
 
         const tdPhone = document.createElement("td");
         tdPhone.textContent = u.phone || "-";
@@ -10134,8 +9718,8 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
         const paid = (u && (u.isPaidThisMonth !== undefined ? !!u.isPaidThisMonth : !!u.paidCurrentMonth));
         const pillPay = document.createElement("button");
         pillPay.type = "button";
-        pillPay.className = "pill " + (paid ? "green" : "gray");
-        pillPay.textContent = paid ? "Em dia" : "Pendente";
+        pillPay.className = "pill " + (paid ? "green" : "red");
+        pillPay.textContent = paid ? "Em dia" : "Em atraso";
         pillPay.title = "Clique para marcar pagamento do mês";
         pillPay.addEventListener("click", async () => {
           const month = prompt("Mês no formato AAAA-MM", currentYYYYMM());
@@ -10322,27 +9906,23 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
         const fullName = (document.getElementById("editFullName")?.value || "").trim();
         const dob = (document.getElementById("editDob")?.value || "").trim();
         const phone = (document.getElementById("editPhone")?.value || "").trim();
-        const cpf = normalizeCpfOnlyDigits((document.getElementById("editLogin")?.value || "").trim());
+        const login = (document.getElementById("editLogin")?.value || "").trim();
         const password = (document.getElementById("editPassword")?.value || "").trim();
 
-        if (!fullName || !dob || !phone || !cpf) {
-          alert("Preencha: nome completo, data de nascimento, telefone e CPF.");
-          return;
-        }
-        if (cpf.length < 11) {
-          alert("CPF inválido.");
+        if (!fullName || !dob || !phone || !login) {
+          alert("Preencha: nome completo, data de nascimento, telefone e login.");
           return;
         }
 
         await adminFetchJson(`/api/admin/users/${encodeURIComponent(EDIT_USER_ID)}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, phone, cpf, password })
+          body: JSON.stringify({ fullName, dob, phone, login, password })
         });
 
         closeEditUserModal();
         await adminLoadAll();
-        await refreshLocalBackupFromServer();
+            await refreshLocalBackupFromServer();
       } catch (e) {
         alert(String(e?.message || e || "Falha ao editar usuário."));
       }
@@ -10441,52 +10021,35 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       const fullName = (document.getElementById("newFullName")?.value || "").trim();
       const dob = (document.getElementById("newDob")?.value || "").trim();
       const phone = (document.getElementById("newPhone")?.value || "").trim();
-      const cpf = normalizeCpfOnlyDigits((document.getElementById("newLogin")?.value || "").trim());
+      const login = (document.getElementById("newLogin")?.value || "").trim();
       const password = (document.getElementById("newPassword")?.value || "").trim();
-      const refType = String(document.getElementById("newRefType")?.value || "").trim();
-      const referralCode = (document.getElementById("newReferralCode")?.value || "").trim();
       const st = document.getElementById("createUserStatus");
-
-      if (!fullName || !dob || !phone || !cpf || !password) {
-        if (st) st.textContent = "Preencha nome completo, data de nascimento, telefone, CPF e senha.";
+      if (!fullName || !dob || !phone || !login || !password) {
+        if (st) st.textContent = "Preencha nome completo, data de nascimento, telefone, login e senha.";
         return;
       }
-      if (cpf.length < 11) {
-        if (st) st.textContent = "CPF inválido.";
-        return;
-      }
-
       if (st) st.textContent = "Cadastrando...";
       try {
         await adminFetchJson("/api/admin/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, phone, cpf, password, refType, referralCode })
+          body: JSON.stringify({ fullName, dob, phone, login, password })
         });
         if (st) st.textContent = "Usuário cadastrado.";
-
-        ["newFullName","newDob","newPhone","newLogin","newPassword","newRefType","newReferralCode"].forEach(id => {
+        // Limpa campos
+        ["newFullName","newDob","newPhone","newLogin","newPassword"].forEach(id => {
           const el = document.getElementById(id);
           if (el) el.value = "";
         });
-
         await adminLoadAll();
-        await refreshLocalBackupFromServer();
+            await refreshLocalBackupFromServer();
       } catch (e) {
         if (st) st.textContent = String(e.message || e);
       }
     });
 
     // Inicializa a sessão ao carregar
-    window.addEventListener("DOMContentLoaded", () => {
-      try {
-        initAuthBindings();
-        restoreSession();
-      } catch (e) {
-        showFatalError("Erro no sistema: " + (e && e.message ? e.message : String(e)));
-        showLogin();
-      }
-    });
+    restoreSession();
 
     // Failsafe: se nenhuma view estiver visível após 1s, mostra login
     setTimeout(() => {
@@ -12885,7 +12448,57 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
           table{border-collapse: collapse; width: 100%;}
           th,td{border: 1px solid #ccc; padding: 6px; font-size: 12px; vertical-align: top;}
           th{background: #f1f1f1;}
-        </style>
+        
+    .trial-banner{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      background:#e8f5ff;
+      color:#123;
+      border:1px solid #c7e6ff;
+      font-size:14px;
+    }
+    .trial-warning{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      background:#fff3cd;
+      color:#553;
+      border:1px solid #ffe69c;
+      font-size:14px;
+      font-weight:700;
+    }
+    .pay-info{
+      border:1px solid #e6e6e6;
+      background:#fafafa;
+      border-radius:12px;
+      padding:12px;
+    }
+    .pay-info-title{ font-weight:700; margin-bottom:6px; }
+    .pay-info-line{ font-size:14px; color:#333; margin-top:2px; }
+    .modal-backdrop{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,0.45);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:9999;
+      padding:16px;
+    }
+    .modal{
+      width:100%;
+      max-width:560px;
+      background:#fff;
+      border-radius:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.25);
+      padding:16px;
+    }
+    .modal h3{ margin:0 0 10px 0; }
+    .modal .row{ margin-top:10px; }
+    .modal .actions{ margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; }
+    .modal .close-btn{ background:#c33; }
+
+</style>
         </head><body>
         <h1>${escapeHtml(title)}</h1>
         <table>${rosterTableOut?.innerHTML || ""}</table>
@@ -13011,6 +12624,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       rosterWireUI();
     } catch {}
 
+
 </script>
 
   <div class="whatsapp-fab-label"><div class="wa-label-title">WhatsApp</div><div class="wa-label-sub">Dúvidas, reportar erros, sugestões, melhorias</div></div>
@@ -13027,5 +12641,73 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     </svg>
   </a>
 
+
+  <div id="payModalBackdrop" class="modal-backdrop">
+    <div class="modal">
+      <h3>Pagamento</h3>
+      <div class="row" style="font-size:14px;">
+        Escolha uma opção. O acesso é liberado automaticamente quando o pagamento do mês é confirmado.
+      </div>
+
+      <div class="row" style="margin-top:12px; border-top:1px solid #eee; padding-top:12px;">
+        <div style="font-weight:700;">Pix (manual)</div>
+        <div style="font-size:14px; margin-top:6px;">Mensal: R$ 25,00 | Anual: R$ 200,00</div>
+        <div class="actions">
+          <button id="pixMonthlyBtn" type="button" class="auth-btn">Gerar Pix mensal</button>
+          <button id="pixAnnualBtn" type="button" class="auth-btn">Gerar Pix anual</button>
+        </div>
+        <div id="pixBox" class="trial-banner" style="display:none; margin-top:10px;"></div>
+      </div>
+
+      <div class="row" style="margin-top:12px; border-top:1px solid #eee; padding-top:12px;">
+        <div style="font-weight:700;">Cartão (recorrente)</div>
+        <div style="font-size:14px; margin-top:6px;">Mensal: R$ 25,00 | Anual: R$ 240,00</div>
+        <div class="actions">
+          <button id="cardMonthlyBtn" type="button" class="auth-btn">Assinar mensal</button>
+          <button id="cardAnnualBtn" type="button" class="auth-btn">Assinar anual</button>
+          <button id="cardCancelBtn" type="button" class="auth-btn close-btn">Cancelar assinatura</button>
+        </div>
+        <div id="cardBox" class="trial-banner" style="display:none; margin-top:10px;"></div>
+      </div>
+
+      <div class="actions" style="justify-content:flex-end;">
+        <button id="closePayModalBtn" type="button" class="auth-btn close-btn">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="addFriendModalBackdrop" class="modal-backdrop">
+    <div class="modal">
+      <h3>Adicionar amigo</h3>
+      <div class="row" style="font-size:14px;">
+        Cadastre seu amigo aqui. Ele ficará vinculado a você e só contará para desconto quando pagar o mês.
+      </div>
+      <div class="row">
+        <label class="auth-label">Nome completo</label>
+        <input id="friendFullName" class="auth-input" />
+      </div>
+      <div class="row">
+        <label class="auth-label">Data de nascimento</label>
+        <input id="friendDob" class="auth-input" placeholder="YYYY-MM-DD" />
+      </div>
+      <div class="row">
+        <label class="auth-label">Telefone</label>
+        <input id="friendPhone" class="auth-input" />
+      </div>
+      <div class="row">
+        <label class="auth-label">CPF</label>
+        <input id="friendCpf" class="auth-input" inputmode="numeric" />
+      </div>
+      <div class="row">
+        <label class="auth-label">Senha</label>
+        <input id="friendPassword" class="auth-input" type="password" />
+      </div>
+      <div id="friendError" class="auth-error"></div>
+      <div class="actions" style="justify-content:flex-end;">
+        <button id="createFriendBtn" type="button" class="auth-btn" style="background:#0b5;">Cadastrar amigo</button>
+        <button id="closeAddFriendModalBtn" type="button" class="auth-btn close-btn">Fechar</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
