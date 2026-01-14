@@ -502,7 +502,8 @@ function currentYYYYMM() {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TRIAL_DAYS = 15;
 const PRICE_MONTHLY = 25.00;
-const PRICE_ANNUAL = 240.00;
+const PRICE_ANNUAL_CARD = 240.00;
+const PRICE_ANNUAL_PIX = 200.00;
 
 function addDaysIso(iso, days) {
   const t = iso ? new Date(iso).getTime() : Date.now();
@@ -1520,23 +1521,50 @@ app.post("/api/auth/heartbeat", requireAuth, (req, res) => {
 
 // Rotas administrativas
 app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
+  const month = currentYYYYMM();
+  const friendsByReferrer = new Map();
+  for (const u of DB.users) {
+    if (u && !u.isDeleted && String(u.refType || "") === "friend" && u.referrerId) {
+      const arr = friendsByReferrer.get(u.referrerId) || [];
+      arr.push(u);
+      friendsByReferrer.set(u.referrerId, arr);
+    }
+  }
+
   const users = DB.users
     .filter(u => !u.isDeleted)
-    .map(u => ({
-      id: u.id,
-      fullName: u.fullName,
-      dob: u.dob,
-      phone: u.phone,
-      login: u.login,
-      isActive: !!u.isActive,
-      active: !!u.isActive,
-      lastLoginAt: u.lastLoginAt || "",
-      lastSeenAt: u.lastSeenAt || "",
-      isOnline: isUserOnline(u),
-      isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id)
-    }))
+    .map(u => {
+      const friendsRaw = friendsByReferrer.get(u.id) || [];
+      const friends = friendsRaw
+        .filter(f => !f.isDeleted)
+        .map(f => ({
+          id: f.id,
+          fullName: f.fullName,
+          cpf: f.cpf || f.login,
+          isActive: !!f.isActive,
+          isPaidThisMonth: isUserPaidMonth(f.id, month)
+        }))
+        .sort((a,b) => (a.fullName||"").localeCompare(b.fullName||""));
+
+      return {
+        id: u.id,
+        fullName: u.fullName,
+        dob: u.dob,
+        phone: u.phone,
+        cpf: u.cpf || u.login,
+        login: u.login,
+        isActive: !!u.isActive,
+        active: !!u.isActive,
+        lastLoginAt: u.lastLoginAt || "",
+        lastSeenAt: u.lastSeenAt || "",
+        isOnline: isUserOnline(u),
+        isPaidThisMonth: isUserPaidThisMonth(u.id),
+        paidCurrentMonth: isUserPaidThisMonth(u.id),
+        friends
+      };
+    })
     .sort((a,b) => (a.fullName||"").localeCompare(b.fullName||""));
-  return res.json({ users });
+  return res.json({ users, month });
 });
 
 app.post("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
@@ -1544,13 +1572,18 @@ app.post("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
     const fullName = String(req.body?.fullName || "").trim();
     const dob = String(req.body?.dob || "").trim();
     const phone = String(req.body?.phone || "").trim();
-    const login = String(req.body?.login || "").trim();
+    const cpfRaw = String(req.body?.cpf || req.body?.login || "").trim();
+    const cpf = normalizeCpf(cpfRaw);
+    const referralCode = String(req.body?.referralCode || req.body?.referralCodeUsed || "").trim();
+    const refType = String(req.body?.refType || "").trim();
     const password = String(req.body?.password || "").trim();
 
-    if (!fullName || !dob || !phone || !login || !password) {
-      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, login e senha são obrigatórios." });
+    if (!fullName || !dob || !phone || !cpf || !password) {
+      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, CPF e senha são obrigatórios." });
     }
-    if (findUserByLogin(login)) return res.status(409).json({ error: "Já existe usuário com este login." });
+    if (!isValidCpf(cpf)) return res.status(400).json({ error: "CPF inválido." });
+    if (password.length < 4) return res.status(400).json({ error: "Senha muito curta. Use pelo menos 4 caracteres." });
+    if (findUserByLogin(cpf)) return res.status(409).json({ error: "Já existe usuário com este CPF." });
 
     const salt = crypto.randomBytes(10).toString("hex");
     const passwordHash = sha256(`${salt}:${password}`);
@@ -1560,7 +1593,11 @@ app.post("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
       fullName,
       dob,
       phone,
-      login,
+      login: cpf,
+      cpf,
+      trialStartedAt: nowIso(),
+      trialEndsAt: addDaysIso(nowIso(), TRIAL_DAYS),
+      friendCode: ensureUniqueFriendCode(),
       salt,
       passwordHash,
       isActive: true,
@@ -1575,15 +1612,34 @@ app.post("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
       activeSessionExpiresAt: ""
     };
 
+    // Aplica indicação se informada (mesmas regras do cadastro público)
+    if (refType && referralCode) {
+      const t = String(refType).toLowerCase();
+      if (t !== "friend" && t !== "partner") {
+        return res.status(400).json({ error: "Tipo de indicação inválido." });
+      }
+      let referrer = null;
+      if (t === "friend") referrer = findUserByFriendCode(referralCode);
+      if (t === "partner") referrer = findUserByPartnerCode(referralCode);
+      if (!referrer) return res.status(400).json({ error: "Código de indicação inválido." });
+      if (referrer.id === user.id || String(referrer.cpf || "") === String(user.cpf || "")) {
+        return res.status(400).json({ error: "Autoindicação não é permitida." });
+      }
+      user.referrerId = referrer.id;
+      user.refType = t;
+      user.referralCodeUsed = String(referralCode).trim();
+    }
+
     DB.users.push(user);
-    saveDb(DB);
-    audit("user_create", user.id, `Criado usuário ${login}`);
+    saveDb(DB, "admin_user_create");
+    audit("user_create", user.id, `Criado usuário ${cpf}`);
     return res.json({ ok: true, user: { id: user.id } });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "Falha ao cadastrar usuário." });
   }
 });
+
 app.put("/api/admin/users/:id", requireAuth, requireAdmin, (req, res) => {
   try {
     const id = String(req.params.id || "");
@@ -1593,30 +1649,39 @@ app.put("/api/admin/users/:id", requireAuth, requireAdmin, (req, res) => {
     const fullName = String(req.body?.fullName ?? user.fullName ?? "").trim();
     const dob = String(req.body?.dob ?? user.dob ?? "").trim();
     const phone = String(req.body?.phone ?? user.phone ?? "").trim();
-    const login = String(req.body?.login ?? user.login ?? "").trim();
+    const cpfRaw = String(req.body?.cpf ?? req.body?.login ?? user.cpf ?? user.login ?? "").trim();
+    const cpf = normalizeCpf(cpfRaw);
     const password = String(req.body?.password || "").trim();
 
-    if (!fullName || !dob || !phone || !login) {
-      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone e login são obrigatórios." });
+    if (!fullName || !dob || !phone || !cpf) {
+      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone e CPF são obrigatórios." });
     }
+    if (!isValidCpf(cpf)) return res.status(400).json({ error: "CPF inválido." });
 
-    // Se mudar o login, garantir unicidade
-    const existing = DB.users.find(u => !u.isDeleted && u.id !== id && String(u.login || "").toLowerCase() === String(login).toLowerCase());
-    if (existing) return res.status(409).json({ error: "Já existe usuário com este login." });
+    // Se mudar o CPF/login, garantir unicidade
+    const existing = DB.users.find(u => !u.isDeleted && u.id !== id && normalizeCpf(u.cpf || u.login) === cpf);
+    if (existing) return res.status(409).json({ error: "Já existe usuário com este CPF." });
 
     user.fullName = fullName;
     user.dob = dob;
     user.phone = phone;
-    user.login = login;
+    user.cpf = cpf;
+    user.login = cpf;
+
+    if (!user.friendCode) user.friendCode = ensureUniqueFriendCode();
+    if (ensureTrialFields(user)) {
+      // garante trial para registros antigos
+    }
 
     if (password) {
+      if (password.length < 4) return res.status(400).json({ error: "Senha muito curta. Use pelo menos 4 caracteres." });
       const salt = crypto.randomBytes(10).toString("hex");
       user.salt = salt;
       user.passwordHash = sha256(`${salt}:${password}`);
       audit("user_update_password", id, `Senha atualizada para ${user.login}`);
     }
 
-    saveDb(DB);
+    saveDb(DB, "admin_user_update");
     audit("user_update", id, `Dados atualizados para ${user.login}`);
     return res.json({ ok: true });
   } catch (e) {
@@ -1624,6 +1689,7 @@ app.put("/api/admin/users/:id", requireAuth, requireAdmin, (req, res) => {
     return res.status(500).json({ error: "Falha ao editar usuário." });
   }
 });
+
 
 
 app.post("/api/admin/users/:id/reset-password", requireAuth, requireAdmin, (req, res) => {
@@ -4005,6 +4071,100 @@ app.post("/api/referral/apply", requireAuth, (req, res) => {
   }
 });
 
+
+// Cliente Amigo: cadastrar amigo diretamente vinculado ao usuário logado
+app.post("/api/friends/create", requireAuth, (req, res) => {
+  try {
+    if (req.auth.role === "admin") return res.status(400).json({ error: "Operação não aplicável para administrador." });
+    const referrer = req.auth.user;
+    if (!referrer || referrer.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
+
+    const fullName = String(req.body?.fullName || "").trim();
+    const dob = String(req.body?.dob || "").trim();
+    const phone = String(req.body?.phone || "").trim();
+    const cpfRaw = String(req.body?.cpf || req.body?.login || "").trim();
+    const cpf = normalizeCpf(cpfRaw);
+    const password = String(req.body?.password || "").trim();
+
+    if (!fullName || !dob || !phone || !cpf || !password) {
+      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, CPF e senha são obrigatórios." });
+    }
+    if (!isValidCpf(cpf)) return res.status(400).json({ error: "CPF inválido." });
+    if (password.length < 4) return res.status(400).json({ error: "Senha muito curta. Use pelo menos 4 caracteres." });
+    if (findUserByLogin(cpf)) return res.status(409).json({ error: "Já existe usuário com este CPF." });
+
+    // Proíbe autoindicação por CPF
+    if (String(referrer.cpf || referrer.login || "") === String(cpf)) {
+      return res.status(400).json({ error: "Autoindicação não é permitida." });
+    }
+
+    const salt = crypto.randomBytes(10).toString("hex");
+    const passwordHash = sha256(`${salt}:${password}`);
+
+    const user = {
+      id: makeId("usr"),
+      fullName,
+      dob,
+      phone,
+      login: cpf,
+      cpf,
+      trialStartedAt: nowIso(),
+      trialEndsAt: addDaysIso(nowIso(), TRIAL_DAYS),
+      friendCode: ensureUniqueFriendCode(),
+      salt,
+      passwordHash,
+      isActive: true,
+      isDeleted: false,
+      createdAt: nowIso(),
+      lastLoginAt: "",
+      lastSeenAt: "",
+      activeSessionHash: "",
+      activeDeviceId: "",
+      activeSessionCreatedAt: "",
+      activeSessionLastSeenAt: "",
+      activeSessionExpiresAt: "",
+      referrerId: referrer.id,
+      refType: "friend",
+      referralCodeUsed: referrer.friendCode || ""
+    };
+
+    DB.users.push(user);
+    saveDb(DB, "friend_create");
+    audit("friend_create", user.id, `Amigo criado por ${referrer.login}`);
+
+    return res.json({ ok: true, friend: { id: user.id, fullName: user.fullName, cpf: user.cpf, login: user.login } });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao cadastrar amigo." });
+  }
+});
+
+app.get("/api/friends/list", requireAuth, (req, res) => {
+  try {
+    if (req.auth.role === "admin") return res.status(400).json({ error: "Operação não aplicável para administrador." });
+    const u = req.auth.user;
+    if (!u || u.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
+
+    const month = currentYYYYMM();
+    const friends = DB.users
+      .filter(x => !x.isDeleted && x.referrerId === u.id && String(x.refType || "") === "friend")
+      .map(x => ({
+        id: x.id,
+        fullName: x.fullName,
+        cpf: x.cpf || x.login,
+        login: x.login,
+        isActive: !!x.isActive,
+        isPaidThisMonth: isUserPaidMonth(x.id, month)
+      }))
+      .sort((a,b) => (a.fullName||"").localeCompare(b.fullName||""));
+
+    return res.json({ ok: true, month, friends });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao listar amigos." });
+  }
+});
+
 // Pix (manual/avulso): cria um pedido para o mês atual
 app.post("/api/payments/pix/create", requireAuth, (req, res) => {
   try {
@@ -4012,14 +4172,35 @@ app.post("/api/payments/pix/create", requireAuth, (req, res) => {
     const user = req.auth.user;
     if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
 
-    const month = currentYYYYMM();
-    if (isUserPaidMonth(user.id, month)) return res.status(409).json({ error: "Este mês já consta como pago." });
+    const plan = String(req.body?.plan || "monthly").trim().toLowerCase();
+    if (plan !== "monthly" && plan !== "annual") return res.status(400).json({ error: "Plano inválido." });
 
-    const amount = computeAmountDueThisMonth(user.id);
+    const month = currentYYYYMM();
+
+    // Para anual, evita duplicidade se qualquer mês do ciclo já constar como pago
+    if (plan === "annual") {
+      const start = new Date();
+      const months = [];
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(start.getTime());
+        d.setMonth(d.getMonth() + i);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        months.push(`${y}-${m}`);
+      }
+      const anyPaid = months.some(mm => isUserPaidMonth(user.id, mm));
+      if (anyPaid) return res.status(409).json({ error: "Já existe pagamento registrado em um ou mais meses do ciclo anual." });
+    } else {
+      if (isUserPaidMonth(user.id, month)) return res.status(409).json({ error: "Este mês já consta como pago." });
+    }
+
+    const amount = (plan === "annual") ? PRICE_ANNUAL_PIX : computeAmountDueThisMonth(user.id);
+
     const order = {
       id: makeId("pix"),
       userId: user.id,
       month,
+      plan,
       amount,
       status: "pending",
       createdAt: nowIso()
@@ -4028,13 +4209,18 @@ app.post("/api/payments/pix/create", requireAuth, (req, res) => {
     saveDb(DB, "pix_create");
 
     const pixKey = String(process.env.PIX_KEY || "CHAVE_PIX_AQUI").trim();
+    const instructions = (plan === "annual")
+      ? "Realize o Pix para a chave informada e aguarde a confirmação. Este pagamento anual libera 12 meses a partir do mês atual."
+      : "Realize o Pix para a chave informada e aguarde a confirmação. Este pagamento libera o mês atual.";
+
     return res.json({
       ok: true,
       orderId: order.id,
       month,
+      plan,
       amount,
       pixKey,
-      instructions: "Realize o Pix para a chave informada e aguarde a confirmação."
+      instructions
     });
   } catch (e) {
     console.error(e);
@@ -4058,8 +4244,28 @@ app.post("/api/payments/pix/confirm", requireAuth, requireAdmin, (req, res) => {
     order.confirmedAt = nowIso();
     order.confirmedBy = req.auth?.user?.login || ADMIN_LOGIN;
 
-    if (!isUserPaidMonth(user.id, order.month)) {
-      addPaymentConfirmed(user.id, order.month, order.amount, "pix", `Pedido Pix ${order.id}`, req.auth?.user?.login || ADMIN_LOGIN);
+    const plan = String(order.plan || "monthly").toLowerCase();
+
+    if (plan === "annual") {
+      const startDate = new Date();
+      const months = [];
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(startDate.getTime());
+        d.setMonth(d.getMonth() + i);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        months.push(`${y}-${m}`);
+      }
+      const perMonth = round2(PRICE_ANNUAL_PIX / 12);
+      for (const month of months) {
+        if (!isUserPaidMonth(user.id, month)) {
+          addPaymentConfirmed(user.id, month, perMonth, "pix", `Assinatura anual (Pix) - Pedido ${order.id}`, req.auth?.user?.login || ADMIN_LOGIN);
+        }
+      }
+    } else {
+      if (!isUserPaidMonth(user.id, order.month)) {
+        addPaymentConfirmed(user.id, order.month, order.amount, "pix", `Pedido Pix ${order.id}`, req.auth?.user?.login || ADMIN_LOGIN);
+      }
     }
 
     saveDb(DB, "pix_confirm");
@@ -4112,7 +4318,7 @@ app.post("/api/payments/card/subscribe", requireAuth, (req, res) => {
         const m = String(d.getMonth() + 1).padStart(2, "0");
         months.push(`${y}-${m}`);
       }
-      const perMonth = round2(PRICE_ANNUAL / 12);
+      const perMonth = round2(PRICE_ANNUAL_CARD / 12);
       for (const month of months) {
         if (!isUserPaidMonth(user.id, month)) addPaymentConfirmed(user.id, month, perMonth, "card", "Assinatura anual (cartão)", "card_subscribe");
       }
