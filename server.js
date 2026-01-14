@@ -363,11 +363,11 @@ function tryReadDbFile(filePath) {
 
 function dbScore(db) {
   if (!db) return 0;
-  return (db.users?.length || 0) * 1000000 + (db.payments?.length || 0) * 1000 + (db.audit?.length || 0);
+  return (db.users?.length || 0) * 1000000 + (db.payments?.length || 0) * 1000 + (db.audit?.length || 0) + (db.commissions?.length || 0) * 10 + (db.pixOrders?.length || 0) * 5 + (db.cardEvents?.length || 0);
 }
 
 function mergeDbs(a, b) {
-  const out = { users: [], payments: [], audit: [] };
+  const out = { users: [], payments: [], audit: [], commissions: [], pixOrders: [], cardEvents: [] };
 
   const usersMap = new Map();
   for (const u of (Array.isArray(a?.users) ? a.users : [])) {
@@ -406,6 +406,25 @@ function mergeDbs(a, b) {
 
   if (out.audit.length > 5000) out.audit = out.audit.slice(out.audit.length - 5000);
   if (out.payments.length > 20000) out.payments = out.payments.slice(out.payments.length - 20000);
+
+
+  // Comissões (ledger)
+  const commissions = [...(Array.isArray(a?.commissions) ? a.commissions : []), ...(Array.isArray(b?.commissions) ? b.commissions : [])];
+  const commissionsMap = new Map();
+  for (const c of commissions) { if (c && c.id) commissionsMap.set(c.id, c); }
+  out.commissions = Array.from(commissionsMap.values());
+
+  // Pedidos Pix
+  const pixOrders = [...(Array.isArray(a?.pixOrders) ? a.pixOrders : []), ...(Array.isArray(b?.pixOrders) ? b.pixOrders : [])];
+  const pixMap = new Map();
+  for (const o of pixOrders) { if (o && o.id) pixMap.set(o.id, o); }
+  out.pixOrders = Array.from(pixMap.values());
+
+  // Eventos/cartão (opcional)
+  const cardEvents = [...(Array.isArray(a?.cardEvents) ? a.cardEvents : []), ...(Array.isArray(b?.cardEvents) ? b.cardEvents : [])];
+  const ceMap = new Map();
+  for (const e of cardEvents) { if (e && e.id) ceMap.set(e.id, e); }
+  out.cardEvents = Array.from(ceMap.values());
 
   return out;
 }
@@ -479,12 +498,74 @@ function currentYYYYMM() {
   return `${y}-${m}`;
 }
 
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const TRIAL_DAYS = 15;
+const PRICE_MONTHLY = 25.00;
+const PRICE_ANNUAL = 240.00;
+
+function addDaysIso(iso, days) {
+  const t = iso ? new Date(iso).getTime() : Date.now();
+  return new Date(t + (Number(days) * DAY_MS)).toISOString();
+}
+
+function trialRemainingSeconds(user, nowMs = Date.now()) {
+  const end = user?.trialEndsAt ? new Date(user.trialEndsAt).getTime() : 0;
+  if (!end) return 0;
+  return Math.max(0, Math.floor((end - nowMs) / 1000));
+}
+
+function warning5Days(user, nowMs = Date.now()) {
+  const rem = trialRemainingSeconds(user, nowMs);
+  return rem > 0 && rem <= Math.floor(5 * DAY_MS / 1000);
+}
+
+function isTrialActive(user, nowMs = Date.now()) {
+  const end = user?.trialEndsAt ? new Date(user.trialEndsAt).getTime() : 0;
+  return !!end && nowMs < end;
+}
+
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function round2(n) {
+  const x = Number(n || 0);
+  return Math.round(x * 100) / 100;
+}
+
+
+
 function sha256(s) {
   return crypto.createHash("sha256").update(String(s)).digest("hex");
 }
 
 function onlyDigits(v) {
   return String(v || "").replace(/\D+/g, "");
+}
+
+
+function normalizeCpf(v) {
+  return onlyDigits(v);
+}
+
+function isValidCpf(v) {
+  const cpf = normalizeCpf(v);
+  if (!cpf || cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+
+  const calcDv = (base, factorStart) => {
+    let sum = 0;
+    for (let i = 0; i < base.length; i++) sum += Number(base[i]) * (factorStart - i);
+    const mod = sum % 11;
+    return (mod < 2) ? 0 : (11 - mod);
+  };
+
+  const base9 = cpf.slice(0, 9);
+  const dv1 = calcDv(base9, 10);
+  const base10 = cpf.slice(0, 10);
+  const dv2 = calcDv(base10, 11);
+  return cpf === (base9 + String(dv1) + String(dv2));
 }
 
 function makeId(prefix) {
@@ -521,7 +602,7 @@ function loadDb() {
   }
 
   // 3) Primeira execução sem DB: cria inicial (sem riscos de apagar dados)
-  const fresh = { users: [], payments: [], audit: [] };
+  const fresh = { users: [], payments: [], audit: [], commissions: [], pixOrders: [], cardEvents: [] };
   try {
     if (!fs.existsSync(DB_PATH)) {
       safeWriteFileAtomic(DB_PATH, JSON.stringify(fresh, null, 2));
@@ -538,6 +619,9 @@ function normalizeDb(db) {
   out.audit = Array.isArray(out.audit) ? out.audit : [];
   out.rosterConfigs = (out.rosterConfigs && typeof out.rosterConfigs === "object") ? out.rosterConfigs : {};
   out.rosterSchedules = Array.isArray(out.rosterSchedules) ? out.rosterSchedules : [];
+  out.commissions = Array.isArray(out.commissions) ? out.commissions : [];
+  out.pixOrders = Array.isArray(out.pixOrders) ? out.pixOrders : [];
+  out.cardEvents = Array.isArray(out.cardEvents) ? out.cardEvents : [];
   return out;
 }
 
@@ -894,18 +978,175 @@ setInterval(cleanupSessions, 1000 * 60 * 10).unref?.();
 
 function findUserByLogin(login) {
   const raw = String(login || "").trim();
+  const digits = normalizeCpf(raw);
   const l = raw.toLowerCase();
+
+  // Prefer CPF (11 dígitos) como identificador principal
+  if (digits && digits.length === 11) {
+    const byCpf = DB.users.find(u => normalizeCpf(u.cpf || u.login) === digits) || null;
+    if (byCpf) {
+      // migração suave
+      if (!byCpf.cpf) byCpf.cpf = digits;
+      if (String(byCpf.login || "") !== digits) byCpf.login = digits;
+      return byCpf;
+    }
+  }
+
+  // fallback: login textual antigo
   const direct = DB.users.find(u => String(u.login || "").trim().toLowerCase() === l) || null;
   if (direct) return direct;
-  const ln = onlyDigits(raw);
-  if (!ln) return null;
-  return DB.users.find(u => onlyDigits(String(u.login || "").trim()) === ln) || null;
+
+  // fallback: somente dígitos
+  if (!digits) return null;
+  return DB.users.find(u => normalizeCpf(String(u.login || "").trim()) === digits) || null;
+}
+
+function isUserPaidMonth(userId, month) {
+  const m = month || currentYYYYMM();
+  return DB.payments.some(p => p.userId === userId && p.month === m && String(p.status || "confirmed") === "confirmed");
 }
 
 function isUserPaidThisMonth(userId) {
-  const month = currentYYYYMM();
-  return DB.payments.some(p => p.userId === userId && p.month === month);
+  return isUserPaidMonth(userId, currentYYYYMM());
 }
+
+
+function generateReferralCode(prefix) {
+  const base = crypto.randomBytes(6).toString("base64").replace(/[^A-Za-z0-9]/g, "").slice(0, 8).toUpperCase();
+  return `${prefix}${base}`;
+}
+
+function ensureUniqueFriendCode() {
+  for (let i = 0; i < 80; i++) {
+    const code = generateReferralCode("F");
+    if (!DB.users.some(u => String(u.friendCode || "") === code)) return code;
+  }
+  return generateReferralCode("F") + String(Math.floor(Math.random() * 9));
+}
+
+function ensureUniquePartnerCode() {
+  for (let i = 0; i < 80; i++) {
+    const code = generateReferralCode("P");
+    if (!DB.users.some(u => String(u.partnerCode || "") === code)) return code;
+  }
+  return generateReferralCode("P") + String(Math.floor(Math.random() * 9));
+}
+
+function findUserByFriendCode(code) {
+  const c = String(code || "").trim().toUpperCase();
+  if (!c) return null;
+  return DB.users.find(u => !u.isDeleted && String(u.friendCode || "").toUpperCase() === c) || null;
+}
+
+function findUserByPartnerCode(code) {
+  const c = String(code || "").trim().toUpperCase();
+  if (!c) return null;
+  return DB.users.find(u => !u.isDeleted && String(u.partnerCode || "").toUpperCase() === c) || null;
+}
+
+function computeActiveFriendsThisMonth(referrerId) {
+  const month = currentYYYYMM();
+  const referred = DB.users.filter(u => !u.isDeleted && u.referrerId === referrerId && u.refType === "friend");
+  let count = 0;
+  for (const u of referred) {
+    if (isUserPaidMonth(u.id, month)) count++;
+  }
+  return count;
+}
+
+function computeFriendDiscountThisMonth(userId) {
+  const active = computeActiveFriendsThisMonth(userId);
+  const rate = clamp(0.25 * active, 0, 1);
+  return { activeFriendsThisMonth: active, discountRate: rate };
+}
+
+function computeAmountDueThisMonth(userId) {
+  const { discountRate } = computeFriendDiscountThisMonth(userId);
+  return round2(PRICE_MONTHLY * (1 - discountRate));
+}
+
+function findCommission(partnerUserId, referredUserId, month) {
+  return DB.commissions.find(c => c.partnerUserId === partnerUserId && c.referredUserId === referredUserId && c.month === month) || null;
+}
+
+function createCommissionForPaymentIfNeeded(payment) {
+  try {
+    if (!payment || String(payment.status || "confirmed") !== "confirmed") return;
+    const month = String(payment.month || "");
+    if (!month) return;
+    const referred = DB.users.find(u => u.id === payment.userId && !u.isDeleted);
+    if (!referred) return;
+    if (referred.refType !== "partner" || !referred.referrerId) return;
+
+    const partnerId = referred.referrerId;
+    if (!DB.users.some(u => u.id === partnerId && !u.isDeleted)) return;
+
+    if (findCommission(partnerId, referred.id, month)) return;
+
+    const baseAmount = round2(Number(payment.amount || 0));
+    const commissionAmount = round2(baseAmount * 0.25);
+
+    DB.commissions.push({
+      id: makeId("com"),
+      partnerUserId: partnerId,
+      referredUserId: referred.id,
+      month,
+      baseAmount,
+      commissionAmount,
+      status: "pending",
+      createdAt: nowIso()
+    });
+    saveDb(DB, "commission_create");
+  } catch {}
+}
+
+function voidCommissionForPayment(payment) {
+  try {
+    if (!payment) return;
+    const month = String(payment.month || "");
+    const referred = DB.users.find(u => u.id === payment.userId && !u.isDeleted);
+    if (!referred) return;
+    if (referred.refType !== "partner" || !referred.referrerId) return;
+
+    const c = findCommission(referred.referrerId, referred.id, month);
+    if (!c) return;
+    if (c.status === "void") return;
+    c.status = "void";
+    c.voidedAt = nowIso();
+    saveDb(DB, "commission_void");
+  } catch {}
+}
+
+function addPaymentConfirmed(userId, month, amount, method, notes, receivedBy) {
+  const entry = {
+    id: makeId("pay"),
+    userId,
+    month,
+    paidAt: nowIso(),
+    amount: (amount === null || amount === undefined) ? null : Number(amount),
+    method: String(method || "manual"),
+    notes: String(notes || ""),
+    receivedBy: String(receivedBy || ""),
+    status: "confirmed"
+  };
+  DB.payments.push(entry);
+  saveDb(DB, "payment_confirmed");
+  createCommissionForPaymentIfNeeded(entry);
+  return entry;
+}
+
+function voidPaymentById(paymentId, voidedBy) {
+  const p = DB.payments.find(x => x.id === paymentId);
+  if (!p) return null;
+  if (String(p.status || "confirmed") === "void") return p;
+  p.status = "void";
+  p.voidedAt = nowIso();
+  p.voidedBy = String(voidedBy || "");
+  saveDb(DB, "payment_void");
+  voidCommissionForPayment(p);
+  return p;
+}
+
 
 function isUserOnline(user) {
   const last = user?.lastSeenAt ? new Date(user.lastSeenAt).getTime() : 0;
@@ -1016,8 +1257,6 @@ function requireAdmin(req, res, next) {
 }
 
 function requirePaidOrAdmin(req, res, next) {
-  // Garante que req.auth exista mesmo quando esta middleware for usada diretamente
-  // (algumas rotas a chamam sem passar antes por requireAuth).
   if (!req.auth) {
     const ctx = authFromReq(req);
     if (!ctx) return res.status(401).json({ error: "Não autenticado.", code: "UNAUTH" });
@@ -1029,12 +1268,16 @@ function requirePaidOrAdmin(req, res, next) {
 
   const user = req.auth.user;
   if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
-  if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
+  if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: usuário inativo. Procure o administrador." });
 
-  if (!isUserPaidThisMonth(user.id)) {
-    return res.status(402).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
-  }
-  next();
+  if (isTrialActive(user)) return next();
+
+  if (isUserPaidThisMonth(user.id)) return next();
+
+  try { maybeAutoChargeCardSubscription(user); } catch {}
+  if (isUserPaidThisMonth(user.id)) return next();
+
+  return res.status(402).json({ error: "Gratuidade encerrada. Faça o pagamento para continuar.", code: "NEEDS_PAYMENT" });
 }
 
 // Rotas de autenticação
@@ -1046,28 +1289,27 @@ app.post("/api/auth/signup", (req, res) => {
     const fullName = String(req.body?.fullName || "").trim();
     const dob = String(req.body?.dob || "").trim();
     const phone = String(req.body?.phone || "").trim();
-    const login = String(req.body?.login || "").trim();
+    const cpfRaw = String(req.body?.cpf || req.body?.login || "").trim();
+    const cpf = normalizeCpf(cpfRaw);
+    const referralCode = String(req.body?.referralCode || req.body?.referralCodeUsed || "").trim();
+    const refType = String(req.body?.refType || "").trim();
     const password = String(req.body?.password || "").trim();
 
-    if (!fullName || !dob || !phone || !login || !password) {
-      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, login e senha são obrigatórios." });
+    if (!fullName || !dob || !phone || !cpf || !password) {
+      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, CPF e senha são obrigatórios." });
     }
 
-    // Login não precisa ser CPF. Permite letras, números e alguns caracteres seguros.
-    // Evita espaços e caracteres que possam causar confusão em URLs/armazenamento.
-    if (login.length < 3 || login.length > 40) {
-      return res.status(400).json({ error: "Login inválido. Use entre 3 e 40 caracteres." });
-    }
-    if (!/^[A-Za-z0-9._@-]+$/.test(login)) {
-      return res.status(400).json({ error: "Login inválido. Use apenas letras, números, ponto, sublinhado, hífen ou @." });
+    // CPF obrigatório (login)
+    if (!isValidCpf(cpf)) {
+      return res.status(400).json({ error: "CPF inválido." });
     }
 
     if (password.length < 4) {
       return res.status(400).json({ error: "Senha muito curta. Use pelo menos 4 caracteres." });
     }
 
-    if (findUserByLogin(login)) {
-      return res.status(409).json({ error: "Já existe usuário com este login." });
+    if (findUserByLogin(cpf)) {
+      return res.status(409).json({ error: "Já existe usuário com este CPF." });
     }
 
     const salt = crypto.randomBytes(10).toString("hex");
@@ -1078,7 +1320,11 @@ app.post("/api/auth/signup", (req, res) => {
       fullName,
       dob,
       phone,
-      login,
+      login: cpf,
+      cpf,
+      trialStartedAt: nowIso(),
+      trialEndsAt: addDaysIso(nowIso(), TRIAL_DAYS),
+      friendCode: ensureUniqueFriendCode(),
       salt,
       passwordHash,
       isActive: true,
@@ -1095,6 +1341,26 @@ app.post("/api/auth/signup", (req, res) => {
 
     DB.users.push(user);
     saveDb(DB, "signup");
+    // Aplica código de indicação (opcional)
+    if (refType && referralCode) {
+      const t = String(refType).toLowerCase();
+      if (t !== "friend" && t !== "partner") {
+        return res.status(400).json({ error: "Tipo de indicação inválido." });
+      }
+      let referrer = null;
+      if (t === "friend") referrer = findUserByFriendCode(referralCode);
+      if (t === "partner") referrer = findUserByPartnerCode(referralCode);
+      if (!referrer) {
+        return res.status(400).json({ error: "Código de indicação inválido." });
+      }
+      if (referrer.id === user.id || String(referrer.cpf || "") === String(user.cpf || "")) {
+        return res.status(400).json({ error: "Autoindicação não é permitida." });
+      }
+      user.referrerId = referrer.id;
+      user.refType = t;
+      user.referralCodeUsed = String(referralCode).trim();
+    }
+
     audit("user_signup", user.id, `Auto-cadastro do usuário ${user.login}`);
     return res.json({ ok: true, id: user.id });
   } catch (e) {
@@ -1105,9 +1371,10 @@ app.post("/api/auth/signup", (req, res) => {
 
 app.post("/api/auth/login", (req, res) => {
   try {
-    const login = String(req.body?.login || "").trim();
+    const cpfRaw = String(req.body?.cpf || req.body?.login || "").trim();
+    const login = normalizeCpf(cpfRaw);
     const senha = String(req.body?.senha || "").trim();
-    if (!login || !senha) return res.status(400).json({ error: "Login e senha são obrigatórios." });
+    if (!login || !senha) return res.status(400).json({ error: "CPF e senha são obrigatórios." });
 
     const deviceId = getDeviceIdFromReq(req);
     if (!deviceId) return res.status(400).json({ error: "Dispositivo inválido. Atualize a página e tente novamente." });
@@ -1128,9 +1395,6 @@ app.post("/api/auth/login", (req, res) => {
 
     const computed = sha256(`${user.salt || ""}:${senha}`);
     if (computed !== user.passwordHash) return res.status(401).json({ error: "Credenciais inválidas." });
-
-    // Bloqueio por mensalidade em débito
-    if (!isUserPaidThisMonth(user.id)) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
 
     // Regra 1 pessoa por conta (1 dispositivo por vez)
     // - Ao fazer login em um novo dispositivo, a sessão anterior é encerrada automaticamente.
@@ -1408,7 +1672,7 @@ app.post("/api/admin/users/:id/pay", requireAuth, requireAdmin, (req, res) => {
     const user = DB.users.find(u => u.id === id && !u.isDeleted);
     if (!user) return res.status(404).json({ error: "Usuário não encontrado." });
 
-    const exists = DB.payments.some(p => p.userId === id && p.month === month);
+    const exists = DB.payments.some(p => p.userId === id && p.month === month && String(p.status || "confirmed") === "confirmed");
     if (exists) return res.status(409).json({ error: "Este mês já consta como pago para o usuário." });
 
     const entry = {
@@ -3617,3 +3881,284 @@ Transcrição (trecho):
     console.log(`Servidor escutando na porta ${port}`);
   });
 })();
+// Status de assinatura (público para tela de login/cadastro)
+app.get("/api/public/subscription/status", (req, res) => {
+  try {
+    const cpfRaw = String(req.query?.cpf || req.query?.login || "").trim();
+    const cpf = normalizeCpf(cpfRaw);
+    if (!cpf || !isValidCpf(cpf)) return res.status(400).json({ error: "CPF inválido." });
+    const user = findUserByLogin(cpf);
+    if (!user || user.isDeleted) return res.status(404).json({ error: "Usuário não encontrado." });
+
+    const nowMs = Date.now();
+    const rem = trialRemainingSeconds(user, nowMs);
+    return res.json({
+      now: nowIso(),
+      trialEndsAt: user.trialEndsAt || null,
+      trialRemainingSeconds: rem,
+      warning5Days: warning5Days(user, nowMs),
+      isPaidThisMonth: isUserPaidThisMonth(user.id)
+    });
+  } catch (e) {
+    return res.status(500).json({ error: "Falha ao consultar status." });
+  }
+});
+
+app.get("/api/subscription/status", requireAuth, (req, res) => {
+  const user = req.auth?.user;
+  if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
+
+  if (req.auth.role === "admin") {
+    return res.json({
+      now: nowIso(),
+      trialEndsAt: null,
+      trialRemainingSeconds: 0,
+      isPaidThisMonth: true,
+      needsPayment: false,
+      warning5Days: false,
+      activeFriendsThisMonth: 0,
+      discountRateThisMonth: 0,
+      amountDueThisMonth: 0,
+      friendCode: null,
+      partnerCode: null
+    });
+  }
+
+  const nowMs = Date.now();
+  const rem = trialRemainingSeconds(user, nowMs);
+  const paid = isUserPaidThisMonth(user.id);
+  const trialActive = isTrialActive(user, nowMs);
+  const { activeFriendsThisMonth, discountRate } = computeFriendDiscountThisMonth(user.id);
+  const due = computeAmountDueThisMonth(user.id);
+
+  // tenta cobrar automaticamente se tiver assinatura no cartão ativa
+  try { maybeAutoChargeCardSubscription(user); } catch {}
+  const paidAfter = isUserPaidThisMonth(user.id);
+
+  return res.json({
+    now: nowIso(),
+    trialEndsAt: user.trialEndsAt || null,
+    trialRemainingSeconds: rem,
+    isPaidThisMonth: paidAfter,
+    needsPayment: (!trialActive && !paidAfter),
+    warning5Days: warning5Days(user, nowMs),
+    activeFriendsThisMonth,
+    discountRateThisMonth: discountRate,
+    amountDueThisMonth: due,
+    friendCode: user.friendCode || null,
+    partnerCode: user.partnerCode || null
+  });
+});
+
+app.post("/api/referral/apply", requireAuth, (req, res) => {
+  try {
+    if (req.auth.role === "admin") return res.status(400).json({ error: "Operação não aplicável para administrador." });
+    const user = req.auth.user;
+    if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
+
+    if (user.referrerId || user.refType) {
+      return res.status(409).json({ error: "Este usuário já possui indicação registrada e não pode ser alterada." });
+    }
+
+    const refType = String(req.body?.refType || "").trim().toLowerCase();
+    const code = String(req.body?.referralCode || "").trim();
+    if (!refType || !code) return res.status(400).json({ error: "Tipo e código de indicação são obrigatórios." });
+    if (refType !== "friend" && refType !== "partner") return res.status(400).json({ error: "Tipo de indicação inválido." });
+
+    let referrer = null;
+    if (refType === "friend") referrer = findUserByFriendCode(code);
+    if (refType === "partner") referrer = findUserByPartnerCode(code);
+    if (!referrer) return res.status(400).json({ error: "Código de indicação inválido." });
+
+    if (referrer.id === user.id || String(referrer.cpf || "") === String(user.cpf || "")) {
+      return res.status(400).json({ error: "Autoindicação não é permitida." });
+    }
+
+    user.referrerId = referrer.id;
+    user.refType = refType;
+    user.referralCodeUsed = code;
+    saveDb(DB, "referral_apply");
+
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao aplicar indicação." });
+  }
+});
+
+// Pix (manual/avulso): cria um pedido para o mês atual
+app.post("/api/payments/pix/create", requireAuth, (req, res) => {
+  try {
+    if (req.auth.role === "admin") return res.status(400).json({ error: "Operação não aplicável para administrador." });
+    const user = req.auth.user;
+    if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
+
+    const month = currentYYYYMM();
+    if (isUserPaidMonth(user.id, month)) return res.status(409).json({ error: "Este mês já consta como pago." });
+
+    const amount = computeAmountDueThisMonth(user.id);
+    const order = {
+      id: makeId("pix"),
+      userId: user.id,
+      month,
+      amount,
+      status: "pending",
+      createdAt: nowIso()
+    };
+    DB.pixOrders.push(order);
+    saveDb(DB, "pix_create");
+
+    const pixKey = String(process.env.PIX_KEY || "CHAVE_PIX_AQUI").trim();
+    return res.json({
+      ok: true,
+      orderId: order.id,
+      month,
+      amount,
+      pixKey,
+      instructions: "Realize o Pix para a chave informada e aguarde a confirmação."
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao criar pedido Pix." });
+  }
+});
+
+app.post("/api/payments/pix/confirm", requireAuth, requireAdmin, (req, res) => {
+  try {
+    const orderId = String(req.body?.orderId || "").trim();
+    if (!orderId) return res.status(400).json({ error: "orderId é obrigatório." });
+
+    const order = DB.pixOrders.find(o => o.id === orderId);
+    if (!order) return res.status(404).json({ error: "Pedido não encontrado." });
+    if (order.status === "confirmed") return res.json({ ok: true });
+
+    const user = DB.users.find(u => u.id === order.userId && !u.isDeleted);
+    if (!user) return res.status(404).json({ error: "Usuário do pedido não encontrado." });
+
+    order.status = "confirmed";
+    order.confirmedAt = nowIso();
+    order.confirmedBy = req.auth?.user?.login || ADMIN_LOGIN;
+
+    if (!isUserPaidMonth(user.id, order.month)) {
+      addPaymentConfirmed(user.id, order.month, order.amount, "pix", `Pedido Pix ${order.id}`, req.auth?.user?.login || ADMIN_LOGIN);
+    }
+
+    saveDb(DB, "pix_confirm");
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao confirmar Pix." });
+  }
+});
+
+// Cartão (recorrente) - integração stub (estrutura)
+app.post("/api/payments/card/subscribe", requireAuth, (req, res) => {
+  try {
+    if (req.auth.role === "admin") return res.status(400).json({ error: "Operação não aplicável para administrador." });
+    const user = req.auth.user;
+    if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
+
+    const plan = String(req.body?.plan || "monthly").trim().toLowerCase();
+    if (plan !== "monthly" && plan !== "annual") return res.status(400).json({ error: "Plano inválido." });
+
+    const next = new Date();
+    if (plan === "monthly") next.setMonth(next.getMonth() + 1);
+    if (plan === "annual") next.setFullYear(next.getFullYear() + 1);
+
+    user.cardSubscription = {
+      status: "active",
+      plan,
+      nextChargeAt: next.toISOString(),
+      providerCustomerId: String(req.body?.providerCustomerId || ""),
+      providerSubscriptionId: String(req.body?.providerSubscriptionId || ""),
+      last4: String(req.body?.last4 || ""),
+      brand: String(req.body?.brand || "")
+    };
+
+    // cobrança inicial
+    if (plan === "monthly") {
+      const month = currentYYYYMM();
+      if (!isUserPaidMonth(user.id, month)) {
+        const due = computeAmountDueThisMonth(user.id);
+        addPaymentConfirmed(user.id, month, due, "card", due === 0 ? "Desconto 100% (Cliente Amigo)" : "Assinatura (cartão)", "card_subscribe");
+      }
+    } else {
+      // anual: gera 12 meses
+      const start = new Date();
+      const months = [];
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(start.getTime());
+        d.setMonth(d.getMonth() + i);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        months.push(`${y}-${m}`);
+      }
+      const perMonth = round2(PRICE_ANNUAL / 12);
+      for (const month of months) {
+        if (!isUserPaidMonth(user.id, month)) addPaymentConfirmed(user.id, month, perMonth, "card", "Assinatura anual (cartão)", "card_subscribe");
+      }
+    }
+
+    saveDb(DB, "card_subscribe");
+    return res.json({ ok: true, status: user.cardSubscription.status, plan: user.cardSubscription.plan, nextChargeAt: user.cardSubscription.nextChargeAt });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao assinar no cartão." });
+  }
+});
+
+app.post("/api/payments/card/cancel", requireAuth, (req, res) => {
+  try {
+    if (req.auth.role === "admin") return res.status(400).json({ error: "Operação não aplicável para administrador." });
+    const user = req.auth.user;
+    if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
+
+    if (!user.cardSubscription) return res.json({ ok: true });
+    user.cardSubscription.status = "canceled";
+    user.cardSubscription.canceledAt = nowIso();
+    saveDb(DB, "card_cancel");
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha ao cancelar assinatura." });
+  }
+});
+
+app.get("/api/partner/commissions", requireAuth, (req, res) => {
+  if (req.auth.role === "admin") return res.status(400).json({ error: "Operação não aplicável para administrador." });
+  const user = req.auth.user;
+  if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
+  if (!user.partnerCode) return res.status(403).json({ error: "Usuário não é parceiro." });
+
+  const items = DB.commissions
+    .filter(c => c.partnerUserId === user.id)
+    .sort((a, b) => String(b.month).localeCompare(String(a.month)));
+  return res.json({ items });
+});
+
+app.post("/api/admin/users/:id/partner", requireAuth, requireAdmin, (req, res) => {
+  try {
+    const id = String(req.params.id || "");
+    const user = DB.users.find(u => u.id === id && !u.isDeleted);
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado." });
+    if (!user.partnerCode) user.partnerCode = ensureUniquePartnerCode();
+    saveDb(DB, "admin_make_partner");
+    return res.json({ ok: true, partnerCode: user.partnerCode });
+  } catch (e) {
+    return res.status(500).json({ error: "Falha ao marcar parceiro." });
+  }
+});
+
+app.post("/api/admin/payments/:paymentId/void", requireAuth, requireAdmin, (req, res) => {
+  try {
+    const paymentId = String(req.params.paymentId || "");
+    const p = voidPaymentById(paymentId, req.auth?.user?.login || ADMIN_LOGIN);
+    if (!p) return res.status(404).json({ error: "Pagamento não encontrado." });
+    return res.json({ ok: true, payment: p });
+  } catch (e) {
+    return res.status(500).json({ error: "Falha ao estornar pagamento." });
+  }
+});
+
+
+

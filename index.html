@@ -2069,7 +2069,7 @@
       <input id="signupPhone" class="auth-input" type="tel" autocomplete="tel" inputmode="tel" />
 
       <label class="auth-label" for="signupLogin">Login</label>
-      <input id="signupLogin" class="auth-input" autocomplete="username" inputmode="text" />
+      <input id="signupLogin" class="auth-input" autocomplete="username" inputmode="text" / inputmode="numeric" autocomplete="username">>
 
       <label class="auth-label" for="signupPassword">Senha</label>
       <input id="signupPassword" class="auth-input" type="password" autocomplete="new-password" />
@@ -4187,7 +4187,7 @@ Ata de reunião:
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
-          body: JSON.stringify({ login, senha })
+          body: JSON.stringify({ cpf, senha })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
@@ -4226,7 +4226,7 @@ Ata de reunião:
       const errEl = document.getElementById("signupError");
       const btn = document.getElementById("signupBtn");
 
-      if (!fullName || !dob || !phone || !login || !password) {
+      if (!fullName || !dob || !phone || !cpf || !password) {
         if (errEl) errEl.textContent = "Preencha: nome completo, data de nascimento, telefone, login e senha.";
         return;
       }
@@ -4238,7 +4238,7 @@ Ata de reunião:
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, phone, login, password })
+          body: JSON.stringify({ fullName, dob, phone, cpf, password })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
