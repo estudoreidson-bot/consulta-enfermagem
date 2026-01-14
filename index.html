@@ -2026,6 +2026,43 @@
       .roster-output-mobile { display: flex; flex-direction: column; }
     }
 
+    /* Assinatura: trial 15 dias */
+    .trial-banner {
+      width: 100%;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #d7e6ff;
+      background: #f9fbff;
+      font-size: 13px;
+      color: #1f2937;
+      line-height: 1.35;
+    }
+    .trial-warning {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #ffeeba;
+      background: #fff3cd;
+      font-size: 13px;
+      color: #1f2937;
+      line-height: 1.35;
+    }
+    .trial-promo {
+      width: 100%;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #e7e7e7;
+      background: #ffffff;
+      font-size: 13px;
+      color: #1f2937;
+      line-height: 1.35;
+    }
+    .hidden { display: none !important; }
+
+
   </style>
 </head>
 <body>
@@ -2035,6 +2072,9 @@
              <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
+
+      <div id="loginTrialBanner" class="trial-banner hidden"></div>
+      <div id="loginTrialWarning" class="trial-warning hidden"></div>
 
       <label class="auth-label" for="loginField">CPF</label>
       <input id="loginField" class="auth-input" autocomplete="username" inputmode="numeric" pattern="\d*" placeholder="Somente números" />
@@ -2058,6 +2098,20 @@
       <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
       <h1>Cadastro de enfermeiro(a)</h1>
       <p class="auth-subtitle">Preencha os dados para criar seu cadastro.</p>
+
+      <div id="signupTrialBanner" class="trial-banner">15 dias grátis para novos cadastros. Avisaremos quando faltar 5 dias para vencer.</div>
+      <div class="trial-promo">Cliente Amigo: cada amigo pagando em dia reduz 25% da sua mensalidade, até ficar grátis com 4 amigos.</div>
+      <div class="trial-promo">Parceiro: você indica clientes e recebe 25% todo mês da mensalidade de cada cliente que estiver pagando em dia.</div>
+
+      <label class="auth-label" for="signupRefType">Promoção (opcional)</label>
+      <select id="signupRefType" class="auth-input">
+        <option value="">Nenhuma</option>
+        <option value="friend">Cliente Amigo</option>
+        <option value="partner">Parceiro</option>
+      </select>
+
+      <label class="auth-label" for="signupReferralCode">Código de indicação (opcional)</label>
+      <input id="signupReferralCode" class="auth-input" inputmode="text" placeholder="Cole o código (friendCode ou partnerCode)" />
 
       <label class="auth-label" for="signupFullName">Nome completo</label>
       <input id="signupFullName" class="auth-input" autocomplete="name" inputmode="text" />
@@ -2240,6 +2294,9 @@
                 <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
      <h1>Atendimento de Enfermagem</h1>
 
+
+    <div id="nurseTrialBanner" class="trial-banner hidden"></div>
+    <div id="nurseTrialWarning" class="trial-warning hidden"></div>
 
     <div class="nurse-bar" id="nurseBar">
       <div>
@@ -3905,6 +3962,155 @@ Ata de reunião:
     })();
 
     // =========================
+    // Assinatura: trial, aviso 5 dias e status mensal
+    // =========================
+    function normalizeCpfOnlyDigits(v) {
+      return String(v || "").replace(/\D/g, "");
+    }
+
+    function formatTrialRemaining(seconds) {
+      const s = Math.max(0, Math.floor(Number(seconds) || 0));
+      const days = Math.floor(s / 86400);
+      const hours = Math.floor((s % 86400) / 3600);
+      return { days, hours, text: `${days} dias e ${hours} horas` };
+    }
+
+    function setElText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    function showEl(id, show) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.toggle("hidden", !show);
+    }
+
+    async function fetchPublicSubscriptionStatus(cpfDigits) {
+      const cpf = normalizeCpfOnlyDigits(cpfDigits);
+      if (!cpf || cpf.length < 11) return null;
+      const resp = await nativeFetch(BACKEND_URL + "/api/public/subscription/status?cpf=" + encodeURIComponent(cpf), { method: "GET" });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) return { error: data.error || "Falha ao consultar status." };
+      return data;
+    }
+
+    function renderLoginTrialStatus(data) {
+      // data pode ser null, {error}, ou status válido
+      if (!data) {
+        showEl("loginTrialBanner", false);
+        showEl("loginTrialWarning", false);
+        return;
+      }
+      if (data.error) {
+        // Usuário não encontrado ou CPF inválido: não exibe banner (cadastro é o caminho)
+        showEl("loginTrialBanner", false);
+        showEl("loginTrialWarning", false);
+        return;
+      }
+
+      const rem = Number(data.trialRemainingSeconds || 0);
+      const paid = !!data.isPaidThisMonth;
+      const warning = !!data.warning5Days;
+
+      if (rem > 0) {
+        const f = formatTrialRemaining(rem);
+        setElText("loginTrialBanner", "Gratuidade: faltam " + f.text);
+        showEl("loginTrialBanner", true);
+        if (warning) {
+          setElText("loginTrialWarning", "Aviso: sua gratuidade termina em até 5 dias. Regularize o pagamento para não perder o acesso.");
+          showEl("loginTrialWarning", true);
+        } else {
+          showEl("loginTrialWarning", false);
+        }
+        return;
+      }
+
+      // Trial encerrado
+      setElText("loginTrialBanner", paid ? "Gratuidade encerrada. Mensalidade do mês está em dia." : "Gratuidade encerrada. Faça o pagamento para continuar.");
+      showEl("loginTrialBanner", true);
+      showEl("loginTrialWarning", false);
+    }
+
+    let loginTrialDebounceTimer = null;
+    function scheduleLoginTrialCheck() {
+      const cpf = normalizeCpfOnlyDigits(document.getElementById("loginField")?.value || "");
+      if (!cpf || cpf.length < 11) {
+        renderLoginTrialStatus(null);
+        return;
+      }
+      if (loginTrialDebounceTimer) clearTimeout(loginTrialDebounceTimer);
+      loginTrialDebounceTimer = setTimeout(async () => {
+        try {
+          const data = await fetchPublicSubscriptionStatus(cpf);
+          renderLoginTrialStatus(data);
+        } catch {
+          // Silencioso: não travar login por status
+          renderLoginTrialStatus(null);
+        }
+      }, 350);
+    }
+
+    async function fetchPrivateSubscriptionStatus() {
+      const resp = await fetch(BACKEND_URL + "/api/subscription/status", { method: "GET" });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) return { error: data.error || "Falha ao consultar status." };
+      return data;
+    }
+
+    function renderNurseTrialStatus(data) {
+      if (!data || data.error) {
+        showEl("nurseTrialBanner", false);
+        showEl("nurseTrialWarning", false);
+        return;
+      }
+      const rem = Number(data.trialRemainingSeconds || 0);
+      const warning = !!data.warning5Days;
+      const paid = !!data.isPaidThisMonth;
+      const needsPayment = !!data.needsPayment;
+
+      if (rem > 0) {
+        const f = formatTrialRemaining(rem);
+        setElText("nurseTrialBanner", "Gratuidade: faltam " + f.text);
+        showEl("nurseTrialBanner", true);
+        if (warning) {
+          setElText("nurseTrialWarning", "Aviso: sua gratuidade termina em até 5 dias. Regularize o pagamento para não perder o acesso.");
+          showEl("nurseTrialWarning", true);
+        } else {
+          showEl("nurseTrialWarning", false);
+        }
+      } else {
+        setElText("nurseTrialBanner", paid ? "Gratuidade encerrada. Mensalidade do mês está em dia." : "Gratuidade encerrada. Faça o pagamento para continuar.");
+        showEl("nurseTrialBanner", true);
+        showEl("nurseTrialWarning", false);
+      }
+
+      // Atualiza o selo de mensalidade conforme status real do backend
+      const pay = document.getElementById("nursePaymentLabel");
+      if (pay) {
+        const month = String((data.currentMonth || "")).trim();
+        const paidFlag = !!paid;
+        pay.textContent = paidFlag ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Em atraso" + (month ? " (" + month + ")" : ""));
+        pay.classList.remove("green","red");
+        pay.classList.add(paidFlag ? "green" : "red");
+      }
+
+      // Se precisar pagamento, pelo menos informa no topo (modal de pagamento pode ser ativado depois)
+      if (needsPayment) {
+        // Mantém banner já dizendo que precisa pagar; não bloqueia UI aqui para não quebrar o uso em teste.
+      }
+    }
+
+    async function refreshSubscriptionUIAfterLogin() {
+      try {
+        const data = await fetchPrivateSubscriptionStatus();
+        renderNurseTrialStatus(data);
+      } catch {
+        renderNurseTrialStatus(null);
+      }
+    }
+
+    // =========================
     // IMAGENS (Curativos e Prescrição) - estado por módulo (até 4 fotos)
     // =========================
     let woundImages = [];
@@ -4196,6 +4402,8 @@ Ata de reunião:
         }
         setToken(data.token || "");
         await restoreSession();
+    // Atualiza contador do trial no login (quando aplicável)
+    setTimeout(() => { try { scheduleLoginTrialCheck(); } catch {} }, 300);
       } catch (e) {
         if (errEl) errEl.textContent = "Falha ao conectar no servidor.";
       } finally {
@@ -4210,6 +4418,8 @@ Ata de reunião:
       set("signupPhone", "");
       set("signupLogin", "");
       set("signupPassword", "");
+      set("signupRefType", "");
+      set("signupReferralCode", "");
       const err = document.getElementById("signupError");
       if (err) err.textContent = "";
       const btn = document.getElementById("signupBtn");
@@ -4222,6 +4432,8 @@ Ata de reunião:
       const phone = (document.getElementById("signupPhone")?.value || "").trim();
       const cpf = ((document.getElementById("signupLogin")?.value || "").trim()).replace(/\D/g, "");
       const password = (document.getElementById("signupPassword")?.value || "").trim();
+      const refType = (document.getElementById("signupRefType")?.value || "").trim();
+      const referralCode = (document.getElementById("signupReferralCode")?.value || "").trim();
 
       const errEl = document.getElementById("signupError");
       const btn = document.getElementById("signupBtn");
@@ -4238,7 +4450,7 @@ Ata de reunião:
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, phone, cpf, password })
+          body: JSON.stringify({ fullName, dob, phone, cpf, password, refType, referralCode })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
@@ -4298,6 +4510,7 @@ Ata de reunião:
           showNurse();
           startHeartbeat();
           updateNurseBar(me);
+          await refreshSubscriptionUIAfterLogin();
         } else {
           showLogin();
         }
@@ -4306,18 +4519,12 @@ Ata de reunião:
       }
     }
 
+    
     function updateNurseBar(me) {
-      // Aceita tanto o formato {role, user:{...}} quanto formato "achatado"
       const u = (me && me.user && typeof me.user === "object") ? me.user : (me || {});
       const name = (u.fullName || u.login || "-");
       const login = (u.login || "-");
-      const paidFlag = (u.isPaidThisMonth !== undefined) ? !!u.isPaidThisMonth
-        : (u.paidCurrentMonth !== undefined) ? !!u.paidCurrentMonth
-        : (me && me.isPaidThisMonth !== undefined) ? !!me.isPaidThisMonth
-        : (me && me.paidCurrentMonth !== undefined) ? !!me.paidCurrentMonth
-        : false;
 
-      const month = (me && me.currentMonth) ? me.currentMonth : (u.currentMonth || "");
       const lbl = document.getElementById("nurseUserLabel");
       const lblLogin = document.getElementById("nurseLoginLabel");
       const pay = document.getElementById("nursePaymentLabel");
@@ -4326,15 +4533,18 @@ Ata de reunião:
       if (lblLogin) lblLogin.textContent = login;
 
       if (pay) {
-        pay.textContent = paidFlag ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Em atraso" + (month ? " (" + month + ")" : ""));
+        pay.textContent = "-";
         pay.classList.remove("green","red");
-        pay.classList.add(paidFlag ? "green" : "red");
       }
+    }
     }
 
     // Eventos de login/logout
     document.getElementById("loginBtn")?.addEventListener("click", doLogin);
     document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    document.getElementById("loginField")?.addEventListener("input", scheduleLoginTrialCheck);
+    document.getElementById("loginField")?.addEventListener("blur", scheduleLoginTrialCheck);
+
     document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
     document.getElementById("openSignupBtn")?.addEventListener("click", () => {
       resetSignupForm();

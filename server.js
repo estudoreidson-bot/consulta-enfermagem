@@ -509,6 +509,22 @@ function addDaysIso(iso, days) {
   return new Date(t + (Number(days) * DAY_MS)).toISOString();
 }
 
+function ensureTrialFields(user) {
+  if (!user || typeof user !== "object") return false;
+  const hasStarted = !!user.trialStartedAt;
+  const hasEnds = !!user.trialEndsAt;
+  if (hasStarted && hasEnds) return false;
+
+  let started = String(user.trialStartedAt || user.createdAt || "").trim();
+  const startedMs = started ? new Date(started).getTime() : NaN;
+  if (!started || Number.isNaN(startedMs)) started = nowIso();
+
+  user.trialStartedAt = started;
+  user.trialEndsAt = user.trialEndsAt ? String(user.trialEndsAt) : addDaysIso(started, TRIAL_DAYS);
+  return true;
+}
+
+
 function trialRemainingSeconds(user, nowMs = Date.now()) {
   const end = user?.trialEndsAt ? new Date(user.trialEndsAt).getTime() : 0;
   if (!end) return 0;
@@ -1391,6 +1407,7 @@ app.post("/api/auth/login", (req, res) => {
     // Usuário enfermeiro
     const user = findUserByLogin(login);
     if (!user || user.isDeleted) return res.status(401).json({ error: "Credenciais inválidas." });
+    if (ensureTrialFields(user)) saveDb(DB, "ensure_trial_login");
     if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: usuário inativo. Procure o administrador." });
 
     const computed = sha256(`${user.salt || ""}:${senha}`);
@@ -1442,6 +1459,7 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
   if (role === "admin") return res.json({ role: "admin" });
 
   const u = req.auth.user;
+  if (ensureTrialFields(u)) saveDb(DB, "ensure_trial_me");
   return res.json({
     role: "nurse",
     fullName: u.fullName,
@@ -3889,6 +3907,7 @@ app.get("/api/public/subscription/status", (req, res) => {
     if (!cpf || !isValidCpf(cpf)) return res.status(400).json({ error: "CPF inválido." });
     const user = findUserByLogin(cpf);
     if (!user || user.isDeleted) return res.status(404).json({ error: "Usuário não encontrado." });
+    if (ensureTrialFields(user)) saveDb(DB, "ensure_trial_public_status");
 
     const nowMs = Date.now();
     const rem = trialRemainingSeconds(user, nowMs);
