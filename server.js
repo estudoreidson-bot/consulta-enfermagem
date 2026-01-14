@@ -119,6 +119,10 @@ async function hydrateDbFromPgIfAvailable() {
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Rate limit simples (memória) para reduzir abuso de auto-cadastro.
+// Em produção com múltiplas instâncias, o ideal é Redis.
+const SIGNUP_RATE = new Map();
+
 // Configurações básicas
 app.use(cors());
 app.use(bodyParser.json({ limit: "25mb" }));
@@ -487,6 +491,23 @@ function onlyDigits(v) {
   return String(v || "").replace(/\D+/g, "");
 }
 
+function isValidCpfDigits(cpfDigits) {
+  const cpf = onlyDigits(cpfDigits);
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+  const calc = (base) => {
+    let sum = 0;
+    for (let i = 0; i < base.length; i++) {
+      sum += Number(base[i]) * ((base.length + 1) - i);
+    }
+    const mod = sum % 11;
+    return mod < 2 ? 0 : (11 - mod);
+  };
+  const d1 = calc(cpf.slice(0, 9));
+  const d2 = calc(cpf.slice(0, 9) + String(d1));
+  return cpf === (cpf.slice(0, 9) + String(d1) + String(d2));
+}
+
 function makeId(prefix) {
   return `${prefix}_${crypto.randomBytes(10).toString("hex")}`;
 }
@@ -611,11 +632,7 @@ function buildGithubSnapshot(db) {
     passwordHash: u.passwordHash,
     isActive: !!u.isActive,
     isDeleted: !!u.isDeleted,
-    createdAt: u.createdAt || "",
-    trialEndsAt: u.trialEndsAt || "",
-    referralCode: u.referralCode || "",
-    promoType: u.promoType || "none",
-    referredBy: u.referredBy || ""
+    createdAt: u.createdAt || ""
   })).sort((a, b) => String(a.id || "").localeCompare(String(b.id || "")));
 
   const payments = (Array.isArray(db?.payments) ? db.payments : []).map(p => ({
@@ -906,160 +923,28 @@ function findUserByLogin(login) {
   return DB.users.find(u => onlyDigits(String(u.login || "").trim()) === ln) || null;
 }
 
+function findUserByCpf(cpfDigits) {
+  const c = onlyDigits(cpfDigits);
+  if (!c || c.length !== 11) return null;
+  return DB.users.find(u => onlyDigits(String(u.cpf || "")) === c) || null;
+}
+
 function isUserPaidThisMonth(userId) {
   const month = currentYYYYMM();
   return DB.payments.some(p => p.userId === userId && p.month === month);
 }
 
-// =========================
-// Cobrança e promoções
-// =========================
-const DEFAULT_MONTHLY_PRICE_CENTS = parseInt(process.env.MONTHLY_PRICE_CENTS || "2990", 10); // R$ 29,90 (padrão)
-const TRIAL_DAYS = parseInt(process.env.TRIAL_DAYS || "30", 10); // 1 mês (aprox.)
-const REFERRAL_PARTNER_RATE_BP = 2500; // 25%
-const REFERRAL_FRIEND_DISCOUNT_STEP_BP = 2500; // 25%
-
-function addDaysIso(days) {
-  const d = new Date(Date.now() + (Number(days) * 24 * 60 * 60 * 1000));
-  return d.toISOString();
-}
-
-function isTrialActive(user) {
-  const end = String(user?.trialEndsAt || "").trim();
-  if (!end) return false;
-  const t = Date.parse(end);
-  if (!Number.isFinite(t)) return false;
-  return Date.now() < t;
-}
-
-function daysUntilIso(isoStr) {
-  const t = Date.parse(String(isoStr || ""));
-  if (!Number.isFinite(t)) return null;
-  const diffMs = t - Date.now();
-  return Math.ceil(diffMs / (24 * 60 * 60 * 1000));
-}
-
-function monthEndIso(yyyymm) {
-  const s = String(yyyymm || "");
-  const m = s.match(/^(\d{4})-(\d{2})$/);
-  if (!m) return "";
-  const y = parseInt(m[1], 10);
-  const mo = parseInt(m[2], 10); // 1-12
-  const next = new Date(Date.UTC(y, mo, 1, 0, 0, 0)); // primeiro dia do próximo mês
-  const end = new Date(next.getTime() - 1); // último ms do mês atual
-  return end.toISOString();
-}
-
-function ensureReferralCodeUnique(code) {
-  const c = String(code || "").trim();
-  if (!c) return null;
-  const exists = DB.users.some(u => String(u.referralCode || "").toUpperCase() === c.toUpperCase());
-  if (exists) return null;
-  return c;
-}
-
-function generateReferralCode() {
-  // 6 caracteres, letras e números (evita confusões: 0/O, 1/I)
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  for (let i = 0; i < 20; i++) {
-    let s = "";
-    for (let k = 0; k < 6; k++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
-    const ok = ensureReferralCodeUnique(s);
-    if (ok) return ok;
+function isUserInTrial(user) {
+  try {
+    const t = String(user?.trialEndsAt || "").trim();
+    if (!t) return false;
+    const end = new Date(t).getTime();
+    if (!Number.isFinite(end) || end <= 0) return false;
+    return Date.now() < end;
+  } catch {
+    return false;
   }
-  // fallback
-  return "REF" + Math.floor(Math.random() * 900000 + 100000);
 }
-
-function findUserByReferralCode(code) {
-  const c = String(code || "").trim().toUpperCase();
-  if (!c) return null;
-  return DB.users.find(u => !u.isDeleted && String(u.referralCode || "").trim().toUpperCase() === c) || null;
-}
-
-function getDirectReferrals(userId) {
-  return DB.users.filter(u => !u.isDeleted && String(u.referredBy || "") === String(userId));
-}
-
-function countActivePaidReferralsForMonth(userId, month) {
-  const referrals = getDirectReferrals(userId);
-  if (!referrals.length) return 0;
-  const set = new Set(referrals.map(r => r.id));
-  return DB.payments.filter(p => set.has(p.userId) && p.month === month).length;
-}
-
-function friendDiscountBp(userId, month) {
-  const n = countActivePaidReferralsForMonth(userId, month);
-  const bp = Math.min(10000, n * REFERRAL_FRIEND_DISCOUNT_STEP_BP);
-  return { count: n, discountBp: bp };
-}
-
-function partnerCommissionForMonth(userId, month) {
-  const n = countActivePaidReferralsForMonth(userId, month);
-  const amountCents = Math.round((DEFAULT_MONTHLY_PRICE_CENTS * REFERRAL_PARTNER_RATE_BP / 10000) * n);
-  return { count: n, amountCents };
-}
-
-function isUserAccessOk(user) {
-  if (!user || user.isDeleted) return false;
-  if (!user.isActive) return false;
-  if (isTrialActive(user)) return true;
-  const month = currentYYYYMM();
-  if (isUserPaidThisMonth(user.id)) return true;
-
-  // Cliente Amigo: acesso gratuito se tiver 4+ amigos pagando em dia no mês atual
-  const promo = String(user.promoType || "none");
-  if (promo === "friend") {
-    const st = friendDiscountBp(user.id, month);
-    if (st.discountBp >= 10000) return true;
-  }
-  return false;
-}
-
-function buildBillingStatus(user) {
-  const month = currentYYYYMM();
-  const paid = isUserPaidThisMonth(user.id);
-  const trialActive = isTrialActive(user);
-  const trialDaysLeft = trialActive ? daysUntilIso(user.trialEndsAt) : null;
-
-  const promoType = String(user.promoType || "none");
-  const friend = (promoType === "friend") ? friendDiscountBp(user.id, month) : { count: 0, discountBp: 0 };
-  const partner = (promoType === "partner") ? partnerCommissionForMonth(user.id, month) : { count: 0, amountCents: 0 };
-
-  const monthEnd = monthEndIso(month);
-  const daysToMonthEnd = daysUntilIso(monthEnd);
-
-  // aviso: 5 dias antes do vencimento do ciclo atual
-  let warn = null;
-  if (trialActive && trialDaysLeft !== null && trialDaysLeft <= 5 && trialDaysLeft >= 0) {
-    warn = { type: "trial", daysLeft: trialDaysLeft };
-  } else if (!trialActive && !paid && daysToMonthEnd !== null && daysToMonthEnd <= 5 && daysToMonthEnd >= 0) {
-    warn = { type: "billing", daysLeft: daysToMonthEnd };
-  }
-
-  const effectivePriceCents = Math.max(0, Math.round(DEFAULT_MONTHLY_PRICE_CENTS * (1 - (friend.discountBp / 10000))));
-  const isFreeThisMonthByReferral = (!trialActive && !paid && promoType === "friend" && friend.discountBp >= 10000);
-
-  return {
-    month,
-    monthlyPriceCents: DEFAULT_MONTHLY_PRICE_CENTS,
-    paidThisMonth: paid,
-    trialActive,
-    trialEndsAt: user.trialEndsAt || "",
-    trialDaysLeft,
-    monthEndsAt: monthEnd,
-    daysToMonthEnd,
-    promoType,
-    referralCode: user.referralCode || "",
-    referredBy: user.referredBy || "",
-    friend,
-    partner,
-    effectivePriceCents,
-    isFreeThisMonthByReferral,
-    warn
-  };
-}
-
 
 function isUserOnline(user) {
   const last = user?.lastSeenAt ? new Date(user.lastSeenAt).getTime() : 0;
@@ -1183,31 +1068,63 @@ function requirePaidOrAdmin(req, res, next) {
 
   const user = req.auth.user;
   if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
-  if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: usuário inativo. Procure o administrador." });
+  if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
 
-  if (!isUserAccessOk(user)) {
+  // Libera acesso se estiver em período de gratuidade
+  if (!isUserPaidThisMonth(user.id) && !isUserInTrial(user)) {
     return res.status(402).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
   }
-
   next();
 }
+
 // Rotas de autenticação
 
 // Cadastro público (auto-cadastro do enfermeiro)
 // Observação: o acesso ao sistema continua condicionado à liberação e mensalidade (pagamento do mês).
 app.post("/api/auth/signup", (req, res) => {
   try {
+    // Proteção simples contra abuso de auto-cadastro (in-memory)
+    // Observação: em ambiente com múltiplas instâncias, isso deve ir para Redis.
+    const ip = String((req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "") || "").split(",")[0].trim();
+    const now = Date.now();
+    const slot = SIGNUP_RATE.get(ip) || { count: 0, resetAt: now + 60 * 60 * 1000 };
+    if (now > slot.resetAt) {
+      slot.count = 0;
+      slot.resetAt = now + 60 * 60 * 1000;
+    }
+    slot.count += 1;
+    SIGNUP_RATE.set(ip, slot);
+    if (slot.count > 8) {
+      return res.status(429).json({ error: "Muitas tentativas de cadastro. Tente novamente mais tarde." });
+    }
+
     const fullName = String(req.body?.fullName || "").trim();
     const dob = String(req.body?.dob || "").trim();
+    const cpf = String(req.body?.cpf || "").trim();
     const phone = String(req.body?.phone || "").trim();
     const login = String(req.body?.login || "").trim();
     const password = String(req.body?.password || "").trim();
 
-    const promoType = String(req.body?.promoType || "none").trim().toLowerCase();
-    const referralCodeIn = String(req.body?.referralCode || "").trim();
+    if (!fullName || !dob || !cpf || !phone || !login || !password) {
+      return res.status(400).json({ error: "Nome completo, data de nascimento, CPF, telefone, login e senha são obrigatórios." });
+    }
 
-    if (!fullName || !dob || !phone || !login || !password) {
-      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, login e senha são obrigatórios." });
+    const cpfDigits = onlyDigits(cpf);
+    if (!isValidCpfDigits(cpfDigits)) {
+      return res.status(400).json({ error: "CPF inválido." });
+    }
+    if (findUserByCpf(cpfDigits)) {
+      return res.status(409).json({ error: "Já existe usuário cadastrado com este CPF." });
+    }
+
+    const phoneDigits = onlyDigits(phone);
+    if (phoneDigits.length < 10 || phoneDigits.length > 13) {
+      return res.status(400).json({ error: "Telefone inválido." });
+    }
+    // Evita múltiplas contas com o mesmo telefone
+    const phoneTaken = DB.users.find(u => onlyDigits(String(u.phone || "")) === phoneDigits);
+    if (phoneTaken) {
+      return res.status(409).json({ error: "Já existe usuário cadastrado com este telefone." });
     }
 
     // Login não precisa ser CPF. Permite letras, números e alguns caracteres seguros.
@@ -1223,18 +1140,6 @@ app.post("/api/auth/signup", (req, res) => {
       return res.status(400).json({ error: "Senha muito curta. Use pelo menos 4 caracteres." });
     }
 
-    const allowedPromo = ["none", "partner", "friend"];
-    if (!allowedPromo.includes(promoType)) {
-      return res.status(400).json({ error: "Promoção inválida." });
-    }
-
-    let referredBy = "";
-    if (referralCodeIn) {
-      const refUser = findUserByReferralCode(referralCodeIn);
-      if (!refUser) return res.status(400).json({ error: "Código de indicação inválido." });
-      referredBy = refUser.id;
-    }
-
     if (findUserByLogin(login)) {
       return res.status(409).json({ error: "Já existe usuário com este login." });
     }
@@ -1246,17 +1151,16 @@ app.post("/api/auth/signup", (req, res) => {
       id: makeId("usr"),
       fullName,
       dob,
+      cpf: cpfDigits,
       phone,
       login,
       salt,
       passwordHash,
       isActive: true,
       isDeleted: false,
+      // 1 mês de gratuidade a partir do cadastro
+      trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       createdAt: nowIso(),
-      trialEndsAt: addDaysIso(TRIAL_DAYS),
-      referralCode: generateReferralCode(),
-      promoType,
-      referredBy,
       lastLoginAt: "",
       lastSeenAt: "",
       activeSessionHash: "",
@@ -1302,8 +1206,8 @@ app.post("/api/auth/login", (req, res) => {
     const computed = sha256(`${user.salt || ""}:${senha}`);
     if (computed !== user.passwordHash) return res.status(401).json({ error: "Credenciais inválidas." });
 
-    const billing = buildBillingStatus(user);
-    if (!isUserAccessOk(user)) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
+    // Bloqueio por mensalidade em débito
+    if (!isUserPaidThisMonth(user.id)) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
 
     // Regra 1 pessoa por conta (1 dispositivo por vez)
     // - Ao fazer login em um novo dispositivo, a sessão anterior é encerrada automaticamente.
@@ -1331,7 +1235,6 @@ app.post("/api/auth/login", (req, res) => {
     return res.json({
       token,
       role: "nurse",
-      billing,
       fullName: user.fullName,
       login: user.login,
       phone: user.phone,
@@ -1352,10 +1255,8 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
   if (role === "admin") return res.json({ role: "admin" });
 
   const u = req.auth.user;
-    const billing = buildBillingStatus(u);
   return res.json({
     role: "nurse",
-    billing,
     fullName: u.fullName,
     login: u.login,
     phone: u.phone,
@@ -1412,53 +1313,6 @@ app.post("/api/auth/heartbeat", requireAuth, (req, res) => {
 });
 
 
-
-// =========================
-// Billing / Promoções (enfermeiro)
-// =========================
-app.get("/api/billing/me", requireAuth, (req, res) => {
-  if (req.auth.role === "admin") {
-    return res.json({ role: "admin", month: currentYYYYMM(), monthlyPriceCents: DEFAULT_MONTHLY_PRICE_CENTS });
-  }
-  const u = req.auth.user;
-  const billing = buildBillingStatus(u);
-  return res.json({ role: "nurse", accessOk: isUserAccessOk(u), billing });
-});
-
-app.get("/api/referrals/me", requireAuth, (req, res) => {
-  if (req.auth.role === "admin") return res.status(403).json({ error: "Apenas para enfermeiro." });
-  const u = req.auth.user;
-  const month = currentYYYYMM();
-  const referrals = getDirectReferrals(u.id)
-    .filter(r => !r.isDeleted)
-    .map(r => ({
-      id: r.id,
-      login: r.login,
-      fullName: r.fullName,
-      paidThisMonth: DB.payments.some(p => p.userId === r.id && p.month === month)
-    }));
-
-  const friend = friendDiscountBp(u.id, month);
-  const partner = partnerCommissionForMonth(u.id, month);
-
-  return res.json({
-    month,
-    referralCode: u.referralCode || "",
-    promoType: u.promoType || "none",
-    referrals,
-    friend,
-    partner,
-    monthlyPriceCents: DEFAULT_MONTHLY_PRICE_CENTS
-  });
-});
-
-// Endpoint de checkout (stub). Para Pix/cartão recorrente, configure um provedor e implemente aqui.
-// Mantém o app pronto para receber integração sem expor segredos.
-app.post("/api/billing/checkout", requireAuth, (req, res) => {
-  if (req.auth.role === "admin") return res.status(400).json({ error: "Checkout não se aplica ao administrador." });
-  return res.status(501).json({ error: "Pagamento ainda não configurado neste servidor. Procure o administrador." });
-});
-
 // Rotas administrativas
 app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
   const users = DB.users
@@ -1474,11 +1328,7 @@ app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
       lastLoginAt: u.lastLoginAt || "",
       lastSeenAt: u.lastSeenAt || "",
       isOnline: isUserOnline(u),
-      isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id),
-      trialEndsAt: u.trialEndsAt || "",
-      referralCode: u.referralCode || "",
-      promoType: u.promoType || "none",
-      referredBy: u.referredBy || ""
+      isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id)
     }))
     .sort((a,b) => (a.fullName||"").localeCompare(b.fullName||""));
   return res.json({ users });
