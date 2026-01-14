@@ -2272,13 +2272,9 @@
         <div class="nurse-bar-line"><span class="nurse-bar-label">Gratuidade:</span><span id="nurseTrialLabel" class="pill">-</span></div>
         <div id="nurseTrialWarning" class="trial-warning" style="display:none; margin-top:8px;"></div>
 <div class="nurse-bar-line"><span class="nurse-bar-label">Mensalidade:</span><span id="nursePaymentLabel" class="pill">-</span></div>
-        <div id="nursePaymentInfo" class="pay-info" style="margin-top:10px;">
-          <div class="pay-info-title">Pagamento</div>
-          <div class="pay-info-line">Pix mensal: R$ 25,00</div>
-          <div class="pay-info-line">Pix anual: R$ 200,00</div>
-          <div class="pay-info-line">Cartão mensal: R$ 25,00</div>
-          <div class="pay-info-line">Cartão anual: R$ 240,00</div>
-          <button id="openPayModalBtn" type="button" class="auth-btn" style="margin-top:10px;">Opções de pagamento</button>
+        <div class="nurse-bar-line" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
+          <button id="openPayModalBtn" type="button" class="auth-btn">Pagamento</button>
+          <button id="openAddFriendBtn" type="button" class="auth-btn">Adicionar amigo</button>
         </div>
 
       </div>
@@ -4431,7 +4427,34 @@ Ata de reunião:
     document.getElementById("nurseLogoutBtn")?.addEventListener("click", logoutAll);
     document.getElementById("adminLogoutBtn")?.addEventListener("click", logoutAll);
 
-    document.getElementById("openPayModalBtn")?.addEventListener("click", openPayModal);
+    
+    // Modais (Pagamento / Adicionar amigo) - só abrem quando o usuário clica no botão
+    function openPayModal() {
+      const b = document.getElementById("payModalBackdrop");
+      if (b) b.classList.remove("hidden");
+    }
+    function closePayModal() {
+      const b = document.getElementById("payModalBackdrop");
+      if (b) b.classList.add("hidden");
+      const pixBox = document.getElementById("pixBox");
+      if (pixBox) { pixBox.style.display = "none"; pixBox.textContent = ""; }
+      const cardBox = document.getElementById("cardBox");
+      if (cardBox) { cardBox.style.display = "none"; cardBox.textContent = ""; }
+    }
+    function openAddFriendModal() {
+      const b = document.getElementById("addFriendModalBackdrop");
+      if (b) b.classList.remove("hidden");
+      const err = document.getElementById("addFriendError");
+      if (err) err.textContent = "";
+    }
+    function closeAddFriendModal() {
+      const b = document.getElementById("addFriendModalBackdrop");
+      if (b) b.classList.add("hidden");
+      const err = document.getElementById("addFriendError");
+      if (err) err.textContent = "";
+    }
+
+document.getElementById("openPayModalBtn")?.addEventListener("click", openPayModal);
     document.getElementById("closePayModalBtn")?.addEventListener("click", closePayModal);
     document.getElementById("payModalBackdrop")?.addEventListener("click", (e)=>{ if(e.target && e.target.id==="payModalBackdrop") closePayModal(); });
 
@@ -12642,7 +12665,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
   </a>
 
 
-  <div id="payModalBackdrop" class="modal-backdrop">
+  <div id="payModalBackdrop" class="modal-backdrop hidden">
     <div class="modal">
       <h3>Pagamento</h3>
       <div class="row" style="font-size:14px;">
@@ -12676,9 +12699,10 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     </div>
   </div>
 
-  <div id="addFriendModalBackdrop" class="modal-backdrop">
+  <div id="addFriendModalBackdrop" class="modal-backdrop hidden">
     <div class="modal">
       <h3>Adicionar amigo</h3>
+      <div id="addFriendError" class="auth-error"></div>
       <div class="row" style="font-size:14px;">
         Cadastre seu amigo aqui. Ele ficará vinculado a você e só contará para desconto quando pagar o mês.
       </div>
