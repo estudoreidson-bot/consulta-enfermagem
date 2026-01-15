@@ -2065,16 +2065,14 @@
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
 
-      <form id="loginForm" autocomplete="on">
-        <label class="auth-label" for="loginField">Login, CPF ou e-mail</label>
-        <input id="loginField" class="auth-input" autocomplete="username" inputmode="text" />
+      <label class="auth-label" for="loginField">Login</label>
+      <input id="loginField" class="auth-input" autocomplete="username" inputmode="text" />
 
-        <label class="auth-label" for="passwordField">Senha</label>
-        <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
+      <label class="auth-label" for="passwordField">Senha</label>
+      <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
 
-        <button id="loginBtn" class="auth-btn" type="submit">Entrar</button>
-        <div id="loginError" class="auth-error"></div>
-      </form>
+      <button id="loginBtn" class="auth-btn" type="button">Entrar</button>
+      <div id="loginError" class="auth-error"></div>
 
       <button id="openSignupBtn" class="auth-btn outline" type="button">Cadastrar enfermeiro(a)</button>
 
@@ -2087,26 +2085,20 @@
   <div id="nurseSignupView" class="auth-shell hidden">
     <div class="auth-card">
       <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
-      <h1>Cadastro do cliente</h1>
+      <h1>Cadastro de enfermeiro(a)</h1>
       <p class="auth-subtitle">Preencha os dados para criar seu cadastro.</p>
 
       <label class="auth-label" for="signupFullName">Nome completo</label>
       <input id="signupFullName" class="auth-input" autocomplete="name" inputmode="text" />
 
       <label class="auth-label" for="signupDob">Data de nascimento</label>
-      <input id="signupDob" class="auth-input" type="date" autocomplete="bday" />
+      <input id="signupDob" class="auth-input" type="date" />
 
       <label class="auth-label" for="signupPhone">Telefone</label>
-      <input id="signupPhone" class="auth-input" autocomplete="tel" inputmode="tel" />
+      <input id="signupPhone" class="auth-input" type="tel" autocomplete="tel" inputmode="tel" />
 
       <label class="auth-label" for="signupLogin">Login</label>
       <input id="signupLogin" class="auth-input" autocomplete="username" inputmode="text" />
-
-      <label class="auth-label" for="signupCpf">CPF</label>
-      <input id="signupCpf" class="auth-input" autocomplete="off" inputmode="numeric" />
-
-      <label class="auth-label" for="signupEmail">E-mail</label>
-      <input id="signupEmail" class="auth-input" autocomplete="email" inputmode="email" />
 
       <label class="auth-label" for="signupPassword">Senha</label>
       <input id="signupPassword" class="auth-input" type="password" autocomplete="new-password" />
@@ -2141,7 +2133,7 @@
       </div>
 
       <div class="admin-card">
-        <h2 style="margin: 0 0 10px 0;">Cadastrar cliente</h2>
+        <h2 style="margin: 0 0 10px 0;">Cadastrar enfermeiro(a)</h2>
         <div class="admin-grid">
           <div class="admin-field">
             <label for="newFullName">Nome completo</label>
@@ -2153,23 +2145,15 @@
           </div>
           <div class="admin-field">
             <label for="newPhone">Telefone</label>
-            <input id="newPhone" type="text" inputmode="tel" />
+            <input id="newPhone" type="tel" />
           </div>
           <div class="admin-field">
             <label for="newLogin">Login</label>
             <input id="newLogin" type="text" />
           </div>
           <div class="admin-field">
-            <label for="newCpf">CPF</label>
-            <input id="newCpf" type="text" inputmode="numeric" />
-          </div>
-          <div class="admin-field">
-            <label for="newEmail">E-mail</label>
-            <input id="newEmail" type="email" inputmode="email" />
-          </div>
-          <div class="admin-field">
             <label for="newPassword">Senha</label>
-            <input id="newPassword" type="password" />
+            <input id="newPassword" type="text" />
           </div>
           <div class="admin-field" style="display:flex; align-items:flex-end;">
             <button id="createUserBtn" class="admin-btn" type="button" style="width:100%;">Cadastrar</button>
@@ -2188,8 +2172,8 @@
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>CPF</th>
-                <th>E-mail</th>
+                <th>Login</th>
+                <th>Telefone</th>
                 <th>Online</th>
                 <th>Mensalidade</th>
                 <th>Último login</th>
@@ -2253,12 +2237,16 @@
           <input id="editFullName" class="auth-input" placeholder="Nome completo" />
         </div>
         <div>
-          <label class="auth-label">CPF</label>
-          <input id="editCpf" class="auth-input" placeholder="CPF" inputmode="numeric" />
+          <label class="auth-label">Data de nascimento</label>
+          <input id="editDob" class="auth-input" placeholder="dd/mm/aaaa" />
         </div>
         <div>
-          <label class="auth-label">E-mail</label>
-          <input id="editEmail" class="auth-input" placeholder="E-mail" inputmode="email" />
+          <label class="auth-label">Telefone</label>
+          <input id="editPhone" class="auth-input" placeholder="Telefone" />
+        </div>
+        <div>
+          <label class="auth-label">Login</label>
+          <input id="editLogin" class="auth-input" placeholder="Login" />
         </div>
         <div style="grid-column: 1 / -1;">
           <label class="auth-label">Nova senha (opcional)</label>
@@ -2267,7 +2255,7 @@
         </div>
       </div>
 
-<div class="admin-row" style="justify-content:flex-end; margin-top: 14px;">
+      <div class="admin-row" style="justify-content:flex-end; margin-top: 14px;">
         <button id="cancelEditUserBtn" class="admin-btn secondary" type="button">Cancelar</button>
         <button id="saveEditUserBtn" class="admin-btn" type="button" style="margin-left: 10px;">Salvar</button>
       </div>
@@ -4300,10 +4288,7 @@ Ata de reunião:
       const errEl = document.getElementById("loginError");
       const btn = document.getElementById("loginBtn");
       if (!login || !senha) {
-        const missing = [];
-        if (!login) missing.push("login");
-        if (!senha) missing.push("senha");
-        if (errEl) errEl.textContent = "Preencha: " + missing.join(" e ") + ".";
+        if (errEl) errEl.textContent = "Informe login e senha.";
         return;
       }
       if (errEl) errEl.textContent = "Conectando...";
@@ -4334,8 +4319,6 @@ Ata de reunião:
       set("signupDob", "");
       set("signupPhone", "");
       set("signupLogin", "");
-      set("signupCpf", "");
-      set("signupEmail", "");
       set("signupPassword", "");
       const err = document.getElementById("signupError");
       if (err) err.textContent = "";
@@ -4348,35 +4331,24 @@ Ata de reunião:
       const dob = (document.getElementById("signupDob")?.value || "").trim();
       const phone = (document.getElementById("signupPhone")?.value || "").trim();
       const login = (document.getElementById("signupLogin")?.value || "").trim();
-      const cpf = (document.getElementById("signupCpf")?.value || "").trim();
-      const email = (document.getElementById("signupEmail")?.value || "").trim();
       const password = (document.getElementById("signupPassword")?.value || "").trim();
 
       const errEl = document.getElementById("signupError");
       const btn = document.getElementById("signupBtn");
 
-      const missing = [];
-      if (!fullName) missing.push("nome completo");
-      if (!dob) missing.push("data de nascimento");
-      if (!phone) missing.push("telefone");
-      if (!login) missing.push("login");
-      if (!cpf) missing.push("CPF");
-      if (!email) missing.push("e-mail");
-      if (!password) missing.push("senha");
-
-      if (missing.length) {
-        if (errEl) errEl.textContent = "Preencha: " + missing.join(", ") + ".";
+      if (!fullName || !dob || !phone || !login || !password) {
+        if (errEl) errEl.textContent = "Preencha: nome completo, data de nascimento, telefone, login e senha.";
         return;
       }
 
-      if (errEl) errEl.textContent = "Cadastrando...";
+      if (errEl) errEl.textContent = "Cadastrando.";
       if (btn) btn.disabled = true;
 
       try {
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, phone, login, cpf, email, password })
+          body: JSON.stringify({ fullName, dob, phone, login, password })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
@@ -4384,13 +4356,14 @@ Ata de reunião:
           return;
         }
 
+        // Volta para o login e orienta o próximo passo
         showLogin();
         const lf = document.getElementById("loginField");
         if (lf) lf.value = login;
         const pf = document.getElementById("passwordField");
         if (pf) pf.value = "";
         const loginErr = document.getElementById("loginError");
-        if (loginErr) loginErr.textContent = "Cadastro realizado. Faça login para entrar.";
+        if (loginErr) loginErr.textContent = "Cadastro realizado. Para liberar o acesso, regularize com o administrador e, depois, faça login.";
         resetSignupForm();
       } catch (e) {
         if (errEl) errEl.textContent = "Falha ao conectar no servidor.";
@@ -4431,7 +4404,7 @@ Ata de reunião:
           await adminLoadAll();
           updateAdminLocalBackupBadge();
           await refreshLocalBackupFromServer();
-        } else if (me && me.role === "client") {
+        } else if (me && me.role === "nurse") {
           showNurse();
           startHeartbeat();
           updateNurseBar(me);
@@ -4444,40 +4417,35 @@ Ata de reunião:
     }
 
     function updateNurseBar(me) {
-      // Aceita tanto o formato {role, user:{...}} quanto o user direto
-      const user = (me && me.user) ? me.user : (me || {});
-      const name = user.fullName || "-";
-      const cpf = user.cpf || "-";
-      const email = user.email || "-";
-      const month = user.currentMonth || "";
-      const paidFlag = (user.isPaidThisMonth !== undefined) ? !!user.isPaidThisMonth
-        : (user.paidCurrentMonth !== undefined) ? !!user.paidCurrentMonth
+      // Aceita tanto o formato {role, user:{...}} quanto formato "achatado"
+      const u = (me && me.user && typeof me.user === "object") ? me.user : (me || {});
+      const name = (u.fullName || u.login || "-");
+      const login = (u.login || "-");
+      const paidFlag = (u.isPaidThisMonth !== undefined) ? !!u.isPaidThisMonth
+        : (u.paidCurrentMonth !== undefined) ? !!u.paidCurrentMonth
+        : (me && me.isPaidThisMonth !== undefined) ? !!me.isPaidThisMonth
+        : (me && me.paidCurrentMonth !== undefined) ? !!me.paidCurrentMonth
         : false;
-      const tLeft = Number(user.trialDaysLeft || 0);
 
-      const lbl = document.getElementById("nurseNameLabel");
+      const month = (me && me.currentMonth) ? me.currentMonth : (u.currentMonth || "");
+      const lbl = document.getElementById("nurseUserLabel");
       const lblLogin = document.getElementById("nurseLoginLabel");
       const pay = document.getElementById("nursePaymentLabel");
 
       if (lbl) lbl.textContent = name;
-      if (lblLogin) lblLogin.textContent = `${cpf} • ${email}`;
+      if (lblLogin) lblLogin.textContent = login;
 
       if (pay) {
-        if (tLeft > 0) {
-          pay.textContent = `Gratuidade – faltam ${tLeft} dias`;
-          pay.classList.remove("green","red");
-          pay.classList.add("gray");
-        } else {
-          pay.textContent = paidFlag ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Em atraso" + (month ? " (" + month + ")" : ""));
-          pay.classList.remove("green","red");
-          pay.classList.add(paidFlag ? "green" : "gray");
-        }
+        pay.textContent = paidFlag ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Em atraso" + (month ? " (" + month + ")" : ""));
+        pay.classList.remove("green","red");
+        pay.classList.add(paidFlag ? "green" : "red");
       }
     }
 
-// Eventos de login/logout
-    document.getElementById("loginForm")?.addEventListener("submit", (ev) => { ev.preventDefault(); doLogin(); });
-
+    // Eventos de login/logout
+    document.getElementById("loginBtn")?.addEventListener("click", doLogin);
+    document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
     document.getElementById("openSignupBtn")?.addEventListener("click", () => {
       resetSignupForm();
       showSignup();
@@ -4623,19 +4591,16 @@ Ata de reunião:
           amountsEl.textContent = txt;
         }
 
-        const setPayBtn = (id, label, amount) => {
-          const b = document.getElementById(id);
-          if (!b) return;
-          b.onclick = () => {
-            const a = moneyBRL(amount);
-            alert(label + " - Valor: " + a + ".\nApós o pagamento, envie o comprovante ao administrador para liberação/baixa.");
-          };
-        };
+const setPayBtn = (id, label, amount, plan) => {
+  const b = document.getElementById(id);
+  if (!b) return;
+  b.onclick = () => startInfinitePayPayment({ label, amount, plan });
+};
 
-        setPayBtn("payMonthlyPixBtn", "PIX mensal", final.monthlyPix);
-        setPayBtn("payMonthlyCardBtn", "Cartão mensal", final.monthlyCard);
-        setPayBtn("payAnnualPixBtn", "PIX anual", final.annualPix);
-        setPayBtn("payAnnualCardBtn", "Cartão anual", final.annualCard);
+setPayBtn("payMonthlyPixBtn", "PIX mensal", final.monthlyPix, "MONTHLY_PIX");
+setPayBtn("payMonthlyCardBtn", "Cartão mensal", final.monthlyCard, "MONTHLY_CARD");
+setPayBtn("payAnnualPixBtn", "PIX anual", final.annualPix, "ANNUAL_PIX");
+setPayBtn("payAnnualCardBtn", "Cartão anual", final.annualCard, "ANNUAL_CARD");
 
         if (hintEl) {
           hintEl.textContent = "Regras: cada subusuário cadastrado gera 25% de desconto, limitado a 100%, desde que a mensalidade do mês atual esteja em dia.";
@@ -4645,11 +4610,138 @@ Ata de reunião:
       }
     }
 
+
+// ============================
+// Pagamento InfinitePay (auto-liberação)
+// - Ao clicar em Pagamento (ou em um dos botões de plano), abre o link retornado pelo backend
+// - Em seguida, faz polling em /api/payment/status para liberar automaticamente quando virar PAGO
+// ============================
+
+let paymentPollTimer = null;
+let paymentPollInFlight = false;
+
+function getCpfForPayment() {
+  // Preferência: login do usuário (em geral é CPF). Usa somente dígitos.
+  const login = (document.getElementById("nurseLoginLabel")?.textContent || "").trim();
+  const cpf = (login || "").replace(/\D+/g, "");
+  return cpf;
+}
+
+function stopPaymentPolling() {
+  if (paymentPollTimer) {
+    clearInterval(paymentPollTimer);
+    paymentPollTimer = null;
+  }
+  paymentPollInFlight = false;
+}
+
+async function fetchPaymentStatus(cpf) {
+  const resp = await fetch(BACKEND_URL + "/api/payment/status?cpf=" + encodeURIComponent(cpf), { method: "GET" });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data?.error || "Falha");
+  return data;
+}
+
+function setPaymentUiPaid() {
+  const statusEl = document.getElementById("clientBillingStatus");
+  const hintEl = document.getElementById("clientBillingHint");
+  const payPill = document.getElementById("nursePaymentLabel");
+
+  const buttons = ["payMonthlyPixBtn","payMonthlyCardBtn","payAnnualPixBtn","payAnnualCardBtn","openClientBillingBtn"];
+  for (const id of buttons) {
+    const b = document.getElementById(id);
+    if (b) b.disabled = true;
+  }
+
+  if (statusEl) statusEl.textContent = "Pagamento confirmado. Acesso liberado automaticamente.";
+  if (hintEl) hintEl.textContent = "Você já pode usar o sistema normalmente.";
+  if (payPill) {
+    payPill.textContent = "Em dia";
+    payPill.classList.remove("red");
+    payPill.classList.add("green");
+  }
+}
+
+function startPaymentPolling(cpf) {
+  stopPaymentPolling();
+
+  const tick = async () => {
+    if (paymentPollInFlight) return;
+    paymentPollInFlight = true;
+    try {
+      const st = await fetchPaymentStatus(cpf);
+      const status = String(st?.status || "").toUpperCase();
+      if (status === "PAGO") {
+        setPaymentUiPaid();
+        stopPaymentPolling();
+        // Atualiza dados do modal (descontos, etc)
+        try { loadClientBilling(); } catch {}
+      }
+    } catch (e) {
+      // erro neutro: não faz nada
+    } finally {
+      paymentPollInFlight = false;
+    }
+  };
+
+  // dispara imediatamente e depois a cada 5s
+  tick();
+  paymentPollTimer = setInterval(tick, 5000);
+}
+
+async function startInfinitePayPayment({ label, amount, plan }) {
+  const statusEl = document.getElementById("clientBillingStatus");
+  const hintEl = document.getElementById("clientBillingHint");
+  const cpf = getCpfForPayment();
+
+  if (!cpf || cpf.length < 11) {
+    alert("Login inválido para pagamento. Use CPF como login.");
+    return;
+  }
+
+  if (statusEl) statusEl.textContent = "Gerando link de pagamento...";
+  if (hintEl) hintEl.textContent = "Após o pagamento, a liberação será automática.";
+
+  // Sempre inicia polling (caso o usuário já tenha pago em outra aba/dispositivo)
+  startPaymentPolling(cpf);
+
+  try {
+    const url = BACKEND_URL + "/api/payment/link?cpf=" + encodeURIComponent(cpf) + (plan ? ("&plan=" + encodeURIComponent(plan)) : "");
+    const resp = await fetch(url, { method: "GET" });
+    const data = await resp.json().catch(() => ({}));
+
+    if (!resp.ok) {
+      if (statusEl) statusEl.textContent = data?.error || "Não foi possível iniciar o pagamento.";
+      return;
+    }
+
+    if (data?.alreadyPaid) {
+      setPaymentUiPaid();
+      stopPaymentPolling();
+      return;
+    }
+
+    const paymentUrl = String(data?.paymentUrl || "").trim();
+    if (!paymentUrl) {
+      if (statusEl) statusEl.textContent = "Não foi possível gerar o link de pagamento.";
+      return;
+    }
+
+    // Abre o checkout
+    window.open(paymentUrl, "_blank", "noopener,noreferrer");
+
+    if (statusEl) statusEl.textContent = (label ? (label + " iniciado.") : "Pagamento iniciado.");
+    if (hintEl) hintEl.textContent = "Aguardando confirmação automática do pagamento...";
+  } catch (e) {
+    if (statusEl) statusEl.textContent = "Falha ao iniciar o pagamento.";
+  }
+}
+
     document.getElementById("addFriendBtn")?.addEventListener("click", openAddFriendModal);
     document.getElementById("closeAddFriendModalBtn")?.addEventListener("click", closeAddFriendModal);
     document.getElementById("saveFriendBtn")?.addEventListener("click", saveFriend);
 
-    document.getElementById("openClientBillingBtn")?.addEventListener("click", openClientBillingModal);
+    document.getElementById("openClientBillingBtn")?.addEventListener("click", () => { openClientBillingModal(); startInfinitePayPayment({ label: "Pagamento", amount: 0, plan: "MONTHLY_PIX" }); });
     document.getElementById("closeClientBillingModalBtn")?.addEventListener("click", closeClientBillingModal);
 
 
@@ -9804,9 +9896,9 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
       tbody.innerHTML = "";
 
       const q = (document.getElementById("adminSearch")?.value || "").trim().toLowerCase();
-      const rows = (Array.isArray(adminState.users) ? adminState.users : []).filter(u => {
+      const rows = ADMIN_CACHE_USERS.filter(u => {
         if (!q) return true;
-        const s = `${u.fullName||""} ${u.cpf||""} ${u.email||""}`.toLowerCase();
+        const s = `${u.fullName||""} ${u.login||""} ${u.phone||""}`.toLowerCase();
         return s.includes(q);
       });
 
@@ -9817,11 +9909,11 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
         const tdName = document.createElement("td");
         tdName.textContent = u.fullName || "-";
 
-        const tdCpf = document.createElement("td");
-        tdCpf.textContent = u.cpf || "-";
+        const tdLogin = document.createElement("td");
+        tdLogin.textContent = u.login || "-";
 
-        const tdEmail = document.createElement("td");
-        tdEmail.textContent = u.email || "-";
+        const tdPhone = document.createElement("td");
+        tdPhone.textContent = u.phone || "-";
 
         const tdOnline = document.createElement("td");
         const on = isOnline(u.lastSeenAt);
@@ -9832,19 +9924,10 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
 
         const tdPay = document.createElement("td");
         const paid = (u && (u.isPaidThisMonth !== undefined ? !!u.isPaidThisMonth : !!u.paidCurrentMonth));
-        const tLeft = Number(u?.trialDaysLeft || 0);
-
         const pillPay = document.createElement("button");
         pillPay.type = "button";
-
-        if (tLeft > 0) {
-          pillPay.className = "pill gray";
-          pillPay.textContent = `Gratuidade – faltam ${tLeft} dias`;
-        } else {
-          pillPay.className = "pill " + (paid ? "green" : "gray");
-          pillPay.textContent = paid ? "Em dia" : "Em atraso";
-        }
-
+        pillPay.className = "pill " + (paid ? "green" : "red");
+        pillPay.textContent = paid ? "Em dia" : "Em atraso";
         pillPay.title = "Clique para marcar pagamento do mês";
         pillPay.addEventListener("click", async () => {
           const month = prompt("Mês no formato AAAA-MM", currentYYYYMM());
@@ -9889,19 +9972,19 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
         btnHist.addEventListener("click", async () => {
           try {
             const data = await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/payments`);
-            openPaymentsModal(u, data?.payments || [], data?.month || currentYYYYMM());
+            openPaymentsModal(u, data.payments || []);
           } catch (e) {
             const st = document.getElementById("adminStatus");
             if (st) st.textContent = String(e.message || e);
           }
         });
 
-        const btnToggle = document.createElement("button");
-        btnToggle.className = "admin-btn " + (active ? "danger" : "secondary");
-        btnToggle.type = "button";
-        btnToggle.textContent = active ? "Bloquear" : "Ativar";
-        btnToggle.addEventListener("click", async () => {
-          if (active && !confirm("Bloquear este usuário?")) return;
+        const btnActive = document.createElement("button");
+        btnActive.type = "button";
+        btnActive.className = "pill " + (active ? "green" : "red");
+        btnActive.textContent = active ? "Ativado" : "Desativado";
+        btnActive.title = "Clique para ativar/desativar. Se desativado ou em débito, o acesso do usuário será bloqueado.";
+        btnActive.addEventListener("click", async () => {
           try {
             await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/active`, {
               method: "POST",
@@ -9916,12 +9999,33 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
           }
         });
 
-        const btnDel = document.createElement("button");
-        btnDel.className = "admin-btn danger";
-        btnDel.type = "button";
-        btnDel.textContent = "Excluir";
-        btnDel.addEventListener("click", async () => {
-          if (!confirm("Excluir este usuário?")) return;
+        const btnReset = document.createElement("button");
+        btnReset.className = "admin-btn secondary";
+        btnReset.type = "button";
+        btnReset.textContent = "Reset senha";
+        btnReset.addEventListener("click", async () => {
+          const newPass = prompt("Nova senha (será salva)", "");
+          if (!newPass) return;
+          try {
+            await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/reset-password`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password: newPass })
+            });
+            await adminLoadAll();
+            await refreshLocalBackupFromServer();
+          } catch (e) {
+            const st = document.getElementById("adminStatus");
+            if (st) st.textContent = String(e.message || e);
+          }
+        });
+
+        const btnDelete = document.createElement("button");
+        btnDelete.className = "admin-btn danger";
+        btnDelete.type = "button";
+        btnDelete.textContent = "Excluir";
+        btnDelete.addEventListener("click", async () => {
+          if (!confirm("Excluir este usuário? O histórico de pagamentos será preservado.")) return;
           try {
             await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}`, { method: "DELETE" });
             await adminLoadAll();
@@ -9934,37 +10038,70 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
 
         actions.appendChild(btnEdit);
         actions.appendChild(btnHist);
-        actions.appendChild(btnToggle);
-        actions.appendChild(btnDel);
+        actions.appendChild(btnActive);
+        actions.appendChild(btnReset);
+        actions.appendChild(btnDelete);
         tdActions.appendChild(actions);
 
         tr.appendChild(tdName);
-        tr.appendChild(tdCpf);
-        tr.appendChild(tdEmail);
+        tr.appendChild(tdLogin);
+        tr.appendChild(tdPhone);
         tr.appendChild(tdOnline);
         tr.appendChild(tdPay);
         tr.appendChild(tdLast);
         tr.appendChild(tdActions);
 
-        if (!active) tr.style.opacity = "0.6";
-
         tbody.appendChild(tr);
       }
     }
 
-function openEditUserModal(user) {
+    function openPaymentsModal(user, payments) {
+      const modal = document.getElementById("paymentsModal");
+      const subtitle = document.getElementById("paymentsModalSubtitle");
+      const tbody = document.getElementById("paymentsTbody");
+      if (!modal || !tbody) return;
+      if (subtitle) subtitle.textContent = `${user.fullName || "-"} • ${user.login || "-"}`;
+
+      tbody.innerHTML = "";
+      const list = Array.isArray(payments) ? payments.slice().reverse() : [];
+      for (const p of list) {
+        const tr = document.createElement("tr");
+        const tdM = document.createElement("td");
+        const tdAt = document.createElement("td");
+        const tdAm = document.createElement("td");
+        const tdMe = document.createElement("td");
+        const tdNo = document.createElement("td");
+        tdM.textContent = p.month || "-";
+        tdAt.textContent = fmtDt(p.paidAt);
+        tdAm.textContent = (p.amount !== undefined && p.amount !== null && String(p.amount).trim() !== "") ? String(p.amount) : "-";
+        tdMe.textContent = p.method || "-";
+        tdNo.textContent = p.notes || "-";
+        tr.appendChild(tdM); tr.appendChild(tdAt); tr.appendChild(tdAm); tr.appendChild(tdMe); tr.appendChild(tdNo);
+        tbody.appendChild(tr);
+      }
+
+      modal.classList.remove("hidden");
+    }
+
+        // =========================
+    // EDITAR USUÁRIO (ADMIN)
+    // =========================
+    let EDIT_USER_ID = null;
+
+    function openEditUserModal(user) {
       EDIT_USER_ID = user?.id || null;
-      document.getElementById("editUserSubtitle").textContent = `${user.fullName || "-"} • ${user.cpf || "-"} • ${user.email || "-"}`;
+      document.getElementById("editUserSubtitle").textContent = `${user.fullName || "-"} • ${user.login || "-"}`;
 
       document.getElementById("editFullName").value = user.fullName || "";
-      document.getElementById("editCpf").value = user.cpf || "";
-      document.getElementById("editEmail").value = user.email || "";
+      document.getElementById("editDob").value = user.dob || "";
+      document.getElementById("editPhone").value = user.phone || "";
+      document.getElementById("editLogin").value = user.login || "";
       document.getElementById("editPassword").value = "";
 
       document.getElementById("editUserModal").classList.remove("hidden");
     }
 
-function closeEditUserModal() {
+    function closeEditUserModal() {
       EDIT_USER_ID = null;
       document.getElementById("editUserModal")?.classList.add("hidden");
     }
@@ -9975,28 +10112,21 @@ function closeEditUserModal() {
       try {
         if (!EDIT_USER_ID) throw new Error("Usuário inválido.");
         const fullName = (document.getElementById("editFullName")?.value || "").trim();
-        const cpf = (document.getElementById("editCpf")?.value || "").trim();
-        const email = (document.getElementById("editEmail")?.value || "").trim();
+        const dob = (document.getElementById("editDob")?.value || "").trim();
+        const phone = (document.getElementById("editPhone")?.value || "").trim();
+        const login = (document.getElementById("editLogin")?.value || "").trim();
         const password = (document.getElementById("editPassword")?.value || "").trim();
 
-        if (!fullName || !cpf || !email) {
-          alert("Preencha: nome completo, CPF e e-mail.");
+        if (!fullName || !dob || !phone || !login) {
+          alert("Preencha: nome completo, data de nascimento, telefone e login.");
           return;
         }
 
         await adminFetchJson(`/api/admin/users/${encodeURIComponent(EDIT_USER_ID)}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, cpf, email, password })
+          body: JSON.stringify({ fullName, dob, phone, login, password })
         });
-
-        closeEditUserModal();
-        await adminLoadAll();
-        await refreshLocalBackupFromServer();
-      } catch (e) {
-        alert(String(e?.message || e || "Falha ao salvar."));
-      }
-    });
 
         closeEditUserModal();
         await adminLoadAll();
@@ -10100,41 +10230,29 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       const dob = (document.getElementById("newDob")?.value || "").trim();
       const phone = (document.getElementById("newPhone")?.value || "").trim();
       const login = (document.getElementById("newLogin")?.value || "").trim();
-      const cpf = (document.getElementById("newCpf")?.value || "").trim();
-      const email = (document.getElementById("newEmail")?.value || "").trim();
       const password = (document.getElementById("newPassword")?.value || "").trim();
-
       const st = document.getElementById("createUserStatus");
-      const missing = [];
-      if (!fullName) missing.push("nome completo");
-      if (!dob) missing.push("data de nascimento");
-      if (!phone) missing.push("telefone");
-      if (!login) missing.push("login");
-      if (!cpf) missing.push("CPF");
-      if (!email) missing.push("e-mail");
-      if (!password) missing.push("senha");
-
-      if (missing.length) {
-        if (st) st.textContent = "Preencha: " + missing.join(", ") + ".";
+      if (!fullName || !dob || !phone || !login || !password) {
+        if (st) st.textContent = "Preencha nome completo, data de nascimento, telefone, login e senha.";
         return;
       }
-
       if (st) st.textContent = "Cadastrando...";
       try {
         await adminFetchJson("/api/admin/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, phone, login, cpf, email, password })
+          body: JSON.stringify({ fullName, dob, phone, login, password })
         });
         if (st) st.textContent = "Usuário cadastrado.";
-        ["newFullName","newDob","newPhone","newLogin","newCpf","newEmail","newPassword"].forEach(id => {
+        // Limpa campos
+        ["newFullName","newDob","newPhone","newLogin","newPassword"].forEach(id => {
           const el = document.getElementById(id);
           if (el) el.value = "";
         });
         await adminLoadAll();
-        await refreshLocalBackupFromServer();
+            await refreshLocalBackupFromServer();
       } catch (e) {
-        if (st) st.textContent = String(e?.message || e || "Falha ao cadastrar.");
+        if (st) st.textContent = String(e.message || e);
       }
     });
 

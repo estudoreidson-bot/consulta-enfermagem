@@ -120,8 +120,34 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Configurações básicas
-app.use(cors());
-app.use(bodyParser.json({ limit: "25mb" }));
+/**
+ * CORS restrito:
+ * - Configure ALLOWED_ORIGIN com o domínio do frontend (ex.: https://reimed.netlify.app)
+ * - Pode ser lista separada por vírgula.
+ * - Se vazio, permite apenas requisições sem Origin (ex.: curl) e mesma origem em ambientes típicos.
+ */
+const ALLOWED_ORIGIN = String(process.env.ALLOWED_ORIGIN || "").trim();
+const ALLOWED_ORIGINS = ALLOWED_ORIGIN ? ALLOWED_ORIGIN.split(",").map(s => s.trim()).filter(Boolean) : [];
+
+app.use(cors({
+  origin: (origin, cb) => {
+    // Sem Origin (server-to-server, curl)
+    if (!origin) return cb(null, true);
+    if (!ALLOWED_ORIGINS.length) {
+      // Modo seguro padrão: se não configurado, bloqueia origens desconhecidas
+      // (evita CORS aberto em produção por acidente).
+      return cb(new Error("CORS"), false);
+    }
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    return cb(new Error("CORS"), false);
+  },
+  methods: ["GET","POST","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization","X-Webhook-Signature","X-Infinitepay-Signature","X-Signature","X-Signature-256"],
+  credentials: true,
+  maxAge: 600
+}));
+
+app.use(bodyParser.json({ limit: "25mb", verify: (req, res, buf) => { try { req.rawBody = buf; } catch {} } }));
 app.use(bodyParser.urlencoded({ limit: "25mb", extended: true }));
 
 // Servir o index.html apenas na rota raiz (útil para testes locais)
@@ -536,6 +562,7 @@ function normalizeDb(db) {
   out.users = Array.isArray(out.users) ? out.users : [];
   out.payments = Array.isArray(out.payments) ? out.payments : [];
   out.audit = Array.isArray(out.audit) ? out.audit : [];
+  out.infinitepayOrders = Array.isArray(out.infinitepayOrders) ? out.infinitepayOrders : [];
   out.rosterConfigs = (out.rosterConfigs && typeof out.rosterConfigs === "object") ? out.rosterConfigs : {};
   out.rosterSchedules = Array.isArray(out.rosterSchedules) ? out.rosterSchedules : [];
   return out;
@@ -771,49 +798,6 @@ setTimeout(() => { bootstrapFromGithubIfEmpty(); }, 1500).unref?.();
 
 let DB = loadDb();
 
-function migrateUsersSchema() {
-  let dirty = false;
-  if (!Array.isArray(DB.users)) DB.users = [];
-  for (const u of DB.users) {
-    if (!u || u.isDeleted) continue;
-
-    // role default
-    if (!u.role) { u.role = "client"; dirty = true; }
-
-    // CPF: tenta derivar do login legado quando possível
-    if (!u.cpf) {
-      const d = normalizeCpf(u.login);
-      if (d) { u.cpf = d; dirty = true; }
-    } else {
-      const d = normalizeCpf(u.cpf);
-      if (d !== u.cpf) { u.cpf = d; dirty = true; }
-    }
-
-    // Email default
-    if (u.email === undefined) { u.email = ""; dirty = true; }
-    else {
-      const e = normalizeEmail(u.email);
-      if (e !== String(u.email)) { u.email = e; dirty = true; }
-    }
-
-    // trial: se não existir, assume 15 dias a partir do createdAt quando possível
-    if (!u.trialEndsAt) {
-      let base = 0;
-      try { base = u.createdAt ? new Date(u.createdAt).getTime() : 0; } catch {}
-      if (!base) base = Date.now();
-      u.trialEndsAt = new Date(base + (15 * 24 * 60 * 60 * 1000)).toISOString();
-      dirty = true;
-    }
-
-    // flags
-    if (u.isActive === undefined) { u.isActive = true; dirty = true; }
-    if (u.isDeleted === undefined) { u.isDeleted = false; dirty = true; }
-  }
-  if (dirty) saveDb(DB, "schema_migration");
-}
-migrateUsersSchema();
-
-
 // Sessões em memória
 const SESSIONS = new Map(); // token -> { role, userId, createdAt, lastSeenAt }
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12; // 12h
@@ -937,60 +921,14 @@ function cleanupSessions() {
 }
 setInterval(cleanupSessions, 1000 * 60 * 10).unref?.();
 
-function normalizeCpf(input) {
-  const d = onlyDigits(String(input || "").trim());
-  return d;
-}
-
-function normalizeEmail(input) {
-  const raw = String(input || "").trim().toLowerCase();
-  return raw;
-}
-
-// Identificador de login: CPF (preferencial) ou e-mail.
-// Mantém compatibilidade com banco legado (campo "login") quando necessário.
-function findUserByIdentifier(identifier) {
-  const raw = String(identifier || "").trim();
-  if (!raw) return null;
-
-  const email = normalizeEmail(raw);
-  if (email.includes("@")) {
-    const byEmail = DB.users.find(u => !u?.isDeleted && normalizeEmail(u.email) === email) || null;
-    if (byEmail) return byEmail;
-  }
-
-  const cpf = normalizeCpf(raw);
-  if (cpf) {
-    // Novo padrão: campo cpf
-    const byCpf = DB.users.find(u => !u?.isDeleted && normalizeCpf(u.cpf) === cpf) || null;
-    if (byCpf) return byCpf;
-
-    // Compatibilidade: campo login antigo contendo CPF
-    const byLegacyLogin = DB.users.find(u => !u?.isDeleted && normalizeCpf(u.login) === cpf) || null;
-    if (byLegacyLogin) return byLegacyLogin;
-  }
-
-  // Último fallback: login legado "texto"
+function findUserByLogin(login) {
+  const raw = String(login || "").trim();
   const l = raw.toLowerCase();
-  return DB.users.find(u => !u?.isDeleted && String(u.login || "").trim().toLowerCase() === l) || null;
-}
-
-function trialDaysLeft(user) {
-  try {
-    const endIso = String(user?.trialEndsAt || "").trim();
-    if (!endIso) return 0;
-    const end = new Date(endIso).getTime();
-    if (!Number.isFinite(end)) return 0;
-    const diff = end - Date.now();
-    if (diff <= 0) return 0;
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  } catch {
-    return 0;
-  }
-}
-
-function isTrialActive(user) {
-  return trialDaysLeft(user) > 0;
+  const direct = DB.users.find(u => String(u.login || "").trim().toLowerCase() === l) || null;
+  if (direct) return direct;
+  const ln = onlyDigits(raw);
+  if (!ln) return null;
+  return DB.users.find(u => onlyDigits(String(u.login || "").trim()) === ln) || null;
 }
 
 function isUserPaidThisMonth(userId) {
@@ -1075,7 +1013,7 @@ function authFromReq(req) {
 
   try { sess.lastSeenAt = Date.now(); } catch {}
 
-  return { role: String(sess.role || "client"), token, user };
+  return { role: "nurse", token, user };
 }
 
 
@@ -1122,9 +1060,6 @@ function requirePaidOrAdmin(req, res, next) {
   if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
   if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
 
-  // Gratuidade: 15 dias após o cadastro (contagem regressiva em dias)
-  if (isTrialActive(user)) return next();
-
   if (!isUserPaidThisMonth(user.id)) {
     return res.status(402).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
   }
@@ -1138,166 +1073,129 @@ function requirePaidOrAdmin(req, res, next) {
 app.post("/api/auth/signup", (req, res) => {
   try {
     const fullName = String(req.body?.fullName || "").trim();
-    const cpf = normalizeCpf(req.body?.cpf);
-    const email = normalizeEmail(req.body?.email);
+    const dob = String(req.body?.dob || "").trim();
+    const phone = String(req.body?.phone || "").trim();
+    const login = String(req.body?.login || "").trim();
     const password = String(req.body?.password || "").trim();
 
-    if (!fullName || !cpf || !email || !password) {
-      return res.status(400).json({ error: "Nome completo, CPF, e-mail e senha são obrigatórios." });
+    if (!fullName || !dob || !phone || !login || !password) {
+      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, login e senha são obrigatórios." });
     }
 
-    // CPF único
-    const existingCpf = DB.users.find(u => !u?.isDeleted && normalizeCpf(u.cpf) === cpf);
-    if (existingCpf) return res.status(409).json({ error: "Já existe usuário com este CPF." });
+    // Login não precisa ser CPF. Permite letras, números e alguns caracteres seguros.
+    // Evita espaços e caracteres que possam causar confusão em URLs/armazenamento.
+    if (login.length < 3 || login.length > 40) {
+      return res.status(400).json({ error: "Login inválido. Use entre 3 e 40 caracteres." });
+    }
+    if (!/^[A-Za-z0-9._@-]+$/.test(login)) {
+      return res.status(400).json({ error: "Login inválido. Use apenas letras, números, ponto, sublinhado, hífen ou @." });
+    }
 
-    // E-mail único
-    const existingEmail = DB.users.find(u => !u?.isDeleted && normalizeEmail(u.email) === email);
-    if (existingEmail) return res.status(409).json({ error: "Já existe usuário com este e-mail." });
+    if (password.length < 4) {
+      return res.status(400).json({ error: "Senha muito curta. Use pelo menos 4 caracteres." });
+    }
+
+    if (findUserByLogin(login)) {
+      return res.status(409).json({ error: "Já existe usuário com este login." });
+    }
 
     const salt = crypto.randomBytes(10).toString("hex");
-    const now = nowIso();
+    const passwordHash = sha256(`${salt}:${password}`);
 
     const user = {
-      id: makeId("u"),
+      id: makeId("usr"),
       fullName,
-      cpf,
-      email,
-      role: "client",
+      dob,
+      phone,
+      login,
+      parentUserId: "",
+      commissionRate: null,
+      salt,
+      passwordHash,
       isActive: true,
       isDeleted: false,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: nowIso(),
       lastLoginAt: "",
       lastSeenAt: "",
-      // Sessão ativa (1 dispositivo)
       activeSessionHash: "",
       activeDeviceId: "",
       activeSessionCreatedAt: "",
       activeSessionLastSeenAt: "",
-      activeSessionExpiresAt: "",
-      // Senha
-      salt,
-      passwordHash: sha256(`${salt}:${password}`),
-      // Gratuidade: 15 dias
-      trialEndsAt: new Date(Date.now() + (15 * 24 * 60 * 60 * 1000)).toISOString()
+      activeSessionExpiresAt: ""
     };
 
     DB.users.push(user);
     saveDb(DB, "signup");
-
-    audit("user_signup", user.id, `Cadastro: ${user.fullName} (${user.cpf})`);
-    return res.json({ ok: true });
+    audit("user_signup", user.id, `Auto-cadastro do usuário ${user.login}`);
+    return res.json({ ok: true, id: user.id });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha ao cadastrar." });
+    return res.status(500).json({ error: "Falha ao cadastrar usuário." });
   }
 });
 
 app.post("/api/auth/login", (req, res) => {
   try {
-    const identifier = String(req.body?.login || req.body?.identifier || req.body?.cpf || req.body?.email || "").trim();
-    const password = String(req.body?.password || "").trim();
-    const deviceId = String(req.body?.deviceId || "").trim();
+    const login = String(req.body?.login || "").trim();
+    const senha = String(req.body?.senha || "").trim();
+    if (!login || !senha) return res.status(400).json({ error: "Login e senha são obrigatórios." });
 
-    if (!identifier || !password) return res.status(400).json({ error: "Informe CPF ou e-mail e senha." });
-    if (!deviceId) return res.status(400).json({ error: "Dispositivo inválido. Atualize a página e tente novamente.", code: "DEVICE_INVALID" });
+    const deviceId = getDeviceIdFromReq(req);
+    if (!deviceId) return res.status(400).json({ error: "Dispositivo inválido. Atualize a página e tente novamente." });
 
-    // Bootstrap: se não existir administrador cadastrado ainda, permite primeiro acesso via credenciais legadas
-    const hasAdmin = DB.users.some(u => !u?.isDeleted && String(u.role || "") === "admin");
-    if (!hasAdmin) {
-      const idDigits = normalizeCpf(identifier);
-      const passDigits = onlyDigits(password);
-      const okLogin = (normalizeCpf(ADMIN_LOGIN) && idDigits && idDigits === normalizeCpf(ADMIN_LOGIN))
-        || (ADMIN_LOGIN_N && idDigits && idDigits === String(ADMIN_LOGIN_N));
-      const okPass = (ADMIN_PASSWORD_N && passDigits && passDigits === String(ADMIN_PASSWORD_N));
-      if (okLogin && okPass) {
-        const now = nowIso();
-        const salt = crypto.randomBytes(10).toString("hex");
-        const adminUser = {
-          id: makeId("u"),
-          fullName: "Administrador",
-          cpf: String(ADMIN_LOGIN_N || idDigits || "").padStart(11, "0"),
-          email: "admin@local",
-          role: "admin",
-          isActive: true,
-          isDeleted: false,
-          createdAt: now,
-          updatedAt: now,
-          lastLoginAt: "",
-          lastSeenAt: "",
-          activeSessionHash: "",
-          activeDeviceId: "",
-          activeSessionCreatedAt: "",
-          activeSessionLastSeenAt: "",
-          activeSessionExpiresAt: "",
-          salt,
-          passwordHash: sha256(`${salt}:${password}`),
-          trialEndsAt: new Date(Date.now() + (15 * 24 * 60 * 60 * 1000)).toISOString()
-        };
-        DB.users.push(adminUser);
-        saveDb(DB, "bootstrap_admin");
-        audit("admin_bootstrap", adminUser.id, "Administrador inicial criado por bootstrap.");
+    // Admin (aceita com ou sem pontuação)
+    const loginN = onlyDigits(login);
+    const senhaN = onlyDigits(senha);
+    if ((login === ADMIN_LOGIN && senha === ADMIN_PASSWORD) || (loginN && senhaN && loginN === ADMIN_LOGIN_N && (senhaN === ADMIN_PASSWORD_N || senhaN === ADMIN_PASSWORD_ALT_N))) {
+      const token = createSession("admin", "admin", deviceId);
+      audit("admin_login", "admin", "Login do administrador");
+      return res.json({ token, role: "admin", login: ADMIN_LOGIN, currentMonth: currentYYYYMM() });
+    }
+
+    // Usuário enfermeiro
+    const user = findUserByLogin(login);
+    if (!user || user.isDeleted) return res.status(401).json({ error: "Credenciais inválidas." });
+    if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: usuário inativo. Procure o administrador." });
+
+    const computed = sha256(`${user.salt || ""}:${senha}`);
+    if (computed !== user.passwordHash) return res.status(401).json({ error: "Credenciais inválidas." });
+
+    // Bloqueio por mensalidade em débito
+    if (!isUserPaidThisMonth(user.id)) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
+
+    // Regra 1 pessoa por conta (1 dispositivo por vez)
+    // - Ao fazer login em um novo dispositivo, a sessão anterior é encerrada automaticamente.
+    // - O dispositivo antigo será deslogado na próxima requisição (401 com code SESSION_REPLACED).
+    if (user.activeSessionHash) {
+      if (!isUserActiveSessionValid(user)) {
+        clearUserActiveSession(user, "auto_expire_on_login");
+      } else if (String(user.activeDeviceId || "") !== deviceId) {
+        audit("nurse_session_replaced", user.id, `Sessão substituída: ${user.activeDeviceId || "-"} -> ${deviceId}`);
       }
     }
 
-    const user = findUserByIdentifier(identifier);
-    if (!user || user.isDeleted) return res.status(401).json({ error: "Login ou senha inválidos." });
-
-    const salt = String(user.salt || "");
-    const expected = String(user.passwordHash || "");
-    const attempt = sha256(`${salt}:${password}`);
-    if (!expected || attempt !== expected) return res.status(401).json({ error: "Login ou senha inválidos." });
-
-    // Impede login se conta inativa (fora da gratuidade e sem pagamento)
-    if (!user.isActive) {
-      return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
-    }
-
-    const role = String(user.role || "client");
-
-    // Remove tokens antigos e cria nova sessão (1 dispositivo)
+    // Remove tokens antigos em memória (se existirem) e cria nova sessão
     invalidateUserSessions(user.id);
 
-    const token = createSession(role, user.id, deviceId);
+    const token = createSession("nurse", user.id, deviceId);
     setUserActiveSession(user, token, deviceId);
 
     user.lastLoginAt = nowIso();
     user.lastSeenAt = nowIso();
-    user.updatedAt = nowIso();
 
-    saveDb(DB, "login");
-    audit(role === "admin" ? "admin_login" : "client_login", user.id, `Login ${role}: ${user.fullName} (${user.cpf || user.email || ""})`);
-
-    if (role === "admin") {
-      return res.json({ token, role: "admin" });
-    }
-
-    const month = currentYYYYMM();
-    const paid = isUserPaidThisMonth(user.id);
-    const tLeft = trialDaysLeft(user);
+    saveDb(DB, "nurse_login");
+    audit("nurse_login", user.id, `Login do usuário ${user.login}`);
 
     return res.json({
       token,
-      role: "client",
+      role: "nurse",
       fullName: user.fullName,
-      cpf: user.cpf || "",
-      email: user.email || "",
-      currentMonth: month,
-      isPaidThisMonth: paid,
-      paidCurrentMonth: paid,
-      trialDaysLeft: tLeft,
-      trialEndsAt: user.trialEndsAt || "",
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        cpf: user.cpf || "",
-        email: user.email || "",
-        currentMonth: month,
-        isPaidThisMonth: paid,
-        paidCurrentMonth: paid,
-        trialDaysLeft: tLeft,
-        trialEndsAt: user.trialEndsAt || ""
-      }
+      login: user.login,
+      phone: user.phone,
+      currentMonth: currentYYYYMM(),
+      isPaidThisMonth: isUserPaidThisMonth(user.id),
+      paidCurrentMonth: isUserPaidThisMonth(user.id),
+      user: { id: user.id, fullName: user.fullName, login: user.login, phone: user.phone, currentMonth: currentYYYYMM(), isPaidThisMonth: isUserPaidThisMonth(user.id), paidCurrentMonth: isUserPaidThisMonth(user.id) }
     });
   } catch (e) {
     console.error(e);
@@ -1307,27 +1205,19 @@ app.post("/api/auth/login", (req, res) => {
 
 
 app.get("/api/auth/me", requireAuth, (req, res) => {
-  const r = String(req.auth?.role || "");
-  if (r === "admin") return res.json({ role: "admin" });
+  const role = req.auth.role;
+  if (role === "admin") return res.json({ role: "admin" });
 
   const u = req.auth.user;
-  const month = currentYYYYMM();
-  const paid = isUserPaidThisMonth(u.id);
-  const tLeft = trialDaysLeft(u);
-
   return res.json({
-    role: "client",
-    user: {
-      id: u.id,
-      fullName: u.fullName,
-      cpf: u.cpf || "",
-      email: u.email || "",
-      currentMonth: month,
-      isPaidThisMonth: paid,
-      paidCurrentMonth: paid,
-      trialDaysLeft: tLeft,
-      trialEndsAt: u.trialEndsAt || ""
-    }
+    role: "nurse",
+    fullName: u.fullName,
+    login: u.login,
+    phone: u.phone,
+    currentMonth: currentYYYYMM(),
+    isPaidThisMonth: isUserPaidThisMonth(u.id),
+    paidCurrentMonth: isUserPaidThisMonth(u.id),
+    user: { id: u.id, fullName: u.fullName, login: u.login, phone: u.phone, currentMonth: currentYYYYMM(), isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id) }
   });
 });
 
@@ -1515,80 +1405,65 @@ app.get("/api/client/billing", requireAuth, (req, res) => {
 
 // Rotas administrativas
 app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
-  const month = currentYYYYMM();
-  const rows = (Array.isArray(DB.users) ? DB.users : [])
-    .filter(u => u && !u.isDeleted && String(u.role || "client") !== "admin")
-    .map(u => {
-      const paid = isUserPaidThisMonth(u.id);
-      const tLeft = trialDaysLeft(u);
-      return {
-        id: u.id,
-        fullName: u.fullName,
-        cpf: u.cpf || "",
-        email: u.email || "",
-        role: String(u.role || "client"),
-        isActive: !!u.isActive,
-        isPaidThisMonth: paid,
-        paidCurrentMonth: paid,
-        currentMonth: month,
-        trialDaysLeft: tLeft,
-        trialEndsAt: u.trialEndsAt || "",
-        lastLoginAt: u.lastLoginAt || "",
-        lastSeenAt: u.lastSeenAt || ""
-      };
-    })
-    .sort((a, b) => String(a.fullName || "").localeCompare(String(b.fullName || "")));
-
-  return res.json({ users: rows, month });
+  const users = DB.users
+    .filter(u => !u.isDeleted)
+    .map(u => ({
+      id: u.id,
+      fullName: u.fullName,
+      dob: u.dob,
+      phone: u.phone,
+      login: u.login,
+      isActive: !!u.isActive,
+      active: !!u.isActive,
+      lastLoginAt: u.lastLoginAt || "",
+      lastSeenAt: u.lastSeenAt || "",
+      isOnline: isUserOnline(u),
+      isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id)
+    }))
+    .sort((a,b) => (a.fullName||"").localeCompare(b.fullName||""));
+  return res.json({ users });
 });
 
 app.post("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
   try {
     const fullName = String(req.body?.fullName || "").trim();
-    const cpf = normalizeCpf(req.body?.cpf);
-    const email = normalizeEmail(req.body?.email);
+    const dob = String(req.body?.dob || "").trim();
+    const phone = String(req.body?.phone || "").trim();
+    const login = String(req.body?.login || "").trim();
     const password = String(req.body?.password || "").trim();
 
-    if (!fullName || !cpf || !email || !password) {
-      return res.status(400).json({ error: "Nome completo, CPF, e-mail e senha são obrigatórios." });
+    if (!fullName || !dob || !phone || !login || !password) {
+      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, login e senha são obrigatórios." });
     }
-
-    const existingCpf = DB.users.find(u => !u?.isDeleted && normalizeCpf(u.cpf) === cpf);
-    if (existingCpf) return res.status(409).json({ error: "Já existe usuário com este CPF." });
-
-    const existingEmail = DB.users.find(u => !u?.isDeleted && normalizeEmail(u.email) === email);
-    if (existingEmail) return res.status(409).json({ error: "Já existe usuário com este e-mail." });
+    if (findUserByLogin(login)) return res.status(409).json({ error: "Já existe usuário com este login." });
 
     const salt = crypto.randomBytes(10).toString("hex");
-    const now = nowIso();
+    const passwordHash = sha256(`${salt}:${password}`);
 
     const user = {
-      id: makeId("u"),
+      id: makeId("usr"),
       fullName,
-      cpf,
-      email,
-      role: "client",
+      dob,
+      phone,
+      login,
+      salt,
+      passwordHash,
       isActive: true,
       isDeleted: false,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: nowIso(),
       lastLoginAt: "",
       lastSeenAt: "",
       activeSessionHash: "",
       activeDeviceId: "",
       activeSessionCreatedAt: "",
       activeSessionLastSeenAt: "",
-      activeSessionExpiresAt: "",
-      salt,
-      passwordHash: sha256(`${salt}:${password}`),
-      trialEndsAt: new Date(Date.now() + (15 * 24 * 60 * 60 * 1000)).toISOString()
+      activeSessionExpiresAt: ""
     };
 
     DB.users.push(user);
-    saveDb(DB, "admin_create_user");
-    audit("admin_user_create", user.id, `Criado: ${user.fullName} (${user.cpf})`);
-
-    return res.json({ ok: true, id: user.id });
+    saveDb(DB);
+    audit("user_create", user.id, `Criado usuário ${login}`);
+    return res.json({ ok: true, user: { id: user.id } });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "Falha ao cadastrar usuário." });
@@ -1601,40 +1476,37 @@ app.put("/api/admin/users/:id", requireAuth, requireAdmin, (req, res) => {
     if (!user) return res.status(404).json({ error: "Usuário não encontrado." });
 
     const fullName = String(req.body?.fullName ?? user.fullName ?? "").trim();
-    const cpf = normalizeCpf(req.body?.cpf ?? user.cpf ?? "");
-    const email = normalizeEmail(req.body?.email ?? user.email ?? "");
+    const dob = String(req.body?.dob ?? user.dob ?? "").trim();
+    const phone = String(req.body?.phone ?? user.phone ?? "").trim();
+    const login = String(req.body?.login ?? user.login ?? "").trim();
     const password = String(req.body?.password || "").trim();
 
-    if (!fullName || !cpf || !email) {
-      return res.status(400).json({ error: "Nome completo, CPF e e-mail são obrigatórios." });
+    if (!fullName || !dob || !phone || !login) {
+      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone e login são obrigatórios." });
     }
 
-    // Unicidade CPF
-    const existingCpf = DB.users.find(u => !u.isDeleted && u.id !== id && normalizeCpf(u.cpf) === cpf);
-    if (existingCpf) return res.status(409).json({ error: "Já existe usuário com este CPF." });
-
-    // Unicidade e-mail
-    const existingEmail = DB.users.find(u => !u.isDeleted && u.id !== id && normalizeEmail(u.email) === email);
-    if (existingEmail) return res.status(409).json({ error: "Já existe usuário com este e-mail." });
+    // Se mudar o login, garantir unicidade
+    const existing = DB.users.find(u => !u.isDeleted && u.id !== id && String(u.login || "").toLowerCase() === String(login).toLowerCase());
+    if (existing) return res.status(409).json({ error: "Já existe usuário com este login." });
 
     user.fullName = fullName;
-    user.cpf = cpf;
-    user.email = email;
-    user.updatedAt = nowIso();
+    user.dob = dob;
+    user.phone = phone;
+    user.login = login;
 
     if (password) {
       const salt = crypto.randomBytes(10).toString("hex");
       user.salt = salt;
       user.passwordHash = sha256(`${salt}:${password}`);
-      audit("user_update_password", id, `Senha atualizada para ${user.fullName} (${user.cpf})`);
+      audit("user_update_password", id, `Senha atualizada para ${user.login}`);
     }
 
-    saveDb(DB, "admin_update_user");
-    audit("user_update", id, `Dados atualizados para ${user.fullName} (${user.cpf})`);
+    saveDb(DB);
+    audit("user_update", id, `Dados atualizados para ${user.login}`);
     return res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha ao atualizar usuário." });
+    return res.status(500).json({ error: "Falha ao editar usuário." });
   }
 });
 
@@ -1651,7 +1523,7 @@ app.post("/api/admin/users/:id/reset-password", requireAuth, requireAdmin, (req,
     user.salt = salt;
     user.passwordHash = sha256(`${salt}:${newPassword}`);
     saveDb(DB);
-    audit("user_reset_password", id, `Senha resetada para ${user.cpf || user.email || user.login || ""}`);
+    audit("user_reset_password", id, `Senha resetada para ${user.login}`);
     return res.json({ ok: true });
   } catch (e) {
     console.error(e);
@@ -3908,7 +3780,311 @@ Transcrição (trecho):
   const info = await hydrateDbFromPgIfAvailable();
   console.log("[storage]", info);
 
-  app.listen(port, () => {
+  // ======================================================================
+// INFINITEPAY (Checkout) - Link + Webhook + Status (liberação automática)
+// Requisitos implementados:
+// - GET /api/payment/link?cpf=... -> { paymentUrl }
+// - GET /api/payment/status?cpf=... -> { status: "PENDENTE"|"PAGO" }
+// - POST /webhook/infinitepay -> recebe payload e marca pago automaticamente
+//
+// Baseado na Central de Ajuda InfinitePay (Checkout):
+// - Criar link: POST https://api.infinitepay.io/invoices/public/checkout/links
+// - Retorno: { url: "https://checkout.infinitepay.com.br/<handle>?lenc=..." }
+// - Webhook payload inclui: order_nsu, transaction_nsu, invoice_slug, receipt_url, paid_amount, etc.
+// ----------------------------------------------------------------------
+// Variáveis de ambiente suportadas:
+// - INFINITEPAY_HANDLE (obrigatória): sua InfiniteTag, sem o símbolo $.
+// - INFINITEPAY_WEBHOOK_SECRET (opcional): segredo para validação HMAC (placeholder).
+// - INFINITEPAY_WEBHOOK_SIGNATURE_HEADER (opcional): header a ser validado (default tenta vários).
+// - PAYMENT_ITEM_DESCRIPTION (opcional): descrição exibida no checkout.
+// - PAYMENT_AMOUNT_CENTS (opcional): valor em centavos (default 1000 = R$10,00).
+// - PUBLIC_BASE_URL (opcional): URL pública do backend (ex.: https://seu-backend.onrender.com).
+// - FRONTEND_REDIRECT_URL (opcional): URL para redirecionar após pagar (ex.: https://seu-front/#/pago).
+//
+// Observação sobre "formato oficial do link com handle":
+// - Neste fluxo, o link oficial é gerado via API e retorna um URL do domínio checkout.infinitepay.com.br.
+// - Para rastreio, usamos o campo order_nsu contendo o CPF sanitizado, além de anexar ?reference=<cpf> ao URL.
+// ======================================================================
+
+const INFINITEPAY_HANDLE = String(process.env.INFINITEPAY_HANDLE || "").trim();
+const INFINITEPAY_WEBHOOK_SECRET = String(process.env.INFINITEPAY_WEBHOOK_SECRET || "").trim(); // placeholder
+const INFINITEPAY_WEBHOOK_SIGNATURE_HEADER = String(process.env.INFINITEPAY_WEBHOOK_SIGNATURE_HEADER || "").trim();
+
+const PAYMENT_ITEM_DESCRIPTION = String(process.env.PAYMENT_ITEM_DESCRIPTION || "Acesso - Queimadas Telemedicina").trim();
+const PAYMENT_AMOUNT_CENTS = (() => {
+  const n = Number(process.env.PAYMENT_AMOUNT_CENTS || 1000);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : 1000;
+})();
+
+function getPublicBaseUrl(req) {
+  const forced = String(process.env.PUBLIC_BASE_URL || "").trim();
+  if (forced) return forced.replace(/\/+$/g, "");
+  const proto = (req.headers["x-forwarded-proto"] || req.protocol || "https").toString().split(",")[0].trim();
+  const host = (req.headers["x-forwarded-host"] || req.headers["host"] || "").toString().split(",")[0].trim();
+  if (!host) return "";
+  return `${proto}://${host}`;
+}
+
+function safeFrontendRedirectUrl(req) {
+  const forced = String(process.env.FRONTEND_REDIRECT_URL || "").trim();
+  if (forced) return forced;
+  // Por padrão, redireciona para o index do frontend no mesmo host do backend (útil em testes locais).
+  return getPublicBaseUrl(req) + "/?payment=done";
+}
+
+async function infinitepayFetchJson(url, opts) {
+  // Node 18+ já possui fetch. Se não existir (ambiente antigo), tenta node-fetch.
+  const f = (typeof fetch === "function") ? fetch : (async (...args) => (await import("node-fetch")).default(...args));
+  const resp = await f(url, opts);
+  const data = await resp.json().catch(() => ({}));
+  return { resp, data };
+}
+
+function parseCpfFromOrderNsu(orderNsu) {
+  const digits = onlyDigits(orderNsu);
+  // tenta capturar CPF (11 dígitos) do início, mas aceita qualquer ocorrência
+  const m = digits.match(/(\d{11})/);
+  return m ? m[1] : "";
+}
+
+function findUserByCpfDigits(cpfDigits) {
+  if (!cpfDigits) return null;
+  // Preferencial: login é o CPF.
+  const u = (DB.users || []).find(x => !x?.isDeleted && onlyDigits(x?.login) === cpfDigits);
+  return u || null;
+}
+
+function ensureInfinitepayOrderStore() {
+  if (!Array.isArray(DB.infinitepayOrders)) DB.infinitepayOrders = [];
+}
+
+function upsertInfinitepayOrder(rec) {
+  ensureInfinitepayOrderStore();
+  const idx = DB.infinitepayOrders.findIndex(x => x && x.order_nsu === rec.order_nsu);
+  if (idx >= 0) DB.infinitepayOrders[idx] = { ...DB.infinitepayOrders[idx], ...rec };
+  else DB.infinitepayOrders.push(rec);
+  // limita histórico
+  if (DB.infinitepayOrders.length > 5000) DB.infinitepayOrders = DB.infinitepayOrders.slice(DB.infinitepayOrders.length - 5000);
+}
+
+function isWebhookSignatureValid(req) {
+  if (!INFINITEPAY_WEBHOOK_SECRET) return true; // validação condicional (segredo não configurado)
+  const raw = req.rawBody || Buffer.from(JSON.stringify(req.body || {}));
+  const expected = crypto.createHmac("sha256", INFINITEPAY_WEBHOOK_SECRET).update(raw).digest("hex");
+
+  const headerCandidates = [
+    INFINITEPAY_WEBHOOK_SIGNATURE_HEADER,
+    "x-infinitepay-signature",
+    "x-webhook-signature",
+    "x-signature",
+    "x-signature-256"
+  ].filter(Boolean);
+
+  const got = headerCandidates.map(h => String(req.headers[h] || "")).find(v => v);
+  if (!got) return false;
+
+  // aceita formatos: "sha256=<hex>" ou "<hex>"
+  const cleaned = got.toLowerCase().startsWith("sha256=") ? got.slice(7) : got;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(cleaned, "hex"), Buffer.from(expected, "hex"));
+  } catch {
+    return false;
+  }
+}
+
+// Rate limit simples (memória)
+function makeRateLimiter({ windowMs, max }) {
+  const buckets = new Map();
+  return function rateLimit(req, res, next) {
+    try {
+      const key = String(req.ip || req.connection?.remoteAddress || "unknown");
+      const now = Date.now();
+      let b = buckets.get(key);
+      if (!b || now > b.resetAt) {
+        b = { count: 0, resetAt: now + windowMs };
+        buckets.set(key, b);
+      }
+      b.count += 1;
+      if (b.count > max) return res.status(429).json({ error: "Requisição negada." });
+      return next();
+    } catch {
+      return res.status(429).json({ error: "Requisição negada." });
+    }
+  };
+}
+
+const rlInfinitepayStatus = makeRateLimiter({ windowMs: 60_000, max: 30 }); // 30/min por IP
+const rlInfinitepayWebhook = makeRateLimiter({ windowMs: 60_000, max: 60 }); // 60/min por IP
+
+function paymentStatusForCpf(cpfDigits) {
+  const user = findUserByCpfDigits(cpfDigits);
+  if (!user) return "PENDENTE";
+  return isUserPaidThisMonth(user.id) ? "PAGO" : "PENDENTE";
+}
+
+app.get("/api/payment/status", rlInfinitepayStatus, (req, res) => {
+  try {
+    const cpf = onlyDigits(req.query?.cpf || "");
+    if (!cpf || cpf.length < 11) return res.status(400).json({ error: "Requisição inválida." });
+
+    const status = paymentStatusForCpf(cpf);
+    return res.json({ status });
+  } catch {
+    return res.status(500).json({ error: "Falha ao consultar." });
+  }
+});
+
+app.get("/api/payment/link", rlInfinitepayStatus, async (req, res) => {
+  try {
+    if (!INFINITEPAY_HANDLE) return res.status(500).json({ error: "Pagamento indisponível." });
+
+    const cpf = onlyDigits(req.query?.cpf || "");
+    if (!cpf || cpf.length < 11) return res.status(400).json({ error: "Requisição inválida." });
+
+    // Se já está pago, não gera novo link.
+    if (paymentStatusForCpf(cpf) === "PAGO") {
+      return res.json({ paymentUrl: "" , alreadyPaid: true });
+    }
+
+    const order_nsu = `${cpf}-${Date.now()}`; // rastreio principal (CPF sanitizado)
+    const payload = {
+      handle: INFINITEPAY_HANDLE,
+      redirect_url: safeFrontendRedirectUrl(req),
+      webhook_url: getPublicBaseUrl(req) + "/webhook/infinitepay",
+      order_nsu,
+      items: [
+        { quantity: 1, price: PAYMENT_AMOUNT_CENTS, description: PAYMENT_ITEM_DESCRIPTION }
+      ]
+    };
+
+    const { resp, data } = await infinitepayFetchJson("https://api.infinitepay.io/invoices/public/checkout/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok || !data || typeof data.url !== "string" || !data.url.trim()) {
+      console.error("[INFINITEPAY] Falha ao criar link:", resp.status, data);
+      return res.status(502).json({ error: "Pagamento indisponível." });
+    }
+
+    let paymentUrl = data.url.trim();
+
+    // Acrescenta "reference=<cpf>" para rastreio adicional (mantém lenc).
+    try {
+      const u = new URL(paymentUrl);
+      u.searchParams.set("reference", cpf);
+      paymentUrl = u.toString();
+    } catch {}
+
+    upsertInfinitepayOrder({
+      order_nsu,
+      cpf,
+      createdAt: nowIso(),
+      status: "PENDENTE",
+      paymentUrl,
+      invoice_slug: "",
+      transaction_nsu: "",
+      receipt_url: ""
+    });
+
+    saveDb(DB, "infinitepay_link");
+    return res.json({ paymentUrl });
+  } catch (e) {
+    console.error("[INFINITEPAY] erro:", e?.message || e);
+    return res.status(500).json({ error: "Pagamento indisponível." });
+  }
+});
+
+app.post("/webhook/infinitepay", rlInfinitepayWebhook, async (req, res) => {
+  try {
+    // Validação condicional por assinatura (se você configurar o segredo).
+    if (!isWebhookSignatureValid(req)) {
+      return res.status(401).json({ success: false, message: "Assinatura inválida" });
+    }
+
+    const b = (req.body && typeof req.body === "object") ? req.body : {};
+    // Validação mínima de campos esperados (bloqueia payloads inválidos)
+    const order_nsu = String(b.order_nsu || "").trim();
+    const transaction_nsu = String(b.transaction_nsu || "").trim();
+    const invoice_slug = String(b.invoice_slug || b.slug || "").trim();
+    const paid_amount = Number(b.paid_amount || 0);
+
+    if (!order_nsu || !transaction_nsu) {
+      return res.status(400).json({ success: false, message: "Payload inválido" });
+    }
+
+    const cpf = parseCpfFromOrderNsu(order_nsu);
+    if (!cpf) {
+      // Sem CPF no pedido => ignora (mantém idempotente)
+      return res.status(400).json({ success: false, message: "Pedido não encontrado" });
+    }
+
+    // Confirmação extra (opcional): consulta payment_check para validar "paid".
+    // Observação: o webhook da InfinitePay não manda explicitamente "paid=true" no exemplo;
+    // por segurança, confirmamos via payment_check sempre que possível.
+    let paid = false;
+    try {
+      const { resp, data } = await infinitepayFetchJson("https://api.infinitepay.io/invoices/public/checkout/payment_check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          handle: INFINITEPAY_HANDLE,
+          order_nsu,
+          transaction_nsu,
+          slug: invoice_slug
+        })
+      });
+      if (resp.ok && data && data.success === true && data.paid === true) paid = true;
+    } catch {}
+
+    // Fallback: se payment_check falhar, assume pago se paid_amount > 0 (mínimo aceitável).
+    if (!paid && Number.isFinite(paid_amount) && paid_amount > 0) paid = true;
+
+    ensureInfinitepayOrderStore();
+    upsertInfinitepayOrder({
+      order_nsu,
+      cpf,
+      invoice_slug,
+      transaction_nsu,
+      receipt_url: String(b.receipt_url || "").trim(),
+      paid_amount: Number.isFinite(paid_amount) ? paid_amount : 0,
+      updatedAt: nowIso(),
+      status: paid ? "PAGO" : "PENDENTE"
+    });
+
+    if (paid) {
+      // Marca o pagamento do mês atual (modelo já usado no sistema).
+      const user = findUserByCpfDigits(cpf);
+      if (user) {
+        const month = currentYYYYMM();
+        const exists = DB.payments.some(p => p.userId === user.id && p.month === month);
+        if (!exists) {
+          DB.payments.push({
+            userId: user.id,
+            month,
+            paidAt: nowIso(),
+            method: "infinitepay",
+            meta: { order_nsu, transaction_nsu, invoice_slug }
+          });
+          if (DB.payments.length > 20000) DB.payments = DB.payments.slice(DB.payments.length - 20000);
+        }
+      }
+      saveDb(DB, "infinitepay_paid");
+      audit("payment_infinitepay", cpf, `Pagamento confirmado via InfinitePay. order_nsu=${order_nsu}`);
+    } else {
+      saveDb(DB, "infinitepay_webhook");
+    }
+
+    // Resposta no formato sugerido pela InfinitePay
+    return res.status(200).json({ success: true, message: null });
+  } catch (e) {
+    console.error("[INFINITEPAY] webhook erro:", e?.message || e);
+    return res.status(400).json({ success: false, message: "Falha" });
+  }
+});
+
+app.listen(port, () => {
     console.log(`Servidor escutando na porta ${port}`);
   });
 })();
