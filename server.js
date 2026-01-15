@@ -1051,8 +1051,8 @@ app.post("/api/auth/signup", (req, res) => {
     const login = String(req.body?.login || "").trim();
     const password = String(req.body?.password || "").trim();
 
-    if (!fullName || !dob || !phone || !login || !password) {
-      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, login e senha são obrigatórios." });
+    if (!fullName || !phone || !login || !password) {
+      return res.status(400).json({ error: "Nome completo, telefone, CPF (Login) e senha são obrigatórios." });
     }
 
     // Login não precisa ser CPF. Permite letras, números e alguns caracteres seguros.
@@ -1309,8 +1309,8 @@ app.post("/api/client/friends", requireAuth, (req, res) => {
     const login = String(req.body?.login || "").trim();
     const password = String(req.body?.password || "").trim();
 
-    if (!fullName || !dob || !phone || !login || !password) {
-      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, login e senha são obrigatórios." });
+    if (!fullName || !phone || !login || !password) {
+      return res.status(400).json({ error: "Nome completo, telefone, CPF (Login) e senha são obrigatórios." });
     }
 
     if (login.length < 3 || login.length > 40) {
@@ -1560,8 +1560,8 @@ app.post("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
     const login = String(req.body?.login || "").trim();
     const password = String(req.body?.password || "").trim();
 
-    if (!fullName || !dob || !phone || !login || !password) {
-      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, login e senha são obrigatórios." });
+    if (!fullName || !phone || !login || !password) {
+      return res.status(400).json({ error: "Nome completo, telefone, CPF (Login) e senha são obrigatórios." });
     }
     if (findUserByLogin(login)) return res.status(409).json({ error: "Já existe usuário com este login." });
 

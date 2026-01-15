@@ -2065,8 +2065,8 @@
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
 
-      <label class="auth-label" for="loginField">Login</label>
-      <input id="loginField" class="auth-input" autocomplete="username" inputmode="text" />
+      <label class="auth-label" for="loginField">CPF (Login)</label>
+      <input id="loginField" class="auth-input" autocomplete="username" inputmode="numeric" />
 
       <label class="auth-label" for="passwordField">Senha</label>
       <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
@@ -2097,8 +2097,8 @@
       <label class="auth-label" for="signupPhone">Telefone</label>
       <input id="signupPhone" class="auth-input" type="tel" autocomplete="tel" inputmode="tel" />
 
-      <label class="auth-label" for="signupLogin">Login</label>
-      <input id="signupLogin" class="auth-input" autocomplete="username" inputmode="text" />
+      <label class="auth-label" for="signupLogin">CPF (Login)</label>
+      <input id="signupLogin" class="auth-input" autocomplete="username" inputmode="numeric" />
 
       <label class="auth-label" for="signupPassword">Senha</label>
       <input id="signupPassword" class="auth-input" type="password" autocomplete="new-password" />
@@ -2148,8 +2148,8 @@
             <input id="newPhone" type="tel" />
           </div>
           <div class="admin-field">
-            <label for="newLogin">Login</label>
-            <input id="newLogin" type="text" />
+            <label for="newLogin">CPF (Login)</label>
+            <input id="newLogin" type="text" inputmode="numeric" />
           </div>
           <div class="admin-field">
             <label for="newPassword">Senha</label>
@@ -2172,7 +2172,7 @@
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>Login</th>
+                <th>CPF (Login)</th>
                 <th>Telefone</th>
                 <th>Online</th>
                 <th>Mensalidade</th>
@@ -2293,8 +2293,8 @@
             <input id="friendPhone" class="auth-input" inputmode="tel" />
           </div>
           <div>
-            <label class="auth-label" for="friendLogin">Login do amigo</label>
-            <input id="friendLogin" class="auth-input" inputmode="text" />
+            <label class="auth-label" for="friendLogin">CPF (Login) do amigo</label>
+            <input id="friendLogin" class="auth-input" inputmode="numeric" />
           </div>
         </div>
 
@@ -4336,8 +4336,14 @@ Ata de reunião:
       const errEl = document.getElementById("signupError");
       const btn = document.getElementById("signupBtn");
 
-      if (!fullName || !dob || !phone || !login || !password) {
-        if (errEl) errEl.textContent = "Preencha: nome completo, data de nascimento, telefone, login e senha.";
+      const missing = [];
+      if (!fullName) missing.push("Nome completo");
+      if (!phone) missing.push("Telefone");
+      if (!login) missing.push("CPF (Login)");
+      if (!password) missing.push("Senha");
+
+      if (missing.length) {
+        if (errEl) errEl.textContent = "Preencha: " + missing.join(", ") + ".";
         return;
       }
 
@@ -4502,8 +4508,13 @@ Ata de reunião:
       const btn = document.getElementById("saveFriendBtn");
 
       if (err) err.textContent = "";
-      if (!fullName || !dob || !phone || !login || !password) {
-        if (err) err.textContent = "Preencha todos os campos.";
+      const missing = [];
+      if (!fullName) missing.push("Nome completo");
+      if (!phone) missing.push("Telefone");
+      if (!login) missing.push("CPF (Login)");
+      if (!password) missing.push("Senha");
+      if (missing.length) {
+        if (err) err.textContent = "Preencha: " + missing.join(", ") + ".";
         return;
       }
 
@@ -10137,8 +10148,13 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       const login = (document.getElementById("newLogin")?.value || "").trim();
       const password = (document.getElementById("newPassword")?.value || "").trim();
       const st = document.getElementById("createUserStatus");
-      if (!fullName || !dob || !phone || !login || !password) {
-        if (st) st.textContent = "Preencha nome completo, data de nascimento, telefone, login e senha.";
+      const missing = [];
+      if (!fullName) missing.push("Nome completo");
+      if (!phone) missing.push("Telefone");
+      if (!login) missing.push("CPF (Login)");
+      if (!password) missing.push("Senha");
+      if (missing.length) {
+        if (st) st.textContent = "Preencha: " + missing.join(", ") + ".";
         return;
       }
       if (st) st.textContent = "Cadastrando...";
