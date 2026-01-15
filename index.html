@@ -2065,14 +2065,16 @@
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
 
-      <label class="auth-label" for="loginField">Login, CPF ou e-mail</label>
-      <input id="loginField" class="auth-input" autocomplete="username" inputmode="text" />
+      <form id="loginForm" autocomplete="on">
+        <label class="auth-label" for="loginField">Login, CPF ou e-mail</label>
+        <input id="loginField" class="auth-input" autocomplete="username" inputmode="text" />
 
-      <label class="auth-label" for="passwordField">Senha</label>
-      <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
+        <label class="auth-label" for="passwordField">Senha</label>
+        <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
 
-      <button id="loginBtn" class="auth-btn" type="button">Entrar</button>
-      <div id="loginError" class="auth-error"></div>
+        <button id="loginBtn" class="auth-btn" type="submit">Entrar</button>
+        <div id="loginError" class="auth-error"></div>
+      </form>
 
       <button id="openSignupBtn" class="auth-btn outline" type="button">Cadastrar enfermeiro(a)</button>
 
@@ -4474,9 +4476,8 @@ Ata de reunião:
     }
 
 // Eventos de login/logout
-    document.getElementById("loginBtn")?.addEventListener("click", doLogin);
-    document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
-    document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    document.getElementById("loginForm")?.addEventListener("submit", (ev) => { ev.preventDefault(); doLogin(); });
+
     document.getElementById("openSignupBtn")?.addEventListener("click", () => {
       resetSignupForm();
       showSignup();
