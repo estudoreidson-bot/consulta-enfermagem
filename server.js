@@ -1193,9 +1193,12 @@ function authFromReq(req) {
     token = String(xt || "").trim();
   }
 
-  const deviceId = getDeviceIdFromReq(req);
-
   let sess = getSession(token);
+
+  let deviceId = getDeviceIdFromReq(req);
+  if (!deviceId && sess && sess.deviceId) {
+    deviceId = String(sess.deviceId || "").trim();
+  }
 
   // Fallback: sessão persistida no usuário (sobrevive a restart e permite bloqueio de 1 dispositivo por conta)
   if (!sess && token) {
@@ -1207,6 +1210,10 @@ function authFromReq(req) {
       sess = { role: "nurse", userId: user.id, deviceId: String(user.activeDeviceId || ""), createdAt: createdAtMs, lastSeenAt: lastSeenAtMs };
       SESSIONS.set(token, sess);
     }
+  }
+
+  if (!deviceId && sess && sess.deviceId) {
+    deviceId = String(sess.deviceId || "").trim();
   }
 
   if (!sess) return null;
