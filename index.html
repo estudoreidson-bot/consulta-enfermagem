@@ -2231,7 +2231,7 @@
           <input id="editPhone" class="auth-input" placeholder="Telefone" />
         </div>
         <div>
-          <label class="auth-label">Login</label>
+          <label class="auth-label">CPF</label>
           <input id="editLogin" class="auth-input" placeholder="Login" />
         </div>
         <div style="grid-column: 1 / -1;">
@@ -2259,7 +2259,7 @@
     <div class="nurse-bar" id="nurseBar">
       <div>
         <div class="nurse-bar-line"><span class="nurse-bar-label">Usuário:</span><span id="nurseUserLabel">-</span></div>
-        <div class="nurse-bar-line"><span class="nurse-bar-label">Login:</span><span id="nurseLoginLabel">-</span></div>
+        <div class="nurse-bar-line"><span class="nurse-bar-label">CPF:</span><span id="nurseLoginLabel">-</span></div>
         <div class="nurse-bar-line"><span class="nurse-bar-label">Gratuidade:</span><span id="nurseTrialLabel" class="pill">-</span></div>
         <div id="nurseTrialWarning" class="trial-warning" style="display:none; margin-top:8px;"></div>
 <div class="nurse-bar-line"><span class="nurse-bar-label">Mensalidade:</span><span id="nursePaymentLabel" class="pill">-</span></div>
@@ -4222,10 +4222,22 @@ Ata de reunião:
     };
 
     async function authMe() {
-      const resp = await fetch(BACKEND_URL + "/api/auth/me", { method: "GET" });
-      if (!resp.ok) throw new Error("me failed");
-      return await resp.json();
+      const token = getToken();
+      const headers = {};
+      if (token) headers["Authorization"] = "Bearer " + token;
+      const deviceId = getDeviceId();
+      if (deviceId) headers["X-Device-Id"] = deviceId;
+
+      const resp = await fetchWithTimeout(BACKEND_URL + "/api/auth/me", { method: "GET", headers }, 20000);
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        const msg = (data && data.error) ? String(data.error) : ("Falha ao validar sessão (HTTP " + resp.status + ")");
+        const code = (data && data.code) ? (" (" + String(data.code) + ")") : "";
+        throw new Error(msg + code);
+      }
+      return data;
     }
+
 
     async function doLogin() {
       const login = (document.getElementById("loginField")?.value || "").trim();
@@ -4253,7 +4265,7 @@ Ata de reunião:
         setToken(data.token || "");
         await restoreSession();
       } catch (e) {
-        if (errEl) errEl.textContent = "Falha ao conectar no servidor.";
+        if (errEl) errEl.textContent = (e && e.message) ? e.message : "Falha ao conectar no servidor.";
       } finally {
         if (btn) btn.disabled = false;
       }
@@ -4313,7 +4325,7 @@ Ata de reunião:
         if (loginErr) loginErr.textContent = "Cadastro realizado. Você tem 15 dias grátis. Faça login para continuar.";
         resetSignupForm();
       } catch (e) {
-        if (errEl) errEl.textContent = "Falha ao conectar no servidor.";
+        if (errEl) errEl.textContent = (e && e.message) ? e.message : "Falha ao conectar no servidor.";
       } finally {
         if (btn) btn.disabled = false;
       }
@@ -4365,7 +4377,7 @@ Ata de reunião:
       } catch (e) {
         showLogin();
         const le = document.getElementById("loginError");
-        if (le) le.textContent = "Não foi possível validar a sessão. Tente novamente.";
+        if (le) le.textContent = "Sessão inválida: " + (e && e.message ? e.message : "Tente novamente.");
       }
     }
 
