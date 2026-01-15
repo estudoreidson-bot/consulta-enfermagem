@@ -2065,7 +2065,7 @@
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
 
-      <label class="auth-label" for="loginField">CPF ou e-mail</label>
+      <label class="auth-label" for="loginField">Login, CPF ou e-mail</label>
       <input id="loginField" class="auth-input" autocomplete="username" inputmode="text" />
 
       <label class="auth-label" for="passwordField">Senha</label>
@@ -2090,6 +2090,15 @@
 
       <label class="auth-label" for="signupFullName">Nome completo</label>
       <input id="signupFullName" class="auth-input" autocomplete="name" inputmode="text" />
+
+      <label class="auth-label" for="signupDob">Data de nascimento</label>
+      <input id="signupDob" class="auth-input" type="date" autocomplete="bday" />
+
+      <label class="auth-label" for="signupPhone">Telefone</label>
+      <input id="signupPhone" class="auth-input" autocomplete="tel" inputmode="tel" />
+
+      <label class="auth-label" for="signupLogin">Login</label>
+      <input id="signupLogin" class="auth-input" autocomplete="username" inputmode="text" />
 
       <label class="auth-label" for="signupCpf">CPF</label>
       <input id="signupCpf" class="auth-input" autocomplete="off" inputmode="numeric" />
@@ -2137,6 +2146,18 @@
             <input id="newFullName" type="text" />
           </div>
           <div class="admin-field">
+            <label for="newDob">Data de nascimento</label>
+            <input id="newDob" type="date" />
+          </div>
+          <div class="admin-field">
+            <label for="newPhone">Telefone</label>
+            <input id="newPhone" type="text" inputmode="tel" />
+          </div>
+          <div class="admin-field">
+            <label for="newLogin">Login</label>
+            <input id="newLogin" type="text" />
+          </div>
+          <div class="admin-field">
             <label for="newCpf">CPF</label>
             <input id="newCpf" type="text" inputmode="numeric" />
           </div>
@@ -2147,7 +2168,6 @@
           <div class="admin-field">
             <label for="newPassword">Senha</label>
             <input id="newPassword" type="password" />
-          </div>
           </div>
           <div class="admin-field" style="display:flex; align-items:flex-end;">
             <button id="createUserBtn" class="admin-btn" type="button" style="width:100%;">Cadastrar</button>
@@ -4278,7 +4298,10 @@ Ata de reunião:
       const errEl = document.getElementById("loginError");
       const btn = document.getElementById("loginBtn");
       if (!login || !senha) {
-        if (errEl) errEl.textContent = "Informe login e senha.";
+        const missing = [];
+        if (!login) missing.push("login");
+        if (!senha) missing.push("senha");
+        if (errEl) errEl.textContent = "Preencha: " + missing.join(" e ") + ".";
         return;
       }
       if (errEl) errEl.textContent = "Conectando...";
@@ -4306,6 +4329,9 @@ Ata de reunião:
     function resetSignupForm() {
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
       set("signupFullName", "");
+      set("signupDob", "");
+      set("signupPhone", "");
+      set("signupLogin", "");
       set("signupCpf", "");
       set("signupEmail", "");
       set("signupPassword", "");
@@ -4317,6 +4343,9 @@ Ata de reunião:
 
     async function doSignup() {
       const fullName = (document.getElementById("signupFullName")?.value || "").trim();
+      const dob = (document.getElementById("signupDob")?.value || "").trim();
+      const phone = (document.getElementById("signupPhone")?.value || "").trim();
+      const login = (document.getElementById("signupLogin")?.value || "").trim();
       const cpf = (document.getElementById("signupCpf")?.value || "").trim();
       const email = (document.getElementById("signupEmail")?.value || "").trim();
       const password = (document.getElementById("signupPassword")?.value || "").trim();
@@ -4324,42 +4353,28 @@ Ata de reunião:
       const errEl = document.getElementById("signupError");
       const btn = document.getElementById("signupBtn");
 
-      if (!fullName || !cpf || !email || !password) {
-        if (errEl) errEl.textContent = "Preencha: nome completo, CPF, e-mail e senha.";
+      const missing = [];
+      if (!fullName) missing.push("nome completo");
+      if (!dob) missing.push("data de nascimento");
+      if (!phone) missing.push("telefone");
+      if (!login) missing.push("login");
+      if (!cpf) missing.push("CPF");
+      if (!email) missing.push("e-mail");
+      if (!password) missing.push("senha");
+
+      if (missing.length) {
+        if (errEl) errEl.textContent = "Preencha: " + missing.join(", ") + ".";
         return;
       }
 
-      if (errEl) errEl.textContent = "Cadastrando.";
-      if (btn) btn.disabled = true;
-
-      try {
-        const resp = await nativeFetchJson("/api/auth/signup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, cpf, email, password })
-        });
-        if (resp && resp.ok) {
-          if (errEl) errEl.textContent = "Cadastro realizado. Faça login para entrar.";
-          resetSignupForm();
-          showView("login");
-        } else {
-          if (errEl) errEl.textContent = String(resp?.error || "Falha ao cadastrar.");
-          if (btn) btn.disabled = false;
-        }
-      } catch (e) {
-        if (errEl) errEl.textContent = String(e?.message || e || "Falha ao cadastrar.");
-        if (btn) btn.disabled = false;
-      }
-    }
-
-      if (errEl) errEl.textContent = "Cadastrando.";
+      if (errEl) errEl.textContent = "Cadastrando...";
       if (btn) btn.disabled = true;
 
       try {
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, phone, login, password })
+          body: JSON.stringify({ fullName, dob, phone, login, cpf, email, password })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
@@ -4367,14 +4382,13 @@ Ata de reunião:
           return;
         }
 
-        // Volta para o login e orienta o próximo passo
         showLogin();
         const lf = document.getElementById("loginField");
         if (lf) lf.value = login;
         const pf = document.getElementById("passwordField");
         if (pf) pf.value = "";
         const loginErr = document.getElementById("loginError");
-        if (loginErr) loginErr.textContent = "Cadastro realizado. Para liberar o acesso, regularize com o administrador e, depois, faça login.";
+        if (loginErr) loginErr.textContent = "Cadastro realizado. Faça login para entrar.";
         resetSignupForm();
       } catch (e) {
         if (errEl) errEl.textContent = "Falha ao conectar no servidor.";
@@ -10082,24 +10096,37 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
     document.getElementById("createUserBtn")?.addEventListener("click", async () => {
       const fullName = (document.getElementById("newFullName")?.value || "").trim();
+      const dob = (document.getElementById("newDob")?.value || "").trim();
+      const phone = (document.getElementById("newPhone")?.value || "").trim();
+      const login = (document.getElementById("newLogin")?.value || "").trim();
       const cpf = (document.getElementById("newCpf")?.value || "").trim();
       const email = (document.getElementById("newEmail")?.value || "").trim();
       const password = (document.getElementById("newPassword")?.value || "").trim();
+
       const st = document.getElementById("createUserStatus");
-      if (!fullName || !cpf || !email || !password) {
-        if (st) st.textContent = "Preencha nome completo, CPF, e-mail e senha.";
+      const missing = [];
+      if (!fullName) missing.push("nome completo");
+      if (!dob) missing.push("data de nascimento");
+      if (!phone) missing.push("telefone");
+      if (!login) missing.push("login");
+      if (!cpf) missing.push("CPF");
+      if (!email) missing.push("e-mail");
+      if (!password) missing.push("senha");
+
+      if (missing.length) {
+        if (st) st.textContent = "Preencha: " + missing.join(", ") + ".";
         return;
       }
+
       if (st) st.textContent = "Cadastrando...";
       try {
         await adminFetchJson("/api/admin/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, cpf, email, password })
+          body: JSON.stringify({ fullName, dob, phone, login, cpf, email, password })
         });
         if (st) st.textContent = "Usuário cadastrado.";
-        // Limpa campos
-        ["newFullName","newCpf","newEmail","newPassword"].forEach(id => {
+        ["newFullName","newDob","newPhone","newLogin","newCpf","newEmail","newPassword"].forEach(id => {
           const el = document.getElementById(id);
           if (el) el.value = "";
         });
@@ -10107,18 +10134,6 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
         await refreshLocalBackupFromServer();
       } catch (e) {
         if (st) st.textContent = String(e?.message || e || "Falha ao cadastrar.");
-      }
-    });
-        if (st) st.textContent = "Usuário cadastrado.";
-        // Limpa campos
-        ["newFullName","newCpf","newEmail","newPassword"].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) el.value = "";
-        });
-        await adminLoadAll();
-            await refreshLocalBackupFromServer();
-      } catch (e) {
-        if (st) st.textContent = String(e.message || e);
       }
     });
 
