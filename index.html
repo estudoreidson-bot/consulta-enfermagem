@@ -2260,7 +2260,7 @@
       <div>
         <div class="nurse-bar-line"><span class="nurse-bar-label">Usuário:</span><span id="nurseUserLabel">-</span></div>
         <div class="nurse-bar-line"><span class="nurse-bar-label">CPF:</span><span id="nurseLoginLabel">-</span></div>
-        <div class="nurse-bar-line"><span class="nurse-bar-label">Gratuidade:</span><span id="nurseTrialLabel" class="pill">-</span></div>
+        <div class="nurse-bar-line"><span id="nurseTrialLabel" class="pill">-</span><span class="nurse-bar-label">Gratuidade:</span></div>
         <div id="nurseTrialWarning" class="trial-warning" style="display:none; margin-top:8px;"></div>
 <div class="nurse-bar-line"><span class="nurse-bar-label">Mensalidade:</span><span id="nursePaymentLabel" class="pill">-</span></div>
         <div class="nurse-bar-line" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
@@ -4570,7 +4570,7 @@ Ata de reunião:
         } else {
           const rows = friends.map(f => {
             const paid = !!f.isPaidThisMonth;
-            const statusBadge = paid ? '<span class="pill green">Pago em dia</span>' : '<span class="pill red">Não pagou este mês</span>';
+            const statusBadge = paid ? '<span class="pill green">Pago em dia</span>' : '<span class="pill red">Não pagou (sem desconto)</span>';
             const counts = paid ? '<span style="font-size:12px; color:#155724; margin-left:8px;">Conta para desconto</span>' : '<span style="font-size:12px; color:#721c24; margin-left:8px;">Não conta para desconto</span>';
             const name = escapeHtml(String(f.fullName||""));
             const cpf = escapeHtml(String(f.cpf||f.login||""));
@@ -4697,8 +4697,16 @@ document.getElementById("openPayModalBtn")?.addEventListener("click", openPayMod
         });
         const data = await resp.json().catch(()=>({}));
         if (!resp.ok) { if (err) err.textContent = data.error || "Falha ao cadastrar amigo."; return; }
-        if (err) err.textContent = "Amigo cadastrado com sucesso.";
-        setTimeout(()=>{ closeAddFriendModal(); if (err) err.textContent=""; }, 700);
+        if (err) err.textContent = "Amigo cadastrado com sucesso. Abrindo login do administrador...";
+        setTimeout(async()=>{
+          closeAddFriendModal();
+          if (err) err.textContent="";
+          try { await logoutAll(); } catch { showLogin(); }
+          try {
+            const le = document.getElementById("loginError");
+            if (le) le.textContent = "Entre como administrador para gerenciar usuários e pagamentos.";
+          } catch {}
+        }, 900);
         refreshNurseSubscriptionUI();
         try { await refreshPayModalData(); } catch {}
       } catch {
