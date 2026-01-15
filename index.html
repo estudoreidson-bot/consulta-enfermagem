@@ -4401,13 +4401,57 @@ Ata de reunião:
       if (lblLogin) lblLogin.textContent = login;
 
       if (pay) {
-        pay.textContent = paidFlag ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Em atraso" + (month ? " (" + month + ")" : ""));
+        const m = month ? " (" + month + ")" : "";
+        pay.textContent = paidFlag ? ("Mensalidade: Em dia" + m) : ("Mensalidade: Pendente" + m);
         pay.classList.remove("green","red");
-        pay.classList.add(paidFlag ? "green" : "red");
+        if (paidFlag) pay.classList.add("green");
       }
     }
 
     
+
+    async function refreshNurseSubscriptionUI() {
+      try {
+        const resp = await fetchWithTimeout(BACKEND_URL + "/api/subscription/status", { method: "GET" }, 20000);
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) return;
+
+        const rem = Number((data && data.trialRemainingSeconds) ?? 0);
+        const paid = !!(data && data.isPaidThisMonth);
+        const needsPayment = !!(data && data.needsPayment);
+        const warn = !!(data && data.warning5Days);
+
+        // Gratuidade (banner no painel)
+        const t = formatRemaining(rem);
+        const trialLabel = document.getElementById("nurseTrialLabel");
+        if (trialLabel) {
+          if (rem > 0) trialLabel.textContent = "faltam " + t.days + " dias e " + t.hours + " horas";
+          else trialLabel.textContent = "encerrada";
+        }
+
+        if (warn && rem > 0) {
+          setElText("nurseTrialWarning", "Aviso: faltam 5 dias ou menos para encerrar a gratuidade.");
+          showEl("nurseTrialWarning", true);
+        } else {
+          showEl("nurseTrialWarning", false);
+        }
+
+        // Mensalidade (sem vermelho; verde somente quando em dia)
+        const pay = document.getElementById("nursePaymentLabel");
+        if (pay) {
+          // tenta reaproveitar o mês que já vem do /api/auth/me (se existir)
+          const monthText = (pay.textContent && pay.textContent.includes("(")) ? (" " + pay.textContent.slice(pay.textContent.indexOf("("))) : "";
+          pay.textContent = paid ? ("Mensalidade: Em dia" + monthText) : ("Mensalidade: Pendente" + monthText);
+          pay.classList.remove("green", "red");
+          if (paid) pay.classList.add("green");
+        }
+
+        // Se acabou a gratuidade e não pagou, abre o pagamento
+        if (needsPayment && rem <= 0 && !paid) {
+          try { openPayModal(); } catch {}
+        }
+      } catch {}
+    }
     let _trialDebounce = null;
     async function refreshLoginTrialBanner() {
       const raw = (document.getElementById("loginField")?.value || "").trim();
