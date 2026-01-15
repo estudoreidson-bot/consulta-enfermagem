@@ -120,7 +120,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Configurações básicas
-app.use(cors({ origin: true, credentials: true, allowedHeaders: ["Content-Type","Authorization","X-Device-Id"] }));
+app.use(cors());
 app.use(bodyParser.json({ limit: "25mb" }));
 app.use(bodyParser.urlencoded({ limit: "25mb", extended: true }));
 
@@ -1390,7 +1390,7 @@ app.post("/api/auth/login", (req, res) => {
   try {
     const cpfRaw = String(req.body?.cpf || req.body?.login || "").trim();
     const login = normalizeCpf(cpfRaw);
-    const senha = String(req.body?.senha || req.body?.password || "").trim();
+    const senha = String(req.body?.senha || "").trim();
     if (!login || !senha) return res.status(400).json({ error: "CPF e senha são obrigatórios." });
 
     const deviceId = getDeviceIdFromReq(req);
@@ -4015,6 +4015,8 @@ app.get("/api/subscription/status", requireAuth, (req, res) => {
   const trialActive = isTrialActive(user, nowMs);
   const { activeFriendsThisMonth, discountRate } = computeFriendDiscountThisMonth(user.id);
   const due = computeAmountDueThisMonth(user.id);
+  const amountDueAnnualPix = round2(PRICE_ANNUAL_PIX * (1 - discountRate));
+  const amountDueAnnualCard = round2(PRICE_ANNUAL_CARD * (1 - discountRate));
 
   // tenta cobrar automaticamente se tiver assinatura no cartão ativa
   try { maybeAutoChargeCardSubscription(user); } catch {}
@@ -4022,6 +4024,7 @@ app.get("/api/subscription/status", requireAuth, (req, res) => {
 
   return res.json({
     now: nowIso(),
+    month: currentYYYYMM(),
     trialEndsAt: user.trialEndsAt || null,
     trialRemainingSeconds: rem,
     isPaidThisMonth: paidAfter,
@@ -4030,6 +4033,8 @@ app.get("/api/subscription/status", requireAuth, (req, res) => {
     activeFriendsThisMonth,
     discountRateThisMonth: discountRate,
     amountDueThisMonth: due,
+    amountDueAnnualPix,
+    amountDueAnnualCard,
     friendCode: user.friendCode || null,
     partnerCode: user.partnerCode || null
   });
@@ -4158,7 +4163,11 @@ app.get("/api/friends/list", requireAuth, (req, res) => {
       }))
       .sort((a,b) => (a.fullName||"").localeCompare(b.fullName||""));
 
-    return res.json({ ok: true, month, friends });
+    const { activeFriendsThisMonth, discountRate } = computeFriendDiscountThisMonth(u.id);
+    const amountDueThisMonth = computeAmountDueThisMonth(u.id);
+    const amountDueAnnualPix = round2(PRICE_ANNUAL_PIX * (1 - discountRate));
+    const amountDueAnnualCard = round2(PRICE_ANNUAL_CARD * (1 - discountRate));
+    return res.json({ ok: true, month, friends, activeFriendsThisMonth, discountRateThisMonth: discountRate, amountDueThisMonth, amountDueAnnualPix, amountDueAnnualCard });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "Falha ao listar amigos." });
@@ -4172,7 +4181,7 @@ app.post("/api/payments/pix/create", requireAuth, (req, res) => {
     const user = req.auth.user;
     if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
 
-    const plan = String(req.body?.plan || "monthly").trim().toLowerCase();
+    const plan = String(req.body?.plan || req.body?.kind || "monthly").trim().toLowerCase();
     if (plan !== "monthly" && plan !== "annual") return res.status(400).json({ error: "Plano inválido." });
 
     const month = currentYYYYMM();
@@ -4194,7 +4203,8 @@ app.post("/api/payments/pix/create", requireAuth, (req, res) => {
       if (isUserPaidMonth(user.id, month)) return res.status(409).json({ error: "Este mês já consta como pago." });
     }
 
-    const amount = (plan === "annual") ? PRICE_ANNUAL_PIX : computeAmountDueThisMonth(user.id);
+    const { discountRate } = computeFriendDiscountThisMonth(user.id);
+    const amount = (plan === "annual") ? round2(PRICE_ANNUAL_PIX * (1 - discountRate)) : computeAmountDueThisMonth(user.id);
 
     const order = {
       id: makeId("pix"),
@@ -4256,7 +4266,7 @@ app.post("/api/payments/pix/confirm", requireAuth, requireAdmin, (req, res) => {
         const m = String(d.getMonth() + 1).padStart(2, "0");
         months.push(`${y}-${m}`);
       }
-      const perMonth = round2(PRICE_ANNUAL_PIX / 12);
+      const perMonth = round2((Number(order.amount) || PRICE_ANNUAL_PIX) / 12);
       for (const month of months) {
         if (!isUserPaidMonth(user.id, month)) {
           addPaymentConfirmed(user.id, month, perMonth, "pix", `Assinatura anual (Pix) - Pedido ${order.id}`, req.auth?.user?.login || ADMIN_LOGIN);
@@ -4283,7 +4293,7 @@ app.post("/api/payments/card/subscribe", requireAuth, (req, res) => {
     const user = req.auth.user;
     if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
 
-    const plan = String(req.body?.plan || "monthly").trim().toLowerCase();
+    const plan = String(req.body?.plan || req.body?.kind || "monthly").trim().toLowerCase();
     if (plan !== "monthly" && plan !== "annual") return res.status(400).json({ error: "Plano inválido." });
 
     const next = new Date();
@@ -4305,6 +4315,8 @@ app.post("/api/payments/card/subscribe", requireAuth, (req, res) => {
       const month = currentYYYYMM();
       if (!isUserPaidMonth(user.id, month)) {
         const due = computeAmountDueThisMonth(user.id);
+  const amountDueAnnualPix = round2(PRICE_ANNUAL_PIX * (1 - discountRate));
+  const amountDueAnnualCard = round2(PRICE_ANNUAL_CARD * (1 - discountRate));
         addPaymentConfirmed(user.id, month, due, "card", due === 0 ? "Desconto 100% (Cliente Amigo)" : "Assinatura (cartão)", "card_subscribe");
       }
     } else {
@@ -4318,7 +4330,9 @@ app.post("/api/payments/card/subscribe", requireAuth, (req, res) => {
         const m = String(d.getMonth() + 1).padStart(2, "0");
         months.push(`${y}-${m}`);
       }
-      const perMonth = round2(PRICE_ANNUAL_CARD / 12);
+      const { discountRate } = computeFriendDiscountThisMonth(user.id);
+      const annualTotal = round2(PRICE_ANNUAL_CARD * (1 - discountRate));
+      const perMonth = round2(annualTotal / 12);
       for (const month of months) {
         if (!isUserPaidMonth(user.id, month)) addPaymentConfirmed(user.id, month, perMonth, "card", "Assinatura anual (cartão)", "card_subscribe");
       }

@@ -4368,6 +4368,7 @@ Ata de reunião:
           startHeartbeat();
           updateNurseBar(me);
           refreshNurseSubscriptionUI();
+        try { await refreshPayModalData(); } catch {}
         } else {
           setToken("");
           showLogin();
@@ -4500,9 +4501,10 @@ Ata de reunião:
     });
 
     // Modais (Pagamento / Adicionar amigo) - só abrem quando o usuário clica no botão
-    function openPayModal() {
+    async function openPayModal() {
       const b = document.getElementById("payModalBackdrop");
       if (b) b.classList.remove("hidden");
+      try { await refreshPayModalData(); } catch {}
     }
     function closePayModal() {
       const b = document.getElementById("payModalBackdrop");
@@ -4525,6 +4527,76 @@ Ata de reunião:
       if (err) err.textContent = "";
     }
 
+
+    function fmtBRL(n){
+      const v = Number(n || 0);
+      return v.toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
+    }
+    function badge(status){
+      const s = String(status||"").toLowerCase();
+      if (s === "paid") return '<span class="pill green">Em dia</span>';
+      return '<span class="pill red">Pendente</span>';
+    }
+    async function refreshPayModalData(){
+      const listEl = document.getElementById("payFriendsList");
+      const sumEl = document.getElementById("payDiscountSummary");
+      const monthEl = document.getElementById("payMonthLabel");
+      const monthlyLineEl = document.getElementById("payMonthlyDueLine");
+      const annualLineEl = document.getElementById("payAnnualDueLine");
+
+      // Busca amigos + desconto/valores (backend já calcula)
+      const resp = await fetchWithTimeout(BACKEND_URL + "/api/friends/list", { method:"GET" }, 20000);
+      const data = await resp.json().catch(()=>({}));
+      if (!resp.ok) throw new Error(data?.error || "Falha ao carregar dados.");
+
+      const month = String(data.month || "");
+      const friends = Array.isArray(data.friends) ? data.friends : [];
+      const active = Number(data.activeFriendsThisMonth || 0);
+      const rate = Number(data.discountRateThisMonth || 0);
+      const dueMonthly = Number(data.amountDueThisMonth || 0);
+      const dueAnnualPix = Number(data.amountDueAnnualPix || 0);
+      const dueAnnualCard = Number(data.amountDueAnnualCard || 0);
+
+      if (monthEl) monthEl.textContent = month ? ("Mês: " + month) : "";
+      if (sumEl) {
+        const pct = Math.round(rate * 100);
+        sumEl.textContent = "Desconto atual: " + pct + "% (" + active + " amigo(s) em dia)";
+      }
+
+      // Render lista de amigos com status de pagamento do mês
+      if (listEl) {
+        if (!friends.length) {
+          listEl.innerHTML = '<div style="font-size:14px; color:#444;">Nenhum amigo cadastrado ainda.</div>';
+        } else {
+          const rows = friends.map(f => {
+            const paid = !!f.isPaidThisMonth;
+            const statusBadge = paid ? '<span class="pill green">Pago em dia</span>' : '<span class="pill red">Não pagou este mês</span>';
+            const counts = paid ? '<span style="font-size:12px; color:#155724; margin-left:8px;">Conta para desconto</span>' : '<span style="font-size:12px; color:#721c24; margin-left:8px;">Não conta para desconto</span>';
+            const name = escapeHtml(String(f.fullName||""));
+            const cpf = escapeHtml(String(f.cpf||f.login||""));
+            return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid #eee;">'
+              + '<div><div style="font-weight:700;">' + name + '</div><div style="font-size:12px; color:#666;">CPF: ' + cpf + '</div></div>'
+              + '<div style="text-align:right;">' + statusBadge + counts + '</div>'
+              + '</div>';
+          }).join("");
+          listEl.innerHTML = rows;
+        }
+      }
+
+      if (monthlyLineEl) monthlyLineEl.textContent = "Mensal (com desconto): " + fmtBRL(dueMonthly) + " (base R$ 25,00)";
+      if (annualLineEl) annualLineEl.textContent = "Anual (com desconto): Pix " + fmtBRL(dueAnnualPix) + " (base R$ 200,00) | Cartão " + fmtBRL(dueAnnualCard) + " (base R$ 240,00)";
+
+      // Atualiza texto dos botões com valores
+      const pixM = document.getElementById("pixMonthlyBtn");
+      const cardM = document.getElementById("cardMonthlyBtn");
+      const pixA = document.getElementById("pixAnnualBtn");
+      const cardA = document.getElementById("cardAnnualBtn");
+      if (pixM) pixM.textContent = "Pagar Pix mensal (" + fmtBRL(dueMonthly) + ")";
+      if (cardM) cardM.textContent = "Pagar cartão mensal (" + fmtBRL(dueMonthly) + ")";
+      if (pixA) pixA.textContent = "Pagar Pix anual (" + fmtBRL(dueAnnualPix) + ")";
+      if (cardA) cardA.textContent = "Pagar cartão anual (" + fmtBRL(dueAnnualCard) + ")";
+    }
+
 document.getElementById("openPayModalBtn")?.addEventListener("click", openPayModal);
     document.getElementById("closePayModalBtn")?.addEventListener("click", closePayModal);
     document.getElementById("payModalBackdrop")?.addEventListener("click", (e)=>{ if(e.target && e.target.id==="payModalBackdrop") closePayModal(); });
@@ -4533,11 +4605,11 @@ document.getElementById("openPayModalBtn")?.addEventListener("click", openPayMod
     document.getElementById("closeAddFriendModalBtn")?.addEventListener("click", closeAddFriendModal);
     document.getElementById("addFriendModalBackdrop")?.addEventListener("click", (e)=>{ if(e.target && e.target.id==="addFriendModalBackdrop") closeAddFriendModal(); });
 
-    async function createPix(kind){
+    async function createPix(plan){
       const resp = await fetch(BACKEND_URL + "/api/payments/pix/create", {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ kind })
+        body: JSON.stringify({ plan })
       });
       const data = await resp.json().catch(()=>({}));
       if (!resp.ok) throw new Error(data.error || "Falha ao gerar Pix.");
@@ -4549,8 +4621,9 @@ document.getElementById("openPayModalBtn")?.addEventListener("click", openPayMod
       try {
         const data = await createPix("monthly");
         if (box) {
-          box.innerHTML = "Pedido Pix gerado. Identificador: <b>" + (data.orderId||"-") + "</b><br/>Envie o comprovante ao administrador para confirmação.";
+          box.innerHTML = "Pedido Pix gerado. Identificador: <b>" + (data.orderId||"-") + "</b><br/>Chave Pix: <b>" + escapeHtml(String(data.pixKey||"")) + "</b><br/>" + escapeHtml(String(data.instructions||"")) + "<br/>Envie o comprovante ao administrador para confirmação.";
           box.style.display = "";
+          try { await refreshNurseSubscriptionUI(); await refreshPayModalData(); } catch {}
         }
       } catch (e) {
         if (box) { box.textContent = e.message || "Falha ao gerar Pix."; box.style.display=""; }
@@ -4562,8 +4635,9 @@ document.getElementById("openPayModalBtn")?.addEventListener("click", openPayMod
       try {
         const data = await createPix("annual");
         if (box) {
-          box.innerHTML = "Pedido Pix anual gerado. Identificador: <b>" + (data.orderId||"-") + "</b><br/>Envie o comprovante ao administrador para confirmação.";
-          box.style.display = "";
+          box.innerHTML = "Pedido Pix anual gerado. Identificador: <b>" + (data.orderId||"-") + "</b><br/>Chave Pix: <b>" + escapeHtml(String(data.pixKey||"")) + "</b><br/>" + escapeHtml(String(data.instructions||"")) + "<br/>Envie o comprovante ao administrador para confirmação.";
+          box.style.display = "";          try { await refreshNurseSubscriptionUI(); await refreshPayModalData(); } catch {}
+
         }
       } catch (e) {
         if (box) { box.textContent = e.message || "Falha ao gerar Pix."; box.style.display=""; }
@@ -4589,17 +4663,17 @@ document.getElementById("openPayModalBtn")?.addEventListener("click", openPayMod
 
     document.getElementById("cardMonthlyBtn")?.addEventListener("click", async ()=>{
       const box = document.getElementById("cardBox");
-      try { const data = await cardSubscribe("monthly"); if (box) { box.textContent = "Assinatura mensal iniciada. Status: " + (data.status||"active"); box.style.display=""; } }
+      try { const data = await cardSubscribe("monthly"); if (box) { box.textContent = "Assinatura mensal iniciada. Status: " + (data.status||"active"); box.style.display=""; } await refreshNurseSubscriptionUI(); await refreshPayModalData(); }
       catch (e) { if (box) { box.textContent = e.message || "Falha."; box.style.display=""; } }
     });
     document.getElementById("cardAnnualBtn")?.addEventListener("click", async ()=>{
       const box = document.getElementById("cardBox");
-      try { const data = await cardSubscribe("annual"); if (box) { box.textContent = "Assinatura anual iniciada. Status: " + (data.status||"active"); box.style.display=""; } }
+      try { const data = await cardSubscribe("annual"); if (box) { box.textContent = "Assinatura anual iniciada. Status: " + (data.status||"active"); box.style.display=""; } await refreshNurseSubscriptionUI(); await refreshPayModalData(); }
       catch (e) { if (box) { box.textContent = e.message || "Falha."; box.style.display=""; } }
     });
     document.getElementById("cardCancelBtn")?.addEventListener("click", async ()=>{
       const box = document.getElementById("cardBox");
-      try { await cardCancel(); if (box) { box.textContent = "Assinatura cancelada."; box.style.display=""; } }
+      try { await cardCancel(); if (box) { box.textContent = "Assinatura cancelada."; box.style.display=""; } await refreshNurseSubscriptionUI(); await refreshPayModalData(); }
       catch (e) { if (box) { box.textContent = e.message || "Falha."; box.style.display=""; } }
     });
 
@@ -4626,6 +4700,7 @@ document.getElementById("openPayModalBtn")?.addEventListener("click", openPayMod
         if (err) err.textContent = "Amigo cadastrado com sucesso.";
         setTimeout(()=>{ closeAddFriendModal(); if (err) err.textContent=""; }, 700);
         refreshNurseSubscriptionUI();
+        try { await refreshPayModalData(); } catch {}
       } catch {
         if (err) err.textContent = "Falha ao conectar no servidor.";
       }
@@ -12736,22 +12811,51 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
   </a>
 
 
+  
   <div id="payModalBackdrop" class="modal-backdrop hidden">
     <div class="modal">
       <h3>Pagamento</h3>
       <div class="row" style="font-size:14px;">
-        Escolha uma opção. O acesso é liberado automaticamente quando o pagamento do mês é confirmado.
+        O valor é calculado automaticamente com base nos amigos que pagaram o mês atual.
+      </div>
+
+      <div class="row pay-info" style="margin-top:12px;">
+        <div id="payMonthLabel" class="pay-info-title">Mês:</div>
+        <div id="payDiscountSummary" class="pay-info-line">Desconto atual:</div>
+        <div id="payMonthlyDueLine" class="pay-info-line"></div>
+        <div id="payAnnualDueLine" class="pay-info-line"></div>
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <div style="font-weight:700;">Amigos cadastrados</div>
+        <div id="payFriendsList" style="margin-top:6px;"></div>
       </div>
 
       <div class="row" style="margin-top:12px; border-top:1px solid #eee; padding-top:12px;">
         <div style="font-weight:700;">Pix (manual)</div>
-        <div style="font-size:14px; margin-top:6px;">Mensal: R$ 25,00 | Anual: R$ 200,00</div>
         <div class="actions">
-          <button id="pixMonthlyBtn" type="button" class="auth-btn">Gerar Pix mensal</button>
-          <button id="pixAnnualBtn" type="button" class="auth-btn">Gerar Pix anual</button>
+          <button id="pixMonthlyBtn" type="button" class="auth-btn">Pagar Pix mensal</button>
+          <button id="pixAnnualBtn" type="button" class="auth-btn">Pagar Pix anual</button>
         </div>
         <div id="pixBox" class="trial-banner" style="display:none; margin-top:10px;"></div>
       </div>
+
+      <div class="row" style="margin-top:12px; border-top:1px solid #eee; padding-top:12px;">
+        <div style="font-weight:700;">Cartão (recorrente)</div>
+        <div class="actions">
+          <button id="cardMonthlyBtn" type="button" class="auth-btn">Pagar cartão mensal</button>
+          <button id="cardAnnualBtn" type="button" class="auth-btn">Pagar cartão anual</button>
+          <button id="cardCancelBtn" type="button" class="auth-btn close-btn">Cancelar assinatura</button>
+        </div>
+        <div id="cardBox" class="trial-banner" style="display:none; margin-top:10px;"></div>
+      </div>
+
+      <div class="actions" style="justify-content:flex-end;">
+        <button id="closePayModalBtn" type="button" class="auth-btn close-btn">Fechar</button>
+      </div>
+    </div>
+  </div>
+
 
       <div class="row" style="margin-top:12px; border-top:1px solid #eee; padding-top:12px;">
         <div style="font-weight:700;">Cartão (recorrente)</div>
