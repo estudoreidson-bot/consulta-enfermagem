@@ -4591,19 +4591,48 @@ Ata de reunião:
           amountsEl.textContent = txt;
         }
 
-        const setPayBtn = (id, label, amount) => {
+        const setPayBtn = (id, label, amount, plan, method) => {
           const b = document.getElementById(id);
           if (!b) return;
-          b.onclick = () => {
-            const a = moneyBRL(amount);
-            alert(label + " - Valor: " + a + ".\nApós o pagamento, envie o comprovante ao administrador para liberação/baixa.");
+
+          b.onclick = async () => {
+            // Evita múltiplos cliques
+            const btns = ["payMonthlyPixBtn","payMonthlyCardBtn","payAnnualPixBtn","payAnnualCardBtn"].map(x => document.getElementById(x)).filter(Boolean);
+            for (const x of btns) x.disabled = true;
+
+            if (hintEl) hintEl.textContent = "Abrindo checkout de pagamento...";
+
+            try {
+              const resp2 = await fetch(BACKEND_URL + "/api/client/infinitepay/checkout-link", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ plan, method })
+              });
+              const out2 = await resp2.json().catch(() => ({}));
+
+              if (!resp2.ok || !out2?.checkout_url) {
+                const msg = out2?.error || "Não foi possível gerar o link de pagamento.";
+                alert(msg);
+                return;
+              }
+
+              if (hintEl) {
+                hintEl.textContent = label + " - Valor: " + moneyBRL(amount) + ". Você será direcionado para o checkout.";
+              }
+
+              window.location.href = out2.checkout_url;
+            } catch (e) {
+              alert("Falha ao iniciar pagamento. Tente novamente.");
+            } finally {
+              for (const x of btns) x.disabled = false;
+            }
           };
         };
 
-        setPayBtn("payMonthlyPixBtn", "PIX mensal", final.monthlyPix);
-        setPayBtn("payMonthlyCardBtn", "Cartão mensal", final.monthlyCard);
-        setPayBtn("payAnnualPixBtn", "PIX anual", final.annualPix);
-        setPayBtn("payAnnualCardBtn", "Cartão anual", final.annualCard);
+        setPayBtn("payMonthlyPixBtn", "PIX mensal", final.monthlyPix, "monthly", "pix");
+        setPayBtn("payMonthlyCardBtn", "Cartão mensal", final.monthlyCard, "monthly", "card");
+        setPayBtn("payAnnualPixBtn", "PIX anual", final.annualPix, "annual", "pix");
+        setPayBtn("payAnnualCardBtn", "Cartão anual", final.annualCard, "annual", "card");
 
         if (hintEl) {
           hintEl.textContent = "Regras: cada subusuário cadastrado gera 25% de desconto, limitado a 100%, desde que a mensalidade do mês atual esteja em dia.";

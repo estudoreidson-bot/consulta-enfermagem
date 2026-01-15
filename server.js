@@ -1375,6 +1375,150 @@ app.get("/api/client/billing", requireAuth, (req, res) => {
   }
 });
 
+// ======================================================================
+// ROTA DO CLIENTE – GERAR LINK DE PAGAMENTO (INFINITEPAY CHECKOUT)
+// - O frontend abre o checkout e o cliente escolhe Pix ou Cartão na tela da InfinitePay.
+// - Documentação: POST https://api.infinitepay.io/invoices/public/checkout/links
+// ======================================================================
+
+async function infinitePayCreateCheckoutLink(payload) {
+  // Usa fetch nativo (Node 18+). Se não existir, falha com mensagem clara.
+  const hasFetch = (typeof fetch === "function");
+  if (!hasFetch) throw new Error("Ambiente sem fetch disponível para integração com a InfinitePay.");
+
+  const resp = await fetch("https://api.infinitepay.io/invoices/public/checkout/links", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const msg = (data && (data.error || data.message)) ? String(data.error || data.message) : "Falha ao gerar link de pagamento.";
+    const err = new Error(msg);
+    err.statusCode = resp.status;
+    err.details = data;
+    throw err;
+  }
+  return data;
+}
+
+function brlToCents(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.max(1, Math.round(n * 100));
+}
+
+function safePhoneDigits(s) {
+  return String(s || "").replace(/\D/g, "").slice(0, 20);
+}
+
+app.post("/api/client/infinitepay/checkout-link", requireAuth, async (req, res) => {
+  try {
+    if (req.auth.role !== "nurse") return res.status(403).json({ error: "Acesso negado." });
+    const parentId = req.auth.user?.id;
+    if (!parentId) return res.status(400).json({ error: "Usuário inválido." });
+
+    const handle = String(process.env.INFINITEPAY_HANDLE || "").trim();
+    if (!handle) {
+      return res.status(500).json({ error: "INFINITEPAY_HANDLE não configurado no servidor." });
+    }
+
+    const plan = String(req.body?.plan || "").trim().toLowerCase(); // monthly | annual
+    const method = String(req.body?.method || "").trim().toLowerCase(); // pix | card (informativo)
+
+    if (!plan || !["monthly", "annual"].includes(plan)) {
+      return res.status(400).json({ error: "Plano inválido." });
+    }
+    if (!method || !["pix", "card"].includes(method)) {
+      return res.status(400).json({ error: "Forma de pagamento inválida." });
+    }
+
+    const billing = computeClientBilling(parentId);
+    const final = billing?.final || {};
+
+    let amountBrl = 0;
+    let title = "";
+    if (plan === "monthly" && method === "pix") { amountBrl = final.monthlyPix; title = "Mensalidade (PIX)"; }
+    if (plan === "monthly" && method === "card") { amountBrl = final.monthlyCard; title = "Mensalidade (Cartão)"; }
+    if (plan === "annual" && method === "pix") { amountBrl = final.annualPix; title = "Anuidade (PIX)"; }
+    if (plan === "annual" && method === "card") { amountBrl = final.annualCard; title = "Anuidade (Cartão)"; }
+
+    const amountCents = brlToCents(amountBrl);
+    if (!amountCents) return res.status(400).json({ error: "Valor inválido para cobrança." });
+
+    const u = req.auth.user || {};
+    const customerName = String(u.fullName || u.login || "").trim();
+    const customerPhone = safePhoneDigits(u.phone || "");
+
+    const orderNsu = crypto.randomBytes(8).toString("hex");
+    const transactionNsu = (crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString("hex"));
+
+    const allowedOrigin = String(process.env.ALLOWED_ORIGIN || "").trim();
+    const redirectUrl = allowedOrigin ? (allowedOrigin.replace(/\/$/, "") + "/?pagamento=retorno") : undefined;
+
+    const payload = {
+      handle,
+      order_nsu: orderNsu,
+      transaction_nsu: transactionNsu,
+      items: [
+        {
+          name: "Atendimento de Enfermagem",
+          description: title,
+          quantity: 1,
+          unit_price: amountCents
+        }
+      ],
+      // Dados do cliente são opcionais; enviamos o que já existe para facilitar preenchimento no checkout.
+      customer: {
+        name: customerName || undefined,
+        phone_number: customerPhone || undefined
+      },
+      redirect_url: redirectUrl
+    };
+
+    // Remove campos undefined do payload
+    function prune(obj) {
+      if (!obj || typeof obj !== "object") return obj;
+      if (Array.isArray(obj)) return obj.map(prune);
+      const out = {};
+      for (const k of Object.keys(obj)) {
+        const v = obj[k];
+        if (v === undefined || v === null || v === "") continue;
+        out[k] = prune(v);
+      }
+      return out;
+    }
+    const cleanPayload = prune(payload);
+
+    const created = await infinitePayCreateCheckoutLink(cleanPayload);
+
+    // A API retorna, entre outros campos, o link de checkout. Mantemos nomes tolerantes.
+    const url = created?.checkout_url || created?.url || created?.link || created?.checkoutUrl || "";
+    const slug = created?.invoice_slug || created?.slug || "";
+
+    if (!url) {
+      return res.status(502).json({ error: "Link de pagamento não retornado pela InfinitePay." });
+    }
+
+    // Log mínimo (sem dados sensíveis)
+    audit("infinitepay_link", parentId, `Gerado link ${plan}/${method} (${amountCents} centavos) slug=${slug || "-"}`);
+
+    return res.json({
+      ok: true,
+      checkout_url: url,
+      invoice_slug: slug,
+      order_nsu: orderNsu,
+      transaction_nsu: transactionNsu,
+      amount_cents: amountCents
+    });
+  } catch (e) {
+    console.error("[InfinitePay] erro ao gerar link:", e?.message || e);
+    return res.status(500).json({ error: "Falha ao gerar link de pagamento." });
+  }
+});
+
+
 
 // Rotas administrativas
 app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
