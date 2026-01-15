@@ -2070,7 +2070,7 @@
       <label class="auth-label" for="signupPhone">Telefone</label>
       <input id="signupPhone" class="auth-input" type="tel" autocomplete="tel" inputmode="tel" />
 
-      <label class="auth-label" for="signupLogin">Login</label>
+      <label class="auth-label" for="signupLogin">CPF</label>
       <input id="signupLogin" class="auth-input" autocomplete="username" inputmode="numeric" />
 
       <label class="auth-label" for="signupPassword">Senha</label>
@@ -2134,7 +2134,7 @@
             <input id="newPhone" type="tel" />
           </div>
           <div class="admin-field">
-            <label for="newLogin">Login</label>
+            <label for="newLogin">CPF</label>
             <input id="newLogin" type="text" />
           </div>
           <div class="admin-field">
@@ -2158,7 +2158,7 @@
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>Login</th>
+                <th>CPF</th>
                 <th>Telefone</th>
                 <th>Online</th>
                 <th>Mensalidade</th>
@@ -4065,6 +4065,18 @@ Ata de reunião:
 
     const nativeFetch = window.fetch.bind(window);
 
+    async function fetchWithTimeout(url, init = {}, timeoutMs = 20000) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const merged = Object.assign({}, init, { signal: controller.signal });
+        return await nativeFetch(url, merged);
+      } finally {
+        clearTimeout(id);
+      }
+    }
+
+
     // Backup local automático (para não perder clientes em redeploy/atualizações do backend)
     const LOCAL_BACKUP_KEY = "ae_local_backup_v1";
     const LOCAL_BACKUP_AT_KEY = "ae_local_backup_at_v1";
@@ -4228,7 +4240,7 @@ Ata de reunião:
       if (errEl) errEl.textContent = "Conectando...";
       if (btn) btn.disabled = true;
       try {
-        const resp = await nativeFetch(BACKEND_URL + "/api/auth/login", {
+        const resp = await fetchWithTimeout(BACKEND_URL + "/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
           body: JSON.stringify({ cpf, login: cpf, senha })
@@ -4280,7 +4292,7 @@ Ata de reunião:
       if (btn) btn.disabled = true;
 
       try {
-        const resp = await nativeFetch(BACKEND_URL + "/api/auth/signup", {
+        const resp = await fetchWithTimeout(BACKEND_URL + "/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fullName, dob, phone, cpf, login: cpf, password })
@@ -4339,16 +4351,21 @@ Ata de reunião:
           await adminLoadAll();
           updateAdminLocalBackupBadge();
           await refreshLocalBackupFromServer();
-        } else if (me && me.role === "nurse") {
+        } else if (me && (me.role === "nurse" || me.role === "user" || me.role === "client" || me.role === "cliente")) {
           showNurse();
           startHeartbeat();
           updateNurseBar(me);
           refreshNurseSubscriptionUI();
         } else {
+          setToken("");
           showLogin();
+          const le = document.getElementById("loginError");
+          if (le) le.textContent = "Não foi possível iniciar sessão (perfil não reconhecido).";
         }
       } catch (e) {
         showLogin();
+        const le = document.getElementById("loginError");
+        if (le) le.textContent = "Não foi possível validar a sessão. Tente novamente.";
       }
     }
 
@@ -4385,7 +4402,7 @@ Ata de reunião:
       const cpf = onlyDigits(raw);
       if (!cpf || cpf.length !== 11) { showEl("loginTrialBanner", false); showEl("loginTrialWarning", false); return; }
       try {
-        const resp = await nativeFetch(BACKEND_URL + "/api/public/subscription/status?cpf=" + encodeURIComponent(cpf), { method: "GET" });
+        const resp = await fetchWithTimeout(BACKEND_URL + "/api/public/subscription/status?cpf=" + encodeURIComponent(cpf), { method: "GET" });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) { showEl("loginTrialBanner", false); showEl("loginTrialWarning", false); return; }
         const rem = Number(data.trialRemainingSeconds || 0);
@@ -4408,6 +4425,7 @@ Ata de reunião:
     }
 
 // Eventos de login/logout
+    document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("loginBtn")?.addEventListener("click", doLogin);
     document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
     document.getElementById("loginField")?.addEventListener("input", () => { if (_trialDebounce) clearTimeout(_trialDebounce); _trialDebounce = setTimeout(refreshLoginTrialBanner, 250); });
@@ -4423,8 +4441,8 @@ Ata de reunião:
     document.getElementById("signupPassword")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doSignup(); });
     document.getElementById("nurseLogoutBtn")?.addEventListener("click", logoutAll);
     document.getElementById("adminLogoutBtn")?.addEventListener("click", logoutAll);
+    });
 
-    
     // Modais (Pagamento / Adicionar amigo) - só abrem quando o usuário clica no botão
     function openPayModal() {
       const b = document.getElementById("payModalBackdrop");
@@ -9937,7 +9955,7 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
         await adminFetchJson(`/api/admin/users/${encodeURIComponent(EDIT_USER_ID)}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, phone, login, password })
+          body: JSON.stringify({ fullName, dob, phone, cpf, login: cpf, password })
         });
 
         closeEditUserModal();
