@@ -2027,14 +2027,35 @@
     }
 
   
-    .trial-countdown{
-      font-weight:700;
-      margin-right:8px;
-      color:#1f4e79;
-      font-size:13px;
-      white-space:nowrap;
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
     }
-</style>
+    @media (max-width: 720px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    .simple-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .simple-list-item {
+      border: 1px solid #e7e7e7;
+      border-radius: 12px;
+      padding: 10px;
+      background: #fff;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #1f2937;
+    }
+    .simple-list-item .muted {
+      color: #6b7280;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+  </style>
 </head>
 <body>
 
@@ -2044,16 +2065,14 @@
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
 
-      <label class="auth-label" for="loginField">CPF</label>
-      <input id="loginField" class="auth-input" autocomplete="username" inputmode="numeric" />
+      <label class="auth-label" for="loginField">Login</label>
+      <input id="loginField" class="auth-input" autocomplete="username" inputmode="text" />
 
       <label class="auth-label" for="passwordField">Senha</label>
       <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
 
       <button id="loginBtn" class="auth-btn" type="button">Entrar</button>
       <div id="loginError" class="auth-error"></div>
-      <div id="loginTrialBanner" class="trial-banner" style="display:none;"></div>
-      <div id="loginTrialWarning" class="trial-warning" style="display:none;"></div>
 
       <button id="openSignupBtn" class="auth-btn outline" type="button">Cadastrar enfermeiro(a)</button>
 
@@ -2078,8 +2097,8 @@
       <label class="auth-label" for="signupPhone">Telefone</label>
       <input id="signupPhone" class="auth-input" type="tel" autocomplete="tel" inputmode="tel" />
 
-      <label class="auth-label" for="signupLogin">CPF</label>
-      <input id="signupLogin" class="auth-input" autocomplete="username" inputmode="numeric" />
+      <label class="auth-label" for="signupLogin">Login</label>
+      <input id="signupLogin" class="auth-input" autocomplete="username" inputmode="text" />
 
       <label class="auth-label" for="signupPassword">Senha</label>
       <input id="signupPassword" class="auth-input" type="password" autocomplete="new-password" />
@@ -2087,19 +2106,6 @@
       <button id="signupBtn" class="auth-btn" type="button">Cadastrar</button>
       <button id="signupBackBtn" class="auth-btn secondary" type="button">Voltar</button>
       <div id="signupError" class="auth-error"></div>
-      <div class="auth-row">
-        <div class="auth-hint" style="margin-top:6px;">
-          15 dias grátis para novos cadastros. Avisaremos quando faltar 5 dias para vencer.
-        </div>
-      </div>
-      <div class="auth-row">
-        <div class="auth-hint">
-          Para ganhar desconto, você adiciona amigos somente depois do login: dentro da sua conta, clique em "Adicionar amigo" e cadastre cada amigo. Eles ficarão vinculados ao seu cadastro.
-        </div>
-      </div>
-      
-      </div>
-
 
       <div class="auth-help">
         Após o cadastro, o acesso ao sistema pode depender de liberação/regularização com o administrador.
@@ -2142,7 +2148,7 @@
             <input id="newPhone" type="tel" />
           </div>
           <div class="admin-field">
-            <label for="newLogin">CPF</label>
+            <label for="newLogin">Login</label>
             <input id="newLogin" type="text" />
           </div>
           <div class="admin-field">
@@ -2166,7 +2172,7 @@
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>CPF</th>
+                <th>Login</th>
                 <th>Telefone</th>
                 <th>Online</th>
                 <th>Mensalidade</th>
@@ -2239,7 +2245,7 @@
           <input id="editPhone" class="auth-input" placeholder="Telefone" />
         </div>
         <div>
-          <label class="auth-label">CPF</label>
+          <label class="auth-label">Login</label>
           <input id="editLogin" class="auth-input" placeholder="Login" />
         </div>
         <div style="grid-column: 1 / -1;">
@@ -2258,7 +2264,86 @@
 
 </div>
 
-  <div id="nurseView" class="hidden">
+  
+  <div id="addFriendModal" class="modal-overlay hidden">
+    <div class="modal" style="max-width: 520px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Adicionar amigo</h2>
+          <p class="modal-subtitle">Cadastre um subusuário vinculado ao seu acesso.</p>
+        </div>
+        <button id="closeAddFriendModalBtn" class="modal-close" type="button">Fechar</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="grid-2">
+          <div>
+            <label class="auth-label" for="friendFullName">Nome completo</label>
+            <input id="friendFullName" class="auth-input" inputmode="text" />
+          </div>
+          <div>
+            <label class="auth-label" for="friendDob">Data de nascimento</label>
+            <input id="friendDob" class="auth-input" placeholder="DD/MM/AAAA" inputmode="text" />
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label class="auth-label" for="friendPhone">Telefone</label>
+            <input id="friendPhone" class="auth-input" inputmode="tel" />
+          </div>
+          <div>
+            <label class="auth-label" for="friendLogin">Login do amigo</label>
+            <input id="friendLogin" class="auth-input" inputmode="text" />
+          </div>
+        </div>
+
+        <label class="auth-label" for="friendPassword">Senha do amigo</label>
+        <input id="friendPassword" class="auth-input" type="password" autocomplete="new-password" />
+
+        <div id="addFriendError" class="auth-error"></div>
+        <div style="margin-top: 10px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
+          <button id="saveFriendBtn" class="auth-btn" type="button">Cadastrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="clientBillingModal" class="modal-overlay hidden">
+    <div class="modal" style="max-width: 720px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Pagamento</h2>
+          <p class="modal-subtitle">Veja seus subusuários e o valor com desconto (quando aplicável).</p>
+        </div>
+        <button id="closeClientBillingModalBtn" class="modal-close" type="button">Fechar</button>
+      </div>
+
+      <div class="modal-body">
+        <div id="clientBillingStatus" class="auth-help"></div>
+
+        <div class="module-divider"></div>
+        <p class="module-title" style="margin-bottom: 8px;">Subusuários cadastrados</p>
+        <div id="clientFriendsList" class="simple-list"></div>
+
+        <div class="module-divider"></div>
+        <p class="module-title" style="margin-bottom: 8px;">Valores</p>
+        <div id="clientBillingAmounts" class="answer-box"></div>
+
+        <div style="margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap;">
+          <button id="payMonthlyPixBtn" class="auth-btn" type="button">PIX mensal</button>
+          <button id="payMonthlyCardBtn" class="auth-btn outline" type="button">Cartão mensal</button>
+          <button id="payAnnualPixBtn" class="auth-btn" type="button">PIX anual</button>
+          <button id="payAnnualCardBtn" class="auth-btn outline" type="button">Cartão anual</button>
+        </div>
+
+        <div id="clientBillingHint" class="auth-help" style="margin-top: 10px;"></div>
+      </div>
+    </div>
+  </div>
+
+
+<div id="nurseView" class="hidden">
   <div class="page">
                 <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
      <h1>Atendimento de Enfermagem</h1>
@@ -2267,17 +2352,12 @@
     <div class="nurse-bar" id="nurseBar">
       <div>
         <div class="nurse-bar-line"><span class="nurse-bar-label">Usuário:</span><span id="nurseUserLabel">-</span></div>
-        <div class="nurse-bar-line"><span class="nurse-bar-label">CPF:</span><span id="nurseLoginLabel">-</span></div>
-        <div class="nurse-bar-line"><span class="nurse-bar-label"><span id="trialCountdownInline" class="trial-countdown">--</span> Gratuidade:</span><span id="nurseTrialLabel" class="pill">-</span></div>
-        <div id="nurseTrialWarning" class="trial-warning" style="display:none; margin-top:8px;"></div>
-<div class="nurse-bar-line"><span class="nurse-bar-label">Mensalidade:</span><span id="nursePaymentLabel" class="pill">-</span></div>
-        <div class="nurse-bar-line" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
-          <button id="openPayModalBtn" type="button" class="auth-btn">Pagamento</button>
-          <button id="openAddFriendBtn" type="button" class="auth-btn">Adicionar amigo</button>
-        </div>
-
+        <div class="nurse-bar-line"><span class="nurse-bar-label">Login:</span><span id="nurseLoginLabel">-</span></div>
+        <div class="nurse-bar-line"><span class="nurse-bar-label">Mensalidade:</span><span id="nursePaymentLabel" class="pill">-</span></div>
       </div>
       <div class="nurse-bar-actions">
+        <button id="addFriendBtn" type="button" class="auth-btn outline">Adicionar amigo</button>
+        <button id="openClientBillingBtn" type="button" class="auth-btn">Pagamento</button>
         <button id="nurseLogoutBtn" type="button" class="danger-btn">Sair</button>
       </div>
     </div>
@@ -3917,7 +3997,6 @@ Ata de reunião:
 
 <script>
 
-
     const DEFAULT_BACKEND_URL = "https://consulta-enfermagem-1.onrender.com";
     // Backend principal (Render). Pode ser sobrescrito por:
     // 1) Querystring ?backend=https://...  (útil para testes)
@@ -4024,57 +4103,6 @@ Ata de reunião:
       }
     }
 
-    function onlyDigits(s){ return String(s||"").replace(/\D+/g,""); }
-
-    function formatRemaining(sec){
-      const n = Math.max(0, Math.floor(Number(sec)||0));
-      const days = Math.floor(n / 86400);
-      const hours = Math.floor((n % 86400) / 3600);
-      return { days, hours };
-    }
-
-    // Contagem regressiva da gratuidade (atualização em tempo real)
-    let __trialTicker = null;
-    let __trialRemainingSec = 0;
-
-    function formatRemainingFull(sec){
-      const n = Math.max(0, Math.floor(Number(sec)||0));
-      const days = Math.floor(n / 86400);
-      const hours = Math.floor((n % 86400) / 3600);
-      const minutes = Math.floor((n % 3600) / 60);
-      const seconds = Math.floor(n % 60);
-      return { days, hours, minutes, seconds };
-    }
-
-    function renderTrialCountdown(sec){
-      const r = formatRemainingFull(sec);
-      const inline = document.getElementById("trialCountdownInline");
-      if (inline) {
-        if (sec > 0) inline.textContent = `${r.days}d ${r.hours}h ${r.minutes}m ${r.seconds}s`;
-        else inline.textContent = "0d 0h 0m 0s";
-      }
-
-      const trialLabel = document.getElementById("nurseTrialLabel");
-      if (trialLabel) {
-        if (sec > 0) trialLabel.textContent = "faltam " + r.days + " dias e " + r.hours + " horas";
-        else trialLabel.textContent = "encerrada";
-      }
-    }
-
-    function startTrialTicker(initialSec){
-      __trialRemainingSec = Math.max(0, Math.floor(Number(initialSec)||0));
-      renderTrialCountdown(__trialRemainingSec);
-      if (__trialTicker) { clearInterval(__trialTicker); __trialTicker = null; }
-      __trialTicker = setInterval(() => {
-        __trialRemainingSec = Math.max(0, __trialRemainingSec - 1);
-        renderTrialCountdown(__trialRemainingSec);
-      }, 1000);
-    }
-
-
-    function setElText(id, text){ const el=document.getElementById(id); if(el) el.textContent=text; }
-    function showEl(id, show){ const el=document.getElementById(id); if(el) el.style.display = show ? "" : "none"; }
-
 // Diagnóstico visível: se algum erro de JS impedir o login, ele aparece aqui
     function showFatalError(msg) {
       const el = document.getElementById("loginError");
@@ -4111,18 +4139,6 @@ Ata de reunião:
     });
 
     const nativeFetch = window.fetch.bind(window);
-
-    async function fetchWithTimeout(url, init = {}, timeoutMs = 20000) {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), timeoutMs);
-      try {
-        const merged = Object.assign({}, init, { signal: controller.signal });
-        return await nativeFetch(url, merged);
-      } finally {
-        clearTimeout(id);
-      }
-    }
-
 
     // Backup local automático (para não perder clientes em redeploy/atualizações do backend)
     const LOCAL_BACKUP_KEY = "ae_local_backup_v1";
@@ -4184,8 +4200,6 @@ Ata de reunião:
     }
 
     function showLogin() {
-      closePayModal();
-      closeAddFriendModal();
       document.getElementById("loginView")?.classList.remove("hidden");
       document.getElementById("adminView")?.classList.add("hidden");
       document.getElementById("nurseView")?.classList.add("hidden");
@@ -4193,8 +4207,6 @@ Ata de reunião:
       document.getElementById("paymentsModal")?.classList.add("hidden");
     }
     function showSignup() {
-      closePayModal();
-      closeAddFriendModal();
       document.getElementById("loginView")?.classList.add("hidden");
       document.getElementById("adminView")?.classList.add("hidden");
       document.getElementById("nurseView")?.classList.add("hidden");
@@ -4202,16 +4214,12 @@ Ata de reunião:
       document.getElementById("paymentsModal")?.classList.add("hidden");
     }
     function showAdmin() {
-      closePayModal();
-      closeAddFriendModal();
       document.getElementById("loginView")?.classList.add("hidden");
       document.getElementById("adminView")?.classList.remove("hidden");
       document.getElementById("nurseView")?.classList.add("hidden");
       document.getElementById("nurseSignupView")?.classList.add("hidden");
     }
     function showNurse() {
-      closePayModal();
-      closeAddFriendModal();
       document.getElementById("loginView")?.classList.add("hidden");
       document.getElementById("adminView")?.classList.add("hidden");
       document.getElementById("nurseView")?.classList.remove("hidden");
@@ -4269,40 +4277,27 @@ Ata de reunião:
     };
 
     async function authMe() {
-      const token = getToken();
-      const headers = {};
-      if (token) headers["Authorization"] = "Bearer " + token;
-      const deviceId = getDeviceId();
-      if (deviceId) headers["X-Device-Id"] = deviceId;
-
-      const resp = await fetchWithTimeout(BACKEND_URL + "/api/auth/me", { method: "GET", headers }, 20000);
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        const msg = (data && data.error) ? String(data.error) : ("Falha ao validar sessão (HTTP " + resp.status + ")");
-        const code = (data && data.code) ? (" (" + String(data.code) + ")") : "";
-        throw new Error(msg + code);
-      }
-      return data;
+      const resp = await fetch(BACKEND_URL + "/api/auth/me", { method: "GET" });
+      if (!resp.ok) throw new Error("me failed");
+      return await resp.json();
     }
-
 
     async function doLogin() {
       const login = (document.getElementById("loginField")?.value || "").trim();
-      const cpf = onlyDigits(login);
       const senha = (document.getElementById("passwordField")?.value || "").trim();
       const errEl = document.getElementById("loginError");
       const btn = document.getElementById("loginBtn");
-      if (!cpf || cpf.length !== 11 || !senha) {
-        if (errEl) errEl.textContent = "Informe CPF e senha.";
+      if (!login || !senha) {
+        if (errEl) errEl.textContent = "Informe login e senha.";
         return;
       }
       if (errEl) errEl.textContent = "Conectando...";
       if (btn) btn.disabled = true;
       try {
-        const resp = await fetchWithTimeout(BACKEND_URL + "/api/auth/login", {
+        const resp = await nativeFetch(BACKEND_URL + "/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
-          body: JSON.stringify({ cpf, login: cpf, senha })
+          body: JSON.stringify({ login, senha })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
@@ -4312,7 +4307,7 @@ Ata de reunião:
         setToken(data.token || "");
         await restoreSession();
       } catch (e) {
-        if (errEl) errEl.textContent = (e && e.message) ? e.message : "Falha ao conectar no servidor.";
+        if (errEl) errEl.textContent = "Falha ao conectar no servidor.";
       } finally {
         if (btn) btn.disabled = false;
       }
@@ -4336,14 +4331,13 @@ Ata de reunião:
       const dob = (document.getElementById("signupDob")?.value || "").trim();
       const phone = (document.getElementById("signupPhone")?.value || "").trim();
       const login = (document.getElementById("signupLogin")?.value || "").trim();
-      const cpf = onlyDigits(login);
       const password = (document.getElementById("signupPassword")?.value || "").trim();
 
       const errEl = document.getElementById("signupError");
       const btn = document.getElementById("signupBtn");
 
-      if (!fullName || !dob || !phone || !cpf || cpf.length !== 11 || !password) {
-        if (errEl) errEl.textContent = "Preencha: nome completo, data de nascimento, telefone, CPF e senha.";
+      if (!fullName || !dob || !phone || !login || !password) {
+        if (errEl) errEl.textContent = "Preencha: nome completo, data de nascimento, telefone, login e senha.";
         return;
       }
 
@@ -4351,10 +4345,10 @@ Ata de reunião:
       if (btn) btn.disabled = true;
 
       try {
-        const resp = await fetchWithTimeout(BACKEND_URL + "/api/auth/signup", {
+        const resp = await nativeFetch(BACKEND_URL + "/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, phone, cpf, login: cpf, password })
+          body: JSON.stringify({ fullName, dob, phone, login, password })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
@@ -4365,14 +4359,14 @@ Ata de reunião:
         // Volta para o login e orienta o próximo passo
         showLogin();
         const lf = document.getElementById("loginField");
-        if (lf) lf.value = cpf;
+        if (lf) lf.value = login;
         const pf = document.getElementById("passwordField");
         if (pf) pf.value = "";
         const loginErr = document.getElementById("loginError");
-        if (loginErr) loginErr.textContent = "Cadastro realizado. Você tem 15 dias grátis. Faça login para continuar.";
+        if (loginErr) loginErr.textContent = "Cadastro realizado. Para liberar o acesso, regularize com o administrador e, depois, faça login.";
         resetSignupForm();
       } catch (e) {
-        if (errEl) errEl.textContent = (e && e.message) ? e.message : "Falha ao conectar no servidor.";
+        if (errEl) errEl.textContent = "Falha ao conectar no servidor.";
       } finally {
         if (btn) btn.disabled = false;
       }
@@ -4410,22 +4404,15 @@ Ata de reunião:
           await adminLoadAll();
           updateAdminLocalBackupBadge();
           await refreshLocalBackupFromServer();
-        } else if (me && (me.role === "nurse" || me.role === "user" || me.role === "client" || me.role === "cliente")) {
+        } else if (me && me.role === "nurse") {
           showNurse();
           startHeartbeat();
           updateNurseBar(me);
-          refreshNurseSubscriptionUI();
-        try { await refreshPayModalData(); } catch {}
         } else {
-          setToken("");
           showLogin();
-          const le = document.getElementById("loginError");
-          if (le) le.textContent = "Não foi possível iniciar sessão (perfil não reconhecido).";
         }
       } catch (e) {
         showLogin();
-        const le = document.getElementById("loginError");
-        if (le) le.textContent = "Sessão inválida: " + (e && e.message ? e.message : "Tente novamente.");
       }
     }
 
@@ -4449,84 +4436,15 @@ Ata de reunião:
       if (lblLogin) lblLogin.textContent = login;
 
       if (pay) {
-        const m = month ? " (" + month + ")" : "";
-        pay.textContent = paidFlag ? ("Mensalidade: Em dia" + m) : ("Mensalidade: Pendente" + m);
+        pay.textContent = paidFlag ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Em atraso" + (month ? " (" + month + ")" : ""));
         pay.classList.remove("green","red");
-        if (paidFlag) pay.classList.add("green");
+        pay.classList.add(paidFlag ? "green" : "red");
       }
     }
 
-    
-
-    async function refreshNurseSubscriptionUI() {
-      try {
-        const resp = await fetchWithTimeout(BACKEND_URL + "/api/subscription/status", { method: "GET" }, 20000);
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) return;
-
-        const rem = Number((data && data.trialRemainingSeconds) ?? 0);
-        const paid = !!(data && data.isPaidThisMonth);
-        const needsPayment = !!(data && data.needsPayment);
-        const warn = !!(data && data.warning5Days);
-
-        // Gratuidade (contagem regressiva)
-        startTrialTicker(rem);
-if (warn && rem > 0) {
-          setElText("nurseTrialWarning", "Aviso: faltam 5 dias ou menos para encerrar a gratuidade.");
-          showEl("nurseTrialWarning", true);
-        } else {
-          showEl("nurseTrialWarning", false);
-        }
-
-        // Mensalidade (sem vermelho; verde somente quando em dia)
-        const pay = document.getElementById("nursePaymentLabel");
-        if (pay) {
-          // tenta reaproveitar o mês que já vem do /api/auth/me (se existir)
-          const monthText = (pay.textContent && pay.textContent.includes("(")) ? (" " + pay.textContent.slice(pay.textContent.indexOf("("))) : "";
-          pay.textContent = paid ? ("Mensalidade: Em dia" + monthText) : ("Mensalidade: Pendente" + monthText);
-          pay.classList.remove("green", "red");
-          if (paid) pay.classList.add("green");
-        }
-
-        // Se acabou a gratuidade e não pagou, abre o pagamento
-        if (needsPayment && rem <= 0 && !paid) {
-          try { openPayModal(); } catch {}
-        }
-      } catch {}
-    }
-    let _trialDebounce = null;
-    async function refreshLoginTrialBanner() {
-      const raw = (document.getElementById("loginField")?.value || "").trim();
-      const cpf = onlyDigits(raw);
-      if (!cpf || cpf.length !== 11) { showEl("loginTrialBanner", false); showEl("loginTrialWarning", false); return; }
-      try {
-        const resp = await fetchWithTimeout(BACKEND_URL + "/api/public/subscription/status?cpf=" + encodeURIComponent(cpf), { method: "GET" });
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) { showEl("loginTrialBanner", false); showEl("loginTrialWarning", false); return; }
-        const rem = Number(data.trialRemainingSeconds || 0);
-        if (rem > 0) {
-          const t = formatRemaining(rem);
-          setElText("loginTrialBanner", "Gratuidade: faltam " + t.days + " dias e " + t.hours + " horas");
-          showEl("loginTrialBanner", true);
-          if (data.warning5Days) {
-            setElText("loginTrialWarning", "Aviso: faltam 5 dias ou menos para encerrar a gratuidade.");
-            showEl("loginTrialWarning", true);
-          } else {
-            showEl("loginTrialWarning", false);
-          }
-        } else {
-          setElText("loginTrialBanner", "Gratuidade encerrada. Faça o pagamento para continuar.");
-          showEl("loginTrialBanner", true);
-          showEl("loginTrialWarning", false);
-        }
-      } catch {}
-    }
-
-// Eventos de login/logout
-    document.addEventListener("DOMContentLoaded", () => {
+    // Eventos de login/logout
     document.getElementById("loginBtn")?.addEventListener("click", doLogin);
     document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
-    document.getElementById("loginField")?.addEventListener("input", () => { if (_trialDebounce) clearTimeout(_trialDebounce); _trialDebounce = setTimeout(refreshLoginTrialBanner, 250); });
     document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
     document.getElementById("openSignupBtn")?.addEventListener("click", () => {
       resetSignupForm();
@@ -4539,213 +4457,169 @@ if (warn && rem > 0) {
     document.getElementById("signupPassword")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doSignup(); });
     document.getElementById("nurseLogoutBtn")?.addEventListener("click", logoutAll);
     document.getElementById("adminLogoutBtn")?.addEventListener("click", logoutAll);
-    });
 
-    // Modais (Pagamento / Adicionar amigo) - só abrem quando o usuário clica no botão
-    async function openPayModal() {
-      const b = document.getElementById("payModalBackdrop");
-      if (b) b.classList.remove("hidden");
-      try { await refreshPayModalData(); } catch {}
-    }
-    function closePayModal() {
-      const b = document.getElementById("payModalBackdrop");
-      if (b) b.classList.add("hidden");
-      const pixBox = document.getElementById("pixBox");
-      if (pixBox) { pixBox.style.display = "none"; pixBox.textContent = ""; }
-      const cardBox = document.getElementById("cardBox");
-      if (cardBox) { cardBox.style.display = "none"; cardBox.textContent = ""; }
-    }
+    // ============================
+    // Subusuários (Adicionar amigo) + Pagamento (cliente)
+    // ============================
+
     function openAddFriendModal() {
-      const b = document.getElementById("addFriendModalBackdrop");
-      if (b) b.classList.remove("hidden");
+      document.getElementById("addFriendModal")?.classList.remove("hidden");
       const err = document.getElementById("addFriendError");
       if (err) err.textContent = "";
+      const fields = ["friendFullName","friendDob","friendPhone","friendLogin","friendPassword"];
+      for (const id of fields) {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      }
     }
+
     function closeAddFriendModal() {
-      const b = document.getElementById("addFriendModalBackdrop");
-      if (b) b.classList.add("hidden");
-      const err = document.getElementById("addFriendError");
-      if (err) err.textContent = "";
+      document.getElementById("addFriendModal")?.classList.add("hidden");
     }
 
-
-    function fmtBRL(n){
-      const v = Number(n || 0);
-      return v.toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
-    }
-    function badge(status){
-      const s = String(status||"").toLowerCase();
-      if (s === "paid") return '<span class="pill green">Em dia</span>';
-      return '<span class="pill red">Pendente</span>';
-    }
-    async function refreshPayModalData(){
-      const listEl = document.getElementById("payFriendsList");
-      const sumEl = document.getElementById("payDiscountSummary");
-      const monthEl = document.getElementById("payMonthLabel");
-      const monthlyLineEl = document.getElementById("payMonthlyDueLine");
-      const annualLineEl = document.getElementById("payAnnualDueLine");
-
-      // Busca amigos + desconto/valores (backend já calcula)
-      const resp = await fetchWithTimeout(BACKEND_URL + "/api/friends/list", { method:"GET" }, 20000);
-      const data = await resp.json().catch(()=>({}));
-      if (!resp.ok) throw new Error(data?.error || "Falha ao carregar dados.");
-
-      const month = String(data.month || "");
-      const friends = Array.isArray(data.friends) ? data.friends : [];
-      const active = Number(data.activeFriendsThisMonth || 0);
-      const rate = Number(data.discountRateThisMonth || 0);
-      const dueMonthly = Number(data.amountDueThisMonth || 0);
-      const dueAnnualPix = Number(data.amountDueAnnualPix || 0);
-      const dueAnnualCard = Number(data.amountDueAnnualCard || 0);
-
-      if (monthEl) monthEl.textContent = month ? ("Mês: " + month) : "";
-      if (sumEl) {
-        const pct = Math.round(rate * 100);
-        sumEl.textContent = "Desconto atual: " + pct + "% (" + active + " amigo(s) em dia)";
-      }
-
-      // Render lista de amigos com status de pagamento do mês
-      if (listEl) {
-        if (!friends.length) {
-          listEl.innerHTML = '<div style="font-size:14px; color:#444;">Nenhum amigo cadastrado ainda.</div>';
-        } else {
-          const rows = friends.map(f => {
-            const paid = !!f.isPaidThisMonth;
-            const statusBadge = paid ? '<span class="pill green">Pago em dia</span>' : '<span class="pill red">Não pagou este mês</span>';
-            const counts = paid ? '<span style="font-size:12px; color:#155724; margin-left:8px;">Conta para desconto</span>' : '<span style="font-size:12px; color:#721c24; margin-left:8px;">Não conta para desconto</span>';
-            const name = escapeHtml(String(f.fullName||""));
-            const cpf = escapeHtml(String(f.cpf||f.login||""));
-            return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid #eee;">'
-              + '<div><div style="font-weight:700;">' + name + '</div><div style="font-size:12px; color:#666;">CPF: ' + cpf + '</div></div>'
-              + '<div style="text-align:right;">' + statusBadge + counts + '</div>'
-              + '</div>';
-          }).join("");
-          listEl.innerHTML = rows;
-        }
-      }
-
-      if (monthlyLineEl) monthlyLineEl.textContent = "Mensal (com desconto): " + fmtBRL(dueMonthly) + " (base R$ 25,00)";
-      if (annualLineEl) annualLineEl.textContent = "Anual (com desconto): Pix " + fmtBRL(dueAnnualPix) + " (base R$ 200,00) | Cartão " + fmtBRL(dueAnnualCard) + " (base R$ 240,00)";
-
-      // Atualiza texto dos botões com valores
-      const pixM = document.getElementById("pixMonthlyBtn");
-      const cardM = document.getElementById("cardMonthlyBtn");
-      const pixA = document.getElementById("pixAnnualBtn");
-      const cardA = document.getElementById("cardAnnualBtn");
-      if (pixM) pixM.textContent = "Pagar Pix mensal (" + fmtBRL(dueMonthly) + ")";
-      if (cardM) cardM.textContent = "Pagar cartão mensal (" + fmtBRL(dueMonthly) + ")";
-      if (pixA) pixA.textContent = "Pagar Pix anual (" + fmtBRL(dueAnnualPix) + ")";
-      if (cardA) cardA.textContent = "Pagar cartão anual (" + fmtBRL(dueAnnualCard) + ")";
+    function openClientBillingModal() {
+      document.getElementById("clientBillingModal")?.classList.remove("hidden");
+      loadClientBilling();
     }
 
-document.getElementById("openPayModalBtn")?.addEventListener("click", openPayModal);
-    document.getElementById("closePayModalBtn")?.addEventListener("click", closePayModal);
-    document.getElementById("payModalBackdrop")?.addEventListener("click", (e)=>{ if(e.target && e.target.id==="payModalBackdrop") closePayModal(); });
-
-    document.getElementById("openAddFriendBtn")?.addEventListener("click", openAddFriendModal);
-    document.getElementById("closeAddFriendModalBtn")?.addEventListener("click", closeAddFriendModal);
-    document.getElementById("addFriendModalBackdrop")?.addEventListener("click", (e)=>{ if(e.target && e.target.id==="addFriendModalBackdrop") closeAddFriendModal(); });
-
-    async function createPix(plan){
-      const resp = await fetch(BACKEND_URL + "/api/payments/pix/create", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ plan })
-      });
-      const data = await resp.json().catch(()=>({}));
-      if (!resp.ok) throw new Error(data.error || "Falha ao gerar Pix.");
-      return data;
+    function closeClientBillingModal() {
+      document.getElementById("clientBillingModal")?.classList.add("hidden");
     }
 
-    document.getElementById("pixMonthlyBtn")?.addEventListener("click", async ()=>{
-      const box = document.getElementById("pixBox");
-      try {
-        const data = await createPix("monthly");
-        if (box) {
-          box.innerHTML = "Pedido Pix gerado. Identificador: <b>" + (data.orderId||"-") + "</b><br/>Chave Pix: <b>" + escapeHtml(String(data.pixKey||"")) + "</b><br/>" + escapeHtml(String(data.instructions||"")) + "<br/>Envie o comprovante ao administrador para confirmação.";
-          box.style.display = "";
-          try { await refreshNurseSubscriptionUI(); await refreshPayModalData(); } catch {}
-        }
-      } catch (e) {
-        if (box) { box.textContent = e.message || "Falha ao gerar Pix."; box.style.display=""; }
-      }
-    });
-
-    document.getElementById("pixAnnualBtn")?.addEventListener("click", async ()=>{
-      const box = document.getElementById("pixBox");
-      try {
-        const data = await createPix("annual");
-        if (box) {
-          box.innerHTML = "Pedido Pix anual gerado. Identificador: <b>" + (data.orderId||"-") + "</b><br/>Chave Pix: <b>" + escapeHtml(String(data.pixKey||"")) + "</b><br/>" + escapeHtml(String(data.instructions||"")) + "<br/>Envie o comprovante ao administrador para confirmação.";
-          box.style.display = "";          try { await refreshNurseSubscriptionUI(); await refreshPayModalData(); } catch {}
-
-        }
-      } catch (e) {
-        if (box) { box.textContent = e.message || "Falha ao gerar Pix."; box.style.display=""; }
-      }
-    });
-
-    async function cardSubscribe(plan){
-      const resp = await fetch(BACKEND_URL + "/api/payments/card/subscribe", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ plan })
-      });
-      const data = await resp.json().catch(()=>({}));
-      if (!resp.ok) throw new Error(data.error || "Falha ao assinar cartão.");
-      return data;
-    }
-    async function cardCancel(){
-      const resp = await fetch(BACKEND_URL + "/api/payments/card/cancel", { method:"POST" });
-      const data = await resp.json().catch(()=>({}));
-      if (!resp.ok) throw new Error(data.error || "Falha ao cancelar.");
-      return data;
+    function moneyBRL(v) {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return "R$ 0,00";
+      return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     }
 
-    document.getElementById("cardMonthlyBtn")?.addEventListener("click", async ()=>{
-      const box = document.getElementById("cardBox");
-      try { const data = await cardSubscribe("monthly"); if (box) { box.textContent = "Assinatura mensal iniciada. Status: " + (data.status||"active"); box.style.display=""; } await refreshNurseSubscriptionUI(); await refreshPayModalData(); }
-      catch (e) { if (box) { box.textContent = e.message || "Falha."; box.style.display=""; } }
-    });
-    document.getElementById("cardAnnualBtn")?.addEventListener("click", async ()=>{
-      const box = document.getElementById("cardBox");
-      try { const data = await cardSubscribe("annual"); if (box) { box.textContent = "Assinatura anual iniciada. Status: " + (data.status||"active"); box.style.display=""; } await refreshNurseSubscriptionUI(); await refreshPayModalData(); }
-      catch (e) { if (box) { box.textContent = e.message || "Falha."; box.style.display=""; } }
-    });
-    document.getElementById("cardCancelBtn")?.addEventListener("click", async ()=>{
-      const box = document.getElementById("cardBox");
-      try { await cardCancel(); if (box) { box.textContent = "Assinatura cancelada."; box.style.display=""; } await refreshNurseSubscriptionUI(); await refreshPayModalData(); }
-      catch (e) { if (box) { box.textContent = e.message || "Falha."; box.style.display=""; } }
-    });
-
-    document.getElementById("createFriendBtn")?.addEventListener("click", async ()=>{
-      const err = document.getElementById("friendError");
+    async function saveFriend() {
       const fullName = (document.getElementById("friendFullName")?.value || "").trim();
       const dob = (document.getElementById("friendDob")?.value || "").trim();
       const phone = (document.getElementById("friendPhone")?.value || "").trim();
-      const cpf = onlyDigits((document.getElementById("friendCpf")?.value || "").trim());
+      const login = (document.getElementById("friendLogin")?.value || "").trim();
       const password = (document.getElementById("friendPassword")?.value || "").trim();
-      if (!fullName || !dob || !phone || !cpf || cpf.length !== 11 || !password) {
-        if (err) err.textContent = "Preencha: nome, nascimento, telefone, CPF e senha.";
+      const err = document.getElementById("addFriendError");
+      const btn = document.getElementById("saveFriendBtn");
+
+      if (err) err.textContent = "";
+      if (!fullName || !dob || !phone || !login || !password) {
+        if (err) err.textContent = "Preencha todos os campos.";
         return;
       }
-      if (err) err.textContent = "Cadastrando amigo...";
+
+      if (btn) btn.disabled = true;
+
       try {
-        const resp = await fetch(BACKEND_URL + "/api/friends/create", {
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({ fullName, dob, phone, cpf, password })
+        const resp = await fetch(BACKEND_URL + "/api/client/friends", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fullName, dob, phone, login, password })
         });
-        const data = await resp.json().catch(()=>({}));
-        if (!resp.ok) { if (err) err.textContent = data.error || "Falha ao cadastrar amigo."; return; }
-        if (err) err.textContent = "Amigo cadastrado com sucesso.";
-        setTimeout(()=>{ closeAddFriendModal(); if (err) err.textContent=""; }, 700);
-        refreshNurseSubscriptionUI();
-        try { await refreshPayModalData(); } catch {}
-      } catch {
-        if (err) err.textContent = "Falha ao conectar no servidor.";
+
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          if (err) err.textContent = data?.error || "Não foi possível cadastrar o subusuário.";
+          return;
+        }
+
+        closeAddFriendModal();
+        // Atualiza modal de pagamento se estiver aberto
+        if (!document.getElementById("clientBillingModal")?.classList.contains("hidden")) {
+          loadClientBilling();
+        }
+      } catch (e) {
+        if (err) err.textContent = "Erro ao cadastrar. Tente novamente.";
+      } finally {
+        if (btn) btn.disabled = false;
       }
-    });
+    }
+
+    async function loadClientBilling() {
+      const statusEl = document.getElementById("clientBillingStatus");
+      const listEl = document.getElementById("clientFriendsList");
+      const amountsEl = document.getElementById("clientBillingAmounts");
+      const hintEl = document.getElementById("clientBillingHint");
+
+      if (statusEl) statusEl.textContent = "Carregando...";
+      if (listEl) listEl.innerHTML = "";
+      if (amountsEl) amountsEl.textContent = "";
+      if (hintEl) hintEl.textContent = "";
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/client/billing", { method: "GET" });
+        const data = await resp.json().catch(() => ({}));
+
+        if (!resp.ok) {
+          if (statusEl) statusEl.textContent = data?.error || "Não foi possível carregar os dados de pagamento.";
+          return;
+        }
+
+        const friends = Array.isArray(data?.friends) ? data.friends : [];
+        const eligible = !!data?.eligibleDiscount;
+        const discountPercent = Number(data?.discountPercent || 0);
+
+        if (statusEl) {
+          statusEl.textContent = eligible
+            ? ("Desconto aplicado: " + discountPercent + "%")
+            : "Sem desconto: mensalidade em débito (pagamento do mês atual não identificado).";
+        }
+
+        if (listEl) {
+          if (!friends.length) {
+            listEl.innerHTML = '<div class="simple-list-item">Nenhum subusuário cadastrado.</div>';
+          } else {
+            listEl.innerHTML = friends.map(f => {
+              const name = (f.fullName || f.login || "-");
+              const login = (f.login || "-");
+              const createdAt = (f.createdAt || "");
+              const line2 = createdAt ? ("Cadastrado em: " + createdAt) : "";
+              const status = eligible ? "Desconto ativo" : "Desconto inativo";
+              return '<div class="simple-list-item"><div><strong>' + escapeHtml(name) + '</strong> <span class="muted">(' + escapeHtml(login) + ')</span></div><div class="muted">' + escapeHtml(status) + (line2 ? " | " + escapeHtml(line2) : "") + '</div></div>';
+            }).join("");
+          }
+        }
+
+        const base = data?.base || {};
+        const final = data?.final || {};
+        if (amountsEl) {
+          const txt = [
+            "Mensal: PIX " + moneyBRL(final.monthlyPix) + " | Cartão " + moneyBRL(final.monthlyCard),
+            "Anual: PIX " + moneyBRL(final.annualPix) + " | Cartão " + moneyBRL(final.annualCard),
+            "",
+            "Valor base mensal: " + moneyBRL(base.monthly) + " | Valor base anual: PIX " + moneyBRL(base.annualPix) + " | Cartão " + moneyBRL(base.annualCard)
+          ].join("\n");
+          amountsEl.textContent = txt;
+        }
+
+        const setPayBtn = (id, label, amount) => {
+          const b = document.getElementById(id);
+          if (!b) return;
+          b.onclick = () => {
+            const a = moneyBRL(amount);
+            alert(label + " - Valor: " + a + ".\nApós o pagamento, envie o comprovante ao administrador para liberação/baixa.");
+          };
+        };
+
+        setPayBtn("payMonthlyPixBtn", "PIX mensal", final.monthlyPix);
+        setPayBtn("payMonthlyCardBtn", "Cartão mensal", final.monthlyCard);
+        setPayBtn("payAnnualPixBtn", "PIX anual", final.annualPix);
+        setPayBtn("payAnnualCardBtn", "Cartão anual", final.annualCard);
+
+        if (hintEl) {
+          hintEl.textContent = "Regras: cada subusuário cadastrado gera 25% de desconto, limitado a 100%, desde que a mensalidade do mês atual esteja em dia.";
+        }
+      } catch (e) {
+        if (statusEl) statusEl.textContent = "Erro ao carregar os dados.";
+      }
+    }
+
+    document.getElementById("addFriendBtn")?.addEventListener("click", openAddFriendModal);
+    document.getElementById("closeAddFriendModalBtn")?.addEventListener("click", closeAddFriendModal);
+    document.getElementById("saveFriendBtn")?.addEventListener("click", saveFriend);
+
+    document.getElementById("openClientBillingBtn")?.addEventListener("click", openClientBillingModal);
+    document.getElementById("closeClientBillingModalBtn")?.addEventListener("click", closeClientBillingModal);
+
 
 
     let recognition;
@@ -8185,15 +8059,7 @@ async function addFilesToTarget(files, targetKey, mode) {
         return;
       }
       w.document.write("<html><head><title>" + escapeHtml(title) + "</title>");
-      w.document.write("<style>" + getRxPrintCss() + "
-    .trial-countdown{
-      font-weight:700;
-      margin-right:8px;
-      color:#1f4e79;
-      font-size:13px;
-      white-space:nowrap;
-    }
-</style>");
+      w.document.write("<style>" + getRxPrintCss() + "</style>");
       w.document.write("</head><body>");
       w.document.write(content);
       w.document.write("</body></html>");
@@ -10135,7 +10001,7 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
         await adminFetchJson(`/api/admin/users/${encodeURIComponent(EDIT_USER_ID)}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, phone, cpf, login: cpf, password })
+          body: JSON.stringify({ fullName, dob, phone, login, password })
         });
 
         closeEditUserModal();
@@ -12666,65 +12532,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
           table{border-collapse: collapse; width: 100%;}
           th,td{border: 1px solid #ccc; padding: 6px; font-size: 12px; vertical-align: top;}
           th{background: #f1f1f1;}
-        
-    .trial-banner{
-      margin-top:10px;
-      padding:10px 12px;
-      border-radius:12px;
-      background:#e8f5ff;
-      color:#123;
-      border:1px solid #c7e6ff;
-      font-size:14px;
-    }
-    .trial-warning{
-      margin-top:10px;
-      padding:10px 12px;
-      border-radius:12px;
-      background:#fff3cd;
-      color:#553;
-      border:1px solid #ffe69c;
-      font-size:14px;
-      font-weight:700;
-    }
-    .pay-info{
-      border:1px solid #e6e6e6;
-      background:#fafafa;
-      border-radius:12px;
-      padding:12px;
-    }
-    .pay-info-title{ font-weight:700; margin-bottom:6px; }
-    .pay-info-line{ font-size:14px; color:#333; margin-top:2px; }
-    .modal-backdrop{
-      position:fixed; inset:0;
-      background:rgba(0,0,0,0.45);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      z-index:9999;
-      padding:16px;
-    }
-    .modal{
-      width:100%;
-      max-width:560px;
-      background:#fff;
-      border-radius:16px;
-      box-shadow:0 10px 30px rgba(0,0,0,0.25);
-      padding:16px;
-    }
-    .modal h3{ margin:0 0 10px 0; }
-    .modal .row{ margin-top:10px; }
-    .modal .actions{ margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; }
-    .modal .close-btn{ background:#c33; }
-
-
-    .trial-countdown{
-      font-weight:700;
-      margin-right:8px;
-      color:#1f4e79;
-      font-size:13px;
-      white-space:nowrap;
-    }
-</style>
+        </style>
         </head><body>
         <h1>${escapeHtml(title)}</h1>
         <table>${rosterTableOut?.innerHTML || ""}</table>
@@ -12850,7 +12658,6 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       rosterWireUI();
     } catch {}
 
-
 </script>
 
   <div class="whatsapp-fab-label"><div class="wa-label-title">WhatsApp</div><div class="wa-label-sub">Dúvidas, reportar erros, sugestões, melhorias</div></div>
@@ -12867,103 +12674,5 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     </svg>
   </a>
 
-
-  
-  <div id="payModalBackdrop" class="modal-backdrop hidden">
-    <div class="modal">
-      <h3>Pagamento</h3>
-      <div class="row" style="font-size:14px;">
-        O valor é calculado automaticamente com base nos amigos que pagaram o mês atual.
-      </div>
-
-      <div class="row pay-info" style="margin-top:12px;">
-        <div id="payMonthLabel" class="pay-info-title">Mês:</div>
-        <div id="payDiscountSummary" class="pay-info-line">Desconto atual:</div>
-        <div id="payMonthlyDueLine" class="pay-info-line"></div>
-        <div id="payAnnualDueLine" class="pay-info-line"></div>
-      </div>
-
-      <div class="row" style="margin-top:12px;">
-        <div style="font-weight:700;">Amigos cadastrados</div>
-        <div id="payFriendsList" style="margin-top:6px;"></div>
-      </div>
-
-      <div class="row" style="margin-top:12px; border-top:1px solid #eee; padding-top:12px;">
-        <div style="font-weight:700;">Pix (manual)</div>
-        <div class="actions">
-          <button id="pixMonthlyBtn" type="button" class="auth-btn">Pagar Pix mensal</button>
-          <button id="pixAnnualBtn" type="button" class="auth-btn">Pagar Pix anual</button>
-        </div>
-        <div id="pixBox" class="trial-banner" style="display:none; margin-top:10px;"></div>
-      </div>
-
-      <div class="row" style="margin-top:12px; border-top:1px solid #eee; padding-top:12px;">
-        <div style="font-weight:700;">Cartão (recorrente)</div>
-        <div class="actions">
-          <button id="cardMonthlyBtn" type="button" class="auth-btn">Pagar cartão mensal</button>
-          <button id="cardAnnualBtn" type="button" class="auth-btn">Pagar cartão anual</button>
-          <button id="cardCancelBtn" type="button" class="auth-btn close-btn">Cancelar assinatura</button>
-        </div>
-        <div id="cardBox" class="trial-banner" style="display:none; margin-top:10px;"></div>
-      </div>
-
-      <div class="actions" style="justify-content:flex-end;">
-        <button id="closePayModalBtn" type="button" class="auth-btn close-btn">Fechar</button>
-      </div>
-    </div>
-  </div>
-
-
-      <div class="row" style="margin-top:12px; border-top:1px solid #eee; padding-top:12px;">
-        <div style="font-weight:700;">Cartão (recorrente)</div>
-        <div style="font-size:14px; margin-top:6px;">Mensal: R$ 25,00 | Anual: R$ 240,00</div>
-        <div class="actions">
-          <button id="cardMonthlyBtn" type="button" class="auth-btn">Assinar mensal</button>
-          <button id="cardAnnualBtn" type="button" class="auth-btn">Assinar anual</button>
-          <button id="cardCancelBtn" type="button" class="auth-btn close-btn">Cancelar assinatura</button>
-        </div>
-        <div id="cardBox" class="trial-banner" style="display:none; margin-top:10px;"></div>
-      </div>
-
-      <div class="actions" style="justify-content:flex-end;">
-        <button id="closePayModalBtn" type="button" class="auth-btn close-btn">Fechar</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="addFriendModalBackdrop" class="modal-backdrop hidden">
-    <div class="modal">
-      <h3>Adicionar amigo</h3>
-      <div id="addFriendError" class="auth-error"></div>
-      <div class="row" style="font-size:14px;">
-        Cadastre seu amigo aqui. Ele ficará vinculado a você e só contará para desconto quando pagar o mês.
-      </div>
-      <div class="row">
-        <label class="auth-label">Nome completo</label>
-        <input id="friendFullName" class="auth-input" />
-      </div>
-      <div class="row">
-        <label class="auth-label">Data de nascimento</label>
-        <input id="friendDob" class="auth-input" placeholder="YYYY-MM-DD" />
-      </div>
-      <div class="row">
-        <label class="auth-label">Telefone</label>
-        <input id="friendPhone" class="auth-input" />
-      </div>
-      <div class="row">
-        <label class="auth-label">CPF</label>
-        <input id="friendCpf" class="auth-input" inputmode="numeric" />
-      </div>
-      <div class="row">
-        <label class="auth-label">Senha</label>
-        <input id="friendPassword" class="auth-input" type="password" />
-      </div>
-      <div id="friendError" class="auth-error"></div>
-      <div class="actions" style="justify-content:flex-end;">
-        <button id="createFriendBtn" type="button" class="auth-btn" style="background:#0b5;">Cadastrar amigo</button>
-        <button id="closeAddFriendModalBtn" type="button" class="auth-btn close-btn">Fechar</button>
-      </div>
-    </div>
-  </div>
 </body>
 </html>
