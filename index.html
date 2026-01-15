@@ -2026,7 +2026,15 @@
       .roster-output-mobile { display: flex; flex-direction: column; }
     }
 
-  </style>
+  
+    .trial-countdown{
+      font-weight:700;
+      margin-right:8px;
+      color:#1f4e79;
+      font-size:13px;
+      white-space:nowrap;
+    }
+</style>
 </head>
 <body>
 
@@ -2260,7 +2268,7 @@
       <div>
         <div class="nurse-bar-line"><span class="nurse-bar-label">Usuário:</span><span id="nurseUserLabel">-</span></div>
         <div class="nurse-bar-line"><span class="nurse-bar-label">CPF:</span><span id="nurseLoginLabel">-</span></div>
-        <div class="nurse-bar-line"><span id="nurseTrialLabel" class="pill">-</span><span class="nurse-bar-label">Gratuidade:</span></div>
+        <div class="nurse-bar-line"><span class="nurse-bar-label"><span id="trialCountdownInline" class="trial-countdown">--</span> Gratuidade:</span><span id="nurseTrialLabel" class="pill">-</span></div>
         <div id="nurseTrialWarning" class="trial-warning" style="display:none; margin-top:8px;"></div>
 <div class="nurse-bar-line"><span class="nurse-bar-label">Mensalidade:</span><span id="nursePaymentLabel" class="pill">-</span></div>
         <div class="nurse-bar-line" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
@@ -4025,6 +4033,45 @@ Ata de reunião:
       return { days, hours };
     }
 
+    // Contagem regressiva da gratuidade (atualização em tempo real)
+    let __trialTicker = null;
+    let __trialRemainingSec = 0;
+
+    function formatRemainingFull(sec){
+      const n = Math.max(0, Math.floor(Number(sec)||0));
+      const days = Math.floor(n / 86400);
+      const hours = Math.floor((n % 86400) / 3600);
+      const minutes = Math.floor((n % 3600) / 60);
+      const seconds = Math.floor(n % 60);
+      return { days, hours, minutes, seconds };
+    }
+
+    function renderTrialCountdown(sec){
+      const r = formatRemainingFull(sec);
+      const inline = document.getElementById("trialCountdownInline");
+      if (inline) {
+        if (sec > 0) inline.textContent = `${r.days}d ${r.hours}h ${r.minutes}m ${r.seconds}s`;
+        else inline.textContent = "0d 0h 0m 0s";
+      }
+
+      const trialLabel = document.getElementById("nurseTrialLabel");
+      if (trialLabel) {
+        if (sec > 0) trialLabel.textContent = "faltam " + r.days + " dias e " + r.hours + " horas";
+        else trialLabel.textContent = "encerrada";
+      }
+    }
+
+    function startTrialTicker(initialSec){
+      __trialRemainingSec = Math.max(0, Math.floor(Number(initialSec)||0));
+      renderTrialCountdown(__trialRemainingSec);
+      if (__trialTicker) { clearInterval(__trialTicker); __trialTicker = null; }
+      __trialTicker = setInterval(() => {
+        __trialRemainingSec = Math.max(0, __trialRemainingSec - 1);
+        renderTrialCountdown(__trialRemainingSec);
+      }, 1000);
+    }
+
+
     function setElText(id, text){ const el=document.getElementById(id); if(el) el.textContent=text; }
     function showEl(id, show){ const el=document.getElementById(id); if(el) el.style.display = show ? "" : "none"; }
 
@@ -4422,15 +4469,9 @@ Ata de reunião:
         const needsPayment = !!(data && data.needsPayment);
         const warn = !!(data && data.warning5Days);
 
-        // Gratuidade (banner no painel)
-        const t = formatRemaining(rem);
-        const trialLabel = document.getElementById("nurseTrialLabel");
-        if (trialLabel) {
-          if (rem > 0) trialLabel.textContent = "faltam " + t.days + " dias e " + t.hours + " horas";
-          else trialLabel.textContent = "encerrada";
-        }
-
-        if (warn && rem > 0) {
+        // Gratuidade (contagem regressiva)
+        startTrialTicker(rem);
+if (warn && rem > 0) {
           setElText("nurseTrialWarning", "Aviso: faltam 5 dias ou menos para encerrar a gratuidade.");
           showEl("nurseTrialWarning", true);
         } else {
@@ -4570,7 +4611,7 @@ Ata de reunião:
         } else {
           const rows = friends.map(f => {
             const paid = !!f.isPaidThisMonth;
-            const statusBadge = paid ? '<span class="pill green">Pago em dia</span>' : '<span class="pill red">Não pagou (sem desconto)</span>';
+            const statusBadge = paid ? '<span class="pill green">Pago em dia</span>' : '<span class="pill red">Não pagou este mês</span>';
             const counts = paid ? '<span style="font-size:12px; color:#155724; margin-left:8px;">Conta para desconto</span>' : '<span style="font-size:12px; color:#721c24; margin-left:8px;">Não conta para desconto</span>';
             const name = escapeHtml(String(f.fullName||""));
             const cpf = escapeHtml(String(f.cpf||f.login||""));
@@ -4697,16 +4738,8 @@ document.getElementById("openPayModalBtn")?.addEventListener("click", openPayMod
         });
         const data = await resp.json().catch(()=>({}));
         if (!resp.ok) { if (err) err.textContent = data.error || "Falha ao cadastrar amigo."; return; }
-        if (err) err.textContent = "Amigo cadastrado com sucesso. Abrindo login do administrador...";
-        setTimeout(async()=>{
-          closeAddFriendModal();
-          if (err) err.textContent="";
-          try { await logoutAll(); } catch { showLogin(); }
-          try {
-            const le = document.getElementById("loginError");
-            if (le) le.textContent = "Entre como administrador para gerenciar usuários e pagamentos.";
-          } catch {}
-        }, 900);
+        if (err) err.textContent = "Amigo cadastrado com sucesso.";
+        setTimeout(()=>{ closeAddFriendModal(); if (err) err.textContent=""; }, 700);
         refreshNurseSubscriptionUI();
         try { await refreshPayModalData(); } catch {}
       } catch {
@@ -8152,7 +8185,15 @@ async function addFilesToTarget(files, targetKey, mode) {
         return;
       }
       w.document.write("<html><head><title>" + escapeHtml(title) + "</title>");
-      w.document.write("<style>" + getRxPrintCss() + "</style>");
+      w.document.write("<style>" + getRxPrintCss() + "
+    .trial-countdown{
+      font-weight:700;
+      margin-right:8px;
+      color:#1f4e79;
+      font-size:13px;
+      white-space:nowrap;
+    }
+</style>");
       w.document.write("</head><body>");
       w.document.write(content);
       w.document.write("</body></html>");
@@ -12656,7 +12697,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     .modal-backdrop{
       position:fixed; inset:0;
       background:rgba(0,0,0,0.45);
-      display:none;
+      display:flex;
       align-items:center;
       justify-content:center;
       z-index:9999;
@@ -12675,6 +12716,14 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     .modal .actions{ margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; }
     .modal .close-btn{ background:#c33; }
 
+
+    .trial-countdown{
+      font-weight:700;
+      margin-right:8px;
+      color:#1f4e79;
+      font-size:13px;
+      white-space:nowrap;
+    }
 </style>
         </head><body>
         <h1>${escapeHtml(title)}</h1>
