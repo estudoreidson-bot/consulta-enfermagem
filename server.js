@@ -1594,7 +1594,7 @@ app.post("/api/client/infinitepay/checkout-link", requireAuth, async (req, res) 
     }
 
     // Log mínimo (sem dados sensíveis)
-    audit("infinitepay_link", parentId, `Gerado link ${plan}/${method} (${amountCents} centavos) slug=${slug || "-"}`);
+    audit("infinitepay_link", parentId, `Gerado link ${plan} (${amountCents} centavos) slug=${slug || "-"}`);
 
     return res.json({
       ok: true,
