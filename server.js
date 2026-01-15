@@ -771,6 +771,49 @@ setTimeout(() => { bootstrapFromGithubIfEmpty(); }, 1500).unref?.();
 
 let DB = loadDb();
 
+function migrateUsersSchema() {
+  let dirty = false;
+  if (!Array.isArray(DB.users)) DB.users = [];
+  for (const u of DB.users) {
+    if (!u || u.isDeleted) continue;
+
+    // role default
+    if (!u.role) { u.role = "client"; dirty = true; }
+
+    // CPF: tenta derivar do login legado quando possível
+    if (!u.cpf) {
+      const d = normalizeCpf(u.login);
+      if (d) { u.cpf = d; dirty = true; }
+    } else {
+      const d = normalizeCpf(u.cpf);
+      if (d !== u.cpf) { u.cpf = d; dirty = true; }
+    }
+
+    // Email default
+    if (u.email === undefined) { u.email = ""; dirty = true; }
+    else {
+      const e = normalizeEmail(u.email);
+      if (e !== String(u.email)) { u.email = e; dirty = true; }
+    }
+
+    // trial: se não existir, assume 15 dias a partir do createdAt quando possível
+    if (!u.trialEndsAt) {
+      let base = 0;
+      try { base = u.createdAt ? new Date(u.createdAt).getTime() : 0; } catch {}
+      if (!base) base = Date.now();
+      u.trialEndsAt = new Date(base + (15 * 24 * 60 * 60 * 1000)).toISOString();
+      dirty = true;
+    }
+
+    // flags
+    if (u.isActive === undefined) { u.isActive = true; dirty = true; }
+    if (u.isDeleted === undefined) { u.isDeleted = false; dirty = true; }
+  }
+  if (dirty) saveDb(DB, "schema_migration");
+}
+migrateUsersSchema();
+
+
 // Sessões em memória
 const SESSIONS = new Map(); // token -> { role, userId, createdAt, lastSeenAt }
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12; // 12h
@@ -894,14 +937,60 @@ function cleanupSessions() {
 }
 setInterval(cleanupSessions, 1000 * 60 * 10).unref?.();
 
-function findUserByLogin(login) {
-  const raw = String(login || "").trim();
+function normalizeCpf(input) {
+  const d = onlyDigits(String(input || "").trim());
+  return d;
+}
+
+function normalizeEmail(input) {
+  const raw = String(input || "").trim().toLowerCase();
+  return raw;
+}
+
+// Identificador de login: CPF (preferencial) ou e-mail.
+// Mantém compatibilidade com banco legado (campo "login") quando necessário.
+function findUserByIdentifier(identifier) {
+  const raw = String(identifier || "").trim();
+  if (!raw) return null;
+
+  const email = normalizeEmail(raw);
+  if (email.includes("@")) {
+    const byEmail = DB.users.find(u => !u?.isDeleted && normalizeEmail(u.email) === email) || null;
+    if (byEmail) return byEmail;
+  }
+
+  const cpf = normalizeCpf(raw);
+  if (cpf) {
+    // Novo padrão: campo cpf
+    const byCpf = DB.users.find(u => !u?.isDeleted && normalizeCpf(u.cpf) === cpf) || null;
+    if (byCpf) return byCpf;
+
+    // Compatibilidade: campo login antigo contendo CPF
+    const byLegacyLogin = DB.users.find(u => !u?.isDeleted && normalizeCpf(u.login) === cpf) || null;
+    if (byLegacyLogin) return byLegacyLogin;
+  }
+
+  // Último fallback: login legado "texto"
   const l = raw.toLowerCase();
-  const direct = DB.users.find(u => String(u.login || "").trim().toLowerCase() === l) || null;
-  if (direct) return direct;
-  const ln = onlyDigits(raw);
-  if (!ln) return null;
-  return DB.users.find(u => onlyDigits(String(u.login || "").trim()) === ln) || null;
+  return DB.users.find(u => !u?.isDeleted && String(u.login || "").trim().toLowerCase() === l) || null;
+}
+
+function trialDaysLeft(user) {
+  try {
+    const endIso = String(user?.trialEndsAt || "").trim();
+    if (!endIso) return 0;
+    const end = new Date(endIso).getTime();
+    if (!Number.isFinite(end)) return 0;
+    const diff = end - Date.now();
+    if (diff <= 0) return 0;
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  } catch {
+    return 0;
+  }
+}
+
+function isTrialActive(user) {
+  return trialDaysLeft(user) > 0;
 }
 
 function isUserPaidThisMonth(userId) {
@@ -986,7 +1075,7 @@ function authFromReq(req) {
 
   try { sess.lastSeenAt = Date.now(); } catch {}
 
-  return { role: "nurse", token, user };
+  return { role: String(sess.role || "client"), token, user };
 }
 
 
@@ -1033,6 +1122,9 @@ function requirePaidOrAdmin(req, res, next) {
   if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
   if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
 
+  // Gratuidade: 15 dias após o cadastro (contagem regressiva em dias)
+  if (isTrialActive(user)) return next();
+
   if (!isUserPaidThisMonth(user.id)) {
     return res.status(402).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
   }
@@ -1046,129 +1138,166 @@ function requirePaidOrAdmin(req, res, next) {
 app.post("/api/auth/signup", (req, res) => {
   try {
     const fullName = String(req.body?.fullName || "").trim();
-    const dob = String(req.body?.dob || "").trim();
-    const phone = String(req.body?.phone || "").trim();
-    const login = String(req.body?.login || "").trim();
+    const cpf = normalizeCpf(req.body?.cpf);
+    const email = normalizeEmail(req.body?.email);
     const password = String(req.body?.password || "").trim();
 
-    if (!fullName || !dob || !phone || !login || !password) {
-      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, login e senha são obrigatórios." });
+    if (!fullName || !cpf || !email || !password) {
+      return res.status(400).json({ error: "Nome completo, CPF, e-mail e senha são obrigatórios." });
     }
 
-    // Login não precisa ser CPF. Permite letras, números e alguns caracteres seguros.
-    // Evita espaços e caracteres que possam causar confusão em URLs/armazenamento.
-    if (login.length < 3 || login.length > 40) {
-      return res.status(400).json({ error: "Login inválido. Use entre 3 e 40 caracteres." });
-    }
-    if (!/^[A-Za-z0-9._@-]+$/.test(login)) {
-      return res.status(400).json({ error: "Login inválido. Use apenas letras, números, ponto, sublinhado, hífen ou @." });
-    }
+    // CPF único
+    const existingCpf = DB.users.find(u => !u?.isDeleted && normalizeCpf(u.cpf) === cpf);
+    if (existingCpf) return res.status(409).json({ error: "Já existe usuário com este CPF." });
 
-    if (password.length < 4) {
-      return res.status(400).json({ error: "Senha muito curta. Use pelo menos 4 caracteres." });
-    }
-
-    if (findUserByLogin(login)) {
-      return res.status(409).json({ error: "Já existe usuário com este login." });
-    }
+    // E-mail único
+    const existingEmail = DB.users.find(u => !u?.isDeleted && normalizeEmail(u.email) === email);
+    if (existingEmail) return res.status(409).json({ error: "Já existe usuário com este e-mail." });
 
     const salt = crypto.randomBytes(10).toString("hex");
-    const passwordHash = sha256(`${salt}:${password}`);
+    const now = nowIso();
 
     const user = {
-      id: makeId("usr"),
+      id: makeId("u"),
       fullName,
-      dob,
-      phone,
-      login,
-      parentUserId: "",
-      commissionRate: null,
-      salt,
-      passwordHash,
+      cpf,
+      email,
+      role: "client",
       isActive: true,
       isDeleted: false,
-      createdAt: nowIso(),
+      createdAt: now,
+      updatedAt: now,
       lastLoginAt: "",
       lastSeenAt: "",
+      // Sessão ativa (1 dispositivo)
       activeSessionHash: "",
       activeDeviceId: "",
       activeSessionCreatedAt: "",
       activeSessionLastSeenAt: "",
-      activeSessionExpiresAt: ""
+      activeSessionExpiresAt: "",
+      // Senha
+      salt,
+      passwordHash: sha256(`${salt}:${password}`),
+      // Gratuidade: 15 dias
+      trialEndsAt: new Date(Date.now() + (15 * 24 * 60 * 60 * 1000)).toISOString()
     };
 
     DB.users.push(user);
     saveDb(DB, "signup");
-    audit("user_signup", user.id, `Auto-cadastro do usuário ${user.login}`);
-    return res.json({ ok: true, id: user.id });
+
+    audit("user_signup", user.id, `Cadastro: ${user.fullName} (${user.cpf})`);
+    return res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha ao cadastrar usuário." });
+    return res.status(500).json({ error: "Falha ao cadastrar." });
   }
 });
 
 app.post("/api/auth/login", (req, res) => {
   try {
-    const login = String(req.body?.login || "").trim();
-    const senha = String(req.body?.senha || "").trim();
-    if (!login || !senha) return res.status(400).json({ error: "Login e senha são obrigatórios." });
+    const identifier = String(req.body?.login || req.body?.identifier || req.body?.cpf || req.body?.email || "").trim();
+    const password = String(req.body?.password || "").trim();
+    const deviceId = String(req.body?.deviceId || "").trim();
 
-    const deviceId = getDeviceIdFromReq(req);
-    if (!deviceId) return res.status(400).json({ error: "Dispositivo inválido. Atualize a página e tente novamente." });
+    if (!identifier || !password) return res.status(400).json({ error: "Informe CPF ou e-mail e senha." });
+    if (!deviceId) return res.status(400).json({ error: "Dispositivo inválido. Atualize a página e tente novamente.", code: "DEVICE_INVALID" });
 
-    // Admin (aceita com ou sem pontuação)
-    const loginN = onlyDigits(login);
-    const senhaN = onlyDigits(senha);
-    if ((login === ADMIN_LOGIN && senha === ADMIN_PASSWORD) || (loginN && senhaN && loginN === ADMIN_LOGIN_N && (senhaN === ADMIN_PASSWORD_N || senhaN === ADMIN_PASSWORD_ALT_N))) {
-      const token = createSession("admin", "admin", deviceId);
-      audit("admin_login", "admin", "Login do administrador");
-      return res.json({ token, role: "admin", login: ADMIN_LOGIN, currentMonth: currentYYYYMM() });
-    }
-
-    // Usuário enfermeiro
-    const user = findUserByLogin(login);
-    if (!user || user.isDeleted) return res.status(401).json({ error: "Credenciais inválidas." });
-    if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: usuário inativo. Procure o administrador." });
-
-    const computed = sha256(`${user.salt || ""}:${senha}`);
-    if (computed !== user.passwordHash) return res.status(401).json({ error: "Credenciais inválidas." });
-
-    // Bloqueio por mensalidade em débito
-    if (!isUserPaidThisMonth(user.id)) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
-
-    // Regra 1 pessoa por conta (1 dispositivo por vez)
-    // - Ao fazer login em um novo dispositivo, a sessão anterior é encerrada automaticamente.
-    // - O dispositivo antigo será deslogado na próxima requisição (401 com code SESSION_REPLACED).
-    if (user.activeSessionHash) {
-      if (!isUserActiveSessionValid(user)) {
-        clearUserActiveSession(user, "auto_expire_on_login");
-      } else if (String(user.activeDeviceId || "") !== deviceId) {
-        audit("nurse_session_replaced", user.id, `Sessão substituída: ${user.activeDeviceId || "-"} -> ${deviceId}`);
+    // Bootstrap: se não existir administrador cadastrado ainda, permite primeiro acesso via credenciais legadas
+    const hasAdmin = DB.users.some(u => !u?.isDeleted && String(u.role || "") === "admin");
+    if (!hasAdmin) {
+      const idDigits = normalizeCpf(identifier);
+      const passDigits = onlyDigits(password);
+      const okLogin = (normalizeCpf(ADMIN_LOGIN) && idDigits && idDigits === normalizeCpf(ADMIN_LOGIN))
+        || (ADMIN_LOGIN_N && idDigits && idDigits === String(ADMIN_LOGIN_N));
+      const okPass = (ADMIN_PASSWORD_N && passDigits && passDigits === String(ADMIN_PASSWORD_N));
+      if (okLogin && okPass) {
+        const now = nowIso();
+        const salt = crypto.randomBytes(10).toString("hex");
+        const adminUser = {
+          id: makeId("u"),
+          fullName: "Administrador",
+          cpf: String(ADMIN_LOGIN_N || idDigits || "").padStart(11, "0"),
+          email: "admin@local",
+          role: "admin",
+          isActive: true,
+          isDeleted: false,
+          createdAt: now,
+          updatedAt: now,
+          lastLoginAt: "",
+          lastSeenAt: "",
+          activeSessionHash: "",
+          activeDeviceId: "",
+          activeSessionCreatedAt: "",
+          activeSessionLastSeenAt: "",
+          activeSessionExpiresAt: "",
+          salt,
+          passwordHash: sha256(`${salt}:${password}`),
+          trialEndsAt: new Date(Date.now() + (15 * 24 * 60 * 60 * 1000)).toISOString()
+        };
+        DB.users.push(adminUser);
+        saveDb(DB, "bootstrap_admin");
+        audit("admin_bootstrap", adminUser.id, "Administrador inicial criado por bootstrap.");
       }
     }
 
-    // Remove tokens antigos em memória (se existirem) e cria nova sessão
+    const user = findUserByIdentifier(identifier);
+    if (!user || user.isDeleted) return res.status(401).json({ error: "Login ou senha inválidos." });
+
+    const salt = String(user.salt || "");
+    const expected = String(user.passwordHash || "");
+    const attempt = sha256(`${salt}:${password}`);
+    if (!expected || attempt !== expected) return res.status(401).json({ error: "Login ou senha inválidos." });
+
+    // Impede login se conta inativa (fora da gratuidade e sem pagamento)
+    if (!user.isActive) {
+      return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
+    }
+
+    const role = String(user.role || "client");
+
+    // Remove tokens antigos e cria nova sessão (1 dispositivo)
     invalidateUserSessions(user.id);
 
-    const token = createSession("nurse", user.id, deviceId);
+    const token = createSession(role, user.id, deviceId);
     setUserActiveSession(user, token, deviceId);
 
     user.lastLoginAt = nowIso();
     user.lastSeenAt = nowIso();
+    user.updatedAt = nowIso();
 
-    saveDb(DB, "nurse_login");
-    audit("nurse_login", user.id, `Login do usuário ${user.login}`);
+    saveDb(DB, "login");
+    audit(role === "admin" ? "admin_login" : "client_login", user.id, `Login ${role}: ${user.fullName} (${user.cpf || user.email || ""})`);
+
+    if (role === "admin") {
+      return res.json({ token, role: "admin" });
+    }
+
+    const month = currentYYYYMM();
+    const paid = isUserPaidThisMonth(user.id);
+    const tLeft = trialDaysLeft(user);
 
     return res.json({
       token,
-      role: "nurse",
+      role: "client",
       fullName: user.fullName,
-      login: user.login,
-      phone: user.phone,
-      currentMonth: currentYYYYMM(),
-      isPaidThisMonth: isUserPaidThisMonth(user.id),
-      paidCurrentMonth: isUserPaidThisMonth(user.id),
-      user: { id: user.id, fullName: user.fullName, login: user.login, phone: user.phone, currentMonth: currentYYYYMM(), isPaidThisMonth: isUserPaidThisMonth(user.id), paidCurrentMonth: isUserPaidThisMonth(user.id) }
+      cpf: user.cpf || "",
+      email: user.email || "",
+      currentMonth: month,
+      isPaidThisMonth: paid,
+      paidCurrentMonth: paid,
+      trialDaysLeft: tLeft,
+      trialEndsAt: user.trialEndsAt || "",
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        cpf: user.cpf || "",
+        email: user.email || "",
+        currentMonth: month,
+        isPaidThisMonth: paid,
+        paidCurrentMonth: paid,
+        trialDaysLeft: tLeft,
+        trialEndsAt: user.trialEndsAt || ""
+      }
     });
   } catch (e) {
     console.error(e);
@@ -1178,19 +1307,27 @@ app.post("/api/auth/login", (req, res) => {
 
 
 app.get("/api/auth/me", requireAuth, (req, res) => {
-  const role = req.auth.role;
-  if (role === "admin") return res.json({ role: "admin" });
+  const r = String(req.auth?.role || "");
+  if (r === "admin") return res.json({ role: "admin" });
 
   const u = req.auth.user;
+  const month = currentYYYYMM();
+  const paid = isUserPaidThisMonth(u.id);
+  const tLeft = trialDaysLeft(u);
+
   return res.json({
-    role: "nurse",
-    fullName: u.fullName,
-    login: u.login,
-    phone: u.phone,
-    currentMonth: currentYYYYMM(),
-    isPaidThisMonth: isUserPaidThisMonth(u.id),
-    paidCurrentMonth: isUserPaidThisMonth(u.id),
-    user: { id: u.id, fullName: u.fullName, login: u.login, phone: u.phone, currentMonth: currentYYYYMM(), isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id) }
+    role: "client",
+    user: {
+      id: u.id,
+      fullName: u.fullName,
+      cpf: u.cpf || "",
+      email: u.email || "",
+      currentMonth: month,
+      isPaidThisMonth: paid,
+      paidCurrentMonth: paid,
+      trialDaysLeft: tLeft,
+      trialEndsAt: u.trialEndsAt || ""
+    }
   });
 });
 
@@ -1378,65 +1515,80 @@ app.get("/api/client/billing", requireAuth, (req, res) => {
 
 // Rotas administrativas
 app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
-  const users = DB.users
-    .filter(u => !u.isDeleted)
-    .map(u => ({
-      id: u.id,
-      fullName: u.fullName,
-      dob: u.dob,
-      phone: u.phone,
-      login: u.login,
-      isActive: !!u.isActive,
-      active: !!u.isActive,
-      lastLoginAt: u.lastLoginAt || "",
-      lastSeenAt: u.lastSeenAt || "",
-      isOnline: isUserOnline(u),
-      isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id)
-    }))
-    .sort((a,b) => (a.fullName||"").localeCompare(b.fullName||""));
-  return res.json({ users });
+  const month = currentYYYYMM();
+  const rows = (Array.isArray(DB.users) ? DB.users : [])
+    .filter(u => u && !u.isDeleted && String(u.role || "client") !== "admin")
+    .map(u => {
+      const paid = isUserPaidThisMonth(u.id);
+      const tLeft = trialDaysLeft(u);
+      return {
+        id: u.id,
+        fullName: u.fullName,
+        cpf: u.cpf || "",
+        email: u.email || "",
+        role: String(u.role || "client"),
+        isActive: !!u.isActive,
+        isPaidThisMonth: paid,
+        paidCurrentMonth: paid,
+        currentMonth: month,
+        trialDaysLeft: tLeft,
+        trialEndsAt: u.trialEndsAt || "",
+        lastLoginAt: u.lastLoginAt || "",
+        lastSeenAt: u.lastSeenAt || ""
+      };
+    })
+    .sort((a, b) => String(a.fullName || "").localeCompare(String(b.fullName || "")));
+
+  return res.json({ users: rows, month });
 });
 
 app.post("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
   try {
     const fullName = String(req.body?.fullName || "").trim();
-    const dob = String(req.body?.dob || "").trim();
-    const phone = String(req.body?.phone || "").trim();
-    const login = String(req.body?.login || "").trim();
+    const cpf = normalizeCpf(req.body?.cpf);
+    const email = normalizeEmail(req.body?.email);
     const password = String(req.body?.password || "").trim();
 
-    if (!fullName || !dob || !phone || !login || !password) {
-      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone, login e senha são obrigatórios." });
+    if (!fullName || !cpf || !email || !password) {
+      return res.status(400).json({ error: "Nome completo, CPF, e-mail e senha são obrigatórios." });
     }
-    if (findUserByLogin(login)) return res.status(409).json({ error: "Já existe usuário com este login." });
+
+    const existingCpf = DB.users.find(u => !u?.isDeleted && normalizeCpf(u.cpf) === cpf);
+    if (existingCpf) return res.status(409).json({ error: "Já existe usuário com este CPF." });
+
+    const existingEmail = DB.users.find(u => !u?.isDeleted && normalizeEmail(u.email) === email);
+    if (existingEmail) return res.status(409).json({ error: "Já existe usuário com este e-mail." });
 
     const salt = crypto.randomBytes(10).toString("hex");
-    const passwordHash = sha256(`${salt}:${password}`);
+    const now = nowIso();
 
     const user = {
-      id: makeId("usr"),
+      id: makeId("u"),
       fullName,
-      dob,
-      phone,
-      login,
-      salt,
-      passwordHash,
+      cpf,
+      email,
+      role: "client",
       isActive: true,
       isDeleted: false,
-      createdAt: nowIso(),
+      createdAt: now,
+      updatedAt: now,
       lastLoginAt: "",
       lastSeenAt: "",
       activeSessionHash: "",
       activeDeviceId: "",
       activeSessionCreatedAt: "",
       activeSessionLastSeenAt: "",
-      activeSessionExpiresAt: ""
+      activeSessionExpiresAt: "",
+      salt,
+      passwordHash: sha256(`${salt}:${password}`),
+      trialEndsAt: new Date(Date.now() + (15 * 24 * 60 * 60 * 1000)).toISOString()
     };
 
     DB.users.push(user);
-    saveDb(DB);
-    audit("user_create", user.id, `Criado usuário ${login}`);
-    return res.json({ ok: true, user: { id: user.id } });
+    saveDb(DB, "admin_create_user");
+    audit("admin_user_create", user.id, `Criado: ${user.fullName} (${user.cpf})`);
+
+    return res.json({ ok: true, id: user.id });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "Falha ao cadastrar usuário." });
@@ -1449,37 +1601,40 @@ app.put("/api/admin/users/:id", requireAuth, requireAdmin, (req, res) => {
     if (!user) return res.status(404).json({ error: "Usuário não encontrado." });
 
     const fullName = String(req.body?.fullName ?? user.fullName ?? "").trim();
-    const dob = String(req.body?.dob ?? user.dob ?? "").trim();
-    const phone = String(req.body?.phone ?? user.phone ?? "").trim();
-    const login = String(req.body?.login ?? user.login ?? "").trim();
+    const cpf = normalizeCpf(req.body?.cpf ?? user.cpf ?? "");
+    const email = normalizeEmail(req.body?.email ?? user.email ?? "");
     const password = String(req.body?.password || "").trim();
 
-    if (!fullName || !dob || !phone || !login) {
-      return res.status(400).json({ error: "Nome completo, data de nascimento, telefone e login são obrigatórios." });
+    if (!fullName || !cpf || !email) {
+      return res.status(400).json({ error: "Nome completo, CPF e e-mail são obrigatórios." });
     }
 
-    // Se mudar o login, garantir unicidade
-    const existing = DB.users.find(u => !u.isDeleted && u.id !== id && String(u.login || "").toLowerCase() === String(login).toLowerCase());
-    if (existing) return res.status(409).json({ error: "Já existe usuário com este login." });
+    // Unicidade CPF
+    const existingCpf = DB.users.find(u => !u.isDeleted && u.id !== id && normalizeCpf(u.cpf) === cpf);
+    if (existingCpf) return res.status(409).json({ error: "Já existe usuário com este CPF." });
+
+    // Unicidade e-mail
+    const existingEmail = DB.users.find(u => !u.isDeleted && u.id !== id && normalizeEmail(u.email) === email);
+    if (existingEmail) return res.status(409).json({ error: "Já existe usuário com este e-mail." });
 
     user.fullName = fullName;
-    user.dob = dob;
-    user.phone = phone;
-    user.login = login;
+    user.cpf = cpf;
+    user.email = email;
+    user.updatedAt = nowIso();
 
     if (password) {
       const salt = crypto.randomBytes(10).toString("hex");
       user.salt = salt;
       user.passwordHash = sha256(`${salt}:${password}`);
-      audit("user_update_password", id, `Senha atualizada para ${user.login}`);
+      audit("user_update_password", id, `Senha atualizada para ${user.fullName} (${user.cpf})`);
     }
 
-    saveDb(DB);
-    audit("user_update", id, `Dados atualizados para ${user.login}`);
+    saveDb(DB, "admin_update_user");
+    audit("user_update", id, `Dados atualizados para ${user.fullName} (${user.cpf})`);
     return res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: "Falha ao editar usuário." });
+    return res.status(500).json({ error: "Falha ao atualizar usuário." });
   }
 });
 
@@ -1496,7 +1651,7 @@ app.post("/api/admin/users/:id/reset-password", requireAuth, requireAdmin, (req,
     user.salt = salt;
     user.passwordHash = sha256(`${salt}:${newPassword}`);
     saveDb(DB);
-    audit("user_reset_password", id, `Senha resetada para ${user.login}`);
+    audit("user_reset_password", id, `Senha resetada para ${user.cpf || user.email || user.login || ""}`);
     return res.json({ ok: true });
   } catch (e) {
     console.error(e);
