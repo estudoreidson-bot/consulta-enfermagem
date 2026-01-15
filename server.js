@@ -909,6 +909,46 @@ function isUserPaidThisMonth(userId) {
   return DB.payments.some(p => p.userId === userId && p.month === month);
 }
 
+// ======================================================================
+// TESTE GRATUITO (NOVOS CADASTROS)
+// - Todos os novos cadastros ganham 15 dias (configurável via TRIAL_DAYS).
+// - Durante o teste, o acesso funciona mesmo sem pagamento do mês.
+// - Bloqueio administrativo (isActive=false) continua valendo.
+// ======================================================================
+const TRIAL_DAYS = (() => {
+  const n = parseInt(String(process.env.TRIAL_DAYS || "15"), 10);
+  if (!Number.isFinite(n) || n < 0) return 15;
+  return n;
+})();
+
+function trialEndsAtFromNowIso() {
+  const ms = Date.now() + (TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  return new Date(ms).toISOString();
+}
+
+function isUserTrialActive(user) {
+  const ends = String(user?.trialEndsAt || "").trim();
+  if (!ends) return false;
+  const ts = Date.parse(ends);
+  if (!ts) return false;
+  return Date.now() <= ts;
+}
+
+function userTrialDaysLeft(user) {
+  const ends = String(user?.trialEndsAt || "").trim();
+  const ts = Date.parse(ends);
+  if (!ts) return 0;
+  const diff = ts - Date.now();
+  if (diff <= 0) return 0;
+  return Math.max(0, Math.ceil(diff / (24 * 60 * 60 * 1000)));
+}
+
+function isUserAccessOk(user) {
+  if (!user || user.isDeleted) return false;
+  if (!user.isActive) return false;
+  return isUserPaidThisMonth(user.id) || isUserTrialActive(user);
+}
+
 function isUserOnline(user) {
   const last = user?.lastSeenAt ? new Date(user.lastSeenAt).getTime() : 0;
   if (!last) return false;
@@ -1031,9 +1071,10 @@ function requirePaidOrAdmin(req, res, next) {
 
   const user = req.auth.user;
   if (!user || user.isDeleted) return res.status(403).json({ error: "Usuário inválido." });
-  if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
+  if (!user.isActive) return res.status(403).json({ error: "Acesso bloqueado: usuário inativo. Procure o administrador." });
 
-  if (!isUserPaidThisMonth(user.id)) {
+  // Permite acesso se o usuário pagou o mês OU está dentro do período de teste.
+  if (!(isUserPaidThisMonth(user.id) || isUserTrialActive(user))) {
     return res.status(402).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
   }
   next();
@@ -1088,6 +1129,8 @@ app.post("/api/auth/signup", (req, res) => {
       isActive: true,
       isDeleted: false,
       createdAt: nowIso(),
+      trialStartedAt: nowIso(),
+      trialEndsAt: trialEndsAtFromNowIso(),
       lastLoginAt: "",
       lastSeenAt: "",
       activeSessionHash: "",
@@ -1133,8 +1176,10 @@ app.post("/api/auth/login", (req, res) => {
     const computed = sha256(`${user.salt || ""}:${senha}`);
     if (computed !== user.passwordHash) return res.status(401).json({ error: "Credenciais inválidas." });
 
-    // Bloqueio por mensalidade em débito
-    if (!isUserPaidThisMonth(user.id)) return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
+    // Bloqueio por mensalidade em débito (exceto durante o teste gratuito)
+    if (!(isUserPaidThisMonth(user.id) || isUserTrialActive(user))) {
+      return res.status(403).json({ error: "Acesso bloqueado: mensalidade em débito. Procure o administrador." });
+    }
 
     // Regra 1 pessoa por conta (1 dispositivo por vez)
     // - Ao fazer login em um novo dispositivo, a sessão anterior é encerrada automaticamente.
@@ -1166,9 +1211,23 @@ app.post("/api/auth/login", (req, res) => {
       login: user.login,
       phone: user.phone,
       currentMonth: currentYYYYMM(),
-      isPaidThisMonth: isUserPaidThisMonth(user.id),
+      isPaidThisMonth: isUserAccessOk(user),
       paidCurrentMonth: isUserPaidThisMonth(user.id),
-      user: { id: user.id, fullName: user.fullName, login: user.login, phone: user.phone, currentMonth: currentYYYYMM(), isPaidThisMonth: isUserPaidThisMonth(user.id), paidCurrentMonth: isUserPaidThisMonth(user.id) }
+      isTrialActive: isUserTrialActive(user),
+      trialEndsAt: user.trialEndsAt || "",
+      trialDaysLeft: userTrialDaysLeft(user),
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        login: user.login,
+        phone: user.phone,
+        currentMonth: currentYYYYMM(),
+        isPaidThisMonth: isUserAccessOk(user),
+        paidCurrentMonth: isUserPaidThisMonth(user.id),
+        isTrialActive: isUserTrialActive(user),
+        trialEndsAt: user.trialEndsAt || "",
+        trialDaysLeft: userTrialDaysLeft(user)
+      }
     });
   } catch (e) {
     console.error(e);
@@ -1188,9 +1247,23 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
     login: u.login,
     phone: u.phone,
     currentMonth: currentYYYYMM(),
-    isPaidThisMonth: isUserPaidThisMonth(u.id),
+    isPaidThisMonth: isUserAccessOk(u),
     paidCurrentMonth: isUserPaidThisMonth(u.id),
-    user: { id: u.id, fullName: u.fullName, login: u.login, phone: u.phone, currentMonth: currentYYYYMM(), isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id) }
+    isTrialActive: isUserTrialActive(u),
+    trialEndsAt: u.trialEndsAt || "",
+    trialDaysLeft: userTrialDaysLeft(u),
+    user: {
+      id: u.id,
+      fullName: u.fullName,
+      login: u.login,
+      phone: u.phone,
+      currentMonth: currentYYYYMM(),
+      isPaidThisMonth: isUserAccessOk(u),
+      paidCurrentMonth: isUserPaidThisMonth(u.id),
+      isTrialActive: isUserTrialActive(u),
+      trialEndsAt: u.trialEndsAt || "",
+      trialDaysLeft: userTrialDaysLeft(u)
+    }
   });
 });
 
@@ -1263,6 +1336,8 @@ function listActiveFriends(parentUserId) {
 }
 
 function computeClientBilling(parentUserId) {
+  const pid = String(parentUserId || "");
+  const parent = (Array.isArray(DB?.users) ? DB.users : []).find(u => u && !u.isDeleted && String(u.id || "") === pid) || null;
   const friends = listActiveFriends(parentUserId);
   const eligibleDiscount = isUserPaidThisMonth(parentUserId);
   const discountPercent = eligibleDiscount ? Math.min(25 * friends.length, 100) : 0;
@@ -1283,7 +1358,18 @@ function computeClientBilling(parentUserId) {
     annualCard: round2(base.annualCard * mult)
   };
 
-  return { friends, eligibleDiscount, discountPercent, base, final };
+  return {
+    friends,
+    eligibleDiscount,
+    discountPercent,
+    base,
+    final,
+    paidCurrentMonth: isUserPaidThisMonth(parentUserId),
+    isTrialActive: isUserTrialActive(parent),
+    trialEndsAt: parent?.trialEndsAt || "",
+    trialDaysLeft: userTrialDaysLeft(parent),
+    accessOk: isUserAccessOk(parent)
+  };
 }
 
 app.get("/api/client/friends", requireAuth, (req, res) => {
@@ -1343,6 +1429,8 @@ app.post("/api/client/friends", requireAuth, (req, res) => {
       isActive: true,
       isDeleted: false,
       createdAt: nowIso(),
+      trialStartedAt: nowIso(),
+      trialEndsAt: trialEndsAtFromNowIso(),
       lastLoginAt: "",
       lastSeenAt: "",
       activeSessionHash: "",
@@ -1546,7 +1634,12 @@ app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
       lastLoginAt: u.lastLoginAt || "",
       lastSeenAt: u.lastSeenAt || "",
       isOnline: isUserOnline(u),
-      isPaidThisMonth: isUserPaidThisMonth(u.id), paidCurrentMonth: isUserPaidThisMonth(u.id)
+      isPaidThisMonth: isUserPaidThisMonth(u.id),
+      paidCurrentMonth: isUserPaidThisMonth(u.id),
+      trialEndsAt: u.trialEndsAt || "",
+      isTrialActive: isUserTrialActive(u),
+      trialDaysLeft: userTrialDaysLeft(u),
+      accessOk: isUserAccessOk(u)
     }))
     .sort((a,b) => (a.fullName||"").localeCompare(b.fullName||""));
   return res.json({ users });
@@ -1574,11 +1667,15 @@ app.post("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
       dob,
       phone,
       login,
+      parentUserId: "",
+      commissionRate: null,
       salt,
       passwordHash,
       isActive: true,
       isDeleted: false,
       createdAt: nowIso(),
+      trialStartedAt: nowIso(),
+      trialEndsAt: trialEndsAtFromNowIso(),
       lastLoginAt: "",
       lastSeenAt: "",
       activeSessionHash: "",

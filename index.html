@@ -4433,6 +4433,17 @@ Ata de reunião:
         : (me && me.paidCurrentMonth !== undefined) ? !!me.paidCurrentMonth
         : false;
 
+      const paidCurrentMonth = (u.paidCurrentMonth !== undefined) ? !!u.paidCurrentMonth
+        : (me && me.paidCurrentMonth !== undefined) ? !!me.paidCurrentMonth
+        : false;
+
+      const isTrialActive = (u.isTrialActive !== undefined) ? !!u.isTrialActive
+        : (me && me.isTrialActive !== undefined) ? !!me.isTrialActive
+        : false;
+
+      const trialEndsAt = (u.trialEndsAt || (me && me.trialEndsAt) || "");
+      const trialDaysLeft = Number((u.trialDaysLeft !== undefined) ? u.trialDaysLeft : (me && me.trialDaysLeft !== undefined) ? me.trialDaysLeft : 0) || 0;
+
       const month = (me && me.currentMonth) ? me.currentMonth : (u.currentMonth || "");
       const lbl = document.getElementById("nurseUserLabel");
       const lblLogin = document.getElementById("nurseLoginLabel");
@@ -4442,7 +4453,16 @@ Ata de reunião:
       if (lblLogin) lblLogin.textContent = login;
 
       if (pay) {
-        pay.textContent = paidFlag ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Em atraso" + (month ? " (" + month + ")" : ""));
+        if (paidFlag && isTrialActive && !paidCurrentMonth) {
+          let endStr = "";
+          try {
+            if (trialEndsAt) endStr = formatDatePt(new Date(trialEndsAt));
+          } catch {}
+          const extra = (endStr ? (" até " + endStr) : "") + (trialDaysLeft ? (" (" + trialDaysLeft + " dias)") : "");
+          pay.textContent = "Teste gratuito" + extra;
+        } else {
+          pay.textContent = paidFlag ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Em atraso" + (month ? " (" + month + ")" : ""));
+        }
         pay.classList.remove("green","red");
         pay.classList.add(paidFlag ? "green" : "red");
       }
@@ -4569,10 +4589,22 @@ Ata de reunião:
         const eligible = !!data?.eligibleDiscount;
         const discountPercent = Number(data?.discountPercent || 0);
 
+        const isTrialActive = !!data?.isTrialActive;
+        const trialEndsAt = String(data?.trialEndsAt || "");
+        const trialDaysLeft = Number(data?.trialDaysLeft || 0) || 0;
+
         if (statusEl) {
-          statusEl.textContent = eligible
-            ? ("Desconto aplicado: " + discountPercent + "%")
-            : "Sem desconto: mensalidade em débito (pagamento do mês atual não identificado).";
+          if (isTrialActive) {
+            let endStr = "";
+            try {
+              if (trialEndsAt) endStr = formatDatePt(new Date(trialEndsAt));
+            } catch {}
+            statusEl.textContent = "Teste gratuito ativo" + (endStr ? (" até " + endStr) : "") + (trialDaysLeft ? (" (" + trialDaysLeft + " dias restantes)") : ".");
+          } else {
+            statusEl.textContent = eligible
+              ? ("Desconto aplicado: " + discountPercent + "%")
+              : "Sem desconto: mensalidade em débito (pagamento do mês atual não identificado).";
+          }
         }
 
         if (listEl) {
