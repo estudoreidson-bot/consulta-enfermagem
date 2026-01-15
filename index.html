@@ -2085,20 +2085,11 @@
         </div>
       </div>
       <div class="auth-row">
-        <label class="auth-label">Promoção (opcional)</label>
-        <select id="signupRefType" class="auth-input">
-          <option value="">Nenhuma</option>
-          <option value="friend">Cliente Amigo (desconto)</option>
-          <option value="partner">Parceiro (comissão)</option>
-        </select>
-      </div>
-      <div class="auth-row">
-        <label class="auth-label">Código de indicação (opcional)</label>
-        <input id="signupReferralCode" class="auth-input" autocomplete="off" inputmode="text" />
         <div class="auth-hint">
-          Cliente Amigo: cada amigo pagando em dia reduz 25% da sua mensalidade, até ficar grátis com 4 amigos.
-          Parceiro: você indica clientes e recebe 25% todo mês da mensalidade de cada cliente que estiver pagando em dia.
+          Para ganhar desconto, você adiciona amigos somente depois do login: dentro da sua conta, clique em "Adicionar amigo" e cadastre cada amigo. Eles ficarão vinculados ao seu cadastro.
         </div>
+      </div>
+      
       </div>
 
 
@@ -4134,6 +4125,8 @@ Ata de reunião:
     }
 
     function showLogin() {
+      closePayModal();
+      closeAddFriendModal();
       document.getElementById("loginView")?.classList.remove("hidden");
       document.getElementById("adminView")?.classList.add("hidden");
       document.getElementById("nurseView")?.classList.add("hidden");
@@ -4141,6 +4134,8 @@ Ata de reunião:
       document.getElementById("paymentsModal")?.classList.add("hidden");
     }
     function showSignup() {
+      closePayModal();
+      closeAddFriendModal();
       document.getElementById("loginView")?.classList.add("hidden");
       document.getElementById("adminView")?.classList.add("hidden");
       document.getElementById("nurseView")?.classList.add("hidden");
@@ -4148,12 +4143,16 @@ Ata de reunião:
       document.getElementById("paymentsModal")?.classList.add("hidden");
     }
     function showAdmin() {
+      closePayModal();
+      closeAddFriendModal();
       document.getElementById("loginView")?.classList.add("hidden");
       document.getElementById("adminView")?.classList.remove("hidden");
       document.getElementById("nurseView")?.classList.add("hidden");
       document.getElementById("nurseSignupView")?.classList.add("hidden");
     }
     function showNurse() {
+      closePayModal();
+      closeAddFriendModal();
       document.getElementById("loginView")?.classList.add("hidden");
       document.getElementById("adminView")?.classList.add("hidden");
       document.getElementById("nurseView")?.classList.remove("hidden");
@@ -4267,9 +4266,7 @@ Ata de reunião:
       const phone = (document.getElementById("signupPhone")?.value || "").trim();
       const login = (document.getElementById("signupLogin")?.value || "").trim();
       const cpf = onlyDigits(login);
-      const refType = (document.getElementById("signupRefType")?.value || "").trim();
-      const referralCode = (document.getElementById("signupReferralCode")?.value || "").trim();
-      const password = (document.getElementById("signupPassword")?.value || "").trim();
+      const refType = (      const referralCode = (      const password = (document.getElementById("signupPassword")?.value || "").trim();
 
       const errEl = document.getElementById("signupError");
       const btn = document.getElementById("signupBtn");
@@ -4286,7 +4283,7 @@ Ata de reunião:
         const resp = await nativeFetch(BACKEND_URL + "/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName, dob, phone, cpf, login: cpf, password, refType, referralCode })
+          body: JSON.stringify({ fullName, dob, phone, cpf, login: cpf, password })
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
