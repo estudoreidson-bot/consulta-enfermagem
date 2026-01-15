@@ -119,6 +119,9 @@ async function hydrateDbFromPgIfAvailable() {
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Render/Cloudflare/Proxies: garante IP/proto corretos (rate-limit, URLs públicas, etc.)
+app.set("trust proxy", 1);
+
 // Configurações básicas
 /**
  * CORS restrito:
@@ -126,7 +129,10 @@ const port = process.env.PORT || 3000;
  * - Pode ser lista separada por vírgula.
  * - Se vazio, permite apenas requisições sem Origin (ex.: curl) e mesma origem em ambientes típicos.
  */
-const ALLOWED_ORIGIN = String(process.env.ALLOWED_ORIGIN || "").trim();
+// Se ALLOWED_ORIGIN não estiver definido, usa o domínio de produção do frontend.
+// Pode ser sobrescrito via env ALLOWED_ORIGIN (lista separada por vírgula).
+const DEFAULT_ALLOWED_ORIGIN = "https://consulta-enfermagem.pages.dev";
+const ALLOWED_ORIGIN = String(process.env.ALLOWED_ORIGIN || DEFAULT_ALLOWED_ORIGIN).trim();
 const ALLOWED_ORIGINS = ALLOWED_ORIGIN ? ALLOWED_ORIGIN.split(",").map(s => s.trim()).filter(Boolean) : [];
 
 app.use(cors({
@@ -3810,10 +3816,11 @@ const INFINITEPAY_HANDLE = String(process.env.INFINITEPAY_HANDLE || "").trim();
 const INFINITEPAY_WEBHOOK_SECRET = String(process.env.INFINITEPAY_WEBHOOK_SECRET || "").trim(); // placeholder
 const INFINITEPAY_WEBHOOK_SIGNATURE_HEADER = String(process.env.INFINITEPAY_WEBHOOK_SIGNATURE_HEADER || "").trim();
 
-const PAYMENT_ITEM_DESCRIPTION = String(process.env.PAYMENT_ITEM_DESCRIPTION || "Acesso - Queimadas Telemedicina").trim();
+const PAYMENT_ITEM_DESCRIPTION = String(process.env.PAYMENT_ITEM_DESCRIPTION || "Acesso - Atendimento de Enfermagem (mensal)").trim();
 const PAYMENT_AMOUNT_CENTS = (() => {
-  const n = Number(process.env.PAYMENT_AMOUNT_CENTS || 1000);
-  return Number.isFinite(n) && n > 0 ? Math.round(n) : 1000;
+  // Default alinhado ao valor mensal do app (R$ 25,00 => 2500 centavos).
+  const n = Number(process.env.PAYMENT_AMOUNT_CENTS || 2500);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : 2500;
 })();
 
 function getPublicBaseUrl(req) {
