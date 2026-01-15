@@ -1413,6 +1413,18 @@ function safePhoneDigits(s) {
   return String(s || "").replace(/\D/g, "").slice(0, 20);
 }
 
+function toE164BR(phoneDigits) {
+  const d = String(phoneDigits || '').replace(/\D/g, '');
+  if (!d) return '';
+  // Converte para E.164 (BR). Aceita 10/11 dígitos (DDD + número) e adiciona +55.
+  if ((d.length === 10 || d.length === 11) && !d.startsWith('55')) return '+55' + d;
+  // Se já vier com DDI 55 (ex: 5511999998888), apenas prefixa +
+  if (d.startsWith('55') && d.length >= 12 && d.length <= 15) return '+' + d;
+  // Fallback: se parecer internacional, prefixa +
+  if (d.length >= 12 && d.length <= 15) return '+' + d;
+  return '';
+}
+
 app.post("/api/client/infinitepay/checkout-link", requireAuth, async (req, res) => {
   try {
     if (req.auth.role !== "nurse") return res.status(403).json({ error: "Acesso negado." });
@@ -1449,10 +1461,9 @@ app.post("/api/client/infinitepay/checkout-link", requireAuth, async (req, res) 
 
     const u = req.auth.user || {};
     const customerName = String(u.fullName || u.login || "").trim();
-    const customerPhone = safePhoneDigits(u.phone || "");
+    const customerPhone = toE164BR(safePhoneDigits(u.phone || ""));
 
     const orderNsu = crypto.randomBytes(8).toString("hex");
-    const transactionNsu = (crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString("hex"));
 
     const allowedOrigin = String(process.env.ALLOWED_ORIGIN || "").trim();
     const redirectUrl = allowedOrigin ? (allowedOrigin.replace(/\/$/, "") + "/?pagamento=retorno") : undefined;
@@ -1460,18 +1471,17 @@ app.post("/api/client/infinitepay/checkout-link", requireAuth, async (req, res) 
     const payload = {
       handle,
       order_nsu: orderNsu,
-      transaction_nsu: transactionNsu,
       items: [
         {
-          name: "Atendimento de Enfermagem",
-          description: title,
           quantity: 1,
-          unit_price: amountCents
+          price: amountCents,
+          description: `Atendimento de Enfermagem - ${title}`
         }
       ],
       // Dados do cliente são opcionais; enviamos o que já existe para facilitar preenchimento no checkout.
       customer: {
         name: customerName || undefined,
+        email: (u.email ? String(u.email).trim() : undefined),
         phone_number: customerPhone || undefined
       },
       redirect_url: redirectUrl
@@ -1509,12 +1519,13 @@ app.post("/api/client/infinitepay/checkout-link", requireAuth, async (req, res) 
       checkout_url: url,
       invoice_slug: slug,
       order_nsu: orderNsu,
-      transaction_nsu: transactionNsu,
       amount_cents: amountCents
     });
   } catch (e) {
-    console.error("[InfinitePay] erro ao gerar link:", e?.message || e);
-    return res.status(500).json({ error: "Falha ao gerar link de pagamento." });
+    const status = Number(e?.statusCode || 0) || 502;
+    const msg = String(e?.message || "Falha ao gerar link de pagamento.");
+    console.error("[InfinitePay] erro ao gerar link:", msg);
+    return res.status(status).json({ error: msg, code: "INFINITEPAY_ERROR" });
   }
 });
 
