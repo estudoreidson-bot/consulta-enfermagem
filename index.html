@@ -2331,10 +2331,8 @@
         <div id="clientBillingAmounts" class="answer-box"></div>
 
         <div style="margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap;">
-          <button id="payMonthlyPixBtn" class="auth-btn" type="button">PIX mensal</button>
-          <button id="payMonthlyCardBtn" class="auth-btn outline" type="button">Cartão mensal</button>
-          <button id="payAnnualPixBtn" class="auth-btn" type="button">PIX anual</button>
-          <button id="payAnnualCardBtn" class="auth-btn outline" type="button">Cartão anual</button>
+          <button id="payMonthlyBtn" class="auth-btn" type="button">Pagamento mensal</button>
+          <button id="payAnnualBtn" class="auth-btn outline" type="button">Pagamento anual</button>
         </div>
 
         <div id="clientBillingHint" class="auth-help" style="margin-top: 10px;"></div>
@@ -4626,21 +4624,21 @@ Ata de reunião:
         const final = data?.final || {};
         if (amountsEl) {
           const txt = [
-            "Mensal: PIX " + moneyBRL(final.monthlyPix) + " | Cartão " + moneyBRL(final.monthlyCard),
-            "Anual: PIX " + moneyBRL(final.annualPix) + " | Cartão " + moneyBRL(final.annualCard),
+            "Mensal: " + moneyBRL(final.monthly),
+            "Anual: " + moneyBRL(final.annual),
             "",
-            "Valor base mensal: " + moneyBRL(base.monthly) + " | Valor base anual: PIX " + moneyBRL(base.annualPix) + " | Cartão " + moneyBRL(base.annualCard)
+            "Valor base mensal: " + moneyBRL(base.monthly) + " | Valor base anual: " + moneyBRL(base.annual)
           ].join("\n");
           amountsEl.textContent = txt;
         }
 
-        const setPayBtn = (id, label, amount, plan, method) => {
+        const setPayBtn = (id, label, amount, plan) => {
           const b = document.getElementById(id);
           if (!b) return;
 
           b.onclick = async () => {
             // Evita múltiplos cliques
-            const btns = ["payMonthlyPixBtn","payMonthlyCardBtn","payAnnualPixBtn","payAnnualCardBtn"].map(x => document.getElementById(x)).filter(Boolean);
+            const btns = ["payMonthlyBtn","payAnnualBtn"].map(x => document.getElementById(x)).filter(Boolean);
             for (const x of btns) x.disabled = true;
 
             if (hintEl) hintEl.textContent = "Abrindo checkout de pagamento...";
@@ -4649,7 +4647,7 @@ Ata de reunião:
               const resp2 = await fetch(BACKEND_URL + "/api/client/infinitepay/checkout-link", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ plan, method })
+                body: JSON.stringify({ plan })
               });
               const out2 = await resp2.json().catch(() => ({}));
 
@@ -4659,9 +4657,7 @@ Ata de reunião:
                 return;
               }
 
-              if (hintEl) {
-                hintEl.textContent = label + " - Valor: " + moneyBRL(amount) + ". Você será direcionado para o checkout.";
-              }
+              if (hintEl) hintEl.textContent = label + " - Valor: " + moneyBRL(amount) + ". Você será direcionado para o checkout.";
 
               window.location.href = out2.checkout_url;
             } catch (e) {
@@ -4672,10 +4668,9 @@ Ata de reunião:
           };
         };
 
-        setPayBtn("payMonthlyPixBtn", "PIX mensal", final.monthlyPix, "monthly", "pix");
-        setPayBtn("payMonthlyCardBtn", "Cartão mensal", final.monthlyCard, "monthly", "card");
-        setPayBtn("payAnnualPixBtn", "PIX anual", final.annualPix, "annual", "pix");
-        setPayBtn("payAnnualCardBtn", "Cartão anual", final.annualCard, "annual", "card");
+        // Botões (sem distinção PIX/Cartão)
+        setPayBtn("payMonthlyBtn", "Pagamento mensal", final.monthly, "monthly");
+        setPayBtn("payAnnualBtn", "Pagamento anual", final.annual, "annual");
 
         if (hintEl) {
           hintEl.textContent = "Regras: cada subusuário cadastrado gera 25% de desconto, limitado a 100%, desde que a mensalidade do mês atual esteja em dia.";

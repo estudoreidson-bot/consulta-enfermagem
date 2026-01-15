@@ -1342,20 +1342,20 @@ function computeClientBilling(parentUserId) {
   const eligibleDiscount = isUserPaidThisMonth(parentUserId);
   const discountPercent = eligibleDiscount ? Math.min(25 * friends.length, 100) : 0;
 
+  // Valores base (sem distinção PIX/Cartão)
+  // Mensal: R$ 25,00
+  // Anual: R$ 240,00
   const base = {
     monthly: 25,
-    annualPix: 200,
-    annualCard: 240
+    annual: 240
   };
 
   const mult = 1 - (discountPercent / 100);
   const round2 = (x) => Math.round(Number(x) * 100) / 100;
 
   const final = {
-    monthlyPix: round2(base.monthly * mult),
-    monthlyCard: round2(base.monthly * mult),
-    annualPix: round2(base.annualPix * mult),
-    annualCard: round2(base.annualCard * mult)
+    monthly: round2(base.monthly * mult),
+    annual: round2(base.annual * mult)
   };
 
   return {
@@ -1525,13 +1525,9 @@ app.post("/api/client/infinitepay/checkout-link", requireAuth, async (req, res) 
     }
 
     const plan = String(req.body?.plan || "").trim().toLowerCase(); // monthly | annual
-    const method = String(req.body?.method || "").trim().toLowerCase(); // pix | card (informativo)
 
     if (!plan || !["monthly", "annual"].includes(plan)) {
       return res.status(400).json({ error: "Plano inválido." });
-    }
-    if (!method || !["pix", "card"].includes(method)) {
-      return res.status(400).json({ error: "Forma de pagamento inválida." });
     }
 
     const billing = computeClientBilling(parentId);
@@ -1539,10 +1535,8 @@ app.post("/api/client/infinitepay/checkout-link", requireAuth, async (req, res) 
 
     let amountBrl = 0;
     let title = "";
-    if (plan === "monthly" && method === "pix") { amountBrl = final.monthlyPix; title = "Mensalidade (PIX)"; }
-    if (plan === "monthly" && method === "card") { amountBrl = final.monthlyCard; title = "Mensalidade (Cartão)"; }
-    if (plan === "annual" && method === "pix") { amountBrl = final.annualPix; title = "Anuidade (PIX)"; }
-    if (plan === "annual" && method === "card") { amountBrl = final.annualCard; title = "Anuidade (Cartão)"; }
+    if (plan === "monthly") { amountBrl = final.monthly; title = "Mensalidade"; }
+    if (plan === "annual") { amountBrl = final.annual; title = "Anuidade"; }
 
     const amountCents = brlToCents(amountBrl);
     if (!amountCents) return res.status(400).json({ error: "Valor inválido para cobrança." });
