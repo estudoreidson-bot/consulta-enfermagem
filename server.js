@@ -1192,13 +1192,9 @@ function authFromReq(req) {
     const xt = req.headers["x-auth-token"] || req.headers["X-Auth-Token"] || "";
     token = String(xt || "").trim();
   }
-
+  const headerDeviceId = getDeviceIdFromReq(req);
+  let deviceId = headerDeviceId;
   let sess = getSession(token);
-
-  let deviceId = getDeviceIdFromReq(req);
-  if (!deviceId && sess && sess.deviceId) {
-    deviceId = String(sess.deviceId || "").trim();
-  }
 
   // Fallback: sessão persistida no usuário (sobrevive a restart e permite bloqueio de 1 dispositivo por conta)
   if (!sess && token) {
@@ -1212,12 +1208,12 @@ function authFromReq(req) {
     }
   }
 
-  if (!deviceId && sess && sess.deviceId) {
-    deviceId = String(sess.deviceId || "").trim();
-  }
+  const sessDeviceId = (sess && sess.deviceId) ? String(sess.deviceId || "").trim() : "";
+
+  if (!deviceId && sessDeviceId) deviceId = sessDeviceId;
+
 
   if (!sess) return null;
-
   if (sess.role === "admin") {
     return { role: "admin", token, user: { id: "admin", login: ADMIN_LOGIN } };
   }
@@ -1233,7 +1229,9 @@ function authFromReq(req) {
 
   if (!expectedHash || !expectedDev) return null;
 
-  if (expectedHash !== tokenHash(token) || expectedDev !== deviceId) {
+  const tokenOk = (expectedHash === tokenHash(token));
+  const devOk = (expectedDev === deviceId) || (sessDeviceId && expectedDev === sessDeviceId);
+  if (!tokenOk || !devOk) {
     try { SESSIONS.delete(token); } catch {}
     return { invalidReason: "SESSION_REPLACED" };
   }
