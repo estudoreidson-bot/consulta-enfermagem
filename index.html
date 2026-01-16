@@ -2423,6 +2423,8 @@
 
       <div id="soapError" class="error"></div>
 
+      <div id="soapResultsMount"></div>
+
       <div class="module-divider"></div>
       <p class="module-title">Triagem hospitalar</p>
       <p class="module-subtitle">
@@ -2456,6 +2458,8 @@
 
       <div id="triageError" class="error"></div>
 
+      <div id="triageResultsMount"></div>
+
       <div class="module-divider"></div>
 
       <div class="section-header-row" style="justify-content: center;">
@@ -2485,6 +2489,8 @@
 
       <div id="docsError" class="error"></div>
 
+      <div id="docsResultsMount"></div>
+
       <div class="module-divider"></div>
 
       <div class="section-header-row" style="justify-content: center;">
@@ -2513,6 +2519,8 @@
       </div>
 
       <div id="handoffError" class="error"></div>
+
+      <div id="handoffResultsMount"></div>
 
       <div class="module-divider"></div>
 
@@ -4797,6 +4805,20 @@ const recordBtn = document.getElementById("recordBtn");
     const timerEl = document.getElementById("timer");
     const micStatus = document.getElementById("micStatus");
     const resultsCard = document.getElementById("resultsCard");
+    const soapResultsMount = document.getElementById("soapResultsMount");
+    const triageResultsMount = document.getElementById("triageResultsMount");
+    const docsResultsMount = document.getElementById("docsResultsMount");
+    const handoffResultsMount = document.getElementById("handoffResultsMount");
+
+    function mountResultsCard(mountEl) {
+      if (!resultsCard || !mountEl) return;
+      if (resultsCard.parentElement !== mountEl) {
+        mountEl.appendChild(resultsCard);
+      }
+    }
+
+    mountResultsCard(soapResultsMount);
+
     const soapError = document.getElementById("soapError");
     const printBtn = document.getElementById("printBtn");
 
@@ -6184,6 +6206,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         return;
       }
 
+      mountResultsCard(triageResultsMount);
       if (resultsCard) resultsCard.classList.remove("hidden");
       if (triageReportPanel) triageReportPanel.classList.remove("hidden");
       if (triageReportStatus) {
@@ -6421,6 +6444,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         return;
       }
 
+      mountResultsCard(handoffResultsMount);
       if (resultsCard) resultsCard.classList.remove("hidden");
       if (handoffPanel) handoffPanel.classList.remove("hidden");
 
@@ -6890,6 +6914,7 @@ function initSpeech() {
       soapA.value = parts.A || "";
       soapP.value = parts.P || "";
 
+      mountResultsCard(soapResultsMount);
       resultsCard.classList.remove("hidden");
     }
 
@@ -9144,6 +9169,9 @@ if (medicalDoubtSendBtn) {
           reportStatus.classList.remove("loading-dot");
         }
 
+        mountResultsCard(docsResultsMount);
+        if (resultsCard) resultsCard.classList.remove("hidden");
+        if (patientReportCard) patientReportCard.classList.remove("hidden");
         if (docsMicStatus) docsMicStatus.textContent = documento ? "Documento gerado. Role para copiar/imprimir." : "Não foi possível gerar o documento.";
         if (patientReportCard) patientReportCard.scrollIntoView({ behavior: "smooth", block: "start" });
 
