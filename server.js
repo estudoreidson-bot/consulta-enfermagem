@@ -271,60 +271,6 @@ function getImageDataUrlFromBody(body) {
       : "";
 }
 
-
-function getImagesDataUrlsFromBody(body, maxImages = 4) {
-  const b = body || {};
-  const arr = Array.isArray(b.images_data_url) ? b.images_data_url
-    : (Array.isArray(b.imagens_data_url) ? b.imagens_data_url : null);
-
-  const out = [];
-  if (arr && arr.length) {
-    for (const item of arr) {
-      const url = typeof item === "string" ? item.trim() : "";
-      const norm = normalizeImageDataUrl(url, 7_000_000);
-      if (norm) out.push(norm);
-      if (out.length >= maxImages) break;
-    }
-  }
-
-  const single = getImageDataUrlFromBody(b);
-  const singleNorm = normalizeImageDataUrl(single, 7_000_000);
-  if (singleNorm && !out.includes(singleNorm)) out.unshift(singleNorm);
-
-  return out.slice(0, maxImages);
-}
-
-async function callOpenAIVisionJsonMulti(prompt, imagensDataUrl) {
-  const images = Array.isArray(imagensDataUrl) ? imagensDataUrl.filter(Boolean).slice(0, 4) : [];
-  if (!images.length) {
-    throw new Error("Nenhuma imagem válida recebida.");
-  }
-
-  const content = [{ type: "text", text: prompt }];
-  for (const url of images) {
-    content.push({ type: "image_url", image_url: { url } });
-  }
-
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0.2,
-    messages: [{ role: "user", content }]
-  });
-
-  const raw = (completion.choices?.[0]?.message?.content || "").trim();
-  try {
-    return JSON.parse(raw);
-  } catch (e) {
-    const firstBrace = raw.indexOf("{");
-    const lastBrace = raw.lastIndexOf("}");
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
-      return JSON.parse(jsonSlice);
-    }
-    throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
-  }
-}
-
 function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
   if (!Array.isArray(arr)) return [];
   const out = [];
@@ -2917,139 +2863,6 @@ app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
 
 
 
-
-
-// ======================================================================
-// ROTA 4.5B – BULA / MONOGRAFIA DE MEDICAMENTO (ESTRUTURADO)
-// ======================================================================
-
-function normalizePresentations(obj) {
-  const o = (obj && typeof obj === "object") ? obj : {};
-  const keys = [
-    "solucao_oral",
-    "solucao_oral_gotas",
-    "suspensao_oral",
-    "xarope",
-    "comprimidos",
-    "capsulas",
-    "solucao_injetavel",
-    "supositorio",
-    "topico",
-    "inalatorio",
-    "outros"
-  ];
-  const out = {};
-  for (const k of keys) {
-    out[k] = normalizeArrayOfStrings(o[k], 25, 180);
-  }
-  return out;
-}
-
-app.post("/api/medicamento-bula", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const nome = normalizeText(req.body?.medicamento || req.body?.nome || "", 120);
-    if (!nome) {
-      return res.status(400).json({ error: "Medicamento não informado." });
-    }
-
-    const prompt = `
-Você é um farmacêutico clínico e enfermeiro auditor.
-
-Gere uma monografia prática e completa do medicamento a seguir, em português do Brasil, no estilo de bula/Whitebook (sem copiar trechos), organizada para uso em enfermagem.
-
-Medicamento: ${nome}
-
-Regras:
-- Se algo não puder ser afirmado com segurança, use "não informado" (ou lista vazia).
-- Não invente nomes comerciais se não tiver segurança; se listar, mantenha no contexto Brasil e seja prudente.
-- Sem emojis e sem símbolos gráficos.
-- Responda EXCLUSIVAMENTE em JSON estrito, sem markdown.
-
-Formato obrigatório:
-{
-  "medicamento": "string",
-  "nomes_comerciais": ["string"],
-  "classe": "string",
-  "mecanismo_acao": "string",
-  "apresentacoes": {
-    "solucao_oral": ["string"],
-    "solucao_oral_gotas": ["string"],
-    "suspensao_oral": ["string"],
-    "xarope": ["string"],
-    "comprimidos": ["string"],
-    "capsulas": ["string"],
-    "solucao_injetavel": ["string"],
-    "supositorio": ["string"],
-    "topico": ["string"],
-    "inalatorio": ["string"],
-    "outros": ["string"]
-  },
-  "uso_clinico": ["string"],
-  "tipo_receituario": "string",
-  "posologia_adulto": {
-    "oral": "string",
-    "injetavel": "string",
-    "outros": "string",
-    "dose_maxima": "string"
-  },
-  "categoria_gravidez": "string",
-  "uso_lactacao": "string",
-  "uso_geriatrico": "string",
-  "posologia_pediatrica": {
-    "oral": "string",
-    "gotas": "string",
-    "xarope": "string",
-    "comprimidos_capsulas": "string",
-    "injetavel": "string",
-    "dose_maxima": "string",
-    "restricoes_idade": "string"
-  },
-  "interacoes_medicamentosas": ["string"],
-  "pontos_de_enfermagem": ["string"],
-  "limitacoes": "string"
-}
-`;
-
-    const data = await callOpenAIJson(prompt);
-
-    const out = {
-      medicamento: normalizeText(data?.medicamento || nome, 160) || nome,
-      nomes_comerciais: normalizeArrayOfStrings(data?.nomes_comerciais, 40, 120),
-      classe: normalizeText(data?.classe || "", 240) || "não informado",
-      mecanismo_acao: normalizeText(data?.mecanismo_acao || data?.mecanismo || "", 800) || "não informado",
-      apresentacoes: normalizePresentations(data?.apresentacoes),
-      uso_clinico: normalizeArrayOfStrings(data?.uso_clinico, 40, 160),
-      tipo_receituario: normalizeText(data?.tipo_receituario || "", 240) || "não informado",
-      posologia_adulto: {
-        oral: normalizeText(data?.posologia_adulto?.oral || "", 900) || "não informado",
-        injetavel: normalizeText(data?.posologia_adulto?.injetavel || "", 900) || "não informado",
-        outros: normalizeText(data?.posologia_adulto?.outros || "", 900) || "não informado",
-        dose_maxima: normalizeText(data?.posologia_adulto?.dose_maxima || "", 320) || "não informado"
-      },
-      categoria_gravidez: normalizeText(data?.categoria_gravidez || "", 240) || "não informado",
-      uso_lactacao: normalizeText(data?.uso_lactacao || "", 520) || "não informado",
-      uso_geriatrico: normalizeText(data?.uso_geriatrico || "", 520) || "não informado",
-      posologia_pediatrica: {
-        oral: normalizeText(data?.posologia_pediatrica?.oral || "", 900) || "não informado",
-        gotas: normalizeText(data?.posologia_pediatrica?.gotas || "", 900) || "não informado",
-        xarope: normalizeText(data?.posologia_pediatrica?.xarope || "", 900) || "não informado",
-        comprimidos_capsulas: normalizeText(data?.posologia_pediatrica?.comprimidos_capsulas || "", 900) || "não informado",
-        injetavel: normalizeText(data?.posologia_pediatrica?.injetavel || "", 900) || "não informado",
-        dose_maxima: normalizeText(data?.posologia_pediatrica?.dose_maxima || "", 320) || "não informado",
-        restricoes_idade: normalizeText(data?.posologia_pediatrica?.restricoes_idade || "", 320) || "não informado"
-      },
-      interacoes_medicamentosas: normalizeArrayOfStrings(data?.interacoes_medicamentosas, 40, 260),
-      pontos_de_enfermagem: normalizeArrayOfStrings(data?.pontos_de_enfermagem, 40, 260),
-      limitacoes: normalizeText(data?.limitacoes || "", 520) || ""
-    };
-
-    return res.json(out);
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha interna ao obter informações do medicamento." });
-  }
-});
-
 // ======================================================================
 // ROTA 4.6 – INTERPRETAÇÃO DE EXAME POR FOTO (NOVA)
 // ======================================================================
@@ -3208,174 +3021,315 @@ app.post("/api/transcrever-documento-imagem", requirePaidOrAdmin, async (req, re
 
 app.post("/api/analisar-prescricao-imagem", requirePaidOrAdmin, async (req, res) => {
   try {
-    const imagensDataUrl = getImagesDataUrlsFromBody(req.body, 4);
-    if (!imagensDataUrl.length) {
-      return res.status(400).json({
-        error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
-      });
+    const body = req.body || {};
+    const imageDataUrlRaw = getImageDataUrlFromBody(body);
+    const imageDataUrl = normalizeImageDataUrl(imageDataUrlRaw, 12_000_000);
+
+    if (!imageDataUrl) {
+      return res.status(400).json({ error: "IMAGEM_INVALIDA" });
     }
 
     const prompt = `
-Você é um enfermeiro humano realizando uma ANÁLISE DE SEGURANÇA DE UMA PRESCRIÇÃO MÉDICA baseada em uma ou mais fotos.
+Você é um farmacêutico clínico e enfermeiro preceptor auxiliando na administração segura de medicamentos a partir de uma prescrição fotografada.
 
-Objetivo:
-1) Transcrever a prescrição exatamente como estiver legível, preservando as quebras de linha. Não inventar. Quando uma parte estiver ilegível, escreva "[ilegível]" no local.
-2) Identificar os medicamentos prescritos e reescrever a linha de prescrição de forma legível.
-3) Apontar riscos e inconsistências relevantes para a enfermagem apenas quando for possível inferir com segurança.
-4) Listar interações medicamentosas relevantes entre os medicamentos identificados, apenas quando for possível inferir com segurança.
-5) Listar itens que devem ser confirmados antes da administração quando a prescrição estiver incompleta (ex.: diluente, volume final, velocidade, compatibilidade, acesso, tempo de infusão), sem inventar.
+Tarefas:
+1) Transcrever apenas o que estiver legível, sem inventar. Preserve quebras de linha.
+2) Identificar os medicamentos legíveis (nome, dose, forma, via, frequência/horários, observações). Se algo estiver ilegível, marque como "não informado".
+3) Listar interações medicamentosas clinicamente relevantes entre os medicamentos identificados (apenas as que fizerem sentido com base na lista). Se não houver, retorne lista vazia.
+4) Listar pontos de enfermagem relevantes para administração segura com base no que foi prescrito (diluição/velocidade quando aplicável, compatibilidade, checagens, alergias, dupla checagem, cuidados com vias, monitorização, horários, armazenamento). Não invente dados específicos que não estejam na prescrição.
+5) Sinalizar riscos e inconsistências relevantes para enfermagem (dose incompleta, via ausente, abreviações perigosas, duplicidade terapêutica, intervalo inconsistente, prescrição ilegível, risco de LASA, etc.).
+6) Listar itens que precisam ser confirmados antes de administrar.
 
-Regras obrigatórias:
-- Não prescrever ou alterar a prescrição médica.
-- Não dar diagnóstico médico.
-- Ser prudente: quando houver incerteza, dizer explicitamente.
-- Sem emojis e sem símbolos gráficos.
-- JSON estrito, sem markdown.
+Regras:
+- Não use emojis.
+- Não invente marcas, doses, horários ou diagnósticos.
+- Se não for possível afirmar com segurança, escreva "não informado" ou coloque o item em "itens_a_confirmar".
 
-Responda EXCLUSIVAMENTE em JSON no seguinte formato:
+Responda SOMENTE com JSON válido no formato:
 {
-  "transcricao_receita": "string",
-  "medicamentos": [
+  "transcricao_receita": "texto",
+  "medicamentos_identificados": [
     {
-      "nome": "string",
-      "posologia_legivel": "string",
-      "forma": "string",
-      "dose": "string",
-      "via": "string",
-      "frequencia": "string",
-      "duracao": "string",
-      "observacoes": "string",
-      "pontos_de_enfermagem": ["string"]
+      "nome": "",
+      "dose": "",
+      "forma": "",
+      "via": "",
+      "frequencia_ou_horarios": "",
+      "observacoes": "",
+      "linha_original": "",
+      "confianca_leitura": "alta|media|baixa"
     }
   ],
-  "riscos_e_inconsistencias": ["string"],
-  "interacoes_medicamentosas": ["string"],
-  "pontos_de_enfermagem_gerais": ["string"],
-  "itens_a_confirmar": ["string"],
-  "resumo_operacional": "string"
+  "interacoes_medicamentosas": ["..."],
+  "pontos_enfermagem_prescricao": ["..."],
+  "riscos_e_inconsistencias": ["..."],
+  "itens_a_confirmar": ["..."],
+  "resumo_operacional": "texto curto"
 }
 `;
 
-    const data = await callOpenAIVisionJsonMulti(prompt, imagensDataUrl);
+    const data = await callOpenAIVisionJson(prompt, imageDataUrl);
 
-    const transcricaoReceita = normalizeText(data?.transcricao_receita || "", 12_000);
+    const transcricao = normalizeText(data?.transcricao_receita || "", 12000);
+    const medsIn = Array.isArray(data?.medicamentos_identificados) ? data.medicamentos_identificados : [];
 
-    const medsIn = Array.isArray(data?.medicamentos) ? data.medicamentos : [];
-    const medicamentos = medsIn.slice(0, 60).map((m) => {
-      const pontos = normalizeArrayOfStrings(m?.pontos_de_enfermagem, 20, 260);
-      return {
-        nome: normalizeText(m?.nome || "", 160),
-        posologia_legivel: normalizeText(m?.posologia_legivel || "", 420),
-        forma: normalizeText(m?.forma || "", 120),
-        dose: normalizeText(m?.dose || "", 120),
-        via: normalizeText(m?.via || "", 80),
-        frequencia: normalizeText(m?.frequencia || "", 120),
-        duracao: normalizeText(m?.duracao || "", 120),
-        observacoes: normalizeText(m?.observacoes || "", 520),
-        pontos_de_enfermagem: pontos
-      };
-    });
+    function asText(v, maxLen = 220) {
+      const s = typeof v === "string" ? v.trim() : "";
+      return normalizeText(s, maxLen) || "";
+    }
 
-    const riscos = normalizeArrayOfStrings(data?.riscos_e_inconsistencias, 30, 320);
-    const interacoes = normalizeArrayOfStrings(data?.interacoes_medicamentosas, 30, 320);
-    const pontosGerais = normalizeArrayOfStrings(data?.pontos_de_enfermagem_gerais, 30, 320);
-    const confirmar = normalizeArrayOfStrings(data?.itens_a_confirmar, 30, 320);
-    const resumo = normalizeText(data?.resumo_operacional || "", 1500);
+    const meds = [];
+    for (const m of medsIn.slice(0, 60)) {
+      meds.push({
+        nome: asText(m?.nome, 160) || "não informado",
+        dose: asText(m?.dose, 80) || "não informado",
+        forma: asText(m?.forma, 80) || "não informado",
+        via: asText(m?.via, 40) || "não informado",
+        frequencia_ou_horarios: asText(m?.frequencia_ou_horarios, 160) || "não informado",
+        observacoes: asText(m?.observacoes, 320) || "não informado",
+        linha_original: asText(m?.linha_original, 260) || "não informado",
+        confianca_leitura: asText(m?.confianca_leitura, 12) || "não informado"
+      });
+    }
 
-    // Mantém um relatório textual completo para impressão/cópia
+    const interacoes = Array.isArray(data?.interacoes_medicamentosas)
+      ? data.interacoes_medicamentosas.map(x => asText(x, 240)).filter(Boolean).slice(0, 40)
+      : [];
+
+    const pontosEnf = Array.isArray(data?.pontos_enfermagem_prescricao)
+      ? data.pontos_enfermagem_prescricao.map(x => asText(x, 240)).filter(Boolean).slice(0, 60)
+      : [];
+
+    const riscos = Array.isArray(data?.riscos_e_inconsistencias)
+      ? data.riscos_e_inconsistencias.map(x => asText(x, 240)).filter(Boolean).slice(0, 60)
+      : [];
+
+    const confirmar = Array.isArray(data?.itens_a_confirmar)
+      ? data.itens_a_confirmar.map(x => asText(x, 240)).filter(Boolean).slice(0, 60)
+      : [];
+
+    const resumoOperacional = asText(data?.resumo_operacional, 520);
+
+    // Relatório completo para copiar/imprimir
     const lines = [];
-    lines.push("Transcrição da receita (somente o que está legível):");
-    lines.push(transcricaoReceita || "não informado");
+    lines.push("Administração segura de medicamentos");
+    lines.push("");
+
+    lines.push("Transcrição da receita (apenas o que estava legível):");
+    lines.push(transcricao || "não informado");
     lines.push("");
 
     lines.push("Medicamentos identificados:");
-    if (!medicamentos.length) {
-      lines.push("não informado");
+    if (!meds.length) {
+      lines.push("- não informado");
     } else {
-      let i = 1;
-      for (const m of medicamentos.slice(0, 30)) {
-        const nome = m.nome || "não informado";
-        const pos = m.posologia_legivel || "não informado";
-        const via = m.via || "não informado";
-        const freq = m.frequencia || "não informado";
-        const forma = m.forma || "não informado";
-        const dose = m.dose || "não informado";
-        const dur = m.duracao || "não informado";
-        const obs = m.observacoes || "não informado";
-        const pontos = Array.isArray(m.pontos_de_enfermagem) && m.pontos_de_enfermagem.length ? m.pontos_de_enfermagem : [];
-
-        lines.push(`${i}) ${nome}`);
-        lines.push(`Posologia legível: ${pos}`);
-        lines.push(`Forma: ${forma}`);
-        lines.push(`Dose: ${dose}`);
-        lines.push(`Via: ${via}`);
-        lines.push(`Frequência: ${freq}`);
-        lines.push(`Duração: ${dur}`);
-        lines.push(`Observações: ${obs}`);
-        lines.push("Pontos de enfermagem:");
-        if (pontos.length) {
-          for (const p of pontos.slice(0, 20)) lines.push("- " + normalizeText(p, 320));
-        } else {
-          lines.push("- não informado");
-        }
-        lines.push("");
-        i += 1;
+      for (const m of meds) {
+        lines.push(`- ${m.nome} | Dose: ${m.dose} | Forma: ${m.forma} | Via: ${m.via} | Frequência/horários: ${m.frequencia_ou_horarios} | Obs.: ${m.observacoes}`);
       }
     }
+    lines.push("");
+
+    lines.push("Interações medicamentosas (da prescrição):");
+    if (!interacoes.length) lines.push("- não informado");
+    else for (const it of interacoes) lines.push("- " + it);
+    lines.push("");
+
+    lines.push("Pontos de enfermagem (da prescrição):");
+    if (!pontosEnf.length) lines.push("- não informado");
+    else for (const it of pontosEnf) lines.push("- " + it);
+    lines.push("");
 
     lines.push("Riscos e inconsistências relevantes:");
-    if (riscos.length) {
-      for (const r of riscos) lines.push("- " + r);
-    } else {
-      lines.push("- não informado");
-    }
-
+    if (!riscos.length) lines.push("- não informado");
+    else for (const it of riscos) lines.push("- " + it);
     lines.push("");
-    lines.push("Interações medicamentosas (se possível inferir com segurança):");
-    if (interacoes.length) {
-      for (const it of interacoes) lines.push("- " + it);
-    } else {
-      lines.push("- não informado");
-    }
 
+    lines.push("Itens a confirmar antes de administrar:");
+    if (!confirmar.length) lines.push("- não informado");
+    else for (const it of confirmar) lines.push("- " + it);
     lines.push("");
-    lines.push("Pontos de enfermagem (gerais):");
-    if (pontosGerais.length) {
-      for (const it of pontosGerais) lines.push("- " + it);
-    } else {
-      lines.push("- não informado");
-    }
 
-    lines.push("");
-    lines.push("Itens que devem ser confirmados antes da administração:");
-    if (confirmar.length) {
-      for (const c of confirmar) lines.push("- " + c);
-    } else {
-      lines.push("- não informado");
-    }
-
-    if (resumo) {
-      lines.push("");
+    if (resumoOperacional) {
       lines.push("Resumo operacional:");
-      lines.push(resumo);
+      lines.push(resumoOperacional);
+      lines.push("");
     }
+
+    const relatorio = lines.join("\n").trim();
 
     return res.json({
-      texto: lines.join("\n"),
-      transcricao_receita: transcricaoReceita,
-      medicamentos,
-      riscos_e_inconsistencias: riscos,
+      transcricao_receita: transcricao,
+      medicamentos_identificados: meds,
       interacoes_medicamentosas: interacoes,
-      pontos_de_enfermagem_gerais: pontosGerais,
+      pontos_enfermagem_prescricao: pontosEnf,
+      riscos_e_inconsistencias: riscos,
       itens_a_confirmar: confirmar,
-      resumo_operacional: resumo
+      resumo_operacional: resumoOperacional,
+      relatorio_completo: relatorio,
+      // compatibilidade com frontend legado
+      texto: relatorio
     });
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha interna ao analisar a prescrição." });
+    console.error("/api/analisar-prescricao-imagem error:", e?.message || e);
+    return res.status(500).json({ error: e?.message || "INTERNAL_ERROR" });
   }
 });
 
+app.post("/api/medicamento-monografia", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const medicamento = normalizeText(body.medicamento || body.nome || body.principio_ativo || "", 180);
+    if (!medicamento) return res.status(400).json({ error: "MEDICAMENTO_INVALIDO" });
+
+    const prompt = `
+Você está redigindo uma monografia estruturada (estilo bula/Whitebook) para apoio à enfermagem e prescrição.
+
+Medicamento alvo: ${medicamento}
+
+Regras:
+- Não use emojis.
+- Seja objetivo e estruturado.
+- Se você não tiver certeza de alguma informação específica (por exemplo, nomes comerciais ou apresentações exatas), escreva "não informado".
+- Para uso clínico: cite apenas nomes das doenças/condições mais comuns (sem explicações).
+- Para posologias: forneça dose usual e dose máxima. Diferencie por via (oral, injetável e outros).
+- Para pediatria: diferencie por via/apresentação (oral, gotas, xarope, comprimido/cápsula, injetável) com dose por kg quando aplicável, dose máxima e restrições etárias.
+
+Responda SOMENTE com JSON válido no formato:
+{
+  "medicamento": "",
+  "nomes_comerciais": ["..."],
+  "classe": "",
+  "mecanismo_acao": "",
+  "apresentacoes": {
+    "solucao_oral": "",
+    "gotas": "",
+    "suspensao": "",
+    "xarope": "",
+    "comprimidos": "",
+    "capsulas": "",
+    "injetavel": "",
+    "supositorio": "",
+    "topicos": "",
+    "inalatorio": "",
+    "outros": ""
+  },
+  "uso_clinico": ["..."],
+  "tipo_receituario": "",
+  "posologia_adulta": {
+    "oral": {"dose_usual": "", "dose_maxima": "", "observacoes": ""},
+    "injetavel": {"dose_usual": "", "dose_maxima": "", "observacoes": ""},
+    "outros": {"dose_usual": "", "dose_maxima": "", "observacoes": ""}
+  },
+  "categoria_gravidez": "",
+  "uso_lactacao": "",
+  "uso_geriatrico": "",
+  "posologia_pediatrica": {
+    "oral": {"dose_mgkg": "", "intervalo": "", "dose_maxima": "", "restricoes_etarias": "", "modo_uso": ""},
+    "gotas": {"dose_mgkg": "", "intervalo": "", "dose_maxima": "", "restricoes_etarias": "", "modo_uso": ""},
+    "xarope": {"dose_mgkg": "", "intervalo": "", "dose_maxima": "", "restricoes_etarias": "", "modo_uso": ""},
+    "comprimido_capsula": {"dose_mgkg": "", "intervalo": "", "dose_maxima": "", "restricoes_etarias": "", "modo_uso": ""},
+    "injetavel": {"dose_mgkg": "", "intervalo": "", "dose_maxima": "", "restricoes_etarias": "", "modo_uso": ""}
+  },
+  "interacoes_medicamentosas": ["..."],
+  "pontos_enfermagem": ["..."]
+}
+`;
+
+    const monografia = await callOpenAIJson(prompt, 3);
+
+    // Higienização mínima
+    function asText(v, maxLen = 400) {
+      const s = typeof v === "string" ? v.trim() : "";
+      return normalizeText(s, maxLen) || "";
+    }
+
+    const out = {
+      medicamento: asText(monografia?.medicamento || medicamento, 180) || medicamento,
+      nomes_comerciais: Array.isArray(monografia?.nomes_comerciais) ? monografia.nomes_comerciais.map(x => asText(x, 120)).filter(Boolean).slice(0, 50) : [],
+      classe: asText(monografia?.classe, 200) || "não informado",
+      mecanismo_acao: asText(monografia?.mecanismo_acao, 600) || "não informado",
+      apresentacoes: {
+        solucao_oral: asText(monografia?.apresentacoes?.solucao_oral, 220) || "não informado",
+        gotas: asText(monografia?.apresentacoes?.gotas, 220) || "não informado",
+        suspensao: asText(monografia?.apresentacoes?.suspensao, 220) || "não informado",
+        xarope: asText(monografia?.apresentacoes?.xarope, 220) || "não informado",
+        comprimidos: asText(monografia?.apresentacoes?.comprimidos, 220) || "não informado",
+        capsulas: asText(monografia?.apresentacoes?.capsulas, 220) || "não informado",
+        injetavel: asText(monografia?.apresentacoes?.injetavel, 220) || "não informado",
+        supositorio: asText(monografia?.apresentacoes?.supositorio, 220) || "não informado",
+        topicos: asText(monografia?.apresentacoes?.topicos, 220) || "não informado",
+        inalatorio: asText(monografia?.apresentacoes?.inalatorio, 220) || "não informado",
+        outros: asText(monografia?.apresentacoes?.outros, 220) || "não informado"
+      },
+      uso_clinico: Array.isArray(monografia?.uso_clinico) ? monografia.uso_clinico.map(x => asText(x, 120)).filter(Boolean).slice(0, 40) : [],
+      tipo_receituario: asText(monografia?.tipo_receituario, 160) || "não informado",
+      posologia_adulta: {
+        oral: {
+          dose_usual: asText(monografia?.posologia_adulta?.oral?.dose_usual, 220) || "não informado",
+          dose_maxima: asText(monografia?.posologia_adulta?.oral?.dose_maxima, 220) || "não informado",
+          observacoes: asText(monografia?.posologia_adulta?.oral?.observacoes, 520) || ""
+        },
+        injetavel: {
+          dose_usual: asText(monografia?.posologia_adulta?.injetavel?.dose_usual, 220) || "não informado",
+          dose_maxima: asText(monografia?.posologia_adulta?.injetavel?.dose_maxima, 220) || "não informado",
+          observacoes: asText(monografia?.posologia_adulta?.injetavel?.observacoes, 520) || ""
+        },
+        outros: {
+          dose_usual: asText(monografia?.posologia_adulta?.outros?.dose_usual, 220) || "não informado",
+          dose_maxima: asText(monografia?.posologia_adulta?.outros?.dose_maxima, 220) || "não informado",
+          observacoes: asText(monografia?.posologia_adulta?.outros?.observacoes, 520) || ""
+        }
+      },
+      categoria_gravidez: asText(monografia?.categoria_gravidez, 120) || "não informado",
+      uso_lactacao: asText(monografia?.uso_lactacao, 320) || "não informado",
+      uso_geriatrico: asText(monografia?.uso_geriatrico, 320) || "não informado",
+      posologia_pediatrica: {
+        oral: {
+          dose_mgkg: asText(monografia?.posologia_pediatrica?.oral?.dose_mgkg, 220) || "não informado",
+          intervalo: asText(monografia?.posologia_pediatrica?.oral?.intervalo, 160) || "não informado",
+          dose_maxima: asText(monografia?.posologia_pediatrica?.oral?.dose_maxima, 220) || "não informado",
+          restricoes_etarias: asText(monografia?.posologia_pediatrica?.oral?.restricoes_etarias, 220) || "não informado",
+          modo_uso: asText(monografia?.posologia_pediatrica?.oral?.modo_uso, 520) || ""
+        },
+        gotas: {
+          dose_mgkg: asText(monografia?.posologia_pediatrica?.gotas?.dose_mgkg, 220) || "não informado",
+          intervalo: asText(monografia?.posologia_pediatrica?.gotas?.intervalo, 160) || "não informado",
+          dose_maxima: asText(monografia?.posologia_pediatrica?.gotas?.dose_maxima, 220) || "não informado",
+          restricoes_etarias: asText(monografia?.posologia_pediatrica?.gotas?.restricoes_etarias, 220) || "não informado",
+          modo_uso: asText(monografia?.posologia_pediatrica?.gotas?.modo_uso, 520) || ""
+        },
+        xarope: {
+          dose_mgkg: asText(monografia?.posologia_pediatrica?.xarope?.dose_mgkg, 220) || "não informado",
+          intervalo: asText(monografia?.posologia_pediatrica?.xarope?.intervalo, 160) || "não informado",
+          dose_maxima: asText(monografia?.posologia_pediatrica?.xarope?.dose_maxima, 220) || "não informado",
+          restricoes_etarias: asText(monografia?.posologia_pediatrica?.xarope?.restricoes_etarias, 220) || "não informado",
+          modo_uso: asText(monografia?.posologia_pediatrica?.xarope?.modo_uso, 520) || ""
+        },
+        comprimido_capsula: {
+          dose_mgkg: asText(monografia?.posologia_pediatrica?.comprimido_capsula?.dose_mgkg, 220) || "não informado",
+          intervalo: asText(monografia?.posologia_pediatrica?.comprimido_capsula?.intervalo, 160) || "não informado",
+          dose_maxima: asText(monografia?.posologia_pediatrica?.comprimido_capsula?.dose_maxima, 220) || "não informado",
+          restricoes_etarias: asText(monografia?.posologia_pediatrica?.comprimido_capsula?.restricoes_etarias, 220) || "não informado",
+          modo_uso: asText(monografia?.posologia_pediatrica?.comprimido_capsula?.modo_uso, 520) || ""
+        },
+        injetavel: {
+          dose_mgkg: asText(monografia?.posologia_pediatrica?.injetavel?.dose_mgkg, 220) || "não informado",
+          intervalo: asText(monografia?.posologia_pediatrica?.injetavel?.intervalo, 160) || "não informado",
+          dose_maxima: asText(monografia?.posologia_pediatrica?.injetavel?.dose_maxima, 220) || "não informado",
+          restricoes_etarias: asText(monografia?.posologia_pediatrica?.injetavel?.restricoes_etarias, 220) || "não informado",
+          modo_uso: asText(monografia?.posologia_pediatrica?.injetavel?.modo_uso, 520) || ""
+        }
+      },
+      interacoes_medicamentosas: Array.isArray(monografia?.interacoes_medicamentosas) ? monografia.interacoes_medicamentosas.map(x => asText(x, 220)).filter(Boolean).slice(0, 80) : [],
+      pontos_enfermagem: Array.isArray(monografia?.pontos_enfermagem) ? monografia.pontos_enfermagem.map(x => asText(x, 240)).filter(Boolean).slice(0, 100) : []
+    };
+
+    return res.json({ monografia: out });
+  } catch (e) {
+    console.error("/api/medicamento-monografia error:", e?.message || e);
+    return res.status(500).json({ error: e?.message || "INTERNAL_ERROR" });
+  }
+});
 
 
 
