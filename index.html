@@ -2910,14 +2910,6 @@
             <textarea id="triageQualidade" class="prescription-textarea"></textarea>
           </div>
 
-          <div>
-            <h3>Relatório completo</h3>
-            <textarea id="triageFullReport" class="prescription-textarea"></textarea>
-            <div class="prescription-actions">
-              <button id="triageCopyFullBtn" class="btn-copy" type="button">Copiar relatório</button>
-              <button id="triagePrintFullBtn" class="btn-print" type="button">Imprimir relatório</button>
-            </div>
-          </div>
         </div>
 
         <div id="triageReportStatus" class="mini-status"></div>
@@ -3055,6 +3047,16 @@
       </div>
 
       <div class="rx-subsection">
+        <div class="rx-subsection-title">Lactação (por medicamento)</div>
+        <div id="medRxLactationBox" class="classification-box">Nenhum conteúdo disponível.</div>
+      </div>
+
+      <div class="rx-subsection">
+        <div class="rx-subsection-title">Gravidez (categoria de risco)</div>
+        <div id="medRxPregnancyBox" class="classification-box">Nenhum conteúdo disponível.</div>
+      </div>
+
+      <div class="rx-subsection">
         <div class="rx-subsection-title">Medicamentos identificados</div>
         <div id="medRxMedButtons" class="pill-buttons" aria-label="Medicamentos identificados"></div>
         <div id="medRxMedButtonsHint" class="mini-status">Nenhum conteúdo disponível.</div>
@@ -3070,10 +3072,7 @@
         <div id="medRxNursingPointsBox" class="classification-box">Nenhum conteúdo disponível.</div>
       </div>
 
-      <div class="rx-subsection">
-        <div class="rx-subsection-title">Relatório completo</div>
-        <div id="interactionsBox" class="classification-box">Nenhum conteúdo disponível.</div>
-      </div>
+      <textarea id="medSafetyExport" class="hidden-input"></textarea>
 
       <input id="medCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
       <input id="medFileInput" class="hidden-input" type="file" accept="image/*" multiple />
@@ -5207,7 +5206,10 @@ const recordBtn = document.getElementById("recordBtn");
 
     const medPhotoBtn = document.getElementById("medPhotoBtn");
     const medFileBtn = document.getElementById("medFileBtn");
-const interactionsBox = document.getElementById("interactionsBox");
+    const medRxLactationBox = document.getElementById("medRxLactationBox");
+    const medRxPregnancyBox = document.getElementById("medRxPregnancyBox");
+    const medSafetyExport = document.getElementById("medSafetyExport");
+    const interactionsBox = document.getElementById("interactionsBox");
     const interactionsStatus = document.getElementById("interactionsStatus");
     const copyMedSafetyBtn = document.getElementById("copyMedSafetyBtn");
     const printMedSafetyBtn = document.getElementById("printMedSafetyBtn");
@@ -5295,7 +5297,7 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
     }
 
     function updateMedSafetyActions() {
-      const hasReport = isMeaningfulText(interactionsBox ? interactionsBox.textContent : "");
+      const hasReport = isMeaningfulText(medSafetyExport ? medSafetyExport.value : "");
       setVisible(copyMedSafetyBtn, hasReport);
       setVisible(printMedSafetyBtn, hasReport);
 
@@ -7805,7 +7807,7 @@ async function addFilesToTarget(files, targetKey, mode) {
         ? { arr: transcriptionImages, statusEl: transcriptionStatus, boxEl: transcriptionBox, update: updateTranscriptionActions, schedule: scheduleTranscriptionAnalysis }
         : key === "apraz"
         ? { arr: aprazImages, statusEl: aprazamentoStatus, boxEl: aprazamentoSheetWrapper, update: updateAprazamentoActions, schedule: scheduleAprazAnalysis }
-        : { arr: medImages, statusEl: interactionsStatus, boxEl: interactionsBox, update: updateMedSafetyActions, schedule: scheduleMedAnalysis };
+        : { arr: medImages, statusEl: interactionsStatus, boxEl: medRxInteractionsBox, update: updateMedSafetyActions, schedule: scheduleMedAnalysis };
 
   const arr = cfg.arr;
   const statusEl = cfg.statusEl;
@@ -8069,7 +8071,7 @@ async function openMedicationMonograph(name) {
 }
 
 async function analyzePrescriptionWithImages(dataUrls) {
-  if (!interactionsStatus || !interactionsBox) return;
+  if (!interactionsStatus) return;
 
   const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
   if (!images.length) {
@@ -8077,9 +8079,11 @@ async function analyzePrescriptionWithImages(dataUrls) {
     if (medRxTranscription) medRxTranscription.value = "";
     if (medRxMedButtons) medRxMedButtons.innerHTML = "";
     if (medRxMedButtonsHint) medRxMedButtonsHint.textContent = "Nenhum conteúdo disponível.";
+    if (medRxLactationBox) medRxLactationBox.textContent = "Nenhum conteúdo disponível.";
+    if (medRxPregnancyBox) medRxPregnancyBox.textContent = "Nenhum conteúdo disponível.";
     if (medRxInteractionsBox) medRxInteractionsBox.textContent = "Nenhum conteúdo disponível.";
     if (medRxNursingPointsBox) medRxNursingPointsBox.textContent = "Nenhum conteúdo disponível.";
-    interactionsBox.textContent = "Nenhum conteúdo disponível.";
+    if (medSafetyExport) medSafetyExport.value = "";
     updateMedSafetyActions();
     return;
   }
@@ -8088,9 +8092,11 @@ async function analyzePrescriptionWithImages(dataUrls) {
   if (medRxTranscription) medRxTranscription.value = "Processando.";
   if (medRxMedButtons) medRxMedButtons.innerHTML = "";
   if (medRxMedButtonsHint) medRxMedButtonsHint.textContent = "Processando.";
+  if (medRxLactationBox) medRxLactationBox.textContent = "Processando.";
+  if (medRxPregnancyBox) medRxPregnancyBox.textContent = "Processando.";
   if (medRxInteractionsBox) medRxInteractionsBox.textContent = "Processando.";
   if (medRxNursingPointsBox) medRxNursingPointsBox.textContent = "Processando.";
-  interactionsBox.textContent = "Processando.";
+  if (medSafetyExport) medSafetyExport.value = "";
   updateMedSafetyActions();
 
   try {
@@ -8146,8 +8152,87 @@ async function analyzePrescriptionWithImages(dataUrls) {
     const nursingText = nursing.length ? nursing.map(x => '- ' + String(x)).join('\n') : 'Nenhum conteúdo disponível.';
     if (medRxNursingPointsBox) medRxNursingPointsBox.textContent = nursingText;
 
-    const report = String(data?.relatorio_completo || data?.texto || "").trim();
-    interactionsBox.textContent = report || 'Nenhum conteúdo disponível.';
+    // Lactação e gravidez (por medicamento)
+    const safety = Array.isArray(data?.seguranca_reprodutiva) ? data.seguranca_reprodutiva : [];
+    const safetyMap = new Map();
+    for (const s of safety) {
+      const name = (s && (s.medicamento || s.nome)) ? String(s.medicamento || s.nome).trim() : '';
+      if (!name) continue;
+      safetyMap.set(name.toLowerCase(), s);
+    }
+    const uniqueNames = [];
+    const seen = new Set();
+    for (const m of meds) {
+      const nm = (m && (m.nome || m.medicamento)) ? String(m.nome || m.medicamento).trim() : '';
+      if (!nm) continue;
+      const key = nm.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      uniqueNames.push(nm);
+    }
+
+    const lactLines = [];
+    const pregLines = [];
+    for (const nm of uniqueNames.slice(0, 60)) {
+      const s = safetyMap.get(nm.toLowerCase()) || {};
+      const lact = (s && (s.lactacao_risco || s.uso_lactacao)) ? String(s.lactacao_risco || s.uso_lactacao).trim() : '';
+      const preg = (s && (s.gravidez_categoria || s.categoria_gravidez)) ? String(s.gravidez_categoria || s.categoria_gravidez).trim() : '';
+      lactLines.push('- ' + nm + ': ' + (lact || 'Não disponível automaticamente.'));
+      pregLines.push('- ' + nm + ': ' + (preg ? ('Categoria ' + preg) : 'Não disponível automaticamente.'));
+    }
+    if (medRxLactationBox) medRxLactationBox.textContent = lactLines.length ? lactLines.join('\n') : 'Nenhum conteúdo disponível.';
+    if (medRxPregnancyBox) medRxPregnancyBox.textContent = pregLines.length ? pregLines.join('\n') : 'Nenhum conteúdo disponível.';
+
+    // Texto de exportação (copiar/imprimir) - sem exibir como "Relatório completo"
+    const riscos = Array.isArray(data?.riscos_e_inconsistencias) ? data.riscos_e_inconsistencias : [];
+    const confirmar = Array.isArray(data?.itens_a_confirmar) ? data.itens_a_confirmar : [];
+    const resumoOper = String(data?.resumo_operacional || '').trim();
+
+    const exp = [];
+    exp.push('Administração segura de medicamentos');
+    exp.push('');
+    exp.push('Transcrição da receita (apenas o que estava legível):');
+    exp.push(trans || 'Nenhum conteúdo disponível.');
+    exp.push('');
+    exp.push('Uso na lactação (por medicamento):');
+    exp.push(lactLines.length ? lactLines.join('\n') : 'Nenhum conteúdo disponível.');
+    exp.push('');
+    exp.push('Uso na gravidez (categoria de risco):');
+    exp.push(pregLines.length ? pregLines.join('\n') : 'Nenhum conteúdo disponível.');
+    exp.push('');
+    exp.push('Medicamentos identificados:');
+    if (!meds.length) {
+      exp.push('- Nenhum conteúdo disponível.');
+    } else {
+      for (const m of meds) {
+        const nome = m && m.nome ? String(m.nome).trim() : '';
+        if (!nome) continue;
+        exp.push(`- ${nome} | Dose: ${m.dose || ''} | Forma: ${m.forma || ''} | Via: ${m.via || ''} | Frequência/horários: ${m.frequencia_ou_horarios || ''} | Obs.: ${m.observacoes || ''}`.trim());
+      }
+    }
+    exp.push('');
+    exp.push('Interações medicamentosas (da prescrição):');
+    exp.push(interText || 'Nenhum conteúdo disponível.');
+    exp.push('');
+    exp.push('Pontos de enfermagem (da prescrição):');
+    exp.push(nursingText || 'Nenhum conteúdo disponível.');
+    exp.push('');
+    if (riscos.length) {
+      exp.push('Riscos e inconsistências relevantes:');
+      for (const it of riscos) exp.push('- ' + String(it));
+      exp.push('');
+    }
+    if (confirmar.length) {
+      exp.push('Itens a confirmar antes de administrar:');
+      for (const it of confirmar) exp.push('- ' + String(it));
+      exp.push('');
+    }
+    if (resumoOper) {
+      exp.push('Resumo operacional:');
+      exp.push(resumoOper);
+      exp.push('');
+    }
+    if (medSafetyExport) medSafetyExport.value = exp.join('\n').trim();
 
     interactionsStatus.textContent = 'Análise concluída.';
     updateMedSafetyActions();
@@ -8156,9 +8241,11 @@ async function analyzePrescriptionWithImages(dataUrls) {
     if (medRxTranscription) medRxTranscription.value = 'Nenhum conteúdo disponível.';
     if (medRxMedButtons) medRxMedButtons.innerHTML = '';
     if (medRxMedButtonsHint) medRxMedButtonsHint.textContent = 'Nenhum conteúdo disponível.';
+    if (medRxLactationBox) medRxLactationBox.textContent = 'Nenhum conteúdo disponível.';
+    if (medRxPregnancyBox) medRxPregnancyBox.textContent = 'Nenhum conteúdo disponível.';
     if (medRxInteractionsBox) medRxInteractionsBox.textContent = 'Nenhum conteúdo disponível.';
     if (medRxNursingPointsBox) medRxNursingPointsBox.textContent = 'Nenhum conteúdo disponível.';
-    interactionsBox.textContent = 'Nenhum conteúdo disponível.';
+    if (medSafetyExport) medSafetyExport.value = '';
     updateMedSafetyActions();
   }
 }
@@ -10013,9 +10100,9 @@ recordBtn.onclick = () => {
 
     if (copyMedSafetyBtn) {
       copyMedSafetyBtn.addEventListener("click", () => {
-        const t = (interactionsBox && interactionsBox.textContent) ? interactionsBox.textContent.trim() : "";
+        const t = (medSafetyExport && medSafetyExport.value) ? medSafetyExport.value.trim() : "";
         if (!t) {
-          alert("Não há relatório para copiar.");
+          alert("Não há conteúdo para copiar.");
           return;
         }
         copyToClipboard(t);
@@ -10024,7 +10111,7 @@ recordBtn.onclick = () => {
 
     if (printMedSafetyBtn) {
       printMedSafetyBtn.addEventListener("click", () => {
-        const t = (interactionsBox && interactionsBox.textContent) ? interactionsBox.textContent : "";
+        const t = (medSafetyExport && medSafetyExport.value) ? medSafetyExport.value : "";
         openPrintWindow("Administração segura de medicamentos", t);
       });
     }

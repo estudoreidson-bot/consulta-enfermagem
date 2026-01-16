@@ -6,6 +6,159 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const OpenAI = require("openai");
+
+// ======================================================================
+// SEGURANÇA REPRODUTIVA E TIPO DE RECEITUÁRIO
+// Objetivo: evitar campos "inferidos" por IA. Para reduzir margem de erro,
+// o backend aplica regras determinísticas e (quando disponível) um dicionário
+// curado para gravidez/lactação.
+//
+// Observação: gravidez/lactação variam por formulação, dose e bula do produto.
+// Quando não houver dado curado, o sistema retorna "não informado" em vez de
+// assumir algo.
+// ======================================================================
+
+function normalizeDrugKey(input) {
+  const s = String(input || "").toLowerCase();
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Listas mínimas e conservadoras para tipo de receituário.
+// Sempre que não houver correspondência, retorna Receita simples.
+const RECEITUARIO_LISTS = {
+  // C1: Outras substâncias sujeitas a controle especial (RCE, 2 vias, retenção).
+  C1: new Set([
+    "amitriptilina",
+    "fluoxetina",
+    "sertralina",
+    "paroxetina",
+    "citalopram",
+    "escitalopram",
+    "venlafaxina",
+    "desvenlafaxina",
+    "duloxetina",
+    "mirtazapina",
+    "bupropiona",
+    "clomipramina",
+    "imipramina",
+    "nortriptilina",
+    "trazodona",
+    "quetiapina",
+    "olanzapina",
+    "risperidona",
+    "haloperidol",
+    "clorpromazina",
+    "levomepromazina",
+    "ziprasidona",
+    "aripiprazol",
+    "lítio",
+    "litio",
+    "valproato",
+    "acido valproico",
+    "carbamazepina",
+    "lamotrigina",
+    "topiramato"
+  ]),
+  // B1: Psicótropos (Notificação de Receita B - azul).
+  B1: new Set([
+    "diazepam",
+    "clonazepam",
+    "alprazolam",
+    "lorazepam",
+    "midazolam",
+    "bromazepam",
+    "nitrazepam",
+    "flunitrazepam",
+    "zolpidem",
+    "zopiclona",
+    "eszopiclona"
+  ]),
+  // A1/A2: Entorpecentes (Notificação de Receita A - amarela).
+  A1: new Set([
+    "morfina",
+    "oxicodona",
+    "fentanil",
+    "metadona",
+    "codeina",
+    "tramadol",
+    "buprenorfina"
+  ]),
+  // Antimicrobianos: receita de antimicrobiano (2 vias, retenção), conforme regulamentação.
+  ATM: new Set([
+    "amoxicilina",
+    "amoxicilina clavulanato",
+    "azitromicina",
+    "claritromicina",
+    "ceftriaxona",
+    "cefalexina",
+    "cefuroxima",
+    "ciprofloxacino",
+    "levofloxacino",
+    "norfloxacino",
+    "metronidazol",
+    "sulfametoxazol trimetoprima",
+    "doxiciclina",
+    "clindamicina",
+    "gentamicina",
+    "nitrofurantoina"
+  ])
+};
+
+// Dicionário curado (apenas quando há certeza operacional).
+// Campos: tipo_receituario, gravidez_categoria (A/B/C/D/X), lactacao_risco.
+// Se não houver chave, o sistema retorna "não informado" para gravidez/lactação.
+const DRUG_SAFETY_DB = {
+  "amitriptilina": {
+    tipo_receituario: "Receita de Controle Especial (C1) - 2 vias (branca, com retenção)",
+    gravidez_categoria: "C",
+    lactacao_risco: "muito baixo risco"
+  },
+  "fluoxetina": {
+    tipo_receituario: "Receita de Controle Especial (C1) - 2 vias (branca, com retenção)",
+    gravidez_categoria: "C",
+    lactacao_risco: "baixo risco"
+  }
+};
+
+function getReceituarioByDrugKey(drugKey) {
+  const k = normalizeDrugKey(drugKey);
+  if (!k) return "Receita simples";
+
+  // correspondência direta
+  if (RECEITUARIO_LISTS.C1.has(k)) return "Receita de Controle Especial (C1) - 2 vias (branca, com retenção)";
+  if (RECEITUARIO_LISTS.B1.has(k)) return "Notificação de Receita B (B1) - azul";
+  if (RECEITUARIO_LISTS.A1.has(k)) return "Notificação de Receita A (entorpecentes) - amarela";
+  if (RECEITUARIO_LISTS.ATM.has(k)) return "Receita de antimicrobiano - 2 vias (com retenção)";
+
+  // heurística simples para combinações (ex.: amoxicilina + clavulanato)
+  if (k.includes("amoxicilina") && k.includes("clav")) return "Receita de antimicrobiano - 2 vias (com retenção)";
+
+  return "Receita simples";
+}
+
+function getDrugSafetyInfo(drugName) {
+  const key = normalizeDrugKey(drugName);
+  const base = {
+    medicamento: String(drugName || "").trim() || "não informado",
+    tipo_receituario: getReceituarioByDrugKey(key),
+    gravidez_categoria: "não informado",
+    lactacao_risco: "não informado"
+  };
+  const curated = DRUG_SAFETY_DB[key];
+  if (curated && typeof curated === "object") {
+    return {
+      ...base,
+      ...curated,
+      medicamento: base.medicamento
+    };
+  }
+  return base;
+}
 // ======================================================================
 // ARMAZENAMENTO PERSISTENTE (opcional)
 // - Em Render Free, o filesystem é efêmero e perde dados em redeploy/restart.
@@ -3110,64 +3263,29 @@ Responda SOMENTE com JSON válido no formato:
 
     const resumoOperacional = asText(data?.resumo_operacional, 520);
 
-    // Relatório completo para copiar/imprimir
-    const lines = [];
-    lines.push("Administração segura de medicamentos");
-    lines.push("");
-
-    lines.push("Transcrição da receita (apenas o que estava legível):");
-    lines.push(transcricao || "não informado");
-    lines.push("");
-
-    lines.push("Medicamentos identificados:");
-    if (!meds.length) {
-      lines.push("- não informado");
-    } else {
+    // Segurança reprodutiva e tipo de receituário (por medicamento) - determinístico
+    const segurancaReprodutiva = [];
+    {
+      const seen = new Set();
       for (const m of meds) {
-        lines.push(`- ${m.nome} | Dose: ${m.dose} | Forma: ${m.forma} | Via: ${m.via} | Frequência/horários: ${m.frequencia_ou_horarios} | Obs.: ${m.observacoes}`);
+        const nome = asText(m?.nome, 120);
+        if (!nome) continue;
+        const k = normalizeDrugKey(nome);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        segurancaReprodutiva.push(getDrugSafetyInfo(nome));
       }
     }
-    lines.push("");
-
-    lines.push("Interações medicamentosas (da prescrição):");
-    if (!interacoes.length) lines.push("- não informado");
-    else for (const it of interacoes) lines.push("- " + it);
-    lines.push("");
-
-    lines.push("Pontos de enfermagem (da prescrição):");
-    if (!pontosEnf.length) lines.push("- não informado");
-    else for (const it of pontosEnf) lines.push("- " + it);
-    lines.push("");
-
-    lines.push("Riscos e inconsistências relevantes:");
-    if (!riscos.length) lines.push("- não informado");
-    else for (const it of riscos) lines.push("- " + it);
-    lines.push("");
-
-    lines.push("Itens a confirmar antes de administrar:");
-    if (!confirmar.length) lines.push("- não informado");
-    else for (const it of confirmar) lines.push("- " + it);
-    lines.push("");
-
-    if (resumoOperacional) {
-      lines.push("Resumo operacional:");
-      lines.push(resumoOperacional);
-      lines.push("");
-    }
-
-    const relatorio = lines.join("\n").trim();
 
     return res.json({
       transcricao_receita: transcricao,
       medicamentos_identificados: meds,
+      seguranca_reprodutiva: segurancaReprodutiva,
       interacoes_medicamentosas: interacoes,
       pontos_enfermagem_prescricao: pontosEnf,
       riscos_e_inconsistencias: riscos,
       itens_a_confirmar: confirmar,
-      resumo_operacional: resumoOperacional,
-      relatorio_completo: relatorio,
-      // compatibilidade com frontend legado
-      texto: relatorio
+      resumo_operacional: resumoOperacional
     });
   } catch (e) {
     console.error("/api/analisar-prescricao-imagem error:", e?.message || e);
@@ -3192,14 +3310,7 @@ Regras obrigatórias:
 - Não escreva "não informado" ou variações. Quando não houver dado confiável, deixe o campo vazio ("") ou omita o campo/entrada.
 - Em "apresentacoes", inclua apenas os tipos de apresentação que existirem para o medicamento (não liste tipos inexistentes).
 - Em posologia adulta e pediátrica, descreva apenas vias/apresentações que existirem para o medicamento e que você conseguir preencher com segurança.
-- Tipo de receituário: escolha UMA opção conforme regras brasileiras e Whitebook (use exatamente um dos rótulos abaixo):
-  1) Isento de prescrição
-  2) Receita simples
-  3) Receita de antimicrobiano
-  4) Receita de controle especial (RCE)
-  5) Notificação de receita A (amarela)
-  6) Notificação de receita B (azul)
-  7) Outros (especificar)
+- Não preencha tipo_receituario, categoria_gravidez ou uso_lactacao. Esses campos serão preenchidos pelo backend com regras determinísticas.
 - Para uso clínico: liste apenas doenças/condições mais comuns (sem explicações).
 - Para posologias: fornecer dose usual e dose máxima (quando existirem). Diferenciar por via.
 - Para pediatria: quando aplicável, fornecer dose por kg, intervalo/frequência, dose máxima, restrições etárias e modo de uso.
@@ -3351,6 +3462,13 @@ Formato preferencial (mesmas chaves, mas podem ser omitidas quando vazias):
         ? monografia.pontos_enfermagem.map(x => cleanText(x, 240)).filter(Boolean).slice(0, 100)
         : []
     };
+
+    // Campos críticos: não aceitar inferência por IA.
+    const safety = getDrugSafetyInfo(out.medicamento || medicamento);
+    out.tipo_receituario = safety.tipo_receituario;
+    // Exibe categoria/uso apenas se houver dado curado; caso contrário, "não informado".
+    out.categoria_gravidez = safety.gravidez_categoria;
+    out.uso_lactacao = safety.lactacao_risco;
 
     return res.json({ monografia: out });
 
