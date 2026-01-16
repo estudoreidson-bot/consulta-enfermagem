@@ -8662,10 +8662,23 @@ if (sbarOutput) sbarOutput.value = "";
         });
 
         if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP:", resp.status, txt);
-          pregnancyBox.textContent = "Falha ao gerar SAE.";
-          lactationBox.textContent = "Falha ao gerar orientações.";
+          const ct = (resp.headers && resp.headers.get) ? (resp.headers.get("content-type") || "") : "";
+          let msg = "";
+          try {
+            if (ct.includes("application/json")) {
+              const j = await resp.json();
+              msg = (j && (j.error || j.message)) ? String(j.error || j.message) : "";
+              if (j && j.code) msg = msg ? (msg + " (" + String(j.code) + ")") : String(j.code);
+            } else {
+              msg = await resp.text();
+            }
+          } catch {
+            try { msg = await resp.text(); } catch {}
+          }
+          msg = (msg || "").trim() || (`Falha no backend (HTTP ${resp.status}).`);
+          console.error("Erro HTTP (SAE/orientações):", resp.status, msg);
+          pregnancyBox.textContent = msg;
+          lactationBox.textContent = msg;
           return;
         }
 

@@ -138,6 +138,11 @@ const openai = new OpenAI({
 
 // Função genérica para chamar o modelo e retornar o texto
 async function callOpenAI(prompt) {
+  if (!process.env.OPENAI_API_KEY) {
+    const err = new Error("OPENAI_API_KEY_MISSING");
+    err.code = "OPENAI_API_KEY_MISSING";
+    throw err;
+  }
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.2,
@@ -154,20 +159,48 @@ async function callOpenAI(prompt) {
 }
 
 // Função para obter JSON do modelo com fallback (extrai o primeiro bloco {...})
-async function callOpenAIJson(prompt) {
-  const raw = await callOpenAI(prompt);
+async function callOpenAIJson(prompt, maxAttempts = 3) {
+  const attempts = Math.max(1, Math.min(5, parseInt(String(maxAttempts || 3), 10) || 3));
+  let lastErr = null;
 
-  try {
-    return JSON.parse(raw);
-  } catch (e) {
-    const firstBrace = raw.indexOf("{");
-    const lastBrace = raw.lastIndexOf("}");
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
-      return JSON.parse(jsonSlice);
+  for (let i = 0; i < attempts; i++) {
+    const tightenedPrompt = i === 0
+      ? prompt
+      : (prompt + "\n\nATENÇÃO: Responda SOMENTE com um objeto JSON válido. Não use markdown, não use blocos de código, não inclua explicações.");
+
+    try {
+      const raw = await callOpenAI(tightenedPrompt);
+
+      // 1) JSON direto
+      try {
+        return JSON.parse(raw);
+      } catch {}
+
+      // 2) extrai o primeiro bloco {...}
+      try {
+        const firstBrace = raw.indexOf("{");
+        const lastBrace = raw.lastIndexOf("}");
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
+          return JSON.parse(jsonSlice);
+        }
+      } catch {}
+
+      // 3) extrai bloco ```json ... ```
+      try {
+        const m = raw.match(/```\s*json\s*([\s\S]*?)```/i);
+        if (m && m[1]) {
+          return JSON.parse(m[1].trim());
+        }
+      } catch {}
+
+      throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
+    } catch (e) {
+      lastErr = e;
     }
-    throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
   }
+
+  throw lastErr || new Error("Falha ao obter JSON do modelo.");
 }
 
 // Função para chamar o modelo com imagem (data URL) e retornar JSON
@@ -2432,6 +2465,16 @@ app.post("/api/classificar-gestacao-lactacao", requirePaidOrAdmin, async(req, re
 
     const safeContexto = normalizeText(contexto, 25000);
 
+    // Mantém comportamento previsível mesmo se o backend estiver sem chave.
+    // (Evita 500 e permite o usuário entender o motivo.)
+    if (!process.env.OPENAI_API_KEY) {
+      const msg = "Sem chave OPENAI_API_KEY configurada no servidor.";
+      return res.json({
+        sae: "Coleta de dados: não informado\n\nDiagnósticos de enfermagem sugeridos: não informado\n\nResultados esperados: não informado\n\nIntervenções: não informado\n\nObservação: " + msg,
+        orientacoes: "Orientações ao paciente: não informado\n\nSinais de alerta: não informado\n\nRetorno: não informado\n\nObservação: " + msg
+      });
+    }
+
     const prompt = `
 Você é um enfermeiro humano. A partir do contexto (transcrição + evolução + plano), gere:
 1) SAE (Processo de Enfermagem) com 4 partes: Coleta de dados, Diagnósticos de Enfermagem sugeridos (com justificativa curta), Resultados esperados (metas), Intervenções (com frequência e critérios de reavaliação).
@@ -2458,6 +2501,14 @@ Contexto:
     return res.json({ sae, orientacoes });
   } catch (e) {
     console.error(e);
+    // Erro de configuração: retorna 200 com aviso (mais útil para o usuário do que 500 genérico)
+    if (String(e?.code || "") === "OPENAI_API_KEY_MISSING" || String(e?.message || "") === "OPENAI_API_KEY_MISSING") {
+      const msg = "Sem chave OPENAI_API_KEY configurada no servidor.";
+      return res.json({
+        sae: "Coleta de dados: não informado\n\nDiagnósticos de enfermagem sugeridos: não informado\n\nResultados esperados: não informado\n\nIntervenções: não informado\n\nObservação: " + msg,
+        orientacoes: "Orientações ao paciente: não informado\n\nSinais de alerta: não informado\n\nRetorno: não informado\n\nObservação: " + msg
+      });
+    }
     return res.status(500).json({ error: "Falha interna ao gerar SAE/orientações." });
   }
 });
