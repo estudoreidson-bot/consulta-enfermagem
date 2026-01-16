@@ -3036,43 +3036,45 @@
         <button id="printMedSafetyBtn" class="btn-print hidden">Imprimir segurança dos medicamentos</button>
       </div>
 
-      <div id="interactionsStatus" class="mini-status"></div>
+	  <div id="medSafetyResults" class="hidden">
+	    <div id="interactionsStatus" class="mini-status"></div>
 
-      <div class="rx-subsection">
-        <div class="rx-subsection-title">Transcrição da receita</div>
-        <textarea id="medRxTranscription" class="prescription-textarea" placeholder="A transcrição da receita aparecerá aqui."></textarea>
-        <div class="prescription-actions" style="justify-content: flex-start; gap: 10px; margin-top: 10px;">
-          <button id="copyRxTranscriptionBtn" class="btn-copy hidden" type="button">Copiar transcrição da receita</button>
-        </div>
-      </div>
+	    <div class="rx-subsection">
+	      <div class="rx-subsection-title">Transcrição da receita</div>
+	      <textarea id="medRxTranscription" class="prescription-textarea" placeholder="A transcrição da receita aparecerá aqui."></textarea>
+	      <div class="prescription-actions" style="justify-content: flex-start; gap: 10px; margin-top: 10px;">
+	        <button id="copyRxTranscriptionBtn" class="btn-copy hidden" type="button">Copiar transcrição da receita</button>
+	      </div>
+	    </div>
 
-      <div class="rx-subsection">
-        <div class="rx-subsection-title">Lactação (por medicamento)</div>
-        <div id="medRxLactationBox" class="classification-box">Nenhum conteúdo disponível.</div>
-      </div>
+	    <div class="rx-subsection">
+	      <div class="rx-subsection-title">Lactação (por medicamento)</div>
+	      <div id="medRxLactationBox" class="classification-box">Nenhum conteúdo disponível.</div>
+	    </div>
 
-      <div class="rx-subsection">
-        <div class="rx-subsection-title">Gravidez (categoria de risco)</div>
-        <div id="medRxPregnancyBox" class="classification-box">Nenhum conteúdo disponível.</div>
-      </div>
+	    <div class="rx-subsection">
+	      <div class="rx-subsection-title">Gravidez (categoria de risco)</div>
+	      <div id="medRxPregnancyBox" class="classification-box">Nenhum conteúdo disponível.</div>
+	    </div>
 
-      <div class="rx-subsection">
-        <div class="rx-subsection-title">Medicamentos identificados</div>
-        <div id="medRxMedButtons" class="pill-buttons" aria-label="Medicamentos identificados"></div>
-        <div id="medRxMedButtonsHint" class="mini-status">Nenhum conteúdo disponível.</div>
-      </div>
+	    <div class="rx-subsection">
+	      <div class="rx-subsection-title">Medicamentos identificados</div>
+	      <div id="medRxMedButtons" class="pill-buttons" aria-label="Medicamentos identificados"></div>
+	      <div id="medRxMedButtonsHint" class="mini-status">Nenhum conteúdo disponível.</div>
+	    </div>
 
-      <div class="rx-subsection">
-        <div class="rx-subsection-title">Interações medicamentosas (da prescrição)</div>
-        <div id="medRxInteractionsBox" class="classification-box">Nenhum conteúdo disponível.</div>
-      </div>
+	    <div class="rx-subsection">
+	      <div class="rx-subsection-title">Interações medicamentosas (da prescrição)</div>
+	      <div id="medRxInteractionsBox" class="classification-box">Nenhum conteúdo disponível.</div>
+	    </div>
 
-      <div class="rx-subsection">
-        <div class="rx-subsection-title">Pontos de enfermagem (da prescrição)</div>
-        <div id="medRxNursingPointsBox" class="classification-box">Nenhum conteúdo disponível.</div>
-      </div>
+	    <div class="rx-subsection">
+	      <div class="rx-subsection-title">Pontos de enfermagem (da prescrição)</div>
+	      <div id="medRxNursingPointsBox" class="classification-box">Nenhum conteúdo disponível.</div>
+	    </div>
 
-      <textarea id="medSafetyExport" class="hidden-input"></textarea>
+	    <textarea id="medSafetyExport" class="hidden-input"></textarea>
+	  </div>
 
       <input id="medCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
       <input id="medFileInput" class="hidden-input" type="file" accept="image/*" multiple />
@@ -5209,6 +5211,7 @@ const recordBtn = document.getElementById("recordBtn");
     const medRxLactationBox = document.getElementById("medRxLactationBox");
     const medRxPregnancyBox = document.getElementById("medRxPregnancyBox");
     const medSafetyExport = document.getElementById("medSafetyExport");
+    const medSafetyResults = document.getElementById("medSafetyResults");
     const interactionsBox = document.getElementById("interactionsBox");
     const interactionsStatus = document.getElementById("interactionsStatus");
     const copyMedSafetyBtn = document.getElementById("copyMedSafetyBtn");
@@ -5285,6 +5288,13 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       if (!el) return;
       if (visible) el.classList.remove("hidden");
       else el.classList.add("hidden");
+    }
+
+    // Administração segura de medicamentos: resultados só aparecem após selecionar foto/arquivo.
+    function setMedSafetyResultsVisible(visible) {
+      if (!medSafetyResults) return;
+      if (visible) medSafetyResults.classList.remove("hidden");
+      else medSafetyResults.classList.add("hidden");
     }
 
     function isMeaningfulText(t) {
@@ -8075,6 +8085,7 @@ async function analyzePrescriptionWithImages(dataUrls) {
 
   const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
   if (!images.length) {
+    setMedSafetyResultsVisible(false);
     interactionsStatus.textContent = "Nenhuma imagem selecionada.";
     if (medRxTranscription) medRxTranscription.value = "";
     if (medRxMedButtons) medRxMedButtons.innerHTML = "";
@@ -8087,6 +8098,9 @@ async function analyzePrescriptionWithImages(dataUrls) {
     updateMedSafetyActions();
     return;
   }
+
+  // Mostra o painel de resultados apenas depois que o profissional seleciona foto/arquivo.
+  setMedSafetyResultsVisible(true);
 
   interactionsStatus.textContent = "Analisando prescrição (imagem(ns)).";
   if (medRxTranscription) medRxTranscription.value = "Processando.";
@@ -10282,6 +10296,9 @@ if (runImageAnalysisBtn) {
   });
 }
 
+    // Estado inicial: painel de resultados do módulo de medicamentos fica oculto até selecionar foto/arquivo.
+    setMedSafetyResultsVisible(false);
+
     // Estado inicial: botões de copiar/imprimir ficam ocultos até gerar conteúdo
     updateMedSafetyActions();
     updateWoundActions();
@@ -10340,6 +10357,10 @@ function getImageUiByKey(key) {
         const input = e && e.currentTarget ? e.currentTarget : inputEl;
         const files = (input && input.files) ? Array.from(input.files) : [];
         if (!files.length) return;
+
+        if (String(key || "").toLowerCase() === "med") {
+          setMedSafetyResultsVisible(true);
+        }
 
         const ui = getImageUiByKey(key);
         const firstName = (files[0] && files[0].name) ? files[0].name : "arquivo";
