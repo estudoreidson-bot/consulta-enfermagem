@@ -271,6 +271,60 @@ function getImageDataUrlFromBody(body) {
       : "";
 }
 
+
+function getImagesDataUrlsFromBody(body, maxImages = 4) {
+  const b = body || {};
+  const arr = Array.isArray(b.images_data_url) ? b.images_data_url
+    : (Array.isArray(b.imagens_data_url) ? b.imagens_data_url : null);
+
+  const out = [];
+  if (arr && arr.length) {
+    for (const item of arr) {
+      const url = typeof item === "string" ? item.trim() : "";
+      const norm = normalizeImageDataUrl(url, 7_000_000);
+      if (norm) out.push(norm);
+      if (out.length >= maxImages) break;
+    }
+  }
+
+  const single = getImageDataUrlFromBody(b);
+  const singleNorm = normalizeImageDataUrl(single, 7_000_000);
+  if (singleNorm && !out.includes(singleNorm)) out.unshift(singleNorm);
+
+  return out.slice(0, maxImages);
+}
+
+async function callOpenAIVisionJsonMulti(prompt, imagensDataUrl) {
+  const images = Array.isArray(imagensDataUrl) ? imagensDataUrl.filter(Boolean).slice(0, 4) : [];
+  if (!images.length) {
+    throw new Error("Nenhuma imagem válida recebida.");
+  }
+
+  const content = [{ type: "text", text: prompt }];
+  for (const url of images) {
+    content.push({ type: "image_url", image_url: { url } });
+  }
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    temperature: 0.2,
+    messages: [{ role: "user", content }]
+  });
+
+  const raw = (completion.choices?.[0]?.message?.content || "").trim();
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    const firstBrace = raw.indexOf("{");
+    const lastBrace = raw.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
+      return JSON.parse(jsonSlice);
+    }
+    throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
+  }
+}
+
 function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
   if (!Array.isArray(arr)) return [];
   const out = [];
@@ -2863,6 +2917,139 @@ app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
 
 
 
+
+
+// ======================================================================
+// ROTA 4.5B – BULA / MONOGRAFIA DE MEDICAMENTO (ESTRUTURADO)
+// ======================================================================
+
+function normalizePresentations(obj) {
+  const o = (obj && typeof obj === "object") ? obj : {};
+  const keys = [
+    "solucao_oral",
+    "solucao_oral_gotas",
+    "suspensao_oral",
+    "xarope",
+    "comprimidos",
+    "capsulas",
+    "solucao_injetavel",
+    "supositorio",
+    "topico",
+    "inalatorio",
+    "outros"
+  ];
+  const out = {};
+  for (const k of keys) {
+    out[k] = normalizeArrayOfStrings(o[k], 25, 180);
+  }
+  return out;
+}
+
+app.post("/api/medicamento-bula", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const nome = normalizeText(req.body?.medicamento || req.body?.nome || "", 120);
+    if (!nome) {
+      return res.status(400).json({ error: "Medicamento não informado." });
+    }
+
+    const prompt = `
+Você é um farmacêutico clínico e enfermeiro auditor.
+
+Gere uma monografia prática e completa do medicamento a seguir, em português do Brasil, no estilo de bula/Whitebook (sem copiar trechos), organizada para uso em enfermagem.
+
+Medicamento: ${nome}
+
+Regras:
+- Se algo não puder ser afirmado com segurança, use "não informado" (ou lista vazia).
+- Não invente nomes comerciais se não tiver segurança; se listar, mantenha no contexto Brasil e seja prudente.
+- Sem emojis e sem símbolos gráficos.
+- Responda EXCLUSIVAMENTE em JSON estrito, sem markdown.
+
+Formato obrigatório:
+{
+  "medicamento": "string",
+  "nomes_comerciais": ["string"],
+  "classe": "string",
+  "mecanismo_acao": "string",
+  "apresentacoes": {
+    "solucao_oral": ["string"],
+    "solucao_oral_gotas": ["string"],
+    "suspensao_oral": ["string"],
+    "xarope": ["string"],
+    "comprimidos": ["string"],
+    "capsulas": ["string"],
+    "solucao_injetavel": ["string"],
+    "supositorio": ["string"],
+    "topico": ["string"],
+    "inalatorio": ["string"],
+    "outros": ["string"]
+  },
+  "uso_clinico": ["string"],
+  "tipo_receituario": "string",
+  "posologia_adulto": {
+    "oral": "string",
+    "injetavel": "string",
+    "outros": "string",
+    "dose_maxima": "string"
+  },
+  "categoria_gravidez": "string",
+  "uso_lactacao": "string",
+  "uso_geriatrico": "string",
+  "posologia_pediatrica": {
+    "oral": "string",
+    "gotas": "string",
+    "xarope": "string",
+    "comprimidos_capsulas": "string",
+    "injetavel": "string",
+    "dose_maxima": "string",
+    "restricoes_idade": "string"
+  },
+  "interacoes_medicamentosas": ["string"],
+  "pontos_de_enfermagem": ["string"],
+  "limitacoes": "string"
+}
+`;
+
+    const data = await callOpenAIJson(prompt);
+
+    const out = {
+      medicamento: normalizeText(data?.medicamento || nome, 160) || nome,
+      nomes_comerciais: normalizeArrayOfStrings(data?.nomes_comerciais, 40, 120),
+      classe: normalizeText(data?.classe || "", 240) || "não informado",
+      mecanismo_acao: normalizeText(data?.mecanismo_acao || data?.mecanismo || "", 800) || "não informado",
+      apresentacoes: normalizePresentations(data?.apresentacoes),
+      uso_clinico: normalizeArrayOfStrings(data?.uso_clinico, 40, 160),
+      tipo_receituario: normalizeText(data?.tipo_receituario || "", 240) || "não informado",
+      posologia_adulto: {
+        oral: normalizeText(data?.posologia_adulto?.oral || "", 900) || "não informado",
+        injetavel: normalizeText(data?.posologia_adulto?.injetavel || "", 900) || "não informado",
+        outros: normalizeText(data?.posologia_adulto?.outros || "", 900) || "não informado",
+        dose_maxima: normalizeText(data?.posologia_adulto?.dose_maxima || "", 320) || "não informado"
+      },
+      categoria_gravidez: normalizeText(data?.categoria_gravidez || "", 240) || "não informado",
+      uso_lactacao: normalizeText(data?.uso_lactacao || "", 520) || "não informado",
+      uso_geriatrico: normalizeText(data?.uso_geriatrico || "", 520) || "não informado",
+      posologia_pediatrica: {
+        oral: normalizeText(data?.posologia_pediatrica?.oral || "", 900) || "não informado",
+        gotas: normalizeText(data?.posologia_pediatrica?.gotas || "", 900) || "não informado",
+        xarope: normalizeText(data?.posologia_pediatrica?.xarope || "", 900) || "não informado",
+        comprimidos_capsulas: normalizeText(data?.posologia_pediatrica?.comprimidos_capsulas || "", 900) || "não informado",
+        injetavel: normalizeText(data?.posologia_pediatrica?.injetavel || "", 900) || "não informado",
+        dose_maxima: normalizeText(data?.posologia_pediatrica?.dose_maxima || "", 320) || "não informado",
+        restricoes_idade: normalizeText(data?.posologia_pediatrica?.restricoes_idade || "", 320) || "não informado"
+      },
+      interacoes_medicamentosas: normalizeArrayOfStrings(data?.interacoes_medicamentosas, 40, 260),
+      pontos_de_enfermagem: normalizeArrayOfStrings(data?.pontos_de_enfermagem, 40, 260),
+      limitacoes: normalizeText(data?.limitacoes || "", 520) || ""
+    };
+
+    return res.json(out);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao obter informações do medicamento." });
+  }
+});
+
 // ======================================================================
 // ROTA 4.6 – INTERPRETAÇÃO DE EXAME POR FOTO (NOVA)
 // ======================================================================
@@ -3019,80 +3206,118 @@ app.post("/api/transcrever-documento-imagem", requirePaidOrAdmin, async (req, re
 // ROTA 4.5 – ANÁLISE DE PRESCRIÇÃO POR FOTO (ADMINISTRAÇÃO SEGURA) (NOVA)
 // ======================================================================
 
-app.post("/api/analisar-prescricao-imagem", requirePaidOrAdmin, async(req, res) => {
+app.post("/api/analisar-prescricao-imagem", requirePaidOrAdmin, async (req, res) => {
   try {
-    const imagemDataUrl = getImageDataUrlFromBody(req.body);
-    const safeImage = normalizeImageDataUrl(imagemDataUrl, 4_000_000);
-
-    if (!safeImage) {
+    const imagensDataUrl = getImagesDataUrlsFromBody(req.body, 4);
+    if (!imagensDataUrl.length) {
       return res.status(400).json({
         error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
       });
     }
 
     const prompt = `
-Você é um enfermeiro humano realizando uma ANÁLISE DE SEGURANÇA DE UMA PRESCRIÇÃO MÉDICA baseada em uma foto.
+Você é um enfermeiro humano realizando uma ANÁLISE DE SEGURANÇA DE UMA PRESCRIÇÃO MÉDICA baseada em uma ou mais fotos.
 
 Objetivo:
-1) Transcrever somente o que estiver legível (sem inventar). Quando não der para ler, escreva "não informado".
-2) Para cada medicamento identificado, informar para que serve em linguagem prática.
-3) Identificar riscos relevantes para a enfermagem: dose potencialmente excessiva, via/frequência incompatíveis, duplicidade terapêutica, alergia mencionada, necessidade de ajuste por idade/gestação/lactação quando houver dado, e ausência de informações críticas (ex.: diluente, velocidade, volume) quando aplicável.
-4) Se houver interação medicamentosa potencialmente relevante, listar e dizer se é um risco importante ou se é "não informado" por falta de dados.
-5) Se a via for EV ou IM e a prescrição estiver incompleta, orientar a CONFIRMAÇÃO do preparo/diluição/velocidade conforme protocolo institucional e bula. Não inventar volumes/concentrações.
+1) Transcrever a prescrição exatamente como estiver legível, preservando as quebras de linha. Não inventar. Quando uma parte estiver ilegível, escreva "[ilegível]" no local.
+2) Identificar os medicamentos prescritos e reescrever a linha de prescrição de forma legível.
+3) Apontar riscos e inconsistências relevantes para a enfermagem apenas quando for possível inferir com segurança.
+4) Listar interações medicamentosas relevantes entre os medicamentos identificados, apenas quando for possível inferir com segurança.
+5) Listar itens que devem ser confirmados antes da administração quando a prescrição estiver incompleta (ex.: diluente, volume final, velocidade, compatibilidade, acesso, tempo de infusão), sem inventar.
 
 Regras obrigatórias:
 - Não prescrever ou alterar a prescrição médica.
 - Não dar diagnóstico médico.
 - Ser prudente: quando houver incerteza, dizer explicitamente.
 - Sem emojis e sem símbolos gráficos.
+- JSON estrito, sem markdown.
 
-Formato de saída: JSON estrito:
+Responda EXCLUSIVAMENTE em JSON no seguinte formato:
 {
+  "transcricao_receita": "string",
   "medicamentos": [
     {
       "nome": "string",
       "posologia_legivel": "string",
+      "forma": "string",
+      "dose": "string",
       "via": "string",
       "frequencia": "string",
-      "indicacao_pratica": "string",
-      "observacoes_enfermagem": "string"
+      "duracao": "string",
+      "observacoes": "string",
+      "pontos_de_enfermagem": ["string"]
     }
   ],
   "riscos_e_inconsistencias": ["string"],
   "interacoes_medicamentosas": ["string"],
+  "pontos_de_enfermagem_gerais": ["string"],
   "itens_a_confirmar": ["string"],
   "resumo_operacional": "string"
 }
 `;
 
-    const data = await callOpenAIVisionJson(prompt, safeImage);
+    const data = await callOpenAIVisionJsonMulti(prompt, imagensDataUrl);
 
-    const meds = Array.isArray(data?.medicamentos) ? data.medicamentos : [];
-    const riscos = Array.isArray(data?.riscos_e_inconsistencias) ? data.riscos_e_inconsistencias : [];
-    const interacoes = Array.isArray(data?.interacoes_medicamentosas) ? data.interacoes_medicamentosas : [];
-    const confirmar = Array.isArray(data?.itens_a_confirmar) ? data.itens_a_confirmar : [];
-    const resumo = typeof data?.resumo_operacional === "string" ? data.resumo_operacional.trim() : "";
+    const transcricaoReceita = normalizeText(data?.transcricao_receita || "", 12_000);
 
+    const medsIn = Array.isArray(data?.medicamentos) ? data.medicamentos : [];
+    const medicamentos = medsIn.slice(0, 60).map((m) => {
+      const pontos = normalizeArrayOfStrings(m?.pontos_de_enfermagem, 20, 260);
+      return {
+        nome: normalizeText(m?.nome || "", 160),
+        posologia_legivel: normalizeText(m?.posologia_legivel || "", 420),
+        forma: normalizeText(m?.forma || "", 120),
+        dose: normalizeText(m?.dose || "", 120),
+        via: normalizeText(m?.via || "", 80),
+        frequencia: normalizeText(m?.frequencia || "", 120),
+        duracao: normalizeText(m?.duracao || "", 120),
+        observacoes: normalizeText(m?.observacoes || "", 520),
+        pontos_de_enfermagem: pontos
+      };
+    });
+
+    const riscos = normalizeArrayOfStrings(data?.riscos_e_inconsistencias, 30, 320);
+    const interacoes = normalizeArrayOfStrings(data?.interacoes_medicamentosas, 30, 320);
+    const pontosGerais = normalizeArrayOfStrings(data?.pontos_de_enfermagem_gerais, 30, 320);
+    const confirmar = normalizeArrayOfStrings(data?.itens_a_confirmar, 30, 320);
+    const resumo = normalizeText(data?.resumo_operacional || "", 1500);
+
+    // Mantém um relatório textual completo para impressão/cópia
     const lines = [];
-    lines.push("Prescrição identificada (somente o que está legível):");
-    if (!meds.length) {
+    lines.push("Transcrição da receita (somente o que está legível):");
+    lines.push(transcricaoReceita || "não informado");
+    lines.push("");
+
+    lines.push("Medicamentos identificados:");
+    if (!medicamentos.length) {
       lines.push("não informado");
     } else {
       let i = 1;
-      for (const m of meds.slice(0, 30)) {
-        const nome = normalizeText(m?.nome || "", 120) || "não informado";
-        const pos = normalizeText(m?.posologia_legivel || "", 200) || "não informado";
-        const via = normalizeText(m?.via || "", 80) || "não informado";
-        const freq = normalizeText(m?.frequencia || "", 80) || "não informado";
-        const ind = normalizeText(m?.indicacao_pratica || "", 260) || "não informado";
-        const obs = normalizeText(m?.observacoes_enfermagem || "", 420) || "não informado";
+      for (const m of medicamentos.slice(0, 30)) {
+        const nome = m.nome || "não informado";
+        const pos = m.posologia_legivel || "não informado";
+        const via = m.via || "não informado";
+        const freq = m.frequencia || "não informado";
+        const forma = m.forma || "não informado";
+        const dose = m.dose || "não informado";
+        const dur = m.duracao || "não informado";
+        const obs = m.observacoes || "não informado";
+        const pontos = Array.isArray(m.pontos_de_enfermagem) && m.pontos_de_enfermagem.length ? m.pontos_de_enfermagem : [];
 
         lines.push(`${i}) ${nome}`);
         lines.push(`Posologia legível: ${pos}`);
+        lines.push(`Forma: ${forma}`);
+        lines.push(`Dose: ${dose}`);
         lines.push(`Via: ${via}`);
         lines.push(`Frequência: ${freq}`);
-        lines.push(`Para que serve: ${ind}`);
-        lines.push(`Pontos de enfermagem: ${obs}`);
+        lines.push(`Duração: ${dur}`);
+        lines.push(`Observações: ${obs}`);
+        lines.push("Pontos de enfermagem:");
+        if (pontos.length) {
+          for (const p of pontos.slice(0, 20)) lines.push("- " + normalizeText(p, 320));
+        } else {
+          lines.push("- não informado");
+        }
         lines.push("");
         i += 1;
       }
@@ -3100,7 +3325,7 @@ Formato de saída: JSON estrito:
 
     lines.push("Riscos e inconsistências relevantes:");
     if (riscos.length) {
-      for (const r of riscos.slice(0, 30)) lines.push("- " + normalizeText(r, 260));
+      for (const r of riscos) lines.push("- " + r);
     } else {
       lines.push("- não informado");
     }
@@ -3108,7 +3333,15 @@ Formato de saída: JSON estrito:
     lines.push("");
     lines.push("Interações medicamentosas (se possível inferir com segurança):");
     if (interacoes.length) {
-      for (const it of interacoes.slice(0, 30)) lines.push("- " + normalizeText(it, 260));
+      for (const it of interacoes) lines.push("- " + it);
+    } else {
+      lines.push("- não informado");
+    }
+
+    lines.push("");
+    lines.push("Pontos de enfermagem (gerais):");
+    if (pontosGerais.length) {
+      for (const it of pontosGerais) lines.push("- " + it);
     } else {
       lines.push("- não informado");
     }
@@ -3116,7 +3349,7 @@ Formato de saída: JSON estrito:
     lines.push("");
     lines.push("Itens que devem ser confirmados antes da administração:");
     if (confirmar.length) {
-      for (const c of confirmar.slice(0, 30)) lines.push("- " + normalizeText(c, 260));
+      for (const c of confirmar) lines.push("- " + c);
     } else {
       lines.push("- não informado");
     }
@@ -3127,12 +3360,22 @@ Formato de saída: JSON estrito:
       lines.push(resumo);
     }
 
-    return res.json({ texto: lines.join("\n") });
+    return res.json({
+      texto: lines.join("\n"),
+      transcricao_receita: transcricaoReceita,
+      medicamentos,
+      riscos_e_inconsistencias: riscos,
+      interacoes_medicamentosas: interacoes,
+      pontos_de_enfermagem_gerais: pontosGerais,
+      itens_a_confirmar: confirmar,
+      resumo_operacional: resumo
+    });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "Falha interna ao analisar a prescrição." });
   }
 });
+
 
 
 

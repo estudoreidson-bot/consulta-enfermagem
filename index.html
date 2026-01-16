@@ -2107,6 +2107,72 @@
       margin-top: 4px;
     }
 
+  
+
+    /* Administração segura de medicamentos: detalhes e botões */
+    .med-safety-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .med-safety-subcard {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 10px;
+    }
+    .med-safety-subcard h3 {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      color: #111827;
+    }
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .pill-btn {
+      appearance: none;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      color: #111827;
+      padding: 8px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1.2;
+    }
+    .pill-btn:hover {
+      background: #f3f4f6;
+    }
+    .pill-btn.active {
+      border-color: #111827;
+      background: #eef2ff;
+    }
+    .mono-section {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .mono-title {
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: #111827;
+    }
+    .mono-body {
+      white-space: pre-wrap;
+      font-size: 13px;
+      color: #111827;
+      line-height: 1.45;
+    }
+    .mono-status {
+      font-size: 12px;
+      color: #374151;
+      margin-top: 6px;
+    }
+
   </style>
 </head>
 <body>
@@ -3036,7 +3102,47 @@
       </div>
 
       <div id="interactionsStatus" class="mini-status"></div>
-      <div id="interactionsBox" class="classification-box">Nenhum conteúdo disponível.</div>
+
+      <div class="med-safety-grid">
+        <div class="med-safety-subcard">
+          <h3>Transcrição da receita</h3>
+          <textarea id="medTranscriptionBox" class="prescription-textarea" placeholder="A transcrição aparecerá aqui após a análise."></textarea>
+          <div class="prescription-actions" style="justify-content: flex-start; gap: 10px; margin-top: 10px;">
+            <button id="copyMedTranscriptionBtn" class="btn-copy" type="button">Copiar transcrição da receita</button>
+          </div>
+          <div id="medTranscriptionStatus" class="mini-status"></div>
+        </div>
+
+        <div class="med-safety-subcard">
+          <h3>Medicamentos identificados</h3>
+          <div id="medMedsButtons" class="pill-row" aria-label="Lista de medicamentos identificados"></div>
+          <div class="mono-status">Clique em um medicamento para ver informações organizadas.</div>
+        </div>
+
+        <div class="med-safety-subcard">
+          <h3>Informações do medicamento</h3>
+          <div id="medDrugInfoStatus" class="mini-status"></div>
+          <div id="medDrugInfoBox" class="mono-body">Nenhum conteúdo disponível.</div>
+          <div class="prescription-actions" style="justify-content: flex-start; gap: 10px; margin-top: 10px;">
+            <button id="copyMedDrugInfoBtn" class="btn-copy" type="button">Copiar informações do medicamento</button>
+          </div>
+        </div>
+
+        <div class="med-safety-subcard">
+          <h3>Interações medicamentosas</h3>
+          <div id="medInteractionsBox" class="mono-body">Nenhum conteúdo disponível.</div>
+        </div>
+
+        <div class="med-safety-subcard">
+          <h3>Pontos de enfermagem</h3>
+          <div id="medNursingPointsBox" class="mono-body">Nenhum conteúdo disponível.</div>
+        </div>
+
+        <div class="med-safety-subcard">
+          <h3>Relatório completo</h3>
+          <div id="interactionsBox" class="classification-box">Nenhum conteúdo disponível.</div>
+        </div>
+      </div>
 
       <input id="medCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
       <input id="medFileInput" class="hidden-input" type="file" accept="image/*" multiple />
@@ -5163,6 +5269,18 @@ const interactionsBox = document.getElementById("interactionsBox");
     const printMedSafetyBtn = document.getElementById("printMedSafetyBtn");
     const medCameraInput = document.getElementById("medCameraInput");
     const medFileInput = document.getElementById("medFileInput");
+
+    const medTranscriptionBox = document.getElementById("medTranscriptionBox");
+    const medTranscriptionStatus = document.getElementById("medTranscriptionStatus");
+    const copyMedTranscriptionBtn = document.getElementById("copyMedTranscriptionBtn");
+
+    const medMedsButtons = document.getElementById("medMedsButtons");
+    const medDrugInfoStatus = document.getElementById("medDrugInfoStatus");
+    const medDrugInfoBox = document.getElementById("medDrugInfoBox");
+    const copyMedDrugInfoBtn = document.getElementById("copyMedDrugInfoBtn");
+
+    const medInteractionsBox = document.getElementById("medInteractionsBox");
+    const medNursingPointsBox = document.getElementById("medNursingPointsBox");
 
     const woundPhotoBtn = document.getElementById("woundPhotoBtn");
     const woundFileBtn = document.getElementById("woundFileBtn");
@@ -7723,6 +7841,215 @@ function fileToDataUrl(file) {
   });
 }
 
+
+
+// =========================
+// ADMINISTRAÇÃO SEGURA DE MEDICAMENTOS – UI estruturada
+// =========================
+let MED_SAFETY_LAST = null;
+let MED_SAFETY_DRUG_CACHE = {};
+let MED_SAFETY_SELECTED_DRUG = "";
+
+function getDrugDisplayNameFromObj(m) {
+  if (!m) return "";
+  const n = String(m?.nome || m?.medicamento || m?.nome_principal || "").trim();
+  if (n) return n;
+  const line = String(m?.posologia_legivel || m?.linha_prescrita || "").trim();
+  if (line) return line.split(/\s+-\s+|\s+–\s+|\s+—\s+/)[0].trim();
+  return "";
+}
+
+function renderMedButtonsFromPrescription(medsArr) {
+  if (!medMedsButtons) return;
+  const meds = Array.isArray(medsArr) ? medsArr : [];
+  const names = [];
+  for (const m of meds) {
+    const name = getDrugDisplayNameFromObj(m);
+    if (!name) continue;
+    if (!names.includes(name)) names.push(name);
+    if (names.length >= 30) break;
+  }
+
+  medMedsButtons.innerHTML = "";
+
+  if (!names.length) {
+    const span = document.createElement("div");
+    span.className = "mono-status";
+    span.textContent = "Nenhum medicamento identificado para exibir.";
+    medMedsButtons.appendChild(span);
+    return;
+  }
+
+  for (const name of names) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pill-btn";
+    btn.textContent = name;
+    btn.addEventListener("click", () => {
+      // estado visual
+      const all = medMedsButtons.querySelectorAll(".pill-btn");
+      all.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      fetchAndRenderDrugMonograph(name);
+    });
+    medMedsButtons.appendChild(btn);
+  }
+}
+
+function monographToText(info) {
+  if (!info || typeof info !== "object") return "Nenhum conteúdo disponível.";
+
+  const medicamento = String(info?.medicamento || info?.nome || "").trim();
+  const nomesComerciais = Array.isArray(info?.nomes_comerciais) ? info.nomes_comerciais.map(x => String(x||"").trim()).filter(Boolean) : [];
+  const classe = String(info?.classe || "").trim();
+  const mecanismo = String(info?.mecanismo_acao || info?.mecanismo || "").trim();
+
+  const ap = info?.apresentacoes && typeof info.apresentacoes === "object" ? info.apresentacoes : {};
+  const getAp = (k) => Array.isArray(ap[k]) ? ap[k].map(x => String(x||"").trim()).filter(Boolean) : [];
+
+  const usoClinico = Array.isArray(info?.uso_clinico) ? info.uso_clinico.map(x => String(x||"").trim()).filter(Boolean) : [];
+  const tipoReceituario = String(info?.tipo_receituario || "").trim();
+
+  const posA = info?.posologia_adulto && typeof info.posologia_adulto === "object" ? info.posologia_adulto : {};
+  const posP = info?.posologia_pediatrica && typeof info.posologia_pediatrica === "object" ? info.posologia_pediatrica : {};
+
+  const catGrav = String(info?.categoria_gravidez || info?.gravidez || "").trim();
+  const lact = String(info?.uso_lactacao || info?.lactacao || "").trim();
+  const ger = String(info?.uso_geriatrico || "").trim();
+
+  const inter = Array.isArray(info?.interacoes_medicamentosas) ? info.interacoes_medicamentosas.map(x => String(x||"").trim()).filter(Boolean) : [];
+  const enferm = Array.isArray(info?.pontos_de_enfermagem) ? info.pontos_de_enfermagem.map(x => String(x||"").trim()).filter(Boolean) : [];
+
+  const lines = [];
+
+  lines.push("Medicamento: " + (medicamento || "não informado"));
+  lines.push("");
+
+  lines.push("Nomes comerciais:");
+  lines.push(nomesComerciais.length ? nomesComerciais.join("; ") : "não informado");
+  lines.push("");
+
+  lines.push("Classe:");
+  lines.push(classe || "não informado");
+  lines.push("");
+
+  lines.push("Mecanismo de ação:");
+  lines.push(mecanismo || "não informado");
+  lines.push("");
+
+  lines.push("Apresentações:");
+  const apLines = [];
+  const map = [
+    ["solucao_oral", "Solução oral"],
+    ["solucao_oral_gotas", "Solução oral gotas"],
+    ["suspensao_oral", "Suspensão oral"],
+    ["xarope", "Xarope"],
+    ["comprimidos", "Comprimidos"],
+    ["capsulas", "Cápsulas"],
+    ["solucao_injetavel", "Solução injetável"],
+    ["supositorio", "Supositório"],
+    ["topico", "Tópico"],
+    ["inalatorio", "Inalatório"],
+    ["outros", "Outros"]
+  ];
+  for (const [k, label] of map) {
+    const items = getAp(k);
+    if (!items.length) continue;
+    apLines.push(label + ": " + items.join("; "));
+  }
+  lines.push(apLines.length ? apLines.join("\n") : "não informado");
+  lines.push("");
+
+  lines.push("Uso clínico:");
+  lines.push(usoClinico.length ? usoClinico.join("; ") : "não informado");
+  lines.push("");
+
+  lines.push("Tipo de receituário:");
+  lines.push(tipoReceituario || "não informado");
+  lines.push("");
+
+  lines.push("Posologia adulta:");
+  lines.push("Oral: " + (String(posA?.oral || "").trim() || "não informado"));
+  lines.push("Injetável: " + (String(posA?.injetavel || "").trim() || "não informado"));
+  lines.push("Outros: " + (String(posA?.outros || "").trim() || "não informado"));
+  lines.push("Dose máxima: " + (String(posA?.dose_maxima || "").trim() || "não informado"));
+  lines.push("");
+
+  lines.push("Categoria na gravidez:");
+  lines.push(catGrav || "não informado");
+  lines.push("");
+
+  lines.push("Uso na lactação:");
+  lines.push(lact || "não informado");
+  lines.push("");
+
+  lines.push("Uso geriátrico:");
+  lines.push(ger || "não informado");
+  lines.push("");
+
+  lines.push("Posologia pediátrica:");
+  lines.push("Oral: " + (String(posP?.oral || "").trim() || "não informado"));
+  lines.push("Gotas: " + (String(posP?.gotas || "").trim() || "não informado"));
+  lines.push("Xarope: " + (String(posP?.xarope || "").trim() || "não informado"));
+  lines.push("Comprimidos/cápsulas: " + (String(posP?.comprimidos_capsulas || "").trim() || "não informado"));
+  lines.push("Injetável: " + (String(posP?.injetavel || "").trim() || "não informado"));
+  lines.push("Dose máxima: " + (String(posP?.dose_maxima || "").trim() || "não informado"));
+  lines.push("Restrições etárias: " + (String(posP?.restricoes_idade || "").trim() || "não informado"));
+  lines.push("");
+
+  lines.push("Interações medicamentosas:");
+  lines.push(inter.length ? inter.join("\n") : "não informado");
+  lines.push("");
+
+  lines.push("Pontos de enfermagem:");
+  lines.push(enferm.length ? enferm.join("\n") : "não informado");
+
+  const limit = String(info?.limitacoes || info?.observacoes || "").trim();
+  if (limit) {
+    lines.push("");
+    lines.push("Observações:");
+    lines.push(limit);
+  }
+
+  return lines.join("\n");
+}
+
+async function fetchAndRenderDrugMonograph(drugName) {
+  const name = String(drugName || "").trim();
+  if (!name) return;
+
+  MED_SAFETY_SELECTED_DRUG = name;
+
+  if (MED_SAFETY_DRUG_CACHE[name]) {
+    const text = monographToText(MED_SAFETY_DRUG_CACHE[name]);
+    if (medDrugInfoBox) medDrugInfoBox.textContent = text;
+    if (medDrugInfoStatus) medDrugInfoStatus.textContent = "Informações carregadas.";
+    return;
+  }
+
+  if (medDrugInfoBox) medDrugInfoBox.textContent = "Nenhum conteúdo disponível.";
+  if (medDrugInfoStatus) medDrugInfoStatus.textContent = "Carregando informações do medicamento.";
+
+  try {
+    const resp = await fetch(BACKEND_URL + "/api/medicamento-bula", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ medicamento: name })
+    });
+
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data?.error || "Falha ao obter informações do medicamento.");
+
+    MED_SAFETY_DRUG_CACHE[name] = data;
+    const text = monographToText(data);
+    if (medDrugInfoBox) medDrugInfoBox.textContent = text;
+    if (medDrugInfoStatus) medDrugInfoStatus.textContent = "Informações carregadas.";
+  } catch (e) {
+    if (medDrugInfoStatus) medDrugInfoStatus.textContent = "Falha ao carregar informações. " + (e && e.message ? e.message : "");
+    if (medDrugInfoBox) medDrugInfoBox.textContent = "Nenhum conteúdo disponível.";
+  }
+}
+
 async function addFilesToTarget(files, targetKey, mode) {
   const list = Array.from(files || []);
   if (!list.length) return;
@@ -7863,7 +8190,30 @@ async function addFilesToTarget(files, targetKey, mode) {
     if (!resp.ok) throw new Error(data?.error || "Falha ao analisar prescrição.");
 
     const texto = (data?.texto || "").trim();
-    interactionsBox.textContent = texto || "Nenhum conteúdo disponível.";
+
+    if (interactionsBox) interactionsBox.textContent = texto || "Nenhum conteúdo disponível.";
+
+    const trans = String(data?.transcricao_receita || data?.transcricao_legivel || "").trim();
+    if (medTranscriptionBox) {
+      medTranscriptionBox.value = trans || "";
+    }
+    if (medTranscriptionStatus) {
+      medTranscriptionStatus.textContent = trans ? "Transcrição concluída." : "Transcrição não informada (ilegível ou ausente).";
+    }
+
+    const meds = Array.isArray(data?.medicamentos) ? data.medicamentos : (Array.isArray(data?.medicamentos_identificados) ? data.medicamentos_identificados : []);
+    renderMedButtonsFromPrescription(meds);
+
+    const interArr = Array.isArray(data?.interacoes_medicamentosas) ? data.interacoes_medicamentosas : (Array.isArray(data?.interacoes) ? data.interacoes : []);
+    const enfArr = Array.isArray(data?.pontos_de_enfermagem_gerais) ? data.pontos_de_enfermagem_gerais : (Array.isArray(data?.pontos_de_enfermagem) ? data.pontos_de_enfermagem : []);
+
+    if (medInteractionsBox) {
+      medInteractionsBox.textContent = (interArr && interArr.length) ? interArr.map(x => String(x||"").trim()).filter(Boolean).join("\n") : "Nenhum conteúdo disponível.";
+    }
+    if (medNursingPointsBox) {
+      medNursingPointsBox.textContent = (enfArr && enfArr.length) ? enfArr.map(x => String(x||"").trim()).filter(Boolean).join("\n") : "Nenhum conteúdo disponível.";
+    }
+
     interactionsStatus.textContent = "Análise concluída.";
     updateMedSafetyActions();
   } catch (e) {
@@ -8335,7 +8685,10 @@ async function addFilesToTarget(files, targetKey, mode) {
         return;
       }
       w.document.write("<html><head><title>" + escapeHtml(title) + "</title>");
-      w.document.write("<style>" + getRxPrintCss() + "</style>");
+      w.document.write("<style>" + getRxPrintCss() + "
+
+    
+  </style>");
       w.document.write("</head><body>");
       w.document.write(content);
       w.document.write("</body></html>");
@@ -9707,6 +10060,47 @@ recordBtn.onclick = () => {
         const el = aprazamentoSheetWrapper ? aprazamentoSheetWrapper.querySelector("#aprazGridSheet") : null;
         const html = el ? el.outerHTML : "";
         openPrintWindowHtml("Grade de horários (24 horas)", html);
+      });
+    }
+
+    // Administração segura de medicamentos
+    if (copyMedSafetyBtn) {
+      copyMedSafetyBtn.addEventListener("click", () => {
+        const text = (interactionsBox && interactionsBox.textContent) ? interactionsBox.textContent.trim() : "";
+        if (!text) {
+          alert("Não há conteúdo para copiar.");
+          return;
+        }
+        copyToClipboard(text);
+      });
+    }
+
+    if (printMedSafetyBtn) {
+      printMedSafetyBtn.addEventListener("click", () => {
+        const text = (interactionsBox && interactionsBox.textContent) ? interactionsBox.textContent : "";
+        openPrintWindow("Administração segura de medicamentos", text);
+      });
+    }
+
+    if (copyMedTranscriptionBtn) {
+      copyMedTranscriptionBtn.addEventListener("click", () => {
+        const text = (medTranscriptionBox && medTranscriptionBox.value) ? medTranscriptionBox.value.trim() : "";
+        if (!text) {
+          alert("Não há transcrição para copiar.");
+          return;
+        }
+        copyToClipboard(text);
+      });
+    }
+
+    if (copyMedDrugInfoBtn) {
+      copyMedDrugInfoBtn.addEventListener("click", () => {
+        const text = (medDrugInfoBox && medDrugInfoBox.textContent) ? medDrugInfoBox.textContent.trim() : "";
+        if (!text || text === "Nenhum conteúdo disponível.") {
+          alert("Não há informações do medicamento para copiar.");
+          return;
+        }
+        copyToClipboard(text);
       });
     }
 
@@ -12848,7 +13242,10 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
           table{border-collapse: collapse; width: 100%;}
           th,td{border: 1px solid #ccc; padding: 6px; font-size: 12px; vertical-align: top;}
           th{background: #f1f1f1;}
-        </style>
+        
+
+    
+  </style>
         </head><body>
         <h1>${escapeHtml(title)}</h1>
         <table>${rosterTableOut?.innerHTML || ""}</table>
