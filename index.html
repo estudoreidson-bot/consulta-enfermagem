@@ -4848,11 +4848,15 @@ const recordBtn = document.getElementById("recordBtn");
 
       if (soapNursingPanelEl) soapNursingPanelEl.classList.toggle("hidden", !consultMode);
 
+      const triageOnly = isTriageOnlyUrlMode();
+
       const moduleCards = document.querySelectorAll(".module-card");
       if (moduleCards && moduleCards.length) {
         moduleCards.forEach((el) => {
           if (!el) return;
-          el.classList.toggle("hidden", triageMode);
+          // Em triagem normal (dentro do app), mantém os módulos visíveis.
+          // Só esconde os módulos no modo triagem-only (quando a URL força triagem).
+          el.classList.toggle("hidden", triageMode && triageOnly);
         });
       }
     }
