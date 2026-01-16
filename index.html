@@ -7902,28 +7902,40 @@ async function addFilesToTarget(files, targetKey, mode) {
 
     function buildMonographText(m) {
   if (!m || typeof m !== 'object') return 'Nenhum conteúdo disponível.';
+
   const ln = [];
-  function pushTitle(t) { if (t) { ln.push(String(t)); ln.push(''); } }
-  function pushKeyVal(k, v) {
+
+  function isMeaningful(v) {
     const s = (v === null || v === undefined) ? '' : String(v).trim();
-    ln.push(k + ': ' + (s || 'não informado'));
+    if (!s) return false;
+    const low = s.toLowerCase();
+    if (low === 'não informado' || low === 'nao informado') return false;
+    return true;
   }
+
+  function pushKeyVal(k, v) {
+    if (!isMeaningful(v)) return;
+    ln.push(k + ': ' + String(v).trim());
+  }
+
   function pushList(k, arr) {
-    const a = Array.isArray(arr) ? arr.map(x => String(x || '').trim()).filter(Boolean) : [];
+    const a = Array.isArray(arr)
+      ? Array.from(new Set(arr.map(x => (x === null || x === undefined) ? '' : String(x).trim()).filter(isMeaningful)))
+      : [];
+    if (!a.length) return;
     ln.push(k + ':');
-    if (!a.length) { ln.push('- não informado'); ln.push(''); return; }
     for (const it of a) ln.push('- ' + it);
     ln.push('');
   }
 
-  pushTitle('Monografia do medicamento');
+  // Cabeçalho (sem título "Monografia")
   pushKeyVal('Medicamento', m.medicamento || m.nome || m.principio_ativo);
-  pushList('Nomes comerciais', m.nomes_comerciais);
   pushKeyVal('Classe', m.classe);
   pushKeyVal('Mecanismo de ação', m.mecanismo_acao);
+  if (ln.length) ln.push('');
 
-  const ap = m.apresentacoes || {};
-  ln.push('Apresentações:');
+  // Apresentações: mostrar apenas as que existirem
+  const ap = (m.apresentacoes && typeof m.apresentacoes === 'object') ? m.apresentacoes : {};
   const apKeys = [
     ['Solução oral', 'solucao_oral'],
     ['Gotas', 'gotas'],
@@ -7937,53 +7949,81 @@ async function addFilesToTarget(files, targetKey, mode) {
     ['Inalatório', 'inalatorio'],
     ['Outros', 'outros']
   ];
+  const apLines = [];
   for (const [label, key] of apKeys) {
-    const v = (ap && ap[key] !== undefined) ? ap[key] : '';
-    const s = String(v || '').trim();
-    ln.push('- ' + label + ': ' + (s || 'não informado'));
+    const v = ap ? ap[key] : '';
+    if (!isMeaningful(v)) continue;
+    apLines.push('- ' + label + ': ' + String(v).trim());
   }
-  ln.push('');
+  if (apLines.length) {
+    ln.push('Apresentações:');
+    for (const x of apLines) ln.push(x);
+    ln.push('');
+  }
 
   pushList('Uso clínico', m.uso_clinico);
   pushKeyVal('Tipo de receituário', m.tipo_receituario);
+  if (ln.length && ln[ln.length - 1] !== '') ln.push('');
 
-  const ad = m.posologia_adulta || {};
-  ln.push('Posologia adulta (por via):');
-  for (const via of ['oral', 'injetavel', 'outros']) {
-    const v = ad[via] || {};
-    const label = (via === 'oral') ? 'Oral' : (via === 'injetavel' ? 'Injetável' : 'Outros');
-    ln.push(label + ':');
-    ln.push('- Dose usual: ' + (String(v.dose_usual || '').trim() || 'não informado'));
-    ln.push('- Dose máxima: ' + (String(v.dose_maxima || '').trim() || 'não informado'));
-    const obs = String(v.observacoes || '').trim();
-    if (obs) ln.push('- Observações: ' + obs);
-    ln.push('');
+  // Posologia adulta: mostrar apenas vias com conteúdo
+  const ad = (m.posologia_adulta && typeof m.posologia_adulta === 'object') ? m.posologia_adulta : {};
+  const viasAd = [
+    ['oral', 'Oral'],
+    ['injetavel', 'Injetável'],
+    ['outros', 'Outros']
+  ];
+  const adBlocks = [];
+  for (const [k, label] of viasAd) {
+    const v = (ad && ad[k] && typeof ad[k] === 'object') ? ad[k] : {};
+    const lines = [];
+    if (isMeaningful(v.dose_usual)) lines.push('- Dose usual: ' + String(v.dose_usual).trim());
+    if (isMeaningful(v.dose_maxima)) lines.push('- Dose máxima: ' + String(v.dose_maxima).trim());
+    if (isMeaningful(v.observacoes)) lines.push('- Observações: ' + String(v.observacoes).trim());
+    if (lines.length) {
+      adBlocks.push(label + ':');
+      adBlocks.push(...lines);
+      adBlocks.push('');
+    }
+  }
+  if (adBlocks.length) {
+    ln.push('Posologia adulta (por via):');
+    ln.push(...adBlocks);
   }
 
   pushKeyVal('Categoria na gravidez', m.categoria_gravidez);
   pushKeyVal('Uso na lactação', m.uso_lactacao);
   pushKeyVal('Uso geriátrico', m.uso_geriatrico);
-  ln.push('');
+  if (ln.length && ln[ln.length - 1] !== '') ln.push('');
 
-  const pd = m.posologia_pediatrica || {};
-  ln.push('Posologia pediátrica (por via/apresentação):');
+  // Posologia pediátrica: mostrar apenas vias/apresentações com conteúdo
+  const pd = (m.posologia_pediatrica && typeof m.posologia_pediatrica === 'object') ? m.posologia_pediatrica : {};
   const pdKeys = [
-    ['Oral', 'oral'],
-    ['Gotas', 'gotas'],
-    ['Xarope', 'xarope'],
-    ['Comprimido/Cápsula', 'comprimido_capsula'],
-    ['Injetável', 'injetavel']
+    ['oral', 'Oral'],
+    ['gotas', 'Gotas'],
+    ['xarope', 'Xarope'],
+    ['comprimido_capsula', 'Comprimido/Cápsula'],
+    ['injetavel', 'Injetável']
   ];
-  for (const [label, key] of pdKeys) {
-    const v = pd[key] || {};
-    ln.push(label + ':');
-    ln.push('- Dose (mg/kg ou equivalente): ' + (String(v.dose_mgkg || v.dose || '').trim() || 'não informado'));
-    ln.push('- Intervalo/frequência: ' + (String(v.intervalo || v.frequencia || '').trim() || 'não informado'));
-    ln.push('- Dose máxima: ' + (String(v.dose_maxima || '').trim() || 'não informado'));
-    ln.push('- Restrições etárias: ' + (String(v.restricoes_etarias || '').trim() || 'não informado'));
-    const modo = String(v.modo_uso || '').trim();
-    if (modo) ln.push('- Modo de uso: ' + modo);
-    ln.push('');
+  const pdBlocks = [];
+  for (const [k, label] of pdKeys) {
+    const v = (pd && pd[k] && typeof pd[k] === 'object') ? pd[k] : {};
+    const lines = [];
+    const dose = v.dose_mgkg || v.dose;
+    const intervalo = v.intervalo || v.frequencia;
+    if (isMeaningful(dose)) lines.push('- Dose (mg/kg ou equivalente): ' + String(dose).trim());
+    if (isMeaningful(intervalo)) lines.push('- Intervalo/frequência: ' + String(intervalo).trim());
+    if (isMeaningful(v.dose_maxima)) lines.push('- Dose máxima: ' + String(v.dose_maxima).trim());
+    if (isMeaningful(v.restricoes_etarias)) lines.push('- Restrições etárias: ' + String(v.restricoes_etarias).trim());
+    if (isMeaningful(v.modo_uso)) lines.push('- Modo de uso: ' + String(v.modo_uso).trim());
+    if (lines.length) {
+      pdBlocks.push(label + ':');
+      pdBlocks.push(...lines);
+      pdBlocks.push('');
+    }
+  }
+  if (pdBlocks.length) {
+    ln.push('Posologia pediátrica (por via/apresentação):');
+    ln.push(...pdBlocks);
   }
 
   pushList('Interações medicamentosas', m.interacoes_medicamentosas);
@@ -8002,7 +8042,7 @@ async function openMedicationMonograph(name) {
   const medName = String(name || '').trim();
   if (!medName) return;
   if (medMonographTitle) medMonographTitle.textContent = 'Informações do medicamento: ' + medName;
-  if (medMonographStatus) medMonographStatus.textContent = 'Carregando monografia.';
+  if (medMonographStatus) medMonographStatus.textContent = 'Carregando informações do medicamento.';
   if (medMonographContent) medMonographContent.textContent = 'Processando.';
   if (medMonographContent && medMonographContent.dataset) medMonographContent.dataset.copyText = '';
   showMedMonographOverlay(true);
@@ -8014,16 +8054,16 @@ async function openMedicationMonograph(name) {
       body: JSON.stringify({ medicamento: medName })
     });
     const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) throw new Error(data?.error || 'Falha ao obter monografia.');
+    if (!resp.ok) throw new Error(data?.error || 'Falha ao obter informações do medicamento.');
     const monografia = data?.monografia || data || {};
     const txt = buildMonographText(monografia);
     if (medMonographContent) {
       medMonographContent.textContent = txt || 'Nenhum conteúdo disponível.';
       if (medMonographContent.dataset) medMonographContent.dataset.copyText = medMonographContent.textContent;
     }
-    if (medMonographStatus) medMonographStatus.textContent = 'Monografia pronta.';
+    if (medMonographStatus) medMonographStatus.textContent = 'Informações prontas.';
   } catch (e) {
-    if (medMonographStatus) medMonographStatus.textContent = 'Falha ao obter monografia. ' + (e && e.message ? e.message : '');
+    if (medMonographStatus) medMonographStatus.textContent = 'Falha ao obter informações do medicamento. ' + (e && e.message ? e.message : '');
     if (medMonographContent) medMonographContent.textContent = 'Nenhum conteúdo disponível.';
   }
 }
@@ -8094,7 +8134,7 @@ async function analyzePrescriptionWithImages(dataUrls) {
         medRxMedButtons.appendChild(b);
       }
       if (medRxMedButtonsHint) {
-        medRxMedButtonsHint.textContent = unique.length ? (unique.length + " medicamento(s) identificado(s). Clique para ver a monografia.") : "Nenhum medicamento identificado.";
+        medRxMedButtonsHint.textContent = unique.length ? (unique.length + " medicamento(s) identificado(s). Clique para ver detalhes.") : "Nenhum medicamento identificado.";
       }
     }
 
@@ -9994,7 +10034,7 @@ recordBtn.onclick = () => {
         const t = (medMonographContent && medMonographContent.dataset && medMonographContent.dataset.copyText) ? medMonographContent.dataset.copyText : (medMonographContent ? medMonographContent.textContent : "");
         const s = String(t || "").trim();
         if (!s) {
-          alert("Não há monografia para copiar.");
+          alert("Não há informações do medicamento para copiar.");
           return;
         }
         copyToClipboard(s);
