@@ -1667,6 +1667,58 @@
     }
     
 
+
+    .page-refresh{
+      max-width: 980px;
+      margin: 10px auto 12px auto;
+      padding: 12px 14px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .page-refresh-text{
+      margin: 0;
+      color: #374151;
+      font-size: 13px;
+      line-height: 1.35;
+      flex: 1 1 320px;
+    }
+
+    .page-refresh-btn{
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      background: #0b5563;
+      color: #ffffff;
+      transition: filter 0.15s ease;
+    }
+
+    .page-refresh-btn:hover{
+      filter: brightness(0.96);
+    }
+
+    .page-refresh-btn:active{
+      filter: brightness(0.92);
+    }
+
+    @media (max-width: 520px){
+      .page-refresh{
+        padding: 12px;
+      }
+      .page-refresh-btn{
+        width: 100%;
+      }
+    }
 /* =========================
    MÓDULO: APRAZAMENTO DE PRESCRIÇÃO (folha editável e imprimível)
    ========================= */
@@ -2062,6 +2114,11 @@
   <div id="loginView" class="auth-shell">
     <div class="auth-card">
              <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
+
+    <div class="page-refresh">
+      <div class="page-refresh-text">Se notar qualquer instabilidade, travamento ou algo fora do padrão na tela, clique em "Atualizar página" para recarregar o sistema e retomar o uso com segurança.</div>
+      <button type="button" class="page-refresh-btn" onclick="window.location.reload();">Atualizar página</button>
+    </div>
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
 
@@ -2344,6 +2401,11 @@
 <div id="nurseView" class="hidden">
   <div class="page">
                 <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
+    
+    <div class="page-refresh">
+      <div class="page-refresh-text">Se notar qualquer instabilidade, travamento ou algo fora do padrão na tela, clique em "Atualizar página" para recarregar o sistema e retomar o uso com segurança.</div>
+      <button type="button" class="page-refresh-btn" onclick="window.location.reload();">Atualizar página</button>
+    </div>
      <h1>Atendimento de Enfermagem</h1>
 
 
@@ -4848,15 +4910,11 @@ const recordBtn = document.getElementById("recordBtn");
 
       if (soapNursingPanelEl) soapNursingPanelEl.classList.toggle("hidden", !consultMode);
 
-      const triageOnly = isTriageOnlyUrlMode();
-
       const moduleCards = document.querySelectorAll(".module-card");
       if (moduleCards && moduleCards.length) {
         moduleCards.forEach((el) => {
           if (!el) return;
-          // Em triagem normal (dentro do app), mantém os módulos visíveis.
-          // Só esconde os módulos no modo triagem-only (quando a URL força triagem).
-          el.classList.toggle("hidden", triageMode && triageOnly);
+          el.classList.toggle("hidden", triageMode);
         });
       }
     }
