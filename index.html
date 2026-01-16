@@ -2755,6 +2755,7 @@
     <div id="resultsCard" class="results-card hidden">
 
       <div id="patientInfoPanel" class="patientinfo-panel">
+        <p class="mini-status patientinfo-hint" style="margin: 0 0 8px 0;">Use este botão para gravar rapidamente nome completo, idade e peso do paciente. Esses dados melhoram a qualidade do SOAP e das condutas geradas.</p>
         <div class="patientinfo-row">
           <button id="patientInfoBtn" class="small-record-btn">Coletar dados essenciais</button>
           <div id="patientInfoTimer" class="mini-timer">00:00</div>
@@ -2856,10 +2857,13 @@
       <div class="section-header-row">
         <div class="soap-title-actions">
           <h2>SOAP</h2>
-          <button id="copyFullSoapBtn" class="btn-copy">Copiar SOAP</button>
-          <button id="printSoapBtn" class="btn-print">Imprimir SOAP</button>
         </div>
         <button id="recommendationsBtn">Perguntas essenciais</button>
+      </div>
+
+      <div class="prescription-actions" style="justify-content: flex-start; gap: 10px; margin-top: 8px;">
+        <button id="copyFullSoapBtn" class="btn-copy" type="button">Copiar SOAP</button>
+        <button id="printSoapBtn" class="btn-print" type="button">Imprimir SOAP</button>
       </div>
 
       <div class="soap-block">
@@ -2896,6 +2900,11 @@
 
       <h2>Evolução de Enfermagem</h2>
       <textarea id="nursingEvolutionOutput" class="prescription-textarea"></textarea>
+
+      <div class="prescription-actions">
+        <button id="copyNursingEvolutionBtn" class="btn-copy" type="button">Copiar evolução de enfermagem</button>
+        <button id="printNursingEvolutionBtn" class="btn-print" type="button">Imprimir evolução de enfermagem</button>
+      </div>
 
       <h2>Plano de Cuidados (Prescrição de Enfermagem)</h2>
       <textarea id="prescriptionOutput" class="prescription-textarea"></textarea>
@@ -4903,6 +4912,9 @@ const recordBtn = document.getElementById("recordBtn");
     const soapP = document.getElementById("soapP");
 
     const nursingEvolutionOutput = document.getElementById("nursingEvolutionOutput");
+
+    const copyNursingEvolutionBtn = document.getElementById("copyNursingEvolutionBtn");
+    const printNursingEvolutionBtn = document.getElementById("printNursingEvolutionBtn");
 
     const prescriptionOutput = document.getElementById("prescriptionOutput");
 
@@ -9462,6 +9474,25 @@ recordBtn.onclick = () => {
         openPrintWindow("SOAP", full);
       });
     }
+    if (copyNursingEvolutionBtn) {
+      copyNursingEvolutionBtn.addEventListener("click", () => {
+        const text = (nursingEvolutionOutput && nursingEvolutionOutput.value) ? nursingEvolutionOutput.value.trim() : "";
+        if (!text) {
+          alert("Não há evolução de enfermagem para copiar.");
+          return;
+        }
+        copyToClipboard(text);
+      });
+    }
+
+    if (printNursingEvolutionBtn) {
+      printNursingEvolutionBtn.addEventListener("click", () => {
+        const text = (nursingEvolutionOutput && nursingEvolutionOutput.value) ? nursingEvolutionOutput.value : "";
+        openPrintWindow("Evolução de Enfermagem", text);
+      });
+    }
+
+
 
     copyPrescriptionBtn.addEventListener("click", () => {
       const text = prescriptionOutput.value.trim();
