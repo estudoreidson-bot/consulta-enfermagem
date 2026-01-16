@@ -2777,18 +2777,17 @@
       <div id="triageReportPanel" class="triage-report-panel hidden">
         <div class="section-header-row">
           <div class="soap-title-actions">
-            <h2>Relatório de triagem hospitalar</h2>
-            <button id="triageCopyFullBtn" class="btn-copy" type="button">Copiar relatório</button>
-            <button id="triagePrintFullBtn" class="btn-print" type="button">Imprimir relatório</button>
+            <h2>Triagem hospitalar</h2>
           </div>
         </div>
+
+        <h3 style="margin: 8px 0 10px 0;">Classificação de risco por cores</h3>
 
         <div class="risk-triage-box" style="margin-bottom: 12px;">
           <div class="risk-triage-current">
             <span id="triageRiskBadge" class="risk-badge risk-none">Não informado</span>
             <div id="triageRiskMeaning" class="risk-meaning">Nenhum conteúdo disponível.</div>
           </div>
-          <div id="triageRiskLegend" class="risk-legend"></div>
         </div>
 
         <div class="triage-report-grid">
@@ -2843,6 +2842,10 @@
           <div>
             <h3>Relatório completo</h3>
             <textarea id="triageFullReport" class="prescription-textarea"></textarea>
+            <div class="prescription-actions">
+              <button id="triageCopyFullBtn" class="btn-copy" type="button">Copiar relatório</button>
+              <button id="triagePrintFullBtn" class="btn-print" type="button">Imprimir relatório</button>
+            </div>
           </div>
         </div>
 
@@ -9395,7 +9398,7 @@ if (triageCopyFullBtn) {
 if (triagePrintFullBtn) {
   triagePrintFullBtn.addEventListener("click", () => {
     const text = (triageFullReport && triageFullReport.value) ? triageFullReport.value : "";
-    openPrintWindow("Relatório de triagem hospitalar", text);
+    openPrintWindow("Triagem hospitalar", text);
   });
 }
 
