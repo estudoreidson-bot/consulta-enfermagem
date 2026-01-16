@@ -2865,6 +2865,8 @@
       </div>
 
 
+      <div id="soapNursingResultsPanel">
+
       <div class="section-header-row">
         <div class="soap-title-actions">
           <h2>SOAP</h2>
@@ -2952,6 +2954,7 @@
         <button id="printLactationBtn" class="btn-print">Imprimir orientações</button>
       </div>
 <div id="classificationsStatus" class="mini-status"></div>
+      </div>
     </div>
 
     
@@ -4823,6 +4826,108 @@ const recordBtn = document.getElementById("recordBtn");
     mountResultsCard(soapResultsMount);
 
     const soapError = document.getElementById("soapError");
+    const soapNursingResultsPanel = document.getElementById("soapNursingResultsPanel");
+
+    function setResultsView(view) {
+      const v = String(view || "").toLowerCase();
+
+      const triageMode = (v === "triage" || v === "triagem" || v === "triagem_hospitalar");
+      const handoffMode = (v === "handoff" || v === "passagem" || v === "sbar");
+      const docsMode = (v === "docs" || v === "documentos");
+      const consultMode = (!triageMode && !handoffMode && !docsMode);
+
+      const patientInfoPanelEl = document.getElementById("patientInfoPanel");
+      const triageReportPanelEl = document.getElementById("triageReportPanel");
+      const handoffPanelEl = document.getElementById("handoffPanel");
+      const soapNursingPanelEl = document.getElementById("soapNursingResultsPanel");
+
+      if (patientInfoPanelEl) patientInfoPanelEl.classList.toggle("hidden", triageMode || handoffMode || docsMode);
+
+      if (triageReportPanelEl) triageReportPanelEl.classList.toggle("hidden", !triageMode);
+      if (handoffPanelEl) handoffPanelEl.classList.toggle("hidden", !handoffMode);
+
+      if (soapNursingPanelEl) soapNursingPanelEl.classList.toggle("hidden", !consultMode);
+
+      const moduleCards = document.querySelectorAll(".module-card");
+      if (moduleCards && moduleCards.length) {
+        moduleCards.forEach((el) => {
+          if (!el) return;
+          el.classList.toggle("hidden", triageMode);
+        });
+      }
+    }
+
+    function isTriageOnlyUrlMode() {
+      try {
+        const u = new URL(window.location.href);
+        const p = u.searchParams;
+        const modo = String(p.get("modo") || p.get("mode") || "").toLowerCase();
+        const triagem = String(p.get("triagem") || p.get("triage") || "").toLowerCase();
+        const hash = String(u.hash || "").toLowerCase();
+
+        if (modo === "triagem" || modo === "triagem_hospitalar" || modo === "triage") return true;
+        if (triagem === "1" || triagem === "true" || triagem === "on") return true;
+        if (hash.includes("triagem") || hash.includes("triage")) return true;
+      } catch (e) {}
+      return false;
+    }
+
+    function applyTriageOnlyLayout(enable) {
+      const on = Boolean(enable);
+
+      // Esconde módulos que não pertencem à triagem
+      const hideIds = [
+        "consultTypePanel",
+        "liveGuidance",
+        "recordBtn",
+        "startNotice",
+        "timer",
+        "micStatus",
+        "pauseBtn",
+        "pauseLabel",
+        "finishHint",
+        "soapError",
+        "soapResultsMount",
+
+        "docsGuideBtn",
+        "docsRecordBtn",
+        "docsTimer",
+        "docsMicStatus",
+        "docsPauseBtn",
+        "docsPauseLabel",
+        "docsFinishHint",
+        "docsError",
+        "docsResultsMount"
+      ];
+
+      hideIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.toggle("hidden", on);
+      });
+
+      // Alguns controles estão em wrappers sem id
+      const controlsRows = document.querySelectorAll(".controls-row");
+      if (controlsRows && controlsRows.length) {
+        controlsRows.forEach((row) => {
+          // Mantém os controles da triagem visíveis
+          const triagePauseEl = document.getElementById("triagePauseBtn");
+          if (row && triagePauseEl && row.contains(triagePauseEl)) return;
+          row.classList.toggle("hidden", on);
+        });
+      }
+
+      // Em triagem-only, garante que os resultados exibam apenas triagem
+      if (on) {
+        setResultsView("triage");
+      }
+    }
+
+    // Ativa triagem-only automaticamente quando a URL indicar
+    if (isTriageOnlyUrlMode()) {
+      applyTriageOnlyLayout(true);
+    }
+
     const printBtn = document.getElementById("printBtn");
 
     const triageRecordBtn = document.getElementById("triageRecordBtn");
@@ -6089,7 +6194,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     }
 
     function triageClearReportUI() {
-      if (triageReportPanel) triageReportPanel.classList.add("hidden");
       if (triageReportStatus) triageReportStatus.textContent = "";
       if (triageRiskBadge) { triageRiskBadge.textContent = "Não informado"; applyRiskBadgeColorTo(triageRiskBadge, "Não informado"); }
       if (triageRiskMeaning) { triageRiskMeaning.textContent = "Nenhum conteúdo disponível."; triageRiskMeaning.dataset.printText = ""; }
@@ -6136,6 +6240,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
       if (triageMicStatus) triageMicStatus.innerText = "Gravando triagem...";
       if (recordBtn) recordBtn.disabled = true;
+      applyTriageOnlyLayout(true);
 
       triageResetLiveGuidanceState();
       triageRenderLiveGuidance();
@@ -6211,6 +6316,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
       mountResultsCard(triageResultsMount);
       if (resultsCard) resultsCard.classList.remove("hidden");
+      setResultsView("triage");
       if (triageReportPanel) triageReportPanel.classList.remove("hidden");
       if (triageReportStatus) {
         triageReportStatus.textContent = "Gerando relatório de triagem...";
@@ -6919,6 +7025,7 @@ function initSpeech() {
 
       mountResultsCard(soapResultsMount);
       resultsCard.classList.remove("hidden");
+      setResultsView("consulta");
     }
 
     function getCombinedSoapFromFields() {
