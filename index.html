@@ -9,6 +9,11 @@
     * {
       box-sizing: border-box;
     }
+    :root {
+      --brand-green: #28a745;
+      --round-btn-size: 180px;
+      --wa-safe-space: 140px;
+    }
     body {
       font-family: Arial, Helvetica, sans-serif;
       margin: 0;
@@ -22,7 +27,7 @@
     .page {
       width: 100%;
       max-width: 800px;
-      padding: 20px;
+      padding: 20px 20px var(--wa-safe-space) 20px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -143,6 +148,17 @@
     #recordBtn:active {
       transform: scale(0.97);
     }
+
+    /* Padronizacao: todos os botoes redondos principais */
+    #recordBtn,
+    #triageRecordBtn,
+    #docsRecordBtn,
+    #handoffRecordBtn {
+      width: var(--round-btn-size);
+      height: var(--round-btn-size);
+      border-radius: 50%;
+      font-size: 20px;
+    }
     
     /* Triagem hospitalar: botão e separador */
     .module-divider {
@@ -180,7 +196,7 @@
       margin-bottom: 10px;
       transition: background 0.2s, transform 0.1s;
     }
-    #triageRecordBtn.start { background: #007bff; }
+    #triageRecordBtn.start { background: var(--brand-green); }
     #triageRecordBtn.recording { background: #dc3545; }
     #triageRecordBtn:active { transform: scale(0.97); }
 
@@ -290,7 +306,7 @@
       margin-bottom: 10px;
       transition: background 0.2s, transform 0.1s;
     }
-    #handoffRecordBtn.start { background: #007bff; }
+    #handoffRecordBtn.start { background: var(--brand-green); }
     #handoffRecordBtn.recording { background: #dc3545; }
     #handoffRecordBtn:active { transform: scale(0.97); }
 
@@ -1909,7 +1925,7 @@
       padding: 10px 12px;
       cursor: pointer;
       font-size: 13px;
-      background: #1f6feb;
+      background: var(--brand-green);
       color: #fff;
     }
     .roster-actions button.secondary {
