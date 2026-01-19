@@ -4385,6 +4385,190 @@ Transcrição (trecho):
 });
 
 
+// ============================
+// Guia em tempo real: Documentos (perguntas essenciais para melhorar a qualidade do documento)
+// ============================
+app.post("/api/guia-documentos", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const transcricao = normalizeText(body.transcricao || "", 12000);
+
+    if (!transcricao || transcricao.length < 20) {
+      return res.json({ tipo_documento: "", finalidade: "", perguntas: [] });
+    }
+
+    // Lista (idêntica à usada no gerador de relatórios) para manter consistência de tipos
+    const tiposPermitidos = [
+      "Declaração de comparecimento",
+      "Declaração de permanência",
+      "Declaração para acompanhante",
+      "Declaração de recebimento de orientações",
+      "Declaração de recusa de procedimento/conduta",
+      "Termo de consentimento informado (procedimento de enfermagem)",
+      "Termo de ciência e responsabilidade (orientações e riscos)",
+      "Comunicado para escola",
+      "Relatório para escola (necessidades específicas)",
+      "Comunicado ao Conselho Tutelar",
+      "Relatório para Conselho Tutelar (proteção à criança/adolescente)",
+      "Relatório de curativo seriado",
+      "Registro de procedimento de curativo",
+      "Registro de retirada de pontos/suturas",
+      "Registro de procedimento de vacinação",
+      "Registro de evento adverso pós-vacinação (EAPV)",
+      "Registro de procedimento de administração de medicamentos",
+      "Registro de administração de medicamento controlado (registro interno)",
+      "Registro de coleta de exames",
+      "Registro de nebulização/oxigenoterapia",
+      "Registro de sondagem vesical",
+      "Registro de troca de sonda/traqueostomia/gastrostomia",
+      "Registro de visita domiciliar",
+      "Relatório de visita domiciliar",
+      "Relatório de adesão e educação em saúde (HAS/DM)",
+      "Relatório de acompanhamento de hipertensão (HAS)",
+      "Relatório de acompanhamento de diabetes (DM)",
+      "Relatório de acompanhamento de asma/DPOC",
+      "Relatório de acompanhamento de saúde da criança (puericultura)",
+      "Relatório de acompanhamento de pré-natal (enfermagem)",
+      "Relatório de puerpério (enfermagem)",
+      "Relatório para assistência social (vulnerabilidade e insumos)",
+      "Solicitação de insumos (fraldas, curativos, suplementos)",
+      "Solicitação de fraldas (infantil/geriátrica)",
+      "Solicitação de materiais para ostomia",
+      "Solicitação de dieta enteral/suplementação",
+      "Solicitação de oxigenoterapia domiciliar",
+      "Solicitação de equipamentos de apoio (cadeira de rodas, colchão pneumático)",
+      "Solicitação de transporte sanitário",
+      "Solicitação de avaliação médica",
+      "Encaminhamento para Médico (demanda espontânea)",
+      "Encaminhamento para sala de vacina",
+      "Encaminhamento para curativos/ambulatório de feridas",
+      "Encaminhamento para CAPS / saúde mental",
+      "Relatório para CAPS / saúde mental (enfermagem)",
+      "Encaminhamento para Serviço Social",
+      "Encaminhamento para Psicologia",
+      "Encaminhamento para Nutrição",
+      "Encaminhamento para Fisioterapia",
+      "Encaminhamento para Fonoaudiologia",
+      "Encaminhamento para Odontologia",
+      "Encaminhamento para especialista / rede",
+      "Encaminhamento para urgência/emergência",
+      "Relatório de evolução de enfermagem",
+      "Relatório de intercorrência/ocorrência",
+      "Ata de reunião",
+      "Registro de reunião de equipe (ATA breve)",
+      "Comunicado interno da equipe",
+      "Outros"
+    ];
+
+    const tiposTexto = tiposPermitidos.map(t => `- ${t}`).join("\n");
+
+    let tipo_documento = "";
+    let finalidade = "";
+    let perguntas = [];
+
+    if (process.env.OPENAI_API_KEY) {
+      const prompt = `
+Você é um enfermeiro humano auxiliando outro enfermeiro a redigir um documento (administrativo/assistencial) a partir de uma transcrição.
+Objetivo: identificar o tipo de documento e sugerir até 3 perguntas essenciais (opcionais) que ajudem a completar campos e melhorar a qualidade do documento.
+Regras:
+- Não invente dados.
+- Não escreva emojis e não use símbolos gráficos.
+- Perguntas curtas, objetivas e diretamente úteis para completar o documento.
+- Retorne JSON estrito.
+
+Tipos permitidos (escolha exatamente um, sem variações):
+${tiposTexto}
+
+Retorne JSON no formato:
+{
+  "tipo_documento": "...",
+  "finalidade": "...",
+  "perguntas_sugeridas": ["...", "...", "..."]
+}
+
+Transcrição:
+"""${transcricao}"""
+`;
+
+      const data = await callOpenAIJson(prompt);
+      tipo_documento = typeof data?.tipo_documento === "string" ? data.tipo_documento.trim() : "";
+      finalidade = typeof data?.finalidade === "string" ? data.finalidade.trim() : "";
+      const raw = Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : [];
+      perguntas = raw.map(x => String(x || "").trim()).filter(Boolean).slice(0, 3);
+
+      if (tipo_documento && !tiposPermitidos.includes(tipo_documento)) {
+        // Se vier fora da lista, força para Outros
+        tipo_documento = "Outros";
+      }
+    } else {
+      const t = transcricao.toLowerCase();
+
+      const has = (kw) => t.includes(String(kw || "").toLowerCase());
+
+      if (has("comparecimento")) tipo_documento = "Declaração de comparecimento";
+      else if (has("perman") || has("permane")) tipo_documento = "Declaração de permanência";
+      else if (has("acompanh")) tipo_documento = "Declaração para acompanhante";
+      else if (has("ata") && (has("reuni") || has("equipe"))) tipo_documento = "Ata de reunião";
+      else if (has("curativo")) tipo_documento = "Relatório de curativo seriado";
+      else if (has("vacina") || has("imuniza")) tipo_documento = "Registro de procedimento de vacinação";
+      else if (has("eapv") || (has("evento") && has("vacina"))) tipo_documento = "Registro de evento adverso pós-vacinação (EAPV)";
+      else if (has("encaminh") && has("caps")) tipo_documento = "Encaminhamento para CAPS / saúde mental";
+      else if (has("encaminh") && (has("urg") || has("emerg"))) tipo_documento = "Encaminhamento para urgência/emergência";
+      else if (has("encaminh")) tipo_documento = "Encaminhamento para Médico (demanda espontânea)";
+      else if (has("fralda") || has("insumo") || has("curativos") || has("suplement")) tipo_documento = "Solicitação de insumos (fraldas, curativos, suplementos)";
+      else if (has("visita domic")) tipo_documento = "Relatório de visita domiciliar";
+      else if (has("evolu") && has("enferm")) tipo_documento = "Relatório de evolução de enfermagem";
+      else tipo_documento = "Outros";
+
+      finalidade = "";
+
+      const base = [
+        "Qual unidade/serviço e município/UF?",
+        "Qual nome completo do paciente, CPF e CNS?",
+        "Qual data de nascimento/idade, endereço e telefone?",
+        "Para qual destino/entidade é o documento?",
+        "Qual data e horário do atendimento/procedimento?"
+      ];
+
+      const specific = [];
+      if (tipo_documento === "Declaração de comparecimento" || tipo_documento === "Declaração de permanência") {
+        specific.push("Qual data e horários (entrada e saída), se aplicável?");
+        specific.push("A declaração será para trabalho, escola ou outro destino?");
+      } else if (tipo_documento.toLowerCase().startsWith("encaminhamento")) {
+        specific.push("Para qual serviço/profissional é o encaminhamento?");
+        specific.push("Qual motivo principal do encaminhamento e há sinais de alarme?");
+      } else if (tipo_documento.toLowerCase().startsWith("solicitação")) {
+        specific.push("Quais itens/quantidades estão sendo solicitados e por quanto tempo?");
+        specific.push("Qual condição/necessidade que justifica a solicitação?");
+      } else if (tipo_documento.includes("curativo")) {
+        specific.push("Onde é a lesão e qual extensão/aspecto (exsudato, odor, sinais de infecção)?");
+        specific.push("Qual cobertura/conduta atual e periodicidade do curativo?");
+      } else if (tipo_documento.includes("vacinação") || tipo_documento.includes("EAPV")) {
+        specific.push("Qual vacina, dose, lote, via e local de aplicação?");
+        specific.push("Qual reação/evento e início dos sintomas (se aplicável)?");
+      }
+
+      const merged = []
+      for (const q of specific) {
+        if (merged.length >= 3) break;
+        merged.push(q);
+      }
+      for (const q of base) {
+        if (merged.length >= 3) break;
+        if (!merged.some(x => x.toLowerCase() === q.toLowerCase())) merged.push(q);
+      }
+
+      perguntas = merged.slice(0, 3);
+    }
+
+    return res.json({ tipo_documento, finalidade, perguntas });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna no guia de documentos." });
+  }
+});
+
+
 // ======================================================================
 // INICIALIZAÇÃO DO SERVIDOR
 // ======================================================================
