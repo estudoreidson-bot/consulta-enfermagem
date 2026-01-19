@@ -5176,6 +5176,43 @@ const recordBtn = document.getElementById("recordBtn");
     const docsLiveGuidanceStatus = document.getElementById("docsLiveGuidanceStatus");
     const docsLiveGuidanceList = document.getElementById("docsLiveGuidanceList");
 
+    // Perguntas padrão do módulo "Gerar documentos".
+    // Objetivo: guiar o profissional para definir o documento e garantir data/hora desde o início.
+    const docsDefaultQuestions = [
+      "Qual documento deseja gerar (tipo)?",
+      "Para quem será o documento e qual a finalidade (destinatário/uso)?",
+      "Qual a data e o horário do registro/evento/atendimento?"
+    ];
+
+    function renderDocsGuidanceQuestions(perguntas, tipoIdentificado) {
+      const list = Array.isArray(perguntas) ? perguntas.map(x => String(x || "").trim()).filter(Boolean).slice(0, 3) : [];
+      const safeTipo = String(tipoIdentificado || "").trim();
+
+      if (docsLiveGuidanceContext) {
+        docsLiveGuidanceContext.textContent = safeTipo ? ("Tipo identificado: " + safeTipo) : "";
+      }
+
+      if (docsLiveGuidanceStatus) {
+        docsLiveGuidanceStatus.textContent = list.length
+          ? "Perguntas essenciais sugeridas (não obrigatórias)."
+          : "Nenhuma pergunta sugerida no momento.";
+      }
+
+      if (docsLiveGuidanceList) {
+        if (!list.length) {
+          docsLiveGuidanceList.innerHTML = '<div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>';
+        } else {
+          docsLiveGuidanceList.innerHTML = "";
+          list.forEach((q, idx) => {
+            const el = document.createElement("div");
+            el.className = "live-guidance-item";
+            el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${escapeHtml(q)}</div>`;
+            docsLiveGuidanceList.appendChild(el);
+          });
+        }
+      }
+    }
+
     const triageReportPanel = document.getElementById("triageReportPanel");
     const triageRiskBadge = document.getElementById("triageRiskBadge");
     const triageRiskMeaning = document.getElementById("triageRiskMeaning");
@@ -9649,9 +9686,11 @@ if (medicalDoubtSendBtn) {
 
       const transcricao = docsGetCombinedTranscript();
       if (!transcricao || transcricao.length < 40) {
+        // Mesmo antes de haver transcrição suficiente, mostrar perguntas próprias do módulo.
         if (docsLiveGuidanceStatus) {
-          docsLiveGuidanceStatus.textContent = "Fale o conteúdo do documento para receber perguntas essenciais em tempo real.";
+          docsLiveGuidanceStatus.textContent = "Perguntas essenciais sugeridas (não obrigatórias).";
         }
+        renderDocsGuidanceQuestions(docsDefaultQuestions, "");
         return;
       }
 
@@ -9693,29 +9732,7 @@ if (medicalDoubtSendBtn) {
           : (Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : []);
         const perguntas = perguntasRaw.map(x => String(x || "").trim()).filter(Boolean).slice(0, 3);
 
-        if (docsLiveGuidanceContext) {
-          docsLiveGuidanceContext.textContent = tipo ? ("Tipo identificado: " + tipo) : "";
-        }
-
-        if (docsLiveGuidanceStatus) {
-          docsLiveGuidanceStatus.textContent = perguntas.length
-            ? "Perguntas essenciais sugeridas (não obrigatórias)."
-            : "Nenhuma pergunta sugerida no momento.";
-        }
-
-        if (docsLiveGuidanceList) {
-          if (!perguntas.length) {
-            docsLiveGuidanceList.innerHTML = '<div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>';
-          } else {
-            docsLiveGuidanceList.innerHTML = "";
-            perguntas.forEach((q, idx) => {
-              const el = document.createElement("div");
-              el.className = "live-guidance-item";
-              el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${escapeHtml(q)}</div>`;
-              docsLiveGuidanceList.appendChild(el);
-            });
-          }
-        }
+        renderDocsGuidanceQuestions(perguntas.length ? perguntas : docsDefaultQuestions, tipo);
       } catch (e) {
         console.error("Erro ao atualizar guia de documento:", e);
         if (docsLiveGuidanceStatus) {

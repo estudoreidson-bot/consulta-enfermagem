@@ -658,6 +658,44 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+// Formatação de data/hora para uso em documentos (pt-BR).
+// Mantém fuso configurável para ambientes de deploy.
+const APP_TIMEZONE = process.env.APP_TIMEZONE || process.env.TZ || "America/Fortaleza";
+
+function formatDateTimeBR(dateObj) {
+  const d = (dateObj instanceof Date) ? dateObj : new Date();
+  try {
+    const fmt = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: APP_TIMEZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    });
+    // pt-BR normalmente retorna "dd/mm/aaaa hh:mm"
+    return String(fmt.format(d)).replace(/\s+/, " ").trim();
+  } catch {
+    // Fallback conservador (ISO -> dd/mm/aaaa hh:mm)
+    const pad = (n) => String(n).padStart(2, "0");
+    const y = d.getFullYear();
+    const m = pad(d.getMonth() + 1);
+    const day = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const mm = pad(d.getMinutes());
+    return `${day}/${m}/${y} ${hh}:${mm}`;
+  }
+}
+
+function splitDateTimeBR(dateTimeBR) {
+  const s = String(dateTimeBR || "").trim();
+  const parts = s.split(/\s+/).filter(Boolean);
+  const data = parts[0] || "";
+  const hora = parts[1] || "";
+  return { data, hora };
+}
+
 function currentYYYYMM() {
   const d = new Date();
   const y = d.getFullYear();
@@ -3805,6 +3843,10 @@ app.post("/api/gerar-relatorio", requirePaidOrAdmin, async(req, res) => {
 
     const tiposTexto = tiposPermitidos.map(t => `- ${t}`).join("\n");
 
+    // Data/hora atuais para preencher automaticamente no documento final.
+    const dateTimeBR = formatDateTimeBR(new Date());
+    const { data: dataRegistroBR, hora: horaRegistroBR } = splitDateTimeBR(dateTimeBR);
+
     const prompt = `
 Você é um enfermeiro humano redigindo documentação administrativa e assistencial de enfermagem a partir da transcrição (português do Brasil).
 O texto final será colado no S.U.I.S., portanto deve estar pronto para colar: texto simples, sem emojis e sem símbolos gráficos.
@@ -3826,6 +3868,13 @@ Regras obrigatórias:
 - Use linguagem clara, objetiva e formal.
 - Evite abreviações sem definição.
 - Não use listas com bullets. Se precisar numerar, use "1.", "2.", cada item em uma nova linha.
+
+Preenchimento obrigatório:
+- Sempre preencher a data e o horário do registro do documento com os valores abaixo.
+- Se houver campo separado, use exatamente estes valores:
+  Data do registro: ${dataRegistroBR}
+  Hora do registro: ${horaRegistroBR}
+  (Horário local)
 
 Estrutura (usar conforme o tipo):
 - Primeira linha: TÍTULO EM CAIXA ALTA (igual ao tipo escolhido).
@@ -3875,7 +3924,16 @@ Transcrição:
     const tipo = (typeof data?.tipo_documento === "string" ? data.tipo_documento.trim() : "") || (tipoSelecionado || "");
     const finalidade = typeof data?.finalidade === "string" ? data.finalidade.trim() : "";
     const camposPendentes = normalizeArrayOfStrings(data?.campos_pendentes, 40, 140);
-    const documento = typeof data?.documento === "string" ? data.documento.trim() : "";
+    let documento = typeof data?.documento === "string" ? data.documento.trim() : "";
+
+    // Garantia final: injeta data/hora do registro quando o modelo deixar em branco.
+    if (documento) {
+      const dtFull = `${dataRegistroBR} ${horaRegistroBR}`.trim();
+      documento = documento
+        .replace(/(Data\s+e\s+hora\s+do\s+registro\s*:\s*)(_{2,}|\s*)/i, `$1${dtFull}`)
+        .replace(/(Data\s+do\s+registro\s*:\s*)(_{2,}|\s*)/i, `$1${dataRegistroBR}`)
+        .replace(/(Hora\s+do\s+registro\s*:\s*)(_{2,}|\s*)/i, `$1${horaRegistroBR}`);
+    }
 
     return res.json({
       tipo_documento: tipo,
@@ -3923,18 +3981,21 @@ function suggestDocumentQuestionsHeuristic(transcricao, tipo) {
     if (q.length < 3) q.push(v);
   };
 
-  push("Qual a Unidade/Serviço e Município/UF?");
-  push("Qual o nome completo do paciente e pelo menos um identificador (CPF ou CNS)?");
-  if (String(tipo || "").toLowerCase().includes("comparecimento") || String(tipo || "").toLowerCase().includes("perman")) {
-    push("Qual a data e o horário de início e término do atendimento/permanência?");
-  } else if (String(tipo || "").toLowerCase().includes("encaminh")) {
+  // Para este módulo, as perguntas devem começar pelo tipo de documento.
+  push("Qual documento deseja gerar (tipo)?");
+  push("Para quem será o documento e qual a finalidade (destinatário/uso)?");
+
+  const t = String(tipo || "").toLowerCase();
+  if (t.includes("comparecimento") || t.includes("perman")) {
+    push("Qual a data e o horário de chegada e de saída (ou período) do atendimento/permanência?");
+  } else if (t.includes("encaminh")) {
     push("Para qual serviço/profissional é o encaminhamento e qual o motivo principal?");
-  } else if (String(tipo || "").toLowerCase().includes("curativo")) {
+  } else if (t.includes("curativo")) {
     push("Qual o local da lesão, materiais utilizados e conduta/orientações de curativo?");
-  } else if (String(tipo || "").toLowerCase().includes("ata")) {
+  } else if (t.includes("ata") || t.includes("reuni")) {
     push("Qual a data/horário da reunião, pauta e participantes?");
   } else {
-    push("Qual a finalidade/destino do documento (para quem/onde será apresentado)?");
+    push("Quais dados de identificação e fatos essenciais precisam constar (unidade, paciente, data/hora, descrição objetiva do ocorrido)?");
   }
 
   return q.slice(0, 3);
@@ -3949,9 +4010,15 @@ async function generateDocumentLiveGuide(transcricao) {
   // Com API Key, tenta uma inferência melhor
   if (process.env.OPENAI_API_KEY) {
     const prompt = `
-Você está auxiliando um enfermeiro a redigir um documento a partir de uma transcrição.
-Tarefa: identificar o tipo de documento mais provável e sugerir no máximo 3 perguntas essenciais (curtas e objetivas) para completar o documento.
-Regras:
+Você está auxiliando um enfermeiro a gerar um documento administrativo/assistencial a partir de uma transcrição.
+Tarefa:
+1) Identificar o tipo de documento mais provável.
+2) Sugerir no máximo 3 perguntas essenciais (curtas e objetivas) para completar o documento.
+
+Regras obrigatórias:
+- As perguntas devem ser próprias do módulo de geração de documentos, começando por: tipo de documento e destinatário/finalidade.
+- Priorize perguntas que faltam para deixar o documento pronto: identificação, unidade/local, datas e horários completos.
+- Evite perguntas clínicas genéricas (ex.: queixa principal, sinais vitais, intervenção), a menos que sejam indispensáveis ao tipo de documento.
 - Não invente dados.
 - Não use emojis.
 - As perguntas são apenas para guiar o profissional, não são obrigatórias.
