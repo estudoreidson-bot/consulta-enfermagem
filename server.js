@@ -277,6 +277,22 @@ app.use(cors());
 app.use(bodyParser.json({ limit: "25mb" }));
 app.use(bodyParser.urlencoded({ limit: "25mb", extended: true }));
 
+// Parser bruto para áudio (MediaRecorder / Blob).
+// Mantido separado do bodyParser.json para não interferir em rotas JSON.
+const audioRawParser = express.raw({
+  type: [
+    "audio/webm",
+    "audio/wav",
+    "audio/mpeg",
+    "audio/mp4",
+    "audio/mp3",
+    "audio/x-m4a",
+    "audio/m4a",
+    "application/octet-stream"
+  ],
+  limit: "25mb"
+});
+
 // Servir o index.html apenas na rota raiz (útil para testes locais)
 app.get("/", (req, res) => {
   return res.sendFile(path.join(__dirname, "index.html"));
@@ -428,8 +444,13 @@ function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
   if (!Array.isArray(arr)) return [];
   const out = [];
   for (const v of arr) {
-    if (typeof v !== "string") continue;
-    const t = v.trim();
+    let t = "";
+    if (typeof v === "string") {
+      t = v.trim();
+    } else if (v && typeof v === "object") {
+      const cand = v.pergunta || v.texto || v.rotulo || v.campo || "";
+      if (typeof cand === "string") t = cand.trim();
+    }
     if (!t) continue;
     out.push(t.length > maxLenEach ? t.slice(0, maxLenEach) : t);
     if (out.length >= maxItems) break;
@@ -1265,6 +1286,55 @@ function requirePaidOrAdmin(req, res, next) {
   }
   next();
 }
+
+// ======================================================================
+// ÁUDIO (TRANSCRIÇÃO) – recebe Blob (audio/webm etc) e devolve texto
+// - Usado pelo módulo de geração de documentos para transcrever toda a consulta.
+// - Limite de upload: 25MB (conforme Audio API).
+// ======================================================================
+app.post("/api/transcrever-audio", requirePaidOrAdmin, audioRawParser, async (req, res) => {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(503).json({ error: "OPENAI_API_KEY ausente no backend." });
+    }
+
+    const ctype = String(req.headers["content-type"] || "").toLowerCase();
+    const buf = req.body;
+    if (!Buffer.isBuffer(buf) || buf.length < 500) {
+      return res.status(400).json({ error: "Áudio inválido ou vazio." });
+    }
+
+    // Extensão baseada no content-type. Mantém webm como padrão (MediaRecorder).
+    let ext = "webm";
+    if (ctype.includes("wav")) ext = "wav";
+    else if (ctype.includes("mpeg") || ctype.includes("mp3")) ext = "mp3";
+    else if (ctype.includes("mp4")) ext = "mp4";
+    else if (ctype.includes("m4a")) ext = "m4a";
+
+    const tmpPath = path.join("/tmp", `reimed_audio_${crypto.randomBytes(8).toString("hex")}.${ext}`);
+    fs.writeFileSync(tmpPath, buf);
+
+    try {
+      // Speech-to-text via Audio API (gpt-4o-mini-transcribe).
+      // Docs: Audio API transcriptions endpoint.
+      const transcription = await openai.audio.transcriptions.create({
+        file: fs.createReadStream(tmpPath),
+        model: "gpt-4o-mini-transcribe",
+        // Ajuda a pontuar e manter termos médicos.
+        prompt: "Consulta médica em português do Brasil. Preservar termos médicos, exames (ressonância, tomografia, RX) e siglas (INSS, CID-10).",
+        response_format: "json"
+      });
+
+      const text = typeof transcription?.text === "string" ? transcription.text.trim() : "";
+      return res.json({ text });
+    } finally {
+      try { fs.unlinkSync(tmpPath); } catch {}
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao transcrever áudio." });
+  }
+});
 
 // Rotas de autenticação
 
@@ -4059,6 +4129,7 @@ Tarefa:
 1) Identificar qual é o TIPO DE DOCUMENTO solicitado e a FINALIDADE (destino/uso) com base na transcrição.
 2) Produzir o DOCUMENTO completo, padronizado e formal, no tipo adequado, sem inventar dados.
 3) Listar campos pendentes (o que faltou informar) para que o profissional possa completar.
+4) Se houver sintomas/queixas relatadas e/ou leitura de exames (ex.: RM, TC, RX, laboratoriais), você DEVE incluir essas informações no corpo do documento, na seção apropriada, sem omitir. Se o exame foi lido em voz alta, preserve os principais achados descritos.
 
 Se o campo "tipo_documento" vier informado no request, você deve usar EXATAMENTE esse tipo como título e estrutura.
 Se não vier informado, escolha o tipo mais adequado dentre os tipos permitidos. Se não for possível, use "Outros".
@@ -4098,7 +4169,11 @@ Saída: JSON estrito, sem texto fora do JSON:
 {
   "tipo_documento": "...",
   "finalidade": "...",
+  "campos_preenchidos": ["..."],
   "campos_pendentes": ["..."],
+  "perguntas": [
+    {"campo": "...", "pergunta": "..."}
+  ],
   "documento": "..."
 }
 
@@ -4115,6 +4190,7 @@ Tarefa:
 1) Identificar qual é o TIPO DE DOCUMENTO solicitado e a FINALIDADE (destino/uso) com base na transcrição.
 2) Produzir o DOCUMENTO completo, padronizado e formal, no tipo adequado, sem inventar dados.
 3) Listar campos pendentes (o que faltou informar) para que o profissional possa completar.
+4) Se houver queixa/sintomas, limitações funcionais, medidas aferidas e/ou leitura de exames citadas na transcrição, você DEVE incluir essas informações no corpo do documento, na seção apropriada, sem omitir.
 
 Se o campo "tipo_documento" vier informado no request, você deve usar EXATAMENTE esse tipo como título e estrutura, mesmo que a transcrição sugira outro.
 Se não vier informado, escolha o tipo mais adequado dentre os tipos permitidos. Se não for possível, use "Outros".
@@ -4161,7 +4237,11 @@ Saída: JSON estrito, sem texto fora do JSON:
 {
   "tipo_documento": "...",
   "finalidade": "...",
+  "campos_preenchidos": ["..."],
   "campos_pendentes": ["..."],
+  "perguntas": [
+    {"campo": "...", "pergunta": "..."}
+  ],
   "documento": "..."
 }
 
@@ -4274,41 +4354,102 @@ function suggestDocumentQuestionsHeuristic(transcricao, tipo) {
 async function generateDocumentLiveGuide(transcricao) {
   const safeTranscricao = normalizeText(transcricao || "", 12000);
   if (!safeTranscricao || safeTranscricao.length < 20) {
-    return { tipo_documento: "", perguntas: [] };
+    return { tipo_documento: "", finalidade: "", campos_preenchidos: [], campos_pendentes: [], perguntas: [] };
   }
 
   const inssContext = isInssContext(safeTranscricao, null);
 
-  // Com API Key, tenta uma inferência melhor
+  // Com API Key, tenta uma inferência melhor e remove perguntas já respondidas
   if (process.env.OPENAI_API_KEY) {
     const profissional = inssContext ? "médico" : "enfermeiro";
     const prompt = `
-Você está auxiliando um ${profissional} a redigir um documento a partir de uma transcrição.
-Tarefa: identificar o tipo de documento mais provável e sugerir no máximo 3 perguntas essenciais (curtas e objetivas) para completar o documento.
+Você está auxiliando um ${profissional} a gerar documentos a partir de uma transcrição (português do Brasil).
+
+Objetivo:
+1) Identificar o TIPO DE DOCUMENTO e a FINALIDADE (destino/uso) citados.
+2) Identificar quais informações IMPORTANTES já foram ditas na transcrição (campos preenchidos).
+3) Sugerir no máximo 3 perguntas ESSENCIAIS APENAS para o que estiver faltando.
+
+Campos importantes (marque como preenchido SOMENTE se a informação estiver presente na transcrição, mesmo que de forma aproximada):
+- paciente_nome
+- paciente_identificador (CPF ou CNS)
+- paciente_idade_ou_dn
+- telefone_endereco
+- unidade_servico
+- municipio_uf
+- finalidade_destino
+- profissao_atividade
+- queixa_sintomas
+- limitacao_funcional
+- exames_apresentados
+- tratamentos_realizados
+- exame_fisico
+- periodo_afastamento (se aplicável)
+- cid10 (se aplicável)
+
 Regras:
 - Não invente dados.
 - Não use emojis.
-- As perguntas são apenas para guiar o profissional, não são obrigatórias.
+- NÃO repita perguntas cujo campo já esteja preenchido.
+- As perguntas devem ser curtas, objetivas e úteis para completar o documento.
 
 Retorne JSON estrito no formato:
 {
   "tipo_documento": "string",
-  "perguntas": ["...", "...", "..."]
+  "finalidade": "string",
+  "campos_preenchidos": ["..."],
+  "campos_pendentes": ["..."],
+  "perguntas": [
+    {"campo": "string", "pergunta": "string"}
+  ]
 }
 
 Transcrição (trecho):
 """${safeTranscricao}"""
 `;
+
     const data = await callOpenAIJson(prompt);
+
     const tipo = typeof data?.tipo_documento === "string" ? data.tipo_documento.trim() : "";
-    const perguntas = Array.isArray(data?.perguntas) ? data.perguntas : (Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : []);
-    const outPerg = normalizeArrayOfStrings(perguntas, 3, 220);
-    return { tipo_documento: tipo || inferDocumentTypeHeuristic(safeTranscricao), perguntas: outPerg.slice(0, 3) };
+    const finalidade = typeof data?.finalidade === "string" ? data.finalidade.trim() : "";
+    const camposPreenchidos = normalizeArrayOfStrings(data?.campos_preenchidos, 25, 60);
+    const camposPendentes = normalizeArrayOfStrings(data?.campos_pendentes, 25, 120);
+
+    // Perguntas podem vir como objetos ou strings; normaliza para objetos.
+    const perguntasRaw = Array.isArray(data?.perguntas) ? data.perguntas : [];
+    const perguntasObj = [];
+    for (const p of perguntasRaw) {
+      if (perguntasObj.length >= 3) break;
+      if (!p) continue;
+      if (typeof p === "string") {
+        const s = p.trim();
+        if (!s) continue;
+        perguntasObj.push({ campo: "", pergunta: s });
+        continue;
+      }
+      if (typeof p === "object") {
+        const campo = String(p.campo || "").trim();
+        const pergunta = String(p.pergunta || p.texto || "").trim();
+        if (!pergunta) continue;
+        // Se o modelo marcou o campo como preenchido, não pergunta de novo.
+        if (campo && camposPreenchidos.includes(campo)) continue;
+        perguntasObj.push({ campo, pergunta });
+      }
+    }
+
+    const tipoFinal = tipo || inferDocumentTypeHeuristic(safeTranscricao);
+    return {
+      tipo_documento: tipoFinal,
+      finalidade,
+      campos_preenchidos: camposPreenchidos,
+      campos_pendentes: camposPendentes,
+      perguntas: perguntasObj
+    };
   }
 
   const tipo = inferDocumentTypeHeuristic(safeTranscricao);
-  const perguntas = suggestDocumentQuestionsHeuristic(safeTranscricao, tipo);
-  return { tipo_documento: tipo, perguntas };
+  const perguntas = suggestDocumentQuestionsHeuristic(safeTranscricao, tipo).map(q => ({ campo: "", pergunta: q }));
+  return { tipo_documento: tipo, finalidade: "", campos_preenchidos: [], campos_pendentes: [], perguntas };
 }
 
 app.post("/api/documento-tempo-real", requirePaidOrAdmin, async (req, res) => {

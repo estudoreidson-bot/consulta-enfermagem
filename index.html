@@ -4959,6 +4959,15 @@ Ata de reunião:
     let docsFinalTranscript = "";
     let docsInterimTranscript = "";
 
+    // Captura de áudio (MediaRecorder) para transcrever a consulta inteira via API
+    let docsMediaStream = null;
+    let docsMediaRecorder = null;
+    let docsAudioChunks = [];
+    let docsUsingApiTranscription = false;
+
+    // Perguntas sugeridas (podem ser descartadas manualmente)
+    let docsDismissedQuestionKeys = new Set();
+
     let docsStartTime = null;
     let docsAccumulatedSeconds = 0;
     let docsTimerInterval = null;
@@ -9643,6 +9652,106 @@ if (medicalDoubtSendBtn) {
       return true;
     }
 
+    async function startDocsAudioRecorder() {
+      // Captura áudio para transcrição integral via API (mais fiel que SpeechRecognition).
+      // Não bloqueia o módulo caso falhe.
+      docsUsingApiTranscription = false;
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+          return false;
+        }
+
+        docsAudioChunks = [];
+        docsMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        let options = {};
+        if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+          options.mimeType = "audio/webm;codecs=opus";
+        } else if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported("audio/webm")) {
+          options.mimeType = "audio/webm";
+        }
+
+        docsMediaRecorder = new MediaRecorder(docsMediaStream, options);
+        docsMediaRecorder.ondataavailable = (ev) => {
+          if (ev.data && ev.data.size > 0) docsAudioChunks.push(ev.data);
+        };
+        docsMediaRecorder.start(1000);
+        docsUsingApiTranscription = true;
+        return true;
+      } catch (e) {
+        console.error("Falha ao iniciar captura de áudio (documentos):", e);
+        docsUsingApiTranscription = false;
+        return false;
+      }
+    }
+
+    function pauseDocsAudioRecorder() {
+      try {
+        if (docsMediaRecorder && docsMediaRecorder.state === "recording" && typeof docsMediaRecorder.pause === "function") {
+          docsMediaRecorder.pause();
+        }
+      } catch {}
+    }
+
+    function resumeDocsAudioRecorder() {
+      try {
+        if (docsMediaRecorder && docsMediaRecorder.state === "paused" && typeof docsMediaRecorder.resume === "function") {
+          docsMediaRecorder.resume();
+        }
+      } catch {}
+    }
+
+    async function stopDocsAudioRecorderAndGetBlob() {
+      try {
+        if (!docsMediaRecorder) return null;
+        const recorder = docsMediaRecorder;
+        return await new Promise((resolve) => {
+          recorder.onstop = () => {
+            try {
+              const mime = recorder.mimeType || "audio/webm";
+              const blob = new Blob(docsAudioChunks || [], { type: mime });
+              resolve(blob);
+            } catch {
+              resolve(null);
+            }
+          };
+          try { recorder.stop(); } catch { resolve(null); }
+        });
+      } finally {
+        try {
+          if (docsMediaStream) {
+            docsMediaStream.getTracks().forEach(t => { try { t.stop(); } catch {} });
+          }
+        } catch {}
+        docsMediaStream = null;
+        docsMediaRecorder = null;
+        docsAudioChunks = [];
+      }
+    }
+
+    async function transcribeDocsAudioBlob(blob) {
+      try {
+        if (!blob || !blob.size) return "";
+        const resp = await fetch(BACKEND_URL + "/api/transcrever-audio", {
+          method: "POST",
+          headers: {
+            "Content-Type": blob.type || "audio/webm",
+            "Authorization": authToken ? `Bearer ${authToken}` : ""
+          },
+          body: blob
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          console.warn("Falha ao transcrever áudio:", data);
+          return "";
+        }
+        return (data && typeof data.text === "string") ? data.text.trim() : "";
+      } catch (e) {
+        console.error("Erro ao transcrever áudio:", e);
+        return "";
+      }
+    }
+
     async function docsFetchLiveGuidance() {
       if (!docsIsRecording || docsIsPaused) return;
       if (docsGuidanceInFlight) return;
@@ -9665,14 +9774,20 @@ if (medicalDoubtSendBtn) {
       try {
         let resp = await fetch(BACKEND_URL + "/api/documento-tempo-real", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": authToken ? `Bearer ${authToken}` : ""
+          },
           body: JSON.stringify(payload)
         });
 
         if (resp.status === 404) {
           resp = await fetch(BACKEND_URL + "/api/guia-documento-tempo-real", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": authToken ? `Bearer ${authToken}` : ""
+            },
             body: JSON.stringify(payload)
           });
         }
@@ -9688,10 +9803,33 @@ if (medicalDoubtSendBtn) {
 
         const data = await resp.json().catch(() => ({}));
         const tipo = (data && (data.tipo_documento || data.tipo)) ? String(data.tipo_documento || data.tipo).trim() : "";
+
         const perguntasRaw = Array.isArray(data?.perguntas)
           ? data.perguntas
           : (Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : []);
-        const perguntas = perguntasRaw.map(x => String(x || "").trim()).filter(Boolean).slice(0, 3);
+
+        // Normaliza perguntas para objetos: { campo, pergunta }
+        const perguntas = [];
+        for (const p of perguntasRaw) {
+          if (perguntas.length >= 3) break;
+          if (!p) continue;
+          if (typeof p === "string") {
+            const s = p.trim();
+            if (!s) continue;
+            const key = `|${s}`;
+            if (docsDismissedQuestionKeys.has(key)) continue;
+            perguntas.push({ campo: "", pergunta: s, key });
+            continue;
+          }
+          if (typeof p === "object") {
+            const campo = String(p.campo || "").trim();
+            const pergunta = String(p.pergunta || p.texto || "").trim();
+            if (!pergunta) continue;
+            const key = `${campo}|${pergunta}`;
+            if (docsDismissedQuestionKeys.has(key)) continue;
+            perguntas.push({ campo, pergunta, key });
+          }
+        }
 
         if (docsLiveGuidanceContext) {
           docsLiveGuidanceContext.textContent = tipo ? ("Tipo identificado: " + tipo) : "";
@@ -9699,7 +9837,7 @@ if (medicalDoubtSendBtn) {
 
         if (docsLiveGuidanceStatus) {
           docsLiveGuidanceStatus.textContent = perguntas.length
-            ? "Perguntas essenciais sugeridas (não obrigatórias)."
+            ? "Perguntas essenciais sugeridas (apenas o que ainda falta)."
             : "Nenhuma pergunta sugerida no momento.";
         }
 
@@ -9711,8 +9849,24 @@ if (medicalDoubtSendBtn) {
             perguntas.forEach((q, idx) => {
               const el = document.createElement("div");
               el.className = "live-guidance-item";
-              el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${escapeHtml(q)}</div>`;
+              el.innerHTML = `
+                <div class="live-guidance-item-text">${idx + 1}. ${escapeHtml(q.pergunta)}</div>
+                <div class="live-guidance-item-actions">
+                  <button class="mini-red-btn" type="button" data-qkey="${escapeHtml(q.key)}">Já tem resposta</button>
+                </div>
+              `;
               docsLiveGuidanceList.appendChild(el);
+            });
+
+            // Dismiss manual
+            docsLiveGuidanceList.querySelectorAll("button[data-qkey]").forEach((btn) => {
+              btn.addEventListener("click", () => {
+                const key = String(btn.getAttribute("data-qkey") || "");
+                if (!key) return;
+                docsDismissedQuestionKeys.add(key);
+                docsGuidanceLastHash = ""; // força re-render ao próximo ciclo
+                docsFetchLiveGuidance();
+              });
             });
           }
         }
@@ -9810,19 +9964,27 @@ if (medicalDoubtSendBtn) {
         return;
       }
 
-      if (!ensureDocsRecognition()) return;
+      const hasSR = ensureDocsRecognition();
 
       docsIsRecording = true;
       docsIsPaused = false;
       docsFinalTranscript = "";
       docsInterimTranscript = "";
       docsLastGeneratedDocument = "";
+      docsDismissedQuestionKeys = new Set();
+
+      // Captura de áudio integral para transcrição via API (não bloqueia caso falhe)
+      startDocsAudioRecorder();
 
       // Limpa resultado anterior
       if (docsResultsMount) docsResultsMount.innerHTML = "";
 
       // Inicializa guia em tempo real (apenas para orientar)
-      if (docsLiveGuidanceStatus) docsLiveGuidanceStatus.textContent = "Iniciando guia em tempo real...";
+      if (docsLiveGuidanceStatus) {
+        docsLiveGuidanceStatus.textContent = hasSR
+          ? "Iniciando guia em tempo real..."
+          : "Guia em tempo real indisponível (navegador sem reconhecimento de voz). A transcrição será feita ao encerrar.";
+      }
       if (docsLiveGuidanceContext) docsLiveGuidanceContext.textContent = "";
       if (docsLiveGuidanceList) {
         docsLiveGuidanceList.innerHTML = '<div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>';
@@ -9850,9 +10012,10 @@ if (medicalDoubtSendBtn) {
       docsResetTimer();
       docsStartTimer();
 
-      startDocsLiveGuidancePolling();
-
-      try { docsRecognition.start(); } catch (e) {}
+      if (hasSR) {
+        startDocsLiveGuidancePolling();
+        try { docsRecognition.start(); } catch (e) {}
+      }
     }
 
     function stopDocsRecording() {
@@ -9887,6 +10050,8 @@ if (medicalDoubtSendBtn) {
       if (docsRecognition) {
         try { docsRecognition.stop(); } catch (e) {}
       }
+
+      pauseDocsAudioRecorder();
       docsPauseTimer();
 
       if (docsPauseBtn) docsPauseBtn.innerText = "Retomar";
@@ -9902,6 +10067,8 @@ if (medicalDoubtSendBtn) {
       if (docsRecognition) {
         try { docsRecognition.start(); } catch (e) {}
       }
+
+      resumeDocsAudioRecorder();
       docsStartTimer();
 
       if (docsPauseBtn) docsPauseBtn.innerText = "Pausar";
@@ -9923,7 +10090,10 @@ if (medicalDoubtSendBtn) {
 
         const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": authToken ? `Bearer ${authToken}` : ""
+          },
           body: JSON.stringify(body)
         });
 
@@ -9958,9 +10128,30 @@ if (medicalDoubtSendBtn) {
     }
 
     async function stopDocsRecordingAndGenerate() {
+      // Para garantir que nada se perca (exames e sintomas), tentamos transcrever o áudio integral via API.
+      // Se falhar, caímos para a transcrição do SpeechRecognition.
+
+      // Captura o texto atual do SpeechRecognition antes de desligar tudo
+      const combinedSr = docsGetCombinedTranscript();
+
       stopDocsRecording();
-      const combined = docsGetCombinedTranscript();
-      await generateDocumentFromTranscript(combined);
+
+      let transcriptToUse = combinedSr;
+
+      // Se o MediaRecorder estava ativo, finaliza, envia para transcrição e usa o texto mais completo
+      if (docsMediaRecorder || docsUsingApiTranscription) {
+        if (docsMicStatus) docsMicStatus.textContent = "Transcrevendo áudio da consulta...";
+        const blob = await stopDocsAudioRecorderAndGetBlob();
+        const apiTxt = await transcribeDocsAudioBlob(blob);
+        if (apiTxt && apiTxt.length >= 40) {
+          transcriptToUse = apiTxt;
+        }
+      }
+
+      docsFinalTranscript = transcriptToUse;
+      docsInterimTranscript = "";
+
+      await generateDocumentFromTranscript(transcriptToUse);
     }
 
 
