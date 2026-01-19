@@ -5176,43 +5176,6 @@ const recordBtn = document.getElementById("recordBtn");
     const docsLiveGuidanceStatus = document.getElementById("docsLiveGuidanceStatus");
     const docsLiveGuidanceList = document.getElementById("docsLiveGuidanceList");
 
-    // Perguntas padrão do módulo "Gerar documentos".
-    // Objetivo: guiar o profissional para definir o documento e garantir data/hora desde o início.
-    const docsDefaultQuestions = [
-      "Qual documento deseja gerar (tipo)?",
-      "Para quem será o documento e qual a finalidade (destinatário/uso)?",
-      "Qual a data e o horário do registro/evento/atendimento?"
-    ];
-
-    function renderDocsGuidanceQuestions(perguntas, tipoIdentificado) {
-      const list = Array.isArray(perguntas) ? perguntas.map(x => String(x || "").trim()).filter(Boolean).slice(0, 3) : [];
-      const safeTipo = String(tipoIdentificado || "").trim();
-
-      if (docsLiveGuidanceContext) {
-        docsLiveGuidanceContext.textContent = safeTipo ? ("Tipo identificado: " + safeTipo) : "";
-      }
-
-      if (docsLiveGuidanceStatus) {
-        docsLiveGuidanceStatus.textContent = list.length
-          ? "Perguntas essenciais sugeridas (não obrigatórias)."
-          : "Nenhuma pergunta sugerida no momento.";
-      }
-
-      if (docsLiveGuidanceList) {
-        if (!list.length) {
-          docsLiveGuidanceList.innerHTML = '<div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>';
-        } else {
-          docsLiveGuidanceList.innerHTML = "";
-          list.forEach((q, idx) => {
-            const el = document.createElement("div");
-            el.className = "live-guidance-item";
-            el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${escapeHtml(q)}</div>`;
-            docsLiveGuidanceList.appendChild(el);
-          });
-        }
-      }
-    }
-
     const triageReportPanel = document.getElementById("triageReportPanel");
     const triageRiskBadge = document.getElementById("triageRiskBadge");
     const triageRiskMeaning = document.getElementById("triageRiskMeaning");
@@ -9686,11 +9649,9 @@ if (medicalDoubtSendBtn) {
 
       const transcricao = docsGetCombinedTranscript();
       if (!transcricao || transcricao.length < 40) {
-        // Mesmo antes de haver transcrição suficiente, mostrar perguntas próprias do módulo.
         if (docsLiveGuidanceStatus) {
-          docsLiveGuidanceStatus.textContent = "Perguntas essenciais sugeridas (não obrigatórias).";
+          docsLiveGuidanceStatus.textContent = "Fale o conteúdo do documento para receber perguntas essenciais em tempo real.";
         }
-        renderDocsGuidanceQuestions(docsDefaultQuestions, "");
         return;
       }
 
@@ -9732,7 +9693,29 @@ if (medicalDoubtSendBtn) {
           : (Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : []);
         const perguntas = perguntasRaw.map(x => String(x || "").trim()).filter(Boolean).slice(0, 3);
 
-        renderDocsGuidanceQuestions(perguntas.length ? perguntas : docsDefaultQuestions, tipo);
+        if (docsLiveGuidanceContext) {
+          docsLiveGuidanceContext.textContent = tipo ? ("Tipo identificado: " + tipo) : "";
+        }
+
+        if (docsLiveGuidanceStatus) {
+          docsLiveGuidanceStatus.textContent = perguntas.length
+            ? "Perguntas essenciais sugeridas (não obrigatórias)."
+            : "Nenhuma pergunta sugerida no momento.";
+        }
+
+        if (docsLiveGuidanceList) {
+          if (!perguntas.length) {
+            docsLiveGuidanceList.innerHTML = '<div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>';
+          } else {
+            docsLiveGuidanceList.innerHTML = "";
+            perguntas.forEach((q, idx) => {
+              const el = document.createElement("div");
+              el.className = "live-guidance-item";
+              el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${escapeHtml(q)}</div>`;
+              docsLiveGuidanceList.appendChild(el);
+            });
+          }
+        }
       } catch (e) {
         console.error("Erro ao atualizar guia de documento:", e);
         if (docsLiveGuidanceStatus) {
@@ -9760,18 +9743,39 @@ if (medicalDoubtSendBtn) {
       docsGuidanceLastHash = "";
     }
 
-    function renderDocsFinalDocument(documento) {
+    function renderDocsFinalDocument(payload) {
       if (!docsResultsMount) return;
-
+      const documento = (payload && payload.documento != null) ? payload.documento : payload;
+      const tipo = (payload && payload.tipo_documento) ? String(payload.tipo_documento).trim() : "";
+      const finalidade = (payload && payload.finalidade) ? String(payload.finalidade).trim() : "";
+      const campos = (payload && Array.isArray(payload.campos_pendentes)) ? payload.campos_pendentes : [];
       const safeText = normalizeNumberedParagraphs(String(documento || "").trim());
+
+      const camposHtml = (campos && campos.length)
+        ? `<div class="missing-fields" style="margin-top: 10px;">
+             <div style="font-weight: 700; margin-bottom: 6px;">Campos pendentes para completar</div>
+             <div style="display: flex; flex-direction: column; gap: 6px;">
+               ${campos.slice(0, 12).map((c) => `<div class="missing-field-item">${escapeHtml(String(c))}</div>`).join("")}
+             </div>
+           </div>`
+        : "";
+
+      const metaHtml = (tipo || finalidade)
+        ? `<div class="doc-meta" style="margin: 0 0 10px 0;">
+             ${tipo ? `<div><span style="font-weight: 700;">Tipo identificado:</span> ${escapeHtml(tipo)}</div>` : ""}
+             ${finalidade ? `<div><span style="font-weight: 700;">Finalidade/Destino:</span> ${escapeHtml(finalidade)}</div>` : ""}
+           </div>`
+        : "";
       docsResultsMount.innerHTML = `
         <div class="module-card" style="margin-top: 14px;">
           <h3 style="margin: 0 0 10px 0;">Documento gerado</h3>
+          ${metaHtml}
           <div class="prescription-actions">
             <button id="docsCopyFinalBtn" class="btn-copy" type="button">Copiar documento</button>
             <button id="docsPrintFinalBtn" class="btn-print" type="button">Imprimir documento</button>
           </div>
           <textarea id="docsFinalDocTextarea" class="prescription-textarea" spellcheck="false"></textarea>
+          ${camposHtml}
         </div>
       `;
 
@@ -9934,8 +9938,16 @@ if (medicalDoubtSendBtn) {
         const documento = (data && (data.documento || data.relatorio)) ? String(data.documento || data.relatorio) : "";
 
         docsLastGeneratedDocument = normalizeNumberedParagraphs(documento);
-        renderDocsFinalDocument(docsLastGeneratedDocument);
-        if (docsMicStatus) docsMicStatus.textContent = documento ? "Documento gerado." : "Não foi possível gerar o documento.";
+        renderDocsFinalDocument({
+          documento: docsLastGeneratedDocument,
+          tipo_documento: data?.tipo_documento || "",
+          finalidade: data?.finalidade || "",
+          campos_pendentes: Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : []
+        });
+
+        if (docsMicStatus) {
+          docsMicStatus.textContent = documento ? "Documento gerado." : "Documento gerado como rascunho (campos pendentes).";
+        }
 
       } catch (e) {
         console.error("Erro ao gerar documento:", e);
