@@ -4267,7 +4267,10 @@ Transcrição:
 
     const data = await callOpenAIJson(prompt);
 
-    const tipo = (typeof data?.tipo_documento === "string" ? data.tipo_documento.trim() : "") || (tipoSelecionado || "");
+    const tipoFromModel = (typeof data?.tipo_documento === "string" ? data.tipo_documento.trim() : "");
+    const tipoFromRequest = String(tipoSelecionado || "").trim();
+    const tipoHeur = inferDocumentTypeHeuristic(safeTranscricao);
+    const tipo = (tipoFromModel || tipoFromRequest || tipoHeur || "Outros");
     const finalidade = typeof data?.finalidade === "string" ? data.finalidade.trim() : "";
     const camposPendentes = normalizeArrayOfStrings(data?.campos_pendentes, 40, 140);
     const documento = typeof data?.documento === "string" ? data.documento.trim() : "";
@@ -4388,6 +4391,26 @@ Campos importantes (marque como preenchido SOMENTE se a informação estiver pre
 - cid10 (se aplicável)
 
 Regras:
+
+
+Lista de tipos de documento aceitos (escolha o mais adequado, mesmo que o usuário não diga explicitamente):
+- Declaração de comparecimento
+- Declaração de permanência
+- Declaração para acompanhante
+- Encaminhamento para especialista / rede
+- Solicitação de insumos (fraldas, curativos, suplementos)
+- Relatório de visita domiciliar
+- Relatório de curativo seriado
+- Relatório para CAPS / saúde mental (enfermagem)
+- Relatório de evolução de enfermagem
+- Ata de reunião
+- Relatório médico para INSS (perícia)
+- Comunicado para escola
+- Comunicado ao Conselho Tutelar
+- Outros
+
+Regras adicionais:
+- O campo "tipo_documento" NUNCA pode ficar vazio. Se não houver certeza, use "Outros".
 - Não invente dados.
 - Não use emojis.
 - NÃO repita perguntas cujo campo já esteja preenchido.

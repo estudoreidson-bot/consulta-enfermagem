@@ -4957,7 +4957,11 @@ Ata de reunião:
     let docsIsRecording = false;
     let docsIsPaused = false;
     let docsFinalTranscript = "";
-    let docsInterimTranscript = "";
+    
+
+    let docsLastDetectedTipo = "";
+    let docsLastTranscribeError = "";
+let docsInterimTranscript = "";
 
     // Captura de áudio (MediaRecorder) para transcrever a consulta inteira via API
     let docsMediaStream = null;
@@ -9240,7 +9244,7 @@ if (sbarOutput) sbarOutput.value = "";
             const resp = await fetch(BACKEND_URL + "/api/gerar-sbar", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ transcricao })
+              body: JSON.stringify({ transcricao, tipo_documento: (docsLastDetectedTipo || "") })
             });
 
             if (!resp.ok) {
@@ -9731,6 +9735,7 @@ if (medicalDoubtSendBtn) {
 
     async function transcribeDocsAudioBlob(blob) {
       try {
+        docsLastTranscribeError = "";
         if (!blob || !blob.size) return "";
         const resp = await fetch(BACKEND_URL + "/api/transcrever-audio", {
           method: "POST",
@@ -9742,6 +9747,8 @@ if (medicalDoubtSendBtn) {
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
+          const msg = (data && (data.error || data.message)) ? String(data.error || data.message) : "";
+          docsLastTranscribeError = msg ? (msg + " (HTTP " + resp.status + ")") : ("Falha ao transcrever áudio (HTTP " + resp.status + ").");
           console.warn("Falha ao transcrever áudio:", data);
           return "";
         }
@@ -9804,7 +9811,9 @@ if (medicalDoubtSendBtn) {
         const data = await resp.json().catch(() => ({}));
         const tipo = (data && (data.tipo_documento || data.tipo)) ? String(data.tipo_documento || data.tipo).trim() : "";
 
-        const perguntasRaw = Array.isArray(data?.perguntas)
+        
+        if (tipo) docsLastDetectedTipo = tipo;
+const perguntasRaw = Array.isArray(data?.perguntas)
           ? data.perguntas
           : (Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : []);
 
@@ -10078,7 +10087,7 @@ if (medicalDoubtSendBtn) {
     async function generateDocumentFromTranscript(transcricao) {
       const txt = (transcricao || "").trim();
       if (!txt || txt.length < 40) {
-        if (docsError) docsError.textContent = "A transcrição ficou muito curta. Tente novamente, falando mais próximo ao microfone.";
+        if (docsError) docsError.textContent = (docsLastTranscribeError ? ("A transcrição ficou muito curta. " + docsLastTranscribeError) : "A transcrição ficou muito curta. Tente novamente, falando mais próximo ao microfone.");
         return;
       }
 
