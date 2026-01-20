@@ -1326,6 +1326,13 @@ app.post("/api/transcrever-audio", requirePaidOrAdmin, audioRawParser, async (re
       });
 
       const text = typeof transcription?.text === "string" ? transcription.text.trim() : "";
+      // Se vier vazio/curto, devolve erro para o frontend exibir a causa.
+      if (!text || text.length < 20) {
+        return res.status(422).json({
+          error: "Não foi possível transcrever o áudio (resultado vazio ou muito curto).",
+          details: { content_type: ctype, bytes: buf.length }
+        });
+      }
       return res.json({ text });
     } finally {
       try { fs.unlinkSync(tmpPath); } catch {}

@@ -6519,7 +6519,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       const combined = triageGetCombinedTranscript();
       const txt = (combined || "").trim();
 
-      if (!txt || txt.length < 40) {
+      if (!txt || txt.length < 20) {
         if (triageError) triageError.textContent = "A transcrição da triagem ficou muito curta. Tente novamente, falando mais próximo ao microfone.";
         return;
       }
@@ -9748,7 +9748,9 @@ if (medicalDoubtSendBtn) {
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) {
           const msg = (data && (data.error || data.message)) ? String(data.error || data.message) : "";
-          docsLastTranscribeError = msg ? (msg + " (HTTP " + resp.status + ")") : ("Falha ao transcrever áudio (HTTP " + resp.status + ").");
+          const det = (data && data.details) ? data.details : null;
+          const detStr = det ? (" | detalhes: " + JSON.stringify(det)) : "";
+          docsLastTranscribeError = msg ? (msg + detStr + " (HTTP " + resp.status + ")") : ("Falha ao transcrever áudio (HTTP " + resp.status + ").");
           console.warn("Falha ao transcrever áudio:", data);
           return "";
         }
