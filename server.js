@@ -277,22 +277,6 @@ app.use(cors());
 app.use(bodyParser.json({ limit: "25mb" }));
 app.use(bodyParser.urlencoded({ limit: "25mb", extended: true }));
 
-// Parser bruto para áudio (MediaRecorder / Blob).
-// Mantido separado do bodyParser.json para não interferir em rotas JSON.
-const audioRawParser = express.raw({
-  type: [
-    "audio/webm",
-    "audio/wav",
-    "audio/mpeg",
-    "audio/mp4",
-    "audio/mp3",
-    "audio/x-m4a",
-    "audio/m4a",
-    "application/octet-stream"
-  ],
-  limit: "25mb"
-});
-
 // Servir o index.html apenas na rota raiz (útil para testes locais)
 app.get("/", (req, res) => {
   return res.sendFile(path.join(__dirname, "index.html"));
@@ -444,13 +428,8 @@ function normalizeArrayOfStrings(arr, maxItems, maxLenEach) {
   if (!Array.isArray(arr)) return [];
   const out = [];
   for (const v of arr) {
-    let t = "";
-    if (typeof v === "string") {
-      t = v.trim();
-    } else if (v && typeof v === "object") {
-      const cand = v.pergunta || v.texto || v.rotulo || v.campo || "";
-      if (typeof cand === "string") t = cand.trim();
-    }
+    if (typeof v !== "string") continue;
+    const t = v.trim();
     if (!t) continue;
     out.push(t.length > maxLenEach ? t.slice(0, maxLenEach) : t);
     if (out.length >= maxItems) break;
@@ -1286,62 +1265,6 @@ function requirePaidOrAdmin(req, res, next) {
   }
   next();
 }
-
-// ======================================================================
-// ÁUDIO (TRANSCRIÇÃO) – recebe Blob (audio/webm etc) e devolve texto
-// - Usado pelo módulo de geração de documentos para transcrever toda a consulta.
-// - Limite de upload: 25MB (conforme Audio API).
-// ======================================================================
-app.post("/api/transcrever-audio", requirePaidOrAdmin, audioRawParser, async (req, res) => {
-  try {
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(503).json({ error: "OPENAI_API_KEY ausente no backend." });
-    }
-
-    const ctype = String(req.headers["content-type"] || "").toLowerCase();
-    const buf = req.body;
-    if (!Buffer.isBuffer(buf) || buf.length < 500) {
-      return res.status(400).json({ error: "Áudio inválido ou vazio." });
-    }
-
-    // Extensão baseada no content-type. Mantém webm como padrão (MediaRecorder).
-    let ext = "webm";
-    if (ctype.includes("wav")) ext = "wav";
-    else if (ctype.includes("mpeg") || ctype.includes("mp3")) ext = "mp3";
-    else if (ctype.includes("mp4")) ext = "mp4";
-    else if (ctype.includes("m4a")) ext = "m4a";
-
-    const tmpPath = path.join("/tmp", `reimed_audio_${crypto.randomBytes(8).toString("hex")}.${ext}`);
-    fs.writeFileSync(tmpPath, buf);
-
-    try {
-      // Speech-to-text via Audio API (gpt-4o-mini-transcribe).
-      // Docs: Audio API transcriptions endpoint.
-      const transcription = await openai.audio.transcriptions.create({
-        file: fs.createReadStream(tmpPath),
-        model: "gpt-4o-mini-transcribe",
-        // Ajuda a pontuar e manter termos médicos.
-        prompt: "Consulta médica em português do Brasil. Preservar termos médicos, exames (ressonância, tomografia, RX) e siglas (INSS, CID-10).",
-        response_format: "json"
-      });
-
-      const text = typeof transcription?.text === "string" ? transcription.text.trim() : "";
-      // Se vier vazio/curto, devolve erro para o frontend exibir a causa.
-      if (!text || text.length < 20) {
-        return res.status(422).json({
-          error: "Não foi possível transcrever o áudio (resultado vazio ou muito curto).",
-          details: { content_type: ctype, bytes: buf.length }
-        });
-      }
-      return res.json({ text });
-    } finally {
-      try { fs.unlinkSync(tmpPath); } catch {}
-    }
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha interna ao transcrever áudio." });
-  }
-});
 
 // Rotas de autenticação
 
@@ -3800,237 +3723,6 @@ app.post("/api/duvidas-enfermagem", requirePaidOrAdmin, async(req, res) => {
 // ROTA 6 – GERAR RELATÓRIO CLÍNICO DO PACIENTE A PARTIR DA TRANSCRIÇÃO (NOVA)
 // ======================================================================
 
-function isInssContext(transcricao, tipoSelecionado) {
-  const t = String(transcricao || "").toLowerCase();
-  const s = String(tipoSelecionado || "").toLowerCase();
-  return (
-    t.includes("inss") ||
-    t.includes("perícia") ||
-    t.includes("pericia") ||
-    t.includes("auxílio") ||
-    t.includes("auxilio") ||
-    t.includes("benefício") ||
-    t.includes("beneficio") ||
-    s.includes("inss") ||
-    s.includes("perícia") ||
-    s.includes("pericia")
-  );
-}
-
-function extractPatientNameHeuristic(transcricao) {
-  const raw = String(transcricao || "");
-  if (!raw) return "";
-  const m = raw.match(/\b(?:seu|sr\.?|senhor|sra\.?|senhora)\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\p{L}']+)/iu);
-  if (m && m[1]) return String(m[1]).trim();
-  return "";
-}
-
-function extractImagingSummaryHeuristic(transcricao) {
-  const raw = String(transcricao || "");
-  if (!raw) return "";
-
-  // Tenta capturar a frase após mencionar "resson"/"RM".
-  const idx = raw.toLowerCase().search(/resson|rm\b|ressonância|ressonancia/);
-  if (idx < 0) return "";
-  const slice = raw.slice(idx);
-  const parts = slice.split(/(?<=[\.!\?])\s+/).filter(Boolean);
-  const take = parts.slice(0, 3).join(" ").trim();
-  return normalizeText(take, 800);
-}
-
-function inferMedicalDocTypeHeuristic(transcricao) {
-  const t = String(transcricao || "").toLowerCase();
-  if (!t) return "Relatório médico";
-  if (t.includes("inss") || t.includes("perícia") || t.includes("pericia") || t.includes("auxílio") || t.includes("auxilio")) {
-    return "Relatório médico para INSS (perícia)";
-  }
-  if (t.includes("atestado")) return "Atestado médico";
-  if (t.includes("encaminh")) return "Encaminhamento médico";
-  if (t.includes("comparecimento")) return "Declaração de comparecimento";
-  return "Relatório médico";
-}
-
-function buildMedicalDocumentTemplate(transcricao, tipo) {
-  const patientName = extractPatientNameHeuristic(transcricao);
-  const imaging = extractImagingSummaryHeuristic(transcricao);
-
-  // Tentativa simples de identificar a queixa principal.
-  const t = String(transcricao || "").toLowerCase();
-  let queixa = "não informado";
-  if (t.includes("dor lombar") || t.includes("lombar")) queixa = "Dor lombar";
-  else if (t.includes("dor") && t.includes("coluna")) queixa = "Dor em coluna";
-
-  const titulo = String(tipo || inferMedicalDocTypeHeuristic(transcricao) || "Relatório médico").toUpperCase();
-  const finalidade = isInssContext(transcricao, tipo) ? "INSS (perícia/benefício)" : "não informado";
-
-  const camposPendentes = [];
-  if (!patientName) camposPendentes.push("Nome completo do paciente");
-  camposPendentes.push("CPF e/ou CNS");
-  camposPendentes.push("Data de nascimento / Idade");
-  camposPendentes.push("Profissão e atividade laboral (tipo de esforço)");
-  camposPendentes.push("Data de início dos sintomas e data de início da incapacidade");
-  camposPendentes.push("Exame físico (achados objetivos)");
-  camposPendentes.push("Tratamentos já realizados e resposta (medicações, fisioterapia)");
-  if (isInssContext(transcricao, tipo)) {
-    camposPendentes.push("Tempo sugerido de afastamento (se aplicável)");
-    camposPendentes.push("CID-10 (se aplicável)");
-  }
-  camposPendentes.push("Identificação do profissional (Nome/CRM/Assinatura/Carimbo) e Unidade/Serviço");
-
-  const doc = [
-    `${titulo}`,
-    "",
-    "Unidade/Serviço: __________",
-    "Município/UF: __________",
-    `Paciente: ${patientName ? patientName : "__________"}`,
-    "CPF: __________",
-    "Cartão SUS (CNS): __________",
-    "Data de nascimento/Idade: __________",
-    "Endereço: __________",
-    "Telefone: __________",
-    "",
-    `Finalidade/Destino: ${finalidade || "não informado"}`,
-    "",
-    `Queixa principal: ${queixa}.`,
-    "História referida: Paciente relata limitação para realizar esforço físico e dificuldade para trabalhar. Outros detalhes: não informado.",
-    "",
-    "Exames apresentados:",
-    imaging ? imaging : "Ressonância magnética: não informado.",
-    "",
-    "Impressão/Resumo clínico:",
-    "Quadro de lombalgia com achado em exame de imagem compatível com alteração discal (conforme descrito no exame).",
-    "",
-    "Limitações funcionais referidas:",
-    "Não consegue realizar esforço físico por dor lombar (conforme relato).",
-    "",
-    "Conduta/Orientações:",
-    "1. Orientado(a) sobre sinais de alarme e retorno em caso de piora.",
-    "2. Considerar medidas analgésicas e fisioterapia conforme avaliação clínica (não informado se já em uso).",
-    "3. Encaminhamento/avaliação complementar: não informado.",
-    "",
-    "Data: ____/____/____",
-    "Médico(a): __________________________",
-    "CRM: __________________________",
-    "Assinatura/Carimbo: __________________________"
-  ].join("\n");
-
-  return { finalidade, campos_pendentes: camposPendentes.slice(0, 20), documento: doc };
-}
-
-function extractImagingSnippetHeuristic(transcricao) {
-  const raw = String(transcricao || "");
-  if (!raw) return "";
-  const idx = raw.toLowerCase().indexOf("resson");
-  if (idx < 0) return "";
-  const sub = raw.slice(idx);
-  // pega até ~500 caracteres ou até quebra dupla
-  const trimmed = sub.replace(/\s+/g, " ").trim();
-  return trimmed.slice(0, 520);
-}
-
-function buildMedicalInssTemplate(transcricao) {
-  const nome = extractPatientNameHeuristic(transcricao) || "__________";
-  const img = extractImagingSnippetHeuristic(transcricao);
-
-  const corpoAchados = img
-    ? `Exame apresentado: ${img}`
-    : "Exame apresentado: não informado";
-
-  const camposPendentes = [];
-  camposPendentes.push("Unidade/Serviço e Município/UF");
-  camposPendentes.push("Nome completo do paciente (se aplicável) e identificador (CPF e/ou CNS)");
-  camposPendentes.push("Data de nascimento/idade");
-  camposPendentes.push("Profissão/atividade laboral e principais esforços exigidos");
-  camposPendentes.push("Data de início dos sintomas e data de início da incapacidade laboral");
-  camposPendentes.push("Exame físico (sinais neurológicos, limitação funcional) e tratamentos já realizados");
-  camposPendentes.push("CID-10 (se for utilizar) e tempo estimado de afastamento/restrição");
-  camposPendentes.push("Identificação do médico (nome e CRM) e data");
-
-  const documento = `RELATÓRIO MÉDICO PARA INSS (PERÍCIA)
-
-Unidade/Serviço: __________
-Município/UF: __________
-Paciente: ${nome}
-CPF: __________
-Cartão SUS (CNS): __________
-Data de nascimento/Idade: __________
-Endereço: __________
-Telefone: __________
-
-Finalidade/Destino: INSS (Perícia Médica) / não informado
-
-Relato clínico (resumo):
-Paciente refere dor lombar com limitação para esforço físico e dificuldade para trabalhar, conforme transcrição.
-
-Exames complementares:
-${corpoAchados}
-
-Avaliação funcional e exame físico:
-Não informado.
-
-Conduta/Plano:
-Não informado.
-
-Observações sobre capacidade laborativa:
-Paciente refere incapacidade para atividades com esforço físico. Detalhamento e período sugerido: não informado.
-
-CID-10: __________
-
-Data: ____/____/____
-Médico: __________________________
-CRM/UF: __________________________
-Assinatura/Carimbo: __________________________`;
-
-  return {
-    tipo_documento: "Relatório médico para INSS (perícia)",
-    finalidade: "INSS (Perícia Médica)",
-    campos_pendentes: camposPendentes,
-    documento
-  };
-}
-
-function buildNursingDocumentTemplate(transcricao, tipoSelecionado) {
-  const tipo = (String(tipoSelecionado || "").trim() || inferDocumentTypeHeuristic(transcricao) || "Outros");
-  const finalidade = "não informado";
-  const patientName = extractPatientNameHeuristic(transcricao);
-  const camposPendentes = [];
-  if (!patientName) camposPendentes.push("Nome completo do paciente");
-  camposPendentes.push("CPF e/ou CNS");
-  camposPendentes.push("Unidade/Serviço e Município/UF");
-  camposPendentes.push("Data e horário (se aplicável ao tipo)");
-  camposPendentes.push("Finalidade/Destino do documento");
-  camposPendentes.push("Identificação do profissional (Nome/COREN/Assinatura/Carimbo)");
-
-  const titulo = String(tipo || "Outros").toUpperCase();
-  const documento = `${titulo}
-
-Unidade/Serviço: __________
-Município/UF: __________
-Paciente: ${patientName ? patientName : "__________"}
-CPF: __________
-Cartão SUS (CNS): __________
-Data de nascimento/Idade: __________
-Endereço: __________
-Telefone: __________
-
-Finalidade/Destino: ${finalidade}
-
-Resumo do atendimento (conforme transcrição):
-${normalizeText(String(transcricao || ""), 800) || "não informado"}
-
-Data: ____/____/____
-Profissional de Enfermagem: __________________________
-COREN: __________________________
-Assinatura/Carimbo: __________________________`;
-
-  return {
-    tipo_documento: tipo,
-    finalidade,
-    campos_pendentes: camposPendentes.slice(0, 20),
-    documento
-  };
-}
-
 app.post("/api/gerar-relatorio", requirePaidOrAdmin, async(req, res) => {
   try {
     const { transcricao, tipo_documento } = req.body || {};
@@ -4049,22 +3741,7 @@ app.post("/api/gerar-relatorio", requirePaidOrAdmin, async(req, res) => {
       ? tipo_documento.trim()
       : null;
 
-    // Se o contexto for INSS/perícia, gera um documento em estilo médico.
-    const medicoInss = isInssContext(safeTranscricao, tipoSelecionado);
-
-    // Modo de teste sem chave: nunca falhar com 500; devolve template útil.
-    if (!process.env.OPENAI_API_KEY) {
-      return res.json(medicoInss ? buildMedicalInssTemplate(safeTranscricao) : buildNursingDocumentTemplate(safeTranscricao, tipoSelecionado));
-    }
-
-    const tiposPermitidos = medicoInss ? [
-      "Relatório médico para INSS (perícia)",
-      "Atestado médico",
-      "Declaração de comparecimento",
-      "Encaminhamento médico",
-      "Relatório médico (geral)",
-      "Outros"
-    ] : [
+    const tiposPermitidos = [
       "Declaração de comparecimento",
       "Declaração de permanência",
       "Declaração para acompanhante",
@@ -4128,68 +3805,7 @@ app.post("/api/gerar-relatorio", requirePaidOrAdmin, async(req, res) => {
 
     const tiposTexto = tiposPermitidos.map(t => `- ${t}`).join("\n");
 
-    const prompt = medicoInss ? `
-Você é um médico humano redigindo documentação médica/administrativa a partir da transcrição (português do Brasil).
-O texto final será colado em prontuário/sistema, portanto deve estar pronto para colar: texto simples, sem emojis e sem símbolos gráficos.
-
-Tarefa:
-1) Identificar qual é o TIPO DE DOCUMENTO solicitado e a FINALIDADE (destino/uso) com base na transcrição.
-2) Produzir o DOCUMENTO completo, padronizado e formal, no tipo adequado, sem inventar dados.
-3) Listar campos pendentes (o que faltou informar) para que o profissional possa completar.
-4) Se houver sintomas/queixas relatadas e/ou leitura de exames (ex.: RM, TC, RX, laboratoriais), você DEVE incluir essas informações no corpo do documento, na seção apropriada, sem omitir. Se o exame foi lido em voz alta, preserve os principais achados descritos.
-
-Se o campo "tipo_documento" vier informado no request, você deve usar EXATAMENTE esse tipo como título e estrutura.
-Se não vier informado, escolha o tipo mais adequado dentre os tipos permitidos. Se não for possível, use "Outros".
-
-Tipos permitidos (escolha exatamente um, sem variações):
-${tiposTexto}
-
-Regras obrigatórias:
-- Não invente dados. Se faltar informação, use "não informado" ou deixe um campo em branco com sublinhado (ex.: "CPF: __________").
-- Evite diagnósticos não sustentados. Se houver diagnóstico/achados citados, descreva-os conforme a transcrição.
-- Use linguagem clara, objetiva e formal.
-- Não use listas com bullets. Se precisar numerar, use "1.", "2.", cada item em uma nova linha.
-
-Estrutura (usar conforme o tipo):
-- Primeira linha: TÍTULO EM CAIXA ALTA (igual ao tipo escolhido).
-- Identificação (linhas separadas):
-  Unidade/Serviço: __________
-  Município/UF: __________
-  Paciente: __________
-  CPF: __________
-  Cartão SUS (CNS): __________
-  Data de nascimento/Idade: __________
-  Endereço: __________
-  Telefone: __________
-- Campo "Finalidade/Destino:" (se não estiver explícito, "não informado").
-- Corpo:
-  - Relatório médico para INSS (perícia): resumo clínico (queixa/curso), achados do exame físico (se citados), limitações funcionais, exames complementares (se citados), tratamentos realizados, observações sobre capacidade laborativa e período de restrição/afastamento (se citado; se não, deixar em branco), CID-10 (se for usar; se não, deixar em branco).
-  - Atestado médico: data, período recomendado (se citado; se não, em branco), motivo/condição em termos objetivos, orientações.
-  - Encaminhamento médico: destino, motivo, resumo objetivo do caso e exames anexados.
-- Rodapé:
-  Data: ____/____/____
-  Médico: __________________________
-  CRM/UF: __________________________
-  Assinatura/Carimbo: __________________________
-
-Saída: JSON estrito, sem texto fora do JSON:
-{
-  "tipo_documento": "...",
-  "finalidade": "...",
-  "campos_preenchidos": ["..."],
-  "campos_pendentes": ["..."],
-  "perguntas": [
-    {"campo": "...", "pergunta": "..."}
-  ],
-  "documento": "..."
-}
-
-Campo "tipo_documento" informado no request (pode ser nulo):
-${tipoSelecionado ? JSON.stringify(tipoSelecionado) : "null"}
-
-Transcrição:
-"""${safeTranscricao}"""
-` : `
+    const prompt = `
 Você é um enfermeiro humano redigindo documentação administrativa e assistencial de enfermagem a partir da transcrição (português do Brasil).
 O texto final será colado no S.U.I.S., portanto deve estar pronto para colar: texto simples, sem emojis e sem símbolos gráficos.
 
@@ -4197,7 +3813,6 @@ Tarefa:
 1) Identificar qual é o TIPO DE DOCUMENTO solicitado e a FINALIDADE (destino/uso) com base na transcrição.
 2) Produzir o DOCUMENTO completo, padronizado e formal, no tipo adequado, sem inventar dados.
 3) Listar campos pendentes (o que faltou informar) para que o profissional possa completar.
-4) Se houver queixa/sintomas, limitações funcionais, medidas aferidas e/ou leitura de exames citadas na transcrição, você DEVE incluir essas informações no corpo do documento, na seção apropriada, sem omitir.
 
 Se o campo "tipo_documento" vier informado no request, você deve usar EXATAMENTE esse tipo como título e estrutura, mesmo que a transcrição sugira outro.
 Se não vier informado, escolha o tipo mais adequado dentre os tipos permitidos. Se não for possível, use "Outros".
@@ -4244,11 +3859,7 @@ Saída: JSON estrito, sem texto fora do JSON:
 {
   "tipo_documento": "...",
   "finalidade": "...",
-  "campos_preenchidos": ["..."],
   "campos_pendentes": ["..."],
-  "perguntas": [
-    {"campo": "...", "pergunta": "..."}
-  ],
   "documento": "..."
 }
 
@@ -4259,25 +3870,9 @@ Transcrição:
 """${safeTranscricao}"""
 `;
 
-    if (!process.env.OPENAI_API_KEY) {
-      // Sem chave e sem contexto INSS: retorna um documento básico (não falha) baseado em heurística.
-      const tipoH = inferDocumentTypeHeuristic(safeTranscricao);
-      const perguntas = suggestDocumentQuestionsHeuristic(safeTranscricao, tipoH);
-      const documento = `${String(tipoH || "Outros").toUpperCase()}\n\nUnidade/Serviço: __________\nMunicípio/UF: __________\nPaciente: __________\nCPF: __________\nCartão SUS (CNS): __________\nData de nascimento/Idade: __________\nEndereço: __________\nTelefone: __________\n\nFinalidade/Destino: não informado\n\nCorpo do documento:\nNão informado.\n\nData: ____/____/____\nProfissional de Enfermagem: __________________________\nCOREN: __________________________\nAssinatura/Carimbo: __________________________`;
-      return res.json({
-        tipo_documento: tipoH,
-        finalidade: "",
-        campos_pendentes: perguntas,
-        documento
-      });
-    }
-
     const data = await callOpenAIJson(prompt);
 
-    const tipoFromModel = (typeof data?.tipo_documento === "string" ? data.tipo_documento.trim() : "");
-    const tipoFromRequest = String(tipoSelecionado || "").trim();
-    const tipoHeur = inferDocumentTypeHeuristic(safeTranscricao);
-    const tipo = (tipoFromModel || tipoFromRequest || tipoHeur || "Outros");
+    const tipo = (typeof data?.tipo_documento === "string" ? data.tipo_documento.trim() : "") || (tipoSelecionado || "");
     const finalidade = typeof data?.finalidade === "string" ? data.finalidade.trim() : "";
     const camposPendentes = normalizeArrayOfStrings(data?.campos_pendentes, 40, 140);
     const documento = typeof data?.documento === "string" ? data.documento.trim() : "";
@@ -4302,11 +3897,6 @@ Transcrição:
 function inferDocumentTypeHeuristic(transcricao) {
   const t = String(transcricao || "").toLowerCase();
   if (!t) return "Outros";
-
-  // Contexto médico/INSS (perícia/benefício)
-  if (t.includes("inss") || t.includes("perícia") || t.includes("pericia") || t.includes("auxílio") || t.includes("auxilio") || t.includes("benefício") || t.includes("beneficio")) {
-    return "Relatório médico para INSS (perícia)";
-  }
 
   if (t.includes("ata") || t.includes("reunião") || t.includes("reuniao")) return "Ata de reunião";
   if (t.includes("comparecimento")) return "Declaração de comparecimento";
@@ -4333,26 +3923,15 @@ function suggestDocumentQuestionsHeuristic(transcricao, tipo) {
     if (q.length < 3) q.push(v);
   };
 
-  const tipoLower = String(tipo || "").toLowerCase();
-  const t = String(transcricao || "").toLowerCase();
-
-  // Para INSS/perícia: perguntas focadas em capacidade laboral
-  if (tipoLower.includes("inss") || tipoLower.includes("perícia") || tipoLower.includes("pericia") || t.includes("inss") || t.includes("auxilio") || t.includes("auxílio")) {
-    push("Qual o nome completo do paciente, CPF/CNS e data de nascimento?");
-    push("Qual a profissão/atividade laboral e quais esforços o trabalho exige?");
-    push("Desde quando começou a dor e desde quando está incapaz para trabalhar?");
-    return q.slice(0, 3);
-  }
-
   push("Qual a Unidade/Serviço e Município/UF?");
   push("Qual o nome completo do paciente e pelo menos um identificador (CPF ou CNS)?");
-  if (tipoLower.includes("comparecimento") || tipoLower.includes("perman")) {
+  if (String(tipo || "").toLowerCase().includes("comparecimento") || String(tipo || "").toLowerCase().includes("perman")) {
     push("Qual a data e o horário de início e término do atendimento/permanência?");
-  } else if (tipoLower.includes("encaminh")) {
+  } else if (String(tipo || "").toLowerCase().includes("encaminh")) {
     push("Para qual serviço/profissional é o encaminhamento e qual o motivo principal?");
-  } else if (tipoLower.includes("curativo")) {
+  } else if (String(tipo || "").toLowerCase().includes("curativo")) {
     push("Qual o local da lesão, materiais utilizados e conduta/orientações de curativo?");
-  } else if (tipoLower.includes("ata")) {
+  } else if (String(tipo || "").toLowerCase().includes("ata")) {
     push("Qual a data/horário da reunião, pauta e participantes?");
   } else {
     push("Qual a finalidade/destino do documento (para quem/onde será apresentado)?");
@@ -4364,122 +3943,38 @@ function suggestDocumentQuestionsHeuristic(transcricao, tipo) {
 async function generateDocumentLiveGuide(transcricao) {
   const safeTranscricao = normalizeText(transcricao || "", 12000);
   if (!safeTranscricao || safeTranscricao.length < 20) {
-    return { tipo_documento: "", finalidade: "", campos_preenchidos: [], campos_pendentes: [], perguntas: [] };
+    return { tipo_documento: "", perguntas: [] };
   }
 
-  const inssContext = isInssContext(safeTranscricao, null);
-
-  // Com API Key, tenta uma inferência melhor e remove perguntas já respondidas
+  // Com API Key, tenta uma inferência melhor
   if (process.env.OPENAI_API_KEY) {
-    const profissional = inssContext ? "médico" : "enfermeiro";
     const prompt = `
-Você está auxiliando um ${profissional} a gerar documentos a partir de uma transcrição (português do Brasil).
-
-Objetivo:
-1) Identificar o TIPO DE DOCUMENTO e a FINALIDADE (destino/uso) citados.
-2) Identificar quais informações IMPORTANTES já foram ditas na transcrição (campos preenchidos).
-3) Sugerir no máximo 3 perguntas ESSENCIAIS APENAS para o que estiver faltando.
-
-Campos importantes (marque como preenchido SOMENTE se a informação estiver presente na transcrição, mesmo que de forma aproximada):
-- paciente_nome
-- paciente_identificador (CPF ou CNS)
-- paciente_idade_ou_dn
-- telefone_endereco
-- unidade_servico
-- municipio_uf
-- finalidade_destino
-- profissao_atividade
-- queixa_sintomas
-- limitacao_funcional
-- exames_apresentados
-- tratamentos_realizados
-- exame_fisico
-- periodo_afastamento (se aplicável)
-- cid10 (se aplicável)
-
+Você está auxiliando um enfermeiro a redigir um documento a partir de uma transcrição.
+Tarefa: identificar o tipo de documento mais provável e sugerir no máximo 3 perguntas essenciais (curtas e objetivas) para completar o documento.
 Regras:
-
-
-Lista de tipos de documento aceitos (escolha o mais adequado, mesmo que o usuário não diga explicitamente):
-- Declaração de comparecimento
-- Declaração de permanência
-- Declaração para acompanhante
-- Encaminhamento para especialista / rede
-- Solicitação de insumos (fraldas, curativos, suplementos)
-- Relatório de visita domiciliar
-- Relatório de curativo seriado
-- Relatório para CAPS / saúde mental (enfermagem)
-- Relatório de evolução de enfermagem
-- Ata de reunião
-- Relatório médico para INSS (perícia)
-- Comunicado para escola
-- Comunicado ao Conselho Tutelar
-- Outros
-
-Regras adicionais:
-- O campo "tipo_documento" NUNCA pode ficar vazio. Se não houver certeza, use "Outros".
 - Não invente dados.
 - Não use emojis.
-- NÃO repita perguntas cujo campo já esteja preenchido.
-- As perguntas devem ser curtas, objetivas e úteis para completar o documento.
+- As perguntas são apenas para guiar o profissional, não são obrigatórias.
 
 Retorne JSON estrito no formato:
 {
   "tipo_documento": "string",
-  "finalidade": "string",
-  "campos_preenchidos": ["..."],
-  "campos_pendentes": ["..."],
-  "perguntas": [
-    {"campo": "string", "pergunta": "string"}
-  ]
+  "perguntas": ["...", "...", "..."]
 }
 
 Transcrição (trecho):
 """${safeTranscricao}"""
 `;
-
     const data = await callOpenAIJson(prompt);
-
     const tipo = typeof data?.tipo_documento === "string" ? data.tipo_documento.trim() : "";
-    const finalidade = typeof data?.finalidade === "string" ? data.finalidade.trim() : "";
-    const camposPreenchidos = normalizeArrayOfStrings(data?.campos_preenchidos, 25, 60);
-    const camposPendentes = normalizeArrayOfStrings(data?.campos_pendentes, 25, 120);
-
-    // Perguntas podem vir como objetos ou strings; normaliza para objetos.
-    const perguntasRaw = Array.isArray(data?.perguntas) ? data.perguntas : [];
-    const perguntasObj = [];
-    for (const p of perguntasRaw) {
-      if (perguntasObj.length >= 3) break;
-      if (!p) continue;
-      if (typeof p === "string") {
-        const s = p.trim();
-        if (!s) continue;
-        perguntasObj.push({ campo: "", pergunta: s });
-        continue;
-      }
-      if (typeof p === "object") {
-        const campo = String(p.campo || "").trim();
-        const pergunta = String(p.pergunta || p.texto || "").trim();
-        if (!pergunta) continue;
-        // Se o modelo marcou o campo como preenchido, não pergunta de novo.
-        if (campo && camposPreenchidos.includes(campo)) continue;
-        perguntasObj.push({ campo, pergunta });
-      }
-    }
-
-    const tipoFinal = tipo || inferDocumentTypeHeuristic(safeTranscricao);
-    return {
-      tipo_documento: tipoFinal,
-      finalidade,
-      campos_preenchidos: camposPreenchidos,
-      campos_pendentes: camposPendentes,
-      perguntas: perguntasObj
-    };
+    const perguntas = Array.isArray(data?.perguntas) ? data.perguntas : (Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : []);
+    const outPerg = normalizeArrayOfStrings(perguntas, 3, 220);
+    return { tipo_documento: tipo || inferDocumentTypeHeuristic(safeTranscricao), perguntas: outPerg.slice(0, 3) };
   }
 
   const tipo = inferDocumentTypeHeuristic(safeTranscricao);
-  const perguntas = suggestDocumentQuestionsHeuristic(safeTranscricao, tipo).map(q => ({ campo: "", pergunta: q }));
-  return { tipo_documento: tipo, finalidade: "", campos_preenchidos: [], campos_pendentes: [], perguntas };
+  const perguntas = suggestDocumentQuestionsHeuristic(safeTranscricao, tipo);
+  return { tipo_documento: tipo, perguntas };
 }
 
 app.post("/api/documento-tempo-real", requirePaidOrAdmin, async (req, res) => {
