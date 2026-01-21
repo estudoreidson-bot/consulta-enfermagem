@@ -9804,8 +9804,7 @@ if (medicalDoubtSendBtn) {
       const pend = Array.isArray(obj.campos_pendentes) ? obj.campos_pendentes : [];
 
       const safeText = normalizeNumberedParagraphs(String(obj.documento || "").trim());
-      const pendingText = pend.map((x, i) => `${i + 1}. ${String(x || "").trim()}`).filter(Boolean).join("
-");
+      const pendingText = pend.map((x, i) => `${i + 1}. ${String(x || "").trim()}`).filter(Boolean).join("\n");
 
       docsResultsMount.innerHTML = `
         <div class="module-card" style="margin-top: 14px;">
