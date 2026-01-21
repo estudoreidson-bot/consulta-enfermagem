@@ -2574,8 +2574,26 @@
       </div>
 
       <p class="module-subtitle">
-        Use este módulo para gerar qualquer documento de enfermagem (relatórios, encaminhamentos, declarações, solicitações, comunicados, atestado de comparecimento/permanência, ata de reunião, registros de procedimentos e outros). Ao encerrar a gravação, o documento será gerado e ficará pronto para copiar e imprimir.
+        Use este módulo para gerar documentos médicos e administrativos a partir da sua fala (relatório médico para INSS/perícia, relatório médico, atestado, declaração, encaminhamento, solicitações de exames/fisioterapia, comunicados e outros). Ao encerrar a gravação, o documento será gerado em linguagem formal, pronto para copiar e imprimir.
       </p>
+
+      <div class="inline-input-row">
+        <select id="docsTypePreset" class="text-input">
+          <option value="">Tipo automático (recomendado)</option>
+          <option value="Relatório médico para INSS (avaliação médico-pericial)">Relatório médico para INSS (perícia)</option>
+          <option value="Relatório médico">Relatório médico</option>
+          <option value="Atestado médico">Atestado médico</option>
+          <option value="Declaração médica">Declaração médica</option>
+          <option value="Encaminhamento médico">Encaminhamento médico</option>
+          <option value="Solicitação de exames">Solicitação de exames</option>
+          <option value="Solicitação de fisioterapia">Solicitação de fisioterapia</option>
+          <option value="Solicitação de afastamento/restrição laboral">Solicitação de afastamento/restrição laboral</option>
+          <option value="Declaração de comparecimento">Declaração de comparecimento</option>
+          <option value="Declaração de permanência">Declaração de permanência</option>
+          <option value="Outros">Outros (informar ao lado)</option>
+        </select>
+        <input id="docsTypeCustom" class="text-input" type="text" placeholder="Se necessário, digite o tipo de documento aqui" />
+      </div>
 
       <div id="docsLiveGuidance" class="live-guidance">
         <div class="live-guidance-header">
@@ -5054,6 +5072,8 @@ const recordBtn = document.getElementById("recordBtn");
 
         "docsGuideBtn",
         "docsRecordBtn",
+        "docsTypePreset",
+        "docsTypeCustom",
         "docsTimer",
         "docsMicStatus",
         "docsPauseBtn",
@@ -5111,6 +5131,8 @@ const recordBtn = document.getElementById("recordBtn");
     const docsTimerEl = document.getElementById("docsTimer");
     const docsMicStatus = document.getElementById("docsMicStatus");
     const docsError = document.getElementById("docsError");
+    const docsTypePreset = document.getElementById("docsTypePreset");
+    const docsTypeCustom = document.getElementById("docsTypeCustom");
 
     const docsGuideBtn = document.getElementById("docsGuideBtn");
     const docsGuidePanel = document.getElementById("docsGuidePanel");
@@ -9643,6 +9665,35 @@ if (medicalDoubtSendBtn) {
       return true;
     }
 
+
+    function getDocsRequestedType() {
+      const preset = docsTypePreset ? String(docsTypePreset.value || "").trim() : "";
+      const custom = docsTypeCustom ? String(docsTypeCustom.value || "").trim() : "";
+
+      if (preset && preset.toLowerCase() !== "outros") return preset;
+      if (preset && preset.toLowerCase() === "outros") return custom;
+      return custom; // permite tipo livre mesmo em modo automático
+    }
+
+    function syncDocsTypeCustomState() {
+      if (!docsTypeCustom) return;
+      const preset = docsTypePreset ? String(docsTypePreset.value || "").trim() : "";
+      const isOther = preset && preset.toLowerCase() === "outros";
+      // Se escolher um tipo específico, desabilita o campo de tipo livre (mantém o valor para não perder)
+      docsTypeCustom.disabled = Boolean(preset && !isOther);
+    }
+
+    if (docsTypePreset) {
+      docsTypePreset.addEventListener("change", () => {
+        syncDocsTypeCustomState();
+        // reseta o guia para refletir o novo tipo
+        docsGuidanceLastHash = "";
+        docsFetchLiveGuidance();
+      });
+    }
+
+    syncDocsTypeCustomState();
+
     async function docsFetchLiveGuidance() {
       if (!docsIsRecording || docsIsPaused) return;
       if (docsGuidanceInFlight) return;
@@ -9655,7 +9706,8 @@ if (medicalDoubtSendBtn) {
         return;
       }
 
-      const payload = { transcricao };
+      const tipo_documento = getDocsRequestedType();
+      const payload = tipo_documento ? { transcricao, tipo_documento } : { transcricao };
       const h = hashForGuidancePayload(payload);
       if (h === docsGuidanceLastHash) return;
       docsGuidanceLastHash = h;
@@ -9743,13 +9795,26 @@ if (medicalDoubtSendBtn) {
       docsGuidanceLastHash = "";
     }
 
-    function renderDocsFinalDocument(documento) {
+    function renderDocsFinalDocument(payload) {
       if (!docsResultsMount) return;
 
-      const safeText = normalizeNumberedParagraphs(String(documento || "").trim());
+      const obj = (payload && typeof payload === "object") ? payload : { documento: String(payload || "") };
+      const tipo = (obj.tipo_documento || obj.tipo || "").toString().trim();
+      const finalidade = (obj.finalidade || "").toString().trim();
+      const pend = Array.isArray(obj.campos_pendentes) ? obj.campos_pendentes : [];
+
+      const safeText = normalizeNumberedParagraphs(String(obj.documento || "").trim());
+      const pendingText = pend.map((x, i) => `${i + 1}. ${String(x || "").trim()}`).filter(Boolean).join("
+");
+
       docsResultsMount.innerHTML = `
         <div class="module-card" style="margin-top: 14px;">
           <h3 style="margin: 0 0 10px 0;">Documento gerado</h3>
+          <div style="font-size: 13px; line-height: 1.4; margin-bottom: 10px;">
+            <div><strong>Tipo:</strong> ${escapeHtml(tipo || "não informado")}</div>
+            <div><strong>Finalidade/Destino:</strong> ${escapeHtml(finalidade || "não informado")}</div>
+            ${pendingText ? `<div style="margin-top: 8px;"><strong>Campos pendentes:</strong><div class="answer-box" style="margin-top: 6px;">${escapeHtml(pendingText)}</div></div>` : ""}
+          </div>
           <div class="prescription-actions">
             <button id="docsCopyFinalBtn" class="btn-copy" type="button">Copiar documento</button>
             <button id="docsPrintFinalBtn" class="btn-print" type="button">Imprimir documento</button>
@@ -9781,6 +9846,7 @@ if (medicalDoubtSendBtn) {
         });
       }
     }
+
 
     function startDocsRecording() {
       const busy = !!(isRecording || triageIsRecording || handoffIsRecording || reportIsRecording || questionsIsRecording || sbarIsRecording);
@@ -9898,7 +9964,8 @@ if (medicalDoubtSendBtn) {
       if (docsRecordBtn) docsRecordBtn.disabled = true;
 
       try {
-        const body = { transcricao: txt };
+        const tipo_documento = getDocsRequestedType();
+        const body = tipo_documento ? { transcricao: txt, tipo_documento } : { transcricao: txt };
 
         const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
           method: "POST",
@@ -9917,7 +9984,12 @@ if (medicalDoubtSendBtn) {
         const documento = (data && (data.documento || data.relatorio)) ? String(data.documento || data.relatorio) : "";
 
         docsLastGeneratedDocument = normalizeNumberedParagraphs(documento);
-        renderDocsFinalDocument(docsLastGeneratedDocument);
+        renderDocsFinalDocument({
+          documento: docsLastGeneratedDocument,
+          tipo_documento: (data && data.tipo_documento) ? String(data.tipo_documento) : "",
+          finalidade: (data && data.finalidade) ? String(data.finalidade) : "",
+          campos_pendentes: (data && Array.isArray(data.campos_pendentes)) ? data.campos_pendentes : []
+        });
         if (docsMicStatus) docsMicStatus.textContent = documento ? "Documento gerado." : "Não foi possível gerar o documento.";
 
       } catch (e) {
