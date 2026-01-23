@@ -2146,7 +2146,7 @@
       <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
 
       <h1>Atendimento de Enfermagem</h1>
-      <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
+      <p class="auth-subtitle">Ferramenta para auxiliar os profissionais de enfermagem.<br>Acesso restrito para profissionais cadastrados.</p>
 
       <label class="auth-label" for="loginField">CPF (Login)</label>
       <input id="loginField" class="auth-input" autocomplete="username" inputmode="numeric" />
@@ -3028,7 +3028,7 @@
     <div id="medSafetyCard" class="module-card">
       <div class="section-header-row">
       <h2>Administração segura de medicamentos</h2>
-      <button id="medSafetyGuideBtn" class="btn-print" type="button">Guia</button>
+      <button id="medSafetyGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
     </div>
                   <p class="mini-status" style="margin-top: 0;">
         Use o botão para fotografar a prescrição médica. O sistema irá transcrever o que estiver legível, organizar os medicamentos, apontar riscos e inconsistências relevantes para a enfermagem e sinalizar interações importantes quando for possível confirmar com segurança.
@@ -3088,7 +3088,7 @@
     <div id="aprazamentoCard" class="module-card">
       <div class="section-header-row">
         <h2>Aprazamento de prescrição</h2>
-        <button id="aprazamentoGuideBtn" class="btn-print" type="button">Guia</button>
+        <button id="aprazamentoGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
       </div>
 
       <p class="mini-status" style="margin-top: 0;">
@@ -3123,7 +3123,7 @@
     <div id="woundCard" class="module-card">
       <div class="section-header-row">
       <h2>Curativos e feridas</h2>
-      <button id="woundGuideBtn" class="btn-print" type="button">Guia</button>
+      <button id="woundGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
     </div>
       <p class="mini-status" style="margin-top: 0;">
         Use o botão para fotografar a lesão. O sistema irá descrever a ferida em linguagem técnica, apenas com base no que estiver visível, e sugerir condutas locais, cuidados não medicamentosos e, quando aplicável, opções de tratamento medicamentoso, além de sinais de alarme e critérios de encaminhamento, sem inventar dados.
@@ -3147,7 +3147,7 @@
     <div id="examInterpretationCard" class="module-card">
       <div class="section-header-row">
       <h2>Interpretação de resultados de exames</h2>
-      <button id="examGuideBtn" class="btn-print" type="button">Guia</button>
+      <button id="examGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
     </div>
       <p class="mini-status" style="margin-top: 0;">
         Use os botões para fotografar o resultado do exame (ex.: laudo, tabela de laboratório, impressão do sistema). O sistema irá transcrever somente o que estiver legível, organizar achados relevantes e oferecer uma interpretação clínica didática, com hipóteses possíveis, limitações, próximos passos e sinais de alarme, sem inventar dados.
@@ -3169,11 +3169,9 @@
 </div>
 
     <div id="docTranscriptionCard" class="module-card">
-      <div class="section-header-row" style="justify-content: flex-start;">
-        <div class="soap-title-actions" style="justify-content: flex-start;">
-          <h2 style="margin: 0;">Transcrição de documentos</h2>
-          <button id="transcriptionGuideBtn" class="btn-print" type="button" style="display: inline-block; margin-left: 8px;">Guia de Transcrição de documentos</button>
-        </div>
+      <div class="section-header-row">
+        <h2>Transcrição de documentos</h2>
+        <button id="transcriptionGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
       </div>
 
       <p class="mini-status" style="margin-top: 0;">
@@ -3216,7 +3214,7 @@
 <div id="medicalDoubtsCard" class="module-card">
       <div class="section-header-row">
       <h2>Dúvidas em Saúde</h2>
-      <button id="medicalDoubtsGuideBtn" class="btn-print" type="button">Guia</button>
+      <button id="medicalDoubtsGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
     </div>
       <p class="mini-status" style="margin-top: 0;">Faça qualquer pergunta sobre saúde. Pressione Enter ou clique em Enviar.</p><div class="inline-input-row" style="gap: 10px; align-items: stretch;">
   <input id="medicalDoubtInput" class="text-input" type="text" placeholder="Digite sua dúvida sobre saúde e pressione Enter" autocomplete="off" style="flex: 1 1 auto; margin: 0;" />
@@ -3230,7 +3228,7 @@
                 <div id="calculatorsCard" class="module-card">
       <div class="section-header-row">
       <h2>Calculadoras Clínicas</h2>
-      <button id="calculatorsGuideBtn" class="btn-print" type="button">Guia</button>
+      <button id="calculatorsGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
     </div>
       <p class="mini-status" style="margin-top: 0;">
         Selecione a calculadora, preencha os campos e veja o resultado.
@@ -3581,7 +3579,7 @@
     <div id="sbarCard" class="module-card hidden">
       <div class="module-title-row">
         <h2>Passagem de Plantão (SBAR)</h2>
-        <button id="openSbarGuideBtn" class="mini-consult-btn sbar-guide-btn" type="button">Guia</button>
+        <button id="openSbarGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
       </div>
       <p class="module-subtitle">Use este módulo para gravar rapidamente (no momento do plantão) e gerar uma passagem de plantão no padrão SBAR (Situação, Background, Avaliação, Recomendação).</p>
 
@@ -13454,6 +13452,12 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     let copyMedicalDocsBtn = null;
     let printMedicalDocsBtn = null;
 
+    function medicalDocsUpdateCopyPrintVisibility() {
+      const hasText = !!(medicalDocsOutput && String(medicalDocsOutput.value || "").trim());
+      if (copyMedicalDocsBtn) copyMedicalDocsBtn.classList.toggle("hidden", !hasText);
+      if (printMedicalDocsBtn) printMedicalDocsBtn.classList.toggle("hidden", !hasText);
+    }
+
     function medicalDocsBindElementsAndWire() {
       medicalDocsRecordBtn = document.getElementById("medicalDocsRecordBtn");
       medicalDocsPauseBtn = document.getElementById("medicalDocsPauseBtn");
@@ -13465,6 +13469,9 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       medicalDocsMissingFields = document.getElementById("medicalDocsMissingFields");
       copyMedicalDocsBtn = document.getElementById("copyMedicalDocsBtn");
       printMedicalDocsBtn = document.getElementById("printMedicalDocsBtn");
+
+      medicalDocsUpdateCopyPrintVisibility();
+      if (medicalDocsOutput) medicalDocsOutput.addEventListener("input", medicalDocsUpdateCopyPrintVisibility);
 
       const medicalDocsGuideBtn = document.getElementById("medicalDocsGuideBtn");
       const medicalDocsGuidePanel = document.getElementById("medicalDocsGuidePanel");
@@ -13654,6 +13661,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       medicalDocsFinalTranscript = "";
 
       if (medicalDocsOutput) medicalDocsOutput.value = "";
+      medicalDocsUpdateCopyPrintVisibility();
       if (medicalDocsTypeDetected) medicalDocsTypeDetected.textContent = "";
       if (medicalDocsMissingFields) medicalDocsMissingFields.textContent = "";
 
@@ -13771,6 +13779,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
         if (medicalDocsTypeDetected) medicalDocsTypeDetected.textContent = tipo || "não informado";
         if (medicalDocsMissingFields) medicalDocsMissingFields.textContent = (campos && campos.length) ? campos.join("\n") : "Sem pendências.";
         if (medicalDocsOutput) medicalDocsOutput.value = normalizeNumberedParagraphs(documento || "");
+        medicalDocsUpdateCopyPrintVisibility();
 
         if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Documento médico gerado.";
       } catch (err) {
@@ -13835,7 +13844,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
   <div id="medicalDocsCard" class="module-card">
     <div class="section-header-row">
       <h2>Geração de documentos</h2>
-      <button id="medicalDocsGuideBtn" class="btn-print" type="button">Guia</button>
+      <button id="medicalDocsGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
     </div>
 
     <div class="inline-input-row" style="margin-top: 6px;">
@@ -13861,8 +13870,8 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     <textarea id="medicalDocsOutput" class="prescription-textarea" placeholder="O documento médico gerado aparecerá aqui." style="margin-top: 12px;"></textarea>
 
     <div class="prescription-actions">
-      <button id="copyMedicalDocsBtn" class="btn-copy" type="button">Copiar</button>
-      <button id="printMedicalDocsBtn" class="btn-print" type="button">Imprimir</button>
+      <button id="copyMedicalDocsBtn" class="btn-copy hidden" type="button">Copiar</button>
+      <button id="printMedicalDocsBtn" class="btn-print hidden" type="button">Imprimir</button>
     </div>
   </div>
 </div>
