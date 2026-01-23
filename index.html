@@ -1408,7 +1408,7 @@
     table.admin-table th { background: #f7f7f7; font-weight: 900; }
     .admin-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .admin-actions button { padding: 8px 10px; border-radius: 10px; font-size: 12px; }
-    .modal-overlay.hidden { display: none; }
+    .modal-overlay.hidden { display: none !important; }
 
 
     .admin-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
@@ -2146,7 +2146,7 @@
       <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
 
       <h1>Atendimento de Enfermagem</h1>
-      <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
+      <p class="auth-subtitle">Ferramenta para auxiliar o profissional enfermeira (o) mediante acesso restrito para profissionais cadastrados</p>
 
       <label class="auth-label" for="loginField">CPF (Login)</label>
       <input id="loginField" class="auth-input" autocomplete="username" inputmode="numeric" />
@@ -2173,7 +2173,15 @@
 
       <div class="tutorial-module" id="tutorial2">
         <div class="tutorial-title">Tutorial 2</div>
-        <div class="tutorial-desc">Continuação do treinamento inicial. Se o Tutorial 1 terminar e você ainda tiver dúvidas, assista este segundo vídeo.</div>
+        
+      <div class="tutorial-module" id="tutorial3">
+        <div class="tutorial-title">Tutorial 3</div>
+        <div class="tutorial-desc">Vídeo complementar do treinamento. Assista este terceiro vídeo para reforçar o uso da plataforma e esclarecer dúvidas.</div>
+        <video class="tutorial-video" controls preload="metadata">
+          <source src="tutorial-3.mp4" type="video/mp4" />
+        </video>
+      </div>
+<div class="tutorial-desc">Continuação do treinamento inicial. Se o Tutorial 1 terminar e você ainda tiver dúvidas, assista este segundo vídeo.</div>
         <video class="tutorial-video" controls preload="metadata">
           <source src="tutorial-2.mp4" type="video/mp4" />
         </video>
