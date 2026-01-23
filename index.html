@@ -2574,8 +2574,37 @@
       </div>
 
       <p class="module-subtitle">
-        Use este módulo para gerar qualquer documento de enfermagem (relatórios, encaminhamentos, declarações, solicitações, comunicados, atestado de comparecimento/permanência, ata de reunião, registros de procedimentos e outros). Ao encerrar a gravação, o documento será gerado e ficará pronto para copiar e imprimir.
+        Use este módulo para gerar documentos médicos e administrativos a partir da sua fala (relatório médico para INSS/perícia, relatório médico, atestado, declaração, encaminhamento, solicitações de exames/fisioterapia, comunicados e outros). Ao encerrar a gravação, o documento será gerado em linguagem formal, pronto para copiar e imprimir.
       </p>
+
+      <div class="inline-input-row">
+        <select id="docsTypePreset" class="text-input">
+          <option value="">Tipo automático (recomendado)</option>
+          <option value="Relatório médico para INSS (avaliação médico-pericial)">Relatório médico para INSS (perícia)</option>
+          <option value="Relatório médico">Relatório médico</option>
+          <option value="Atestado médico">Atestado médico</option>
+          <option value="Declaração médica">Declaração médica</option>
+          <option value="Encaminhamento médico">Encaminhamento médico</option>
+          <option value="Solicitação de exames">Solicitação de exames</option>
+          <option value="Solicitação de fisioterapia">Solicitação de fisioterapia</option>
+          <option value="Solicitação de afastamento/restrição laboral">Solicitação de afastamento/restrição laboral</option>
+          <option value="Declaração de comparecimento">Declaração de comparecimento</option>
+          <option value="Declaração de permanência">Declaração de permanência</option>
+          <option value="Outros">Outros (informar ao lado)</option>
+        </select>
+        <input id="docsTypeCustom" class="text-input" type="text" placeholder="Se necessário, digite o tipo de documento aqui" />
+      </div>
+
+      <div id="docsLiveGuidance" class="live-guidance">
+        <div class="live-guidance-header">
+          <p class="live-guidance-title">Perguntas essenciais para o documento</p>
+          <p id="docsLiveGuidanceContext" class="live-guidance-context"></p>
+        </div>
+        <p id="docsLiveGuidanceStatus" class="live-guidance-status">Inicie a gravação para receber perguntas essenciais em tempo real.</p>
+        <div id="docsLiveGuidanceList" class="live-guidance-list">
+          <div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>
+        </div>
+      </div>
 
       <button id="docsRecordBtn" class="start" type="button">Iniciar geração de documentos</button>
 
@@ -4952,6 +4981,12 @@ Ata de reunião:
     let docsAccumulatedSeconds = 0;
     let docsTimerInterval = null;
 
+    // Guia em tempo real do módulo de documentos (tipo + até 3 perguntas)
+    let docsGuidanceInterval = null;
+    let docsGuidanceInFlight = false;
+    let docsGuidanceLastHash = "";
+    let docsLastGeneratedDocument = "";
+
 const recordBtn = document.getElementById("recordBtn");
     const pauseBtn = document.getElementById("pauseBtn");
     const timerEl = document.getElementById("timer");
@@ -5037,6 +5072,8 @@ const recordBtn = document.getElementById("recordBtn");
 
         "docsGuideBtn",
         "docsRecordBtn",
+        "docsTypePreset",
+        "docsTypeCustom",
         "docsTimer",
         "docsMicStatus",
         "docsPauseBtn",
@@ -5094,6 +5131,8 @@ const recordBtn = document.getElementById("recordBtn");
     const docsTimerEl = document.getElementById("docsTimer");
     const docsMicStatus = document.getElementById("docsMicStatus");
     const docsError = document.getElementById("docsError");
+    const docsTypePreset = document.getElementById("docsTypePreset");
+    const docsTypeCustom = document.getElementById("docsTypeCustom");
 
     const docsGuideBtn = document.getElementById("docsGuideBtn");
     const docsGuidePanel = document.getElementById("docsGuidePanel");
@@ -5153,6 +5192,11 @@ const recordBtn = document.getElementById("recordBtn");
     const triageLiveGuidanceContext = document.getElementById("triageLiveGuidanceContext");
     const triageLiveGuidanceStatus = document.getElementById("triageLiveGuidanceStatus");
     const triageLiveGuidanceList = document.getElementById("triageLiveGuidanceList");
+
+    const docsLiveGuidance = document.getElementById("docsLiveGuidance");
+    const docsLiveGuidanceContext = document.getElementById("docsLiveGuidanceContext");
+    const docsLiveGuidanceStatus = document.getElementById("docsLiveGuidanceStatus");
+    const docsLiveGuidanceList = document.getElementById("docsLiveGuidanceList");
 
     const triageReportPanel = document.getElementById("triageReportPanel");
     const triageRiskBadge = document.getElementById("triageRiskBadge");
@@ -9621,6 +9665,188 @@ if (medicalDoubtSendBtn) {
       return true;
     }
 
+
+    function getDocsRequestedType() {
+      const preset = docsTypePreset ? String(docsTypePreset.value || "").trim() : "";
+      const custom = docsTypeCustom ? String(docsTypeCustom.value || "").trim() : "";
+
+      if (preset && preset.toLowerCase() !== "outros") return preset;
+      if (preset && preset.toLowerCase() === "outros") return custom;
+      return custom; // permite tipo livre mesmo em modo automático
+    }
+
+    function syncDocsTypeCustomState() {
+      if (!docsTypeCustom) return;
+      const preset = docsTypePreset ? String(docsTypePreset.value || "").trim() : "";
+      const isOther = preset && preset.toLowerCase() === "outros";
+      // Se escolher um tipo específico, desabilita o campo de tipo livre (mantém o valor para não perder)
+      docsTypeCustom.disabled = Boolean(preset && !isOther);
+    }
+
+    if (docsTypePreset) {
+      docsTypePreset.addEventListener("change", () => {
+        syncDocsTypeCustomState();
+        // reseta o guia para refletir o novo tipo
+        docsGuidanceLastHash = "";
+        docsFetchLiveGuidance();
+      });
+    }
+
+    syncDocsTypeCustomState();
+
+    async function docsFetchLiveGuidance() {
+      if (!docsIsRecording || docsIsPaused) return;
+      if (docsGuidanceInFlight) return;
+
+      const transcricao = docsGetCombinedTranscript();
+      if (!transcricao || transcricao.length < 40) {
+        if (docsLiveGuidanceStatus) {
+          docsLiveGuidanceStatus.textContent = "Fale o conteúdo do documento para receber perguntas essenciais em tempo real.";
+        }
+        return;
+      }
+
+      const tipo_documento = getDocsRequestedType();
+      const payload = tipo_documento ? { transcricao, tipo_documento } : { transcricao };
+      const h = hashForGuidancePayload(payload);
+      if (h === docsGuidanceLastHash) return;
+      docsGuidanceLastHash = h;
+
+      docsGuidanceInFlight = true;
+
+      try {
+        let resp = await fetch(BACKEND_URL + "/api/documento-tempo-real", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (resp.status === 404) {
+          resp = await fetch(BACKEND_URL + "/api/guia-documento-tempo-real", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+        }
+
+        if (!resp.ok) {
+          const t = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (guia documento):", resp.status, t);
+          if (docsLiveGuidanceStatus) {
+            docsLiveGuidanceStatus.textContent = "Não foi possível atualizar as perguntas em tempo real.";
+          }
+          return;
+        }
+
+        const data = await resp.json().catch(() => ({}));
+        const tipo = (data && (data.tipo_documento || data.tipo)) ? String(data.tipo_documento || data.tipo).trim() : "";
+        const perguntasRaw = Array.isArray(data?.perguntas)
+          ? data.perguntas
+          : (Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : []);
+        const perguntas = perguntasRaw.map(x => String(x || "").trim()).filter(Boolean).slice(0, 3);
+
+        if (docsLiveGuidanceContext) {
+          docsLiveGuidanceContext.textContent = tipo ? ("Tipo identificado: " + tipo) : "";
+        }
+
+        if (docsLiveGuidanceStatus) {
+          docsLiveGuidanceStatus.textContent = perguntas.length
+            ? "Perguntas essenciais sugeridas (não obrigatórias)."
+            : "Nenhuma pergunta sugerida no momento.";
+        }
+
+        if (docsLiveGuidanceList) {
+          if (!perguntas.length) {
+            docsLiveGuidanceList.innerHTML = '<div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>';
+          } else {
+            docsLiveGuidanceList.innerHTML = "";
+            perguntas.forEach((q, idx) => {
+              const el = document.createElement("div");
+              el.className = "live-guidance-item";
+              el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${escapeHtml(q)}</div>`;
+              docsLiveGuidanceList.appendChild(el);
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Erro ao atualizar guia de documento:", e);
+        if (docsLiveGuidanceStatus) {
+          docsLiveGuidanceStatus.textContent = "Erro ao atualizar as perguntas em tempo real.";
+        }
+      } finally {
+        docsGuidanceInFlight = false;
+      }
+    }
+
+    function startDocsLiveGuidancePolling() {
+      stopDocsLiveGuidancePolling();
+      docsFetchLiveGuidance();
+      docsGuidanceInterval = setInterval(() => {
+        docsFetchLiveGuidance();
+      }, 2500);
+    }
+
+    function stopDocsLiveGuidancePolling() {
+      if (docsGuidanceInterval) {
+        clearInterval(docsGuidanceInterval);
+      }
+      docsGuidanceInterval = null;
+      docsGuidanceInFlight = false;
+      docsGuidanceLastHash = "";
+    }
+
+    function renderDocsFinalDocument(payload) {
+      if (!docsResultsMount) return;
+
+      const obj = (payload && typeof payload === "object") ? payload : { documento: String(payload || "") };
+      const tipo = (obj.tipo_documento || obj.tipo || "").toString().trim();
+      const finalidade = (obj.finalidade || "").toString().trim();
+      const pend = Array.isArray(obj.campos_pendentes) ? obj.campos_pendentes : [];
+
+      const safeText = normalizeNumberedParagraphs(String(obj.documento || "").trim());
+      const pendingText = pend.map((x, i) => `${i + 1}. ${String(x || "").trim()}`).filter(Boolean).join("\n");
+
+      docsResultsMount.innerHTML = `
+        <div class="module-card" style="margin-top: 14px;">
+          <h3 style="margin: 0 0 10px 0;">Documento gerado</h3>
+          <div style="font-size: 13px; line-height: 1.4; margin-bottom: 10px;">
+            <div><strong>Tipo:</strong> ${escapeHtml(tipo || "não informado")}</div>
+            <div><strong>Finalidade/Destino:</strong> ${escapeHtml(finalidade || "não informado")}</div>
+            ${pendingText ? `<div style="margin-top: 8px;"><strong>Campos pendentes:</strong><div class="answer-box" style="margin-top: 6px;">${escapeHtml(pendingText)}</div></div>` : ""}
+          </div>
+          <div class="prescription-actions">
+            <button id="docsCopyFinalBtn" class="btn-copy" type="button">Copiar documento</button>
+            <button id="docsPrintFinalBtn" class="btn-print" type="button">Imprimir documento</button>
+          </div>
+          <textarea id="docsFinalDocTextarea" class="prescription-textarea" spellcheck="false"></textarea>
+        </div>
+      `;
+
+      const ta = document.getElementById("docsFinalDocTextarea");
+      if (ta) ta.value = safeText;
+
+      const copyBtn = document.getElementById("docsCopyFinalBtn");
+      if (copyBtn) {
+        copyBtn.addEventListener("click", () => {
+          const txt = (ta && ta.value) ? String(ta.value).trim() : "";
+          if (!txt) {
+            alert("Não há documento para copiar.");
+            return;
+          }
+          copyToClipboard(txt);
+        });
+      }
+
+      const printBtn = document.getElementById("docsPrintFinalBtn");
+      if (printBtn) {
+        printBtn.addEventListener("click", () => {
+          const txt = (ta && ta.value) ? String(ta.value) : "";
+          openPrintWindow("Documento", txt);
+        });
+      }
+    }
+
+
     function startDocsRecording() {
       const busy = !!(isRecording || triageIsRecording || handoffIsRecording || reportIsRecording || questionsIsRecording || sbarIsRecording);
       if (busy) {
@@ -9634,6 +9860,17 @@ if (medicalDoubtSendBtn) {
       docsIsPaused = false;
       docsFinalTranscript = "";
       docsInterimTranscript = "";
+      docsLastGeneratedDocument = "";
+
+      // Limpa resultado anterior
+      if (docsResultsMount) docsResultsMount.innerHTML = "";
+
+      // Inicializa guia em tempo real (apenas para orientar)
+      if (docsLiveGuidanceStatus) docsLiveGuidanceStatus.textContent = "Iniciando guia em tempo real...";
+      if (docsLiveGuidanceContext) docsLiveGuidanceContext.textContent = "";
+      if (docsLiveGuidanceList) {
+        docsLiveGuidanceList.innerHTML = '<div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>';
+      }
 
       if (docsError) docsError.textContent = "";
       if (docsMicStatus) docsMicStatus.textContent = "Gravando documentos...";
@@ -9657,12 +9894,16 @@ if (medicalDoubtSendBtn) {
       docsResetTimer();
       docsStartTimer();
 
+      startDocsLiveGuidancePolling();
+
       try { docsRecognition.start(); } catch (e) {}
     }
 
     function stopDocsRecording() {
       docsIsRecording = false;
       docsIsPaused = false;
+
+      stopDocsLiveGuidancePolling();
 
       if (docsRecognition) {
         try { docsRecognition.stop(); } catch (e) {}
@@ -9685,6 +9926,8 @@ if (medicalDoubtSendBtn) {
       if (!docsIsRecording || docsIsPaused) return;
       docsIsPaused = true;
 
+      stopDocsLiveGuidancePolling();
+
       if (docsRecognition) {
         try { docsRecognition.stop(); } catch (e) {}
       }
@@ -9697,6 +9940,8 @@ if (medicalDoubtSendBtn) {
     function resumeDocsRecording() {
       if (!docsIsRecording || !docsIsPaused) return;
       docsIsPaused = false;
+
+      startDocsLiveGuidancePolling();
 
       if (docsRecognition) {
         try { docsRecognition.start(); } catch (e) {}
@@ -9717,20 +9962,9 @@ if (medicalDoubtSendBtn) {
       if (docsMicStatus) docsMicStatus.textContent = "Gerando documento...";
       if (docsRecordBtn) docsRecordBtn.disabled = true;
 
-      // Prepara UI do módulo de documentos (já existente)
-      if (reportStatus) {
-        reportStatus.textContent = "Gerando documento...";
-        reportStatus.classList.add("loading-dot");
-      }
-      if (reportOutput) reportOutput.value = "";
-      if (reportDocTypeDetected) reportDocTypeDetected.textContent = "";
-      if (reportMissingFields) reportMissingFields.textContent = "";
-      updateReportActions();
-
       try {
-        const selected = (reportDocTypeSelect && reportDocTypeSelect.value) ? String(reportDocTypeSelect.value).trim() : "auto";
-        const body = { transcricao: txt };
-        if (selected && selected !== "auto") body.tipo_documento = selected;
+        const tipo_documento = getDocsRequestedType();
+        const body = tipo_documento ? { transcricao: txt, tipo_documento } : { transcricao: txt };
 
         const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
           method: "POST",
@@ -9742,43 +9976,24 @@ if (medicalDoubtSendBtn) {
           const t = await resp.text().catch(() => "");
           console.error("Erro HTTP do backend (documentos):", resp.status, t);
           if (docsError) docsError.textContent = "Não foi possível gerar o documento.";
-          if (reportStatus) {
-            reportStatus.textContent = "Não foi possível gerar o documento.";
-            reportStatus.classList.remove("loading-dot");
-          }
           return;
         }
 
         const data = await resp.json().catch(() => ({}));
         const documento = (data && (data.documento || data.relatorio)) ? String(data.documento || data.relatorio) : "";
-        const tipoIdentificado = (data && data.tipo_documento) ? String(data.tipo_documento) : "";
-        const pendentes = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : (Array.isArray(data?.campos_faltantes) ? data.campos_faltantes : []);
 
-        if (reportDocTypeDetected) reportDocTypeDetected.textContent = tipoIdentificado ? tipoIdentificado : "não informado";
-        if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "Nenhum";
-        if (reportOutput) reportOutput.value = normalizeNumberedParagraphs(documento);
-
-        updateReportActions();
-
-        if (reportStatus) {
-          reportStatus.textContent = documento ? "Documento gerado." : "Não foi possível gerar o documento.";
-          reportStatus.classList.remove("loading-dot");
-        }
-
-        mountResultsCard(docsResultsMount);
-        if (resultsCard) resultsCard.classList.remove("hidden");
-        if (patientReportCard) patientReportCard.classList.remove("hidden");
-        if (docsMicStatus) docsMicStatus.textContent = documento ? "Documento gerado. Role para copiar/imprimir." : "Não foi possível gerar o documento.";
-        if (patientReportCard) patientReportCard.scrollIntoView({ behavior: "smooth", block: "start" });
+        docsLastGeneratedDocument = normalizeNumberedParagraphs(documento);
+        renderDocsFinalDocument({
+          documento: docsLastGeneratedDocument,
+          tipo_documento: (data && data.tipo_documento) ? String(data.tipo_documento) : "",
+          finalidade: (data && data.finalidade) ? String(data.finalidade) : "",
+          campos_pendentes: (data && Array.isArray(data.campos_pendentes)) ? data.campos_pendentes : []
+        });
+        if (docsMicStatus) docsMicStatus.textContent = documento ? "Documento gerado." : "Não foi possível gerar o documento.";
 
       } catch (e) {
         console.error("Erro ao gerar documento:", e);
         if (docsError) docsError.textContent = "Erro ao gerar documento.";
-        if (reportStatus) {
-          reportStatus.textContent = "Erro ao gerar documento.";
-          reportStatus.classList.remove("loading-dot");
-        }
-        updateReportActions();
       } finally {
         if (docsRecordBtn) docsRecordBtn.disabled = false;
       }
