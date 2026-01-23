@@ -13421,16 +13421,67 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     // Documentos Médicos (consulta completa -> documento) via /api/gerar-documento-medico
     // ============================
 
-    const medicalDocsRecordBtn = document.getElementById("medicalDocsRecordBtn");
-    const medicalDocsPauseBtn = document.getElementById("medicalDocsPauseBtn");
-    const medicalDocsTimerEl = document.getElementById("medicalDocsTimer");
-    const medicalDocsMicStatus = document.getElementById("medicalDocsMicStatus");
-    const medicalDocsError = document.getElementById("medicalDocsError");
-    const medicalDocsOutput = document.getElementById("medicalDocsOutput");
-    const medicalDocsTypeDetected = document.getElementById("medicalDocsTypeDetected");
-    const medicalDocsMissingFields = document.getElementById("medicalDocsMissingFields");
-    const copyMedicalDocsBtn = document.getElementById("copyMedicalDocsBtn");
-    const printMedicalDocsBtn = document.getElementById("printMedicalDocsBtn");
+    let medicalDocsRecordBtn = null;
+    let medicalDocsPauseBtn = null;
+    let medicalDocsTimerEl = null;
+    let medicalDocsMicStatus = null;
+    let medicalDocsError = null;
+    let medicalDocsOutput = null;
+    let medicalDocsTypeDetected = null;
+    let medicalDocsMissingFields = null;
+    let copyMedicalDocsBtn = null;
+    let printMedicalDocsBtn = null;
+
+    function medicalDocsBindElementsAndWire() {
+      medicalDocsRecordBtn = document.getElementById("medicalDocsRecordBtn");
+      medicalDocsPauseBtn = document.getElementById("medicalDocsPauseBtn");
+      medicalDocsTimerEl = document.getElementById("medicalDocsTimer");
+      medicalDocsMicStatus = document.getElementById("medicalDocsMicStatus");
+      medicalDocsError = document.getElementById("medicalDocsError");
+      medicalDocsOutput = document.getElementById("medicalDocsOutput");
+      medicalDocsTypeDetected = document.getElementById("medicalDocsTypeDetected");
+      medicalDocsMissingFields = document.getElementById("medicalDocsMissingFields");
+      copyMedicalDocsBtn = document.getElementById("copyMedicalDocsBtn");
+      printMedicalDocsBtn = document.getElementById("printMedicalDocsBtn");
+
+      if (medicalDocsRecordBtn) {
+        medicalDocsRecordBtn.addEventListener("click", () => {
+          if (!medicalDocsIsRecording) startMedicalDocsRecording();
+          else stopMedicalDocsRecordingAndGenerate();
+        });
+      }
+
+      if (medicalDocsPauseBtn) {
+        medicalDocsPauseBtn.addEventListener("click", () => {
+          if (!medicalDocsIsRecording) return;
+          if (!medicalDocsIsPaused) pauseMedicalDocsRecording();
+          else resumeMedicalDocsRecording();
+        });
+      }
+
+      if (copyMedicalDocsBtn) {
+        copyMedicalDocsBtn.addEventListener("click", () => {
+          const txt = medicalDocsOutput ? String(medicalDocsOutput.value || "").trim() : "";
+          if (!txt) return;
+          copyToClipboard(txt);
+        });
+      }
+
+      if (printMedicalDocsBtn) {
+        printMedicalDocsBtn.addEventListener("click", () => {
+          const txt = medicalDocsOutput ? String(medicalDocsOutput.value || "").trim() : "";
+          const title = medicalDocsTypeDetected ? String(medicalDocsTypeDetected.textContent || "").trim() : "Documento";
+          printTextBlock(title || "Documento", txt);
+        });
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", medicalDocsBindElementsAndWire);
+    } else {
+      medicalDocsBindElementsAndWire();
+    }
+
 
     let medicalDocsRecognition = null;
     let medicalDocsIsRecording = false;
