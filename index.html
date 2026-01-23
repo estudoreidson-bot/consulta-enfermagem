@@ -218,6 +218,26 @@
     #docsRecordBtn.recording { background: #dc3545; }
     #docsRecordBtn:active { transform: scale(0.97); }
 
+
+    /* Documentos Médicos: botão principal (mesmo formato do botão da Escala de plantão) */
+    #medicalDocsRecordBtn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      background: var(--brand-green);
+      color: #fff;
+      width: 100%;
+      max-width: 420px;
+    }
+    #medicalDocsRecordBtn.start { background: var(--brand-green); }
+    #medicalDocsRecordBtn.recording { background: #dc3545; }
+    #medicalDocsRecordBtn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     #docsPauseBtn {
       padding: 6px 14px;
       border-radius: 20px;
@@ -2146,7 +2166,7 @@
       <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
 
       <h1>Atendimento de Enfermagem</h1>
-      <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
+      <p class="auth-subtitle">Ferramenta para auxiliar o profissional enfermeira (o) mediante acesso restrito para profissionais cadastrados</p>
 
       <label class="auth-label" for="loginField">CPF (Login)</label>
       <input id="loginField" class="auth-input" autocomplete="username" inputmode="numeric" />
@@ -2176,6 +2196,15 @@
         <div class="tutorial-desc">Continuação do treinamento inicial. Se o Tutorial 1 terminar e você ainda tiver dúvidas, assista este segundo vídeo.</div>
         <video class="tutorial-video" controls preload="metadata">
           <source src="tutorial-2.mp4" type="video/mp4" />
+        </video>
+      </div>
+
+
+      <div class="tutorial-module" id="tutorial3">
+        <div class="tutorial-title">Tutorial 3</div>
+        <div class="tutorial-desc">Vídeo complementar enviado para reforçar o treinamento e esclarecer dúvidas frequentes.</div>
+        <video class="tutorial-video" controls preload="metadata">
+          <source src="tutorial-3.mp4" type="video/mp4" />
         </video>
       </div>
     </div>
@@ -2596,6 +2625,94 @@
       <div id="handoffError" class="error"></div>
 
       <div id="handoffResultsMount"></div>
+
+      <div class="module-divider"></div>
+
+      <div class="section-header-row" style="justify-content: center;">
+        <div class="soap-title-actions" style="justify-content: center;">
+          <button id="medicalDocsHelpBtn" class="btn-print guide-main-btn" type="button">Guia Documentos</button>
+        </div>
+      </div>
+
+      <div id="medicalDocsHelpDrawer" class="consult-guide-drawer hidden" style="margin-bottom: 10px;">
+        <div class="consult-guide-header">
+          <div>
+            <p class="consult-guide-title">Guia completo da geração de documentos</p>
+            <p class="consult-guide-subtitle">Como gravar, gerar, revisar e usar o texto final</p>
+          </div>
+          <button id="closeMedicalDocsHelpBtn" class="consult-guide-close" type="button">Fechar</button>
+        </div>
+
+        <div class="consult-guide-content">
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">O que este módulo faz</div>
+            <div class="consult-guide-card-text">
+              Este módulo ajuda a redigir documentos médicos a partir da transcrição da consulta. Você grava a consulta inteira ou o trecho necessário. Ao encerrar, o sistema identifica o tipo de documento, a queixa/doença e os exames mencionados, e gera um texto formal com itens pendentes para completar.
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Tipos de documentos</div>
+            <div class="consult-guide-card-text">
+              Documentos médicos: relatório para INSS, atestados, encaminhamentos, declarações e solicitações. Também pode ser usado para textos formais administrativos quando necessário.
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Como usar o botão "Gerar documentos"</div>
+            <div class="consult-guide-card-text">
+              1) Clique em "Gerar documentos" para iniciar a gravação.
+              2) Logo no início, diga qual documento está sendo solicitado (ex.: "relatório médico para INSS", "atestado", "encaminhamento", "declaração", "solicitação de exames").
+              3) Grave a consulta inteira ou dite o trecho essencial com identificação, queixa, evolução, exames e conduta.
+              4) Clique novamente para encerrar e gerar o texto.
+              5) Revise, complete os itens pendentes e use "Copiar" ou "Imprimir".
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Dicas para melhorar o resultado</div>
+            <div class="consult-guide-card-text">
+              Fale devagar, com boa dicção e próximo ao microfone. Evite ruídos. Se faltar informação importante, repita durante a gravação. Use "Pausar" para interromper e retomar sem perder o fluxo.
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Revisão e segurança</div>
+            <div class="consult-guide-card-text">
+              O texto gerado é um rascunho. Antes de assinar ou registrar, confira dados de identificação, datas, período de afastamento quando aplicável, e coerência com o prontuário e exames. Não inclua informações que não foram realmente obtidas.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="roster-shell" style="width: 100%; max-width: 420px;">
+        <div class="roster-actions" style="justify-content: center; margin-top: 0;">
+          <button id="medicalDocsRecordBtn" class="start" type="button">Gerar documentos</button>
+          <button id="medicalDocsPauseBtn" class="pause-btn" type="button" style="display:none;">Pausar</button>
+        </div>
+      </div>
+
+      <div id="medicalDocsTimer" class="mini-timer hidden">00:00</div>
+      <div id="medicalDocsMicStatus" class="mini-status">Clique em "Gerar documentos" para começar.</div>
+      <div id="medicalDocsError" class="error-text"></div>
+
+      <div class="inline-input-row" style="margin-top: 10px;">
+        <div style="flex: 1; min-width: 240px;">
+          <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Tipo identificado</div>
+          <div id="medicalDocsTypeDetected" class="answer-box" style="min-height: 44px;"></div>
+        </div>
+        <div style="flex: 1; min-width: 240px;">
+          <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Perguntas/itens pendentes</div>
+          <div id="medicalDocsMissingFields" class="answer-box" style="min-height: 44px;"></div>
+        </div>
+      </div>
+
+      <textarea id="medicalDocsOutput" class="prescription-textarea" placeholder="O documento médico gerado aparecerá aqui." style="margin-top: 12px;"></textarea>
+
+      <div class="prescription-actions">
+        <button id="copyMedicalDocsBtn" class="btn-copy" type="button">Copiar</button>
+        <button id="printMedicalDocsBtn" class="btn-print" type="button">Imprimir</button>
+      </div>
 
       <div class="module-divider"></div>
 
@@ -13444,6 +13561,17 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       copyMedicalDocsBtn = document.getElementById("copyMedicalDocsBtn");
       printMedicalDocsBtn = document.getElementById("printMedicalDocsBtn");
 
+      const medicalDocsHelpBtn = document.getElementById("medicalDocsHelpBtn");
+      const closeMedicalDocsHelpBtn = document.getElementById("closeMedicalDocsHelpBtn");
+      const medicalDocsHelpDrawer = document.getElementById("medicalDocsHelpDrawer");
+
+      medicalDocsHelpBtn?.addEventListener("click", () => {
+        medicalDocsHelpDrawer?.classList.toggle("hidden");
+      });
+      closeMedicalDocsHelpBtn?.addEventListener("click", () => {
+        medicalDocsHelpDrawer?.classList.add("hidden");
+      });
+
       if (medicalDocsRecordBtn) {
         medicalDocsRecordBtn.addEventListener("click", () => {
           if (!medicalDocsIsRecording) startMedicalDocsRecording();
@@ -13670,58 +13798,8 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       }
       medicalDocsStartTimer();
 
-      if (medicalDocsPauseBtn) medicalDocsPauseBtn.innerText = "Pausar";
-      if (medicalDocsMicStatus) medicalDocsMicStatus.innerText = "Gravando consulta para documento médico...";
-    }
-
-    async function stopMedicalDocsRecordingAndGenerate() {
-      if (!medicalDocsIsRecording) return;
-
-      medicalDocsIsRecording = false;
-      medicalDocsIsPaused = false;
-
-      stopMedicalDocsLivePolling();
-
-      if (medicalDocsRecognition) {
-        try { medicalDocsRecognition.stop(); } catch (e) {}
-      }
-
-      medicalDocsPauseTimer();
-
-      if (medicalDocsRecordBtn) {
-        medicalDocsRecordBtn.className = "start";
-        medicalDocsRecordBtn.innerText = "Iniciar documento médico";
-      }
-      if (medicalDocsPauseBtn) medicalDocsPauseBtn.style.display = "none";
-
-      if (recordBtn) recordBtn.disabled = false;
-      if (triageRecordBtn) triageRecordBtn.disabled = false;
-      if (docsRecordBtn) docsRecordBtn.disabled = false;
-      if (handoffRecordBtn) handoffRecordBtn.disabled = false;
-      if (reportRecordBtn) reportRecordBtn.disabled = false;
-
-      const txt = (medicalDocsFinalTranscript || "").trim();
-      if (!txt || txt.length < 40) {
-        if (medicalDocsError) medicalDocsError.textContent = "A transcrição ficou muito curta. Tente novamente, falando mais próximo ao microfone.";
-        if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Pronto.";
-        return;
-      }
-
-      if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Gerando documento médico...";
-      if (medicalDocsRecordBtn) medicalDocsRecordBtn.disabled = true;
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/gerar-documento-medico", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao: txt })
-        });
-
-        if (!resp.ok) {
-          const raw = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (documento médico):", resp.status, raw);
-          if (medicalDocsError) medicalDocsError.textContent = "Não foi possível gerar o documento médico.";
-          if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Pronto.";
+      if (medicalDocsPauseBtn) medicalDocs
+     if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Pronto.";
           return;
         }
 
@@ -13800,11 +13878,11 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       Ao encerrar, o sistema identifica o tipo de documento, a queixa/doença e os exames mencionados, e gera um texto formal com campos pendentes para completar.
     </p>
 
-    <button id="medicalDocsRecordBtn" class="start" type="button">Iniciar documento médico</button>
+    <button id="medicalDocsRecordBtn" class="start" type="button">Gerar documentos</button>
     <button id="medicalDocsPauseBtn" class="pause-btn" type="button" style="display:none;">Pausar</button>
 
     <div id="medicalDocsTimer" class="mini-timer hidden">00:00</div>
-    <div id="medicalDocsMicStatus" class="mini-status">Clique em "Iniciar documento médico" para começar.</div>
+    <div id="medicalDocsMicStatus" class="mini-status">Clique em "Gerar documentos" para começar.</div>
     <div id="medicalDocsError" class="error-text"></div>
 
     <div class="inline-input-row" style="margin-top: 10px;">
