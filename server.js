@@ -277,6 +277,9 @@ app.use(cors());
 app.use(bodyParser.json({ limit: "25mb" }));
 app.use(bodyParser.urlencoded({ limit: "25mb", extended: true }));
 
+// Servir arquivos estáticos (index, vídeos do tutorial, etc.)
+app.use(express.static(__dirname));
+
 // Servir o index.html apenas na rota raiz (útil para testes locais)
 app.get("/", (req, res) => {
   return res.sendFile(path.join(__dirname, "index.html"));
