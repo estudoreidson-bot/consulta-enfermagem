@@ -1408,7 +1408,7 @@
     table.admin-table th { background: #f7f7f7; font-weight: 900; }
     .admin-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .admin-actions button { padding: 8px 10px; border-radius: 10px; font-size: 12px; }
-    .modal-overlay.hidden { display: none !important; }
+    .modal-overlay.hidden { display: none; }
 
 
     .admin-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
@@ -2146,7 +2146,7 @@
       <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
 
       <h1>Atendimento de Enfermagem</h1>
-      <p class="auth-subtitle">Ferramenta para auxiliar o profissional enfermeira (o) mediante acesso restrito para profissionais cadastrados</p>
+      <p class="auth-subtitle">Acesso restrito para profissionais cadastrados. Versão 2025-12-30.3</p>
 
       <label class="auth-label" for="loginField">CPF (Login)</label>
       <input id="loginField" class="auth-input" autocomplete="username" inputmode="numeric" />
@@ -2173,15 +2173,7 @@
 
       <div class="tutorial-module" id="tutorial2">
         <div class="tutorial-title">Tutorial 2</div>
-        
-      <div class="tutorial-module" id="tutorial3">
-        <div class="tutorial-title">Tutorial 3</div>
-        <div class="tutorial-desc">Vídeo complementar do treinamento. Assista este terceiro vídeo para reforçar o uso da plataforma e esclarecer dúvidas.</div>
-        <video class="tutorial-video" controls preload="metadata">
-          <source src="tutorial-3.mp4" type="video/mp4" />
-        </video>
-      </div>
-<div class="tutorial-desc">Continuação do treinamento inicial. Se o Tutorial 1 terminar e você ainda tiver dúvidas, assista este segundo vídeo.</div>
+        <div class="tutorial-desc">Continuação do treinamento inicial. Se o Tutorial 1 terminar e você ainda tiver dúvidas, assista este segundo vídeo.</div>
         <video class="tutorial-video" controls preload="metadata">
           <source src="tutorial-2.mp4" type="video/mp4" />
         </video>
@@ -4222,6 +4214,7 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
       document.getElementById("nurseView")?.classList.add("hidden");
       document.getElementById("nurseSignupView")?.classList.add("hidden");
       document.getElementById("paymentsModal")?.classList.add("hidden");
+      document.getElementById("postLoginOnlyModules")?.classList.add("hidden");
     }
     function showSignup() {
       document.getElementById("loginView")?.classList.add("hidden");
@@ -4229,18 +4222,21 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
       document.getElementById("nurseView")?.classList.add("hidden");
       document.getElementById("nurseSignupView")?.classList.remove("hidden");
       document.getElementById("paymentsModal")?.classList.add("hidden");
+      document.getElementById("postLoginOnlyModules")?.classList.add("hidden");
     }
     function showAdmin() {
       document.getElementById("loginView")?.classList.add("hidden");
       document.getElementById("adminView")?.classList.remove("hidden");
       document.getElementById("nurseView")?.classList.add("hidden");
       document.getElementById("nurseSignupView")?.classList.add("hidden");
+      document.getElementById("postLoginOnlyModules")?.classList.remove("hidden");
     }
     function showNurse() {
       document.getElementById("loginView")?.classList.add("hidden");
       document.getElementById("adminView")?.classList.add("hidden");
       document.getElementById("nurseView")?.classList.remove("hidden");
       document.getElementById("nurseSignupView")?.classList.add("hidden");
+      document.getElementById("postLoginOnlyModules")?.classList.remove("hidden");
     }
 
     // Intercepta chamadas ao backend e injeta Authorization quando for /api/
@@ -13832,10 +13828,10 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
 </script>
 
-  
+<div id="postLoginOnlyModules" class="hidden">
+
   <div class="module-divider"></div>
 
-  
   <div id="medicalDocsCard" class="module-card">
     <div class="section-header-row">
       <h2>Geração de documentos</h2>
@@ -13869,6 +13865,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       <button id="printMedicalDocsBtn" class="btn-print" type="button">Imprimir</button>
     </div>
   </div>
+</div>
 
 <div class="whatsapp-fab-label">
 <div class="wa-label-title">WhatsApp</div><div class="wa-label-sub">Dúvidas, reportar erros, sugestões, melhorias</div></div>
