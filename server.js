@@ -289,26 +289,16 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Modelos (podem ser ajustados por variáveis de ambiente)
-// OPENAI_MODEL: modelo padrão do sistema
-// OPENAI_MODEL_DOCS: modelo preferido para geração de documentos (qualidade máxima)
-const OPENAI_DEFAULT_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
-const OPENAI_DOCS_MODEL = process.env.OPENAI_MODEL_DOCS || "gpt-4o";
-
 // Função genérica para chamar o modelo e retornar o texto
-async function callOpenAI(prompt, options = {}) {
+async function callOpenAI(prompt) {
   if (!process.env.OPENAI_API_KEY) {
     const err = new Error("OPENAI_API_KEY_MISSING");
     err.code = "OPENAI_API_KEY_MISSING";
     throw err;
   }
-
-  const model = (options && typeof options.model === "string" && options.model.trim()) ? options.model.trim() : OPENAI_DEFAULT_MODEL;
-  const temperature = (options && typeof options.temperature === "number" && options.temperature >= 0 && options.temperature <= 2) ? options.temperature : 0.2;
-
   const completion = await openai.chat.completions.create({
-    model,
-    temperature,
+    model: "gpt-4o-mini",
+    temperature: 0.2,
     messages: [
       {
         role: "user",
@@ -350,49 +340,6 @@ async function callOpenAIJson(prompt, maxAttempts = 3) {
       } catch {}
 
       // 3) extrai bloco ```json ... ```
-      try {
-        const m = raw.match(/```\s*json\s*([\s\S]*?)```/i);
-        if (m && m[1]) {
-          return JSON.parse(m[1].trim());
-        }
-      } catch {}
-
-      throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
-    } catch (e) {
-      lastErr = e;
-    }
-  }
-
-  throw lastErr || new Error("Falha ao obter JSON do modelo.");
-}
-
-
-// Variante de callOpenAIJson permitindo escolher modelo/temperatura
-async function callOpenAIJsonWithOptions(prompt, options = {}, maxAttempts = 3) {
-  const attempts = Math.max(1, Math.min(5, parseInt(String(maxAttempts || 3), 10) || 3));
-  let lastErr = null;
-
-  for (let i = 0; i < attempts; i++) {
-    const tightenedPrompt = i === 0
-      ? prompt
-      : (prompt + "\n\nATENÇÃO: Responda SOMENTE com um objeto JSON válido. Não use markdown, não use blocos de código, não inclua explicações.");
-
-    try {
-      const raw = await callOpenAI(tightenedPrompt, options);
-
-      try {
-        return JSON.parse(raw);
-      } catch {}
-
-      try {
-        const firstBrace = raw.indexOf("{");
-        const lastBrace = raw.lastIndexOf("}");
-        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-          const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
-          return JSON.parse(jsonSlice);
-        }
-      } catch {}
-
       try {
         const m = raw.match(/```\s*json\s*([\s\S]*?)```/i);
         if (m && m[1]) {
@@ -2239,7 +2186,7 @@ function getKnownPresentationsMaxDose(medicamentoOriginal) {
 
 app.post("/api/gerar-soap", requirePaidOrAdmin, async(req, res) => {
   try {
-    const { transcricao, tipo_documento } = req.body || {};
+    const { transcricao } = req.body || {};
 
     if (!transcricao || !String(transcricao).trim()) {
       return res.status(400).json({ error: "O campo 'transcricao' é obrigatório." });
@@ -2315,7 +2262,7 @@ Transcrição:
 
 app.post("/api/gerar-triagem-hospitalar", requirePaidOrAdmin, async(req, res) => {
   try {
-    const { transcricao, tipo_documento } = req.body || {};
+    const { transcricao } = req.body || {};
 
     const t = normalizeText(transcricao || "", 12000);
     if (!t || t.length < 30) {
@@ -2418,7 +2365,7 @@ Transcrição:
 
 app.post("/api/gerar-passagem-plantao", requirePaidOrAdmin, async(req, res) => {
   try {
-    const { transcricao, tipo_documento } = req.body || {};
+    const { transcricao } = req.body || {};
 
     const t = normalizeText(transcricao || "", 12000);
     if (!t || t.length < 30) {
@@ -2614,7 +2561,7 @@ Transcrição:
 
 app.post("/api/gerar-sbar", requirePaidOrAdmin, async (req, res) => {
   try {
-    const { transcricao, tipo_documento } = req.body || {};
+    const { transcricao } = req.body || {};
     const t = normalizeText(transcricao || "", 25000);
 
     if (!t || t.length < 30) {
@@ -2636,7 +2583,7 @@ app.post("/api/gerar-sbar", requirePaidOrAdmin, async (req, res) => {
 // Rota legada (mantida por compatibilidade). Retorna no campo antigo "prescricao_hospitalar".
 app.post("/api/prescricao-hospitalar", requirePaidOrAdmin, async (req, res) => {
   try {
-    const { transcricao, tipo_documento } = req.body || {};
+    const { transcricao } = req.body || {};
     const t = normalizeText(transcricao || "", 25000);
 
     if (!t || t.length < 30) {
@@ -2831,7 +2778,7 @@ Contexto:
 
 app.post("/api/extrair-dados-paciente", requirePaidOrAdmin, async(req, res) => {
   try {
-    const { transcricao, tipo_documento } = req.body || {};
+    const { transcricao } = req.body || {};
     if (!transcricao || !String(transcricao).trim()) {
       return res.json({ nome: null, idade: null, peso_kg: null });
     }
@@ -3768,330 +3715,6 @@ app.post("/api/duvidas-enfermagem", requirePaidOrAdmin, async(req, res) => {
     return res.status(500).json({ error: "Falha interna ao responder a dúvida." });
   }
 });
-
-
-
-
-// ======================================================================
-// ROTA 6 – GERAR RELATÓRIO CLÍNICO DO PACIENTE A PARTIR DA TRANSCRIÇÃO (NOVA)
-// ======================================================================
-
-app.post("/api/gerar-relatorio", requirePaidOrAdmin, async(req, res) => {
-  try {
-    const { transcricao, tipo_documento } = req.body || {};
-
-    if (!transcricao || !String(transcricao).trim()) {
-      return res.json({
-        documento: "",
-        tipo_documento: "",
-        finalidade: "",
-        campos_pendentes: []
-      });
-    }
-
-    const safeTranscricao = normalizeText(transcricao, 25000);
-    const tipoSelecionado = (typeof tipo_documento === "string" && tipo_documento.trim())
-      ? tipo_documento.trim()
-      : null;
-
-    const tiposPermitidos = [
-      "Relatório médico para INSS (avaliação médico-pericial)",
-      "Relatório médico",
-      "Atestado médico",
-      "Declaração médica",
-      "Encaminhamento médico",
-      "Solicitação de exames",
-      "Solicitação de fisioterapia",
-      "Solicitação de afastamento/restrição laboral",
-      "Declaração de comparecimento",
-      "Declaração de permanência",
-      "Declaração para acompanhante",
-      "Comunicado para escola",
-      "Relatório para escola (necessidades específicas)",
-      "Comunicado ao Conselho Tutelar",
-      "Relatório para Conselho Tutelar (proteção à criança/adolescente)",
-      "Relatório de visita domiciliar",
-      "Solicitação de transporte sanitário",
-      "Solicitação de avaliação médica",
-      "Encaminhamento para urgência/emergência",
-      "Ata de reunião",
-      "Comunicado interno da equipe",
-      "Outros",
-
-      // Tipos assistenciais/administrativos gerais (mantidos para compatibilidade)
-      "Declaração de recebimento de orientações",
-      "Declaração de recusa de procedimento/conduta",
-      "Termo de consentimento informado (procedimento)",
-      "Termo de ciência e responsabilidade (orientações e riscos)",
-      "Relatório de curativo seriado",
-      "Registro de procedimento (curativo/retirada de pontos/vacinação/medicação/coleta)",
-      "Registro de visita domiciliar",
-      "Relatório para assistência social (vulnerabilidade e insumos)",
-      "Solicitação de insumos (fraldas, curativos, suplementos)",
-      "Encaminhamento para Serviço Social",
-      "Encaminhamento para Psicologia",
-      "Encaminhamento para Nutrição",
-      "Encaminhamento para Fisioterapia",
-      "Encaminhamento para Fonoaudiologia",
-      "Encaminhamento para Odontologia",
-      "Encaminhamento para especialista / rede",
-      "Relatório de intercorrência/ocorrência"
-    ];
-
-    const tiposTexto = tiposPermitidos.map(t => `- ${t}`).join("\n");
-
-    const prompt = `
-Você é um médico humano redigindo documentos clínicos e administrativos a partir de uma transcrição (português do Brasil).
-O texto final será colado em prontuário/sistemas oficiais, portanto deve estar pronto para colar: texto simples, formal, sem emojis e sem símbolos gráficos.
-
-Tarefa:
-1) Identificar qual é o TIPO DE DOCUMENTO solicitado e a FINALIDADE (destino/uso) com base na transcrição.
-2) Produzir o DOCUMENTO completo, padronizado e formal, no tipo adequado, sem inventar dados.
-3) Listar campos pendentes (o que faltou informar) para que o profissional possa completar.
-
-Se o campo "tipo_documento" vier informado no request, você deve usar EXATAMENTE esse tipo como título e estrutura, mesmo que a transcrição sugira outro.
-Se não vier informado, escolha o tipo mais adequado dentre os tipos permitidos. Se não for possível, use "Outros".
-
-Tipos permitidos (escolha exatamente um, sem variações):
-${tiposTexto}
-
-Regras obrigatórias:
-- Não invente dados. Se faltar informação, use "não informado" ou deixe um campo em branco com sublinhado (ex.: "CPF: __________").
-- Seja fiel aos achados citados e evite exageros (especialmente em limitação funcional e incapacidade laboral).
-- Não faça diagnóstico definitivo sem base; quando necessário, use "hipótese"/"impressão diagnóstica".
-- Use linguagem clara, objetiva e formal.
-- Evite abreviações sem definição.
-- Não use listas com bullets. Se precisar numerar, use "1.", "2.", cada item em uma nova linha.
-
-Estrutura base (ajuste conforme o tipo):
-- Primeira linha: TÍTULO EM CAIXA ALTA (igual ao tipo escolhido).
-- Bloco de identificação (campos em linhas separadas; se não houver na transcrição, manter em branco com sublinhado):
-  Unidade/Serviço: __________
-  Município/UF: __________
-  Paciente: __________
-  Idade: __________
-  CPF: __________
-  Profissão: __________
-  Data do atendimento/consulta: ____/____/____
-- Campo "Finalidade/Destino:" (se não estiver explícito, "não informado").
-
-Corpo do documento (em parágrafos curtos, conforme o tipo):
-- Relatório médico: queixa/história clínica (incluindo tempo de evolução se citado), exame físico (achados objetivos), exames complementares (apenas os citados), impressão diagnóstica/hipóteses, conduta e plano (tratamento conservador, orientações, retorno), sinais de alarme quando pertinente.
-- Relatório médico para INSS (avaliação médico-pericial): além do acima, descrever repercussão funcional referida/observada, relação com atividade laboral apenas se citada, tratamento em curso e necessidade de afastamento temporário apenas se sustentada por quadro/limitação descritos; incluir obrigatoriamente a frase: "Este relatório é emitido para fins de avaliação médico-pericial previdenciária, não substituindo a decisão do perito oficial." Não definir tempo de afastamento se não estiver explícito.
-- Atestado médico: declarar o comparecimento/atendimento e, se houver indicação explícita, necessidade de afastamento/repouso; se não houver, manter campo "Afastamento recomendado: ____ dias" em branco.
-- Declarações: motivo e data/horário (se ausentes, usar "____/____/____" e "____:____"), e observações pertinentes.
-- Encaminhamento médico: destino (serviço/profissional), motivo do encaminhamento, resumo objetivo do caso, exames realizados (se citados), conduta já instituída, sinais de alarme e orientações.
-- Solicitações (exames/fisioterapia/transporte/insumos): item solicitado, justificativa técnica baseada no quadro descrito e quantidade/periodicidade somente se citadas.
-- Ata/comunicado: data, pauta/assunto, participantes (se citados), deliberações e encaminhamentos.
-
-Rodapé:
-  Local e data: __________________________
-  Médico responsável: __________________________
-  CRM: __________________________
-  Assinatura e carimbo: __________________________
-
-Saída: JSON estrito, sem texto fora do JSON:
-{
-  "tipo_documento": "...",
-  "finalidade": "...",
-  "campos_pendentes": ["..."],
-  "documento": "..."
-}
-
-Campo "tipo_documento" informado no request (pode ser nulo):
-${tipoSelecionado ? JSON.stringify(tipoSelecionado) : "null"}
-
-Transcrição:
-"""${safeTranscricao}"""
-`;
-
-    const data = await callOpenAIJsonWithOptions(prompt, { model: OPENAI_DOCS_MODEL, temperature: 0.1 }, 3);
-
-    const tipo = (typeof data?.tipo_documento === "string" ? data.tipo_documento.trim() : "") || (tipoSelecionado || "");
-    const finalidade = typeof data?.finalidade === "string" ? data.finalidade.trim() : "";
-    const camposPendentes = normalizeArrayOfStrings(data?.campos_pendentes, 40, 140);
-    const documento = typeof data?.documento === "string" ? data.documento.trim() : "";
-
-    return res.json({
-      tipo_documento: tipo,
-      finalidade,
-      campos_pendentes: camposPendentes,
-      documento
-    });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar documento." });
-  }
-});
-
-
-// ======================================================================
-// ROTA 6.1 – GUIA EM TEMPO REAL PARA DOCUMENTOS (TIPO + ATÉ 3 PERGUNTAS)
-// ======================================================================
-
-
-function inferDocumentTypeHeuristic(transcricao, tipoSolicitado) {
-  const forced = (typeof tipoSolicitado === "string" && tipoSolicitado.trim()) ? tipoSolicitado.trim() : "";
-  if (forced) return forced;
-
-  const t = String(transcricao || "").toLowerCase();
-  if (!t) return "Outros";
-
-  if (t.includes("inss") || t.includes("perícia") || t.includes("pericia") || t.includes("benefício") || t.includes("beneficio") || t.includes("auxílio") || t.includes("auxilio")) {
-    return "Relatório médico para INSS (avaliação médico-pericial)";
-  }
-  if (t.includes("atestado")) return "Atestado médico";
-  if ((t.includes("relatório") || t.includes("relatorio")) && (t.includes("médico") || t.includes("medico"))) return "Relatório médico";
-  if (t.includes("encaminh")) return "Encaminhamento médico";
-  if (t.includes("solicita") && (t.includes("exame") || t.includes("laborat") || t.includes("imagem"))) return "Solicitação de exames";
-  if (t.includes("fisioter")) return "Solicitação de fisioterapia";
-  if (t.includes("afastamento") || t.includes("restrição") || t.includes("restricao") || t.includes("atividade laboral") || t.includes("trabalho")) {
-    // Se não for claramente INSS, pode ser solicitação/declaração de restrição/afastamento
-    if (!t.includes("inss") && !t.includes("perícia") && !t.includes("pericia")) {
-      return "Solicitação de afastamento/restrição laboral";
-    }
-  }
-
-  if (t.includes("ata") || t.includes("reunião") || t.includes("reuniao")) return "Ata de reunião";
-  if (t.includes("comparecimento")) return "Declaração de comparecimento";
-  if (t.includes("permanência") || t.includes("permanencia")) return "Declaração de permanência";
-  if (t.includes("acompanhante")) return "Declaração para acompanhante";
-  if (t.includes("visita domic") || t.includes("domicílio") || t.includes("domicilio")) return "Relatório de visita domiciliar";
-  if (t.includes("escola")) return "Comunicado para escola";
-  if (t.includes("conselho tutelar")) return "Comunicado ao Conselho Tutelar";
-  if (t.includes("solicita") || t.includes("insumo") || t.includes("fralda") || t.includes("dieta") || t.includes("suplement")) return "Solicitação de insumos (fraldas, curativos, suplementos)";
-
-  return "Outros";
-}
-
-
-
-function suggestDocumentQuestionsHeuristic(transcricao, tipo) {
-  // No máximo 3 perguntas práticas para completar o documento
-  const q = [];
-  const push = (s) => {
-    const v = String(s || "").trim();
-    if (!v) return;
-    if (q.some(x => x.toLowerCase() === v.toLowerCase())) return;
-    if (q.length < 3) q.push(v);
-  };
-
-  const tipoLower = String(tipo || "").toLowerCase();
-
-  push("Qual a Unidade/Serviço e Município/UF?");
-  push("Qual o nome completo do paciente e pelo menos um identificador (CPF)?");
-
-  if (tipoLower.includes("inss") || tipoLower.includes("pericial") || tipoLower.includes("perícia") || tipoLower.includes("pericia")) {
-    push("Qual a profissão/função e quais atividades do trabalho agravam ou limitam a capacidade laboral?");
-    push("Quais exames complementares (com datas) e qual conduta/tratamento em curso?");
-    return q.slice(0, 3);
-  }
-
-  if (tipoLower.includes("atestado")) {
-    push("Qual a data do atendimento e há necessidade explícita de afastamento/repouso? Se sim, por quantos dias?");
-    return q.slice(0, 3);
-  }
-
-  if (tipoLower.includes("encaminh")) {
-    push("Para qual serviço/profissional é o encaminhamento e qual o motivo principal?");
-    return q.slice(0, 3);
-  }
-
-  if (tipoLower.includes("exames") || tipoLower.includes("exame")) {
-    push("Quais exames estão sendo solicitados e qual a justificativa clínica?");
-    return q.slice(0, 3);
-  }
-
-  if (tipoLower.includes("fisioter")) {
-    push("Qual o diagnóstico/hipótese e qual objetivo/tempo previsto de fisioterapia (se houver)?");
-    return q.slice(0, 3);
-  }
-
-  if (tipoLower.includes("comparecimento") || tipoLower.includes("perman")) {
-    push("Qual a data e o horário de início e término do atendimento/permanência?");
-    return q.slice(0, 3);
-  }
-
-  if (tipoLower.includes("ata")) {
-    push("Qual a data/horário da reunião, pauta e participantes?");
-    return q.slice(0, 3);
-  }
-
-  push("Qual a finalidade/destino do documento (para quem/onde será apresentado)?");
-  return q.slice(0, 3);
-}
-
-
-
-async function generateDocumentLiveGuide(transcricao, tipoSolicitado) {
-  const safeTranscricao = normalizeText(transcricao || "", 12000);
-  const forcedType = (typeof tipoSolicitado === "string" && tipoSolicitado.trim()) ? tipoSolicitado.trim() : "";
-
-  if (!safeTranscricao || safeTranscricao.length < 20) {
-    return { tipo_documento: forcedType || "", perguntas: [] };
-  }
-
-  // Com API Key, tenta uma inferência melhor
-  if (process.env.OPENAI_API_KEY) {
-    const prompt = `
-Você está auxiliando um médico a redigir um documento a partir de uma transcrição.
-Tarefa: identificar o tipo de documento mais provável e sugerir no máximo 3 perguntas essenciais (curtas e objetivas) para completar o documento.
-
-Se o campo "tipo_documento_solicitado" vier informado, trate-o como o tipo preferencial e adapte as perguntas a esse tipo.
-
-Regras:
-- Não invente dados.
-- Não use emojis e não use símbolos gráficos.
-- As perguntas são apenas para guiar o profissional, não são obrigatórias.
-
-Retorne JSON estrito no formato:
-{
-  "tipo_documento": "string",
-  "perguntas": ["...", "...", "..."]
-}
-
-Tipo informado (pode ser vazio): ${forcedType ? JSON.stringify(forcedType) : "\"\""}
-
-Transcrição (trecho):
-"""${safeTranscricao}"""
-`;
-
-    const data = await callOpenAIJsonWithOptions(prompt, { model: OPENAI_DOCS_MODEL, temperature: 0.2 }, 2);
-    const tipo = (typeof data?.tipo_documento === "string" ? data.tipo_documento.trim() : "") || inferDocumentTypeHeuristic(safeTranscricao, forcedType);
-    const perguntas = Array.isArray(data?.perguntas) ? data.perguntas : (Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : []);
-    const outPerg = normalizeArrayOfStrings(perguntas, 3, 220);
-    return { tipo_documento: tipo, perguntas: outPerg.slice(0, 3) };
-  }
-
-  const tipo = inferDocumentTypeHeuristic(safeTranscricao, forcedType);
-  const perguntas = suggestDocumentQuestionsHeuristic(safeTranscricao, tipo);
-  return { tipo_documento: tipo, perguntas };
-}
-
-app.post("/api/documento-tempo-real", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const { transcricao, tipo_documento } = req.body || {};
-    const out = await generateDocumentLiveGuide(transcricao, tipo_documento);
-    return res.json(out);
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha interna no guia em tempo real de documentos." });
-  }
-});
-
-// Alias
-app.post("/api/guia-documento-tempo-real", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const { transcricao, tipo_documento } = req.body || {};
-    const out = await generateDocumentLiveGuide(transcricao, tipo_documento);
-    return res.json(out);
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha interna no guia em tempo real de documentos." });
-  }
-});
-
-
 
 
 
