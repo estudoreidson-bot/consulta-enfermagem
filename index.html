@@ -3986,6 +3986,24 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     </div>
   </div>
 
+
+  <div id="medicalDocsGuidePanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Guia: Geração de documentos</h3>
+      <button id="closeMedicalDocsGuideBtn" class="close-panel-btn" aria-label="Fechar guia de geração de documentos">X</button>
+    </div>
+    <div class="recommendations-status">
+      Este módulo grava em voz alta a consulta inteira ou o trecho necessário e gera um documento médico formal com campos pendentes quando faltar informação.
+    </div>
+    <div class="recommendations-list">
+      <div class="recommendation-item"><strong>1) Tipos de documentos</strong><br>Relatório/declaração para INSS, atestado, encaminhamento, declaração simples e solicitações (exames, materiais, insumos, transporte, etc.).</div>
+      <div class="recommendation-item"><strong>2) Como gravar</strong><br>Antes de iniciar, diga qual documento será gerado e para qual finalidade/destino. Durante a gravação, informe dados essenciais do paciente, datas, evolução e conduta. Fale de forma contínua e clara.</div>
+      <div class="recommendation-item"><strong>3) O que o sistema faz ao encerrar</strong><br>Identifica o tipo de documento, resume a queixa/doença, reconhece exames citados e monta um texto formal. Se algum dado estiver ausente, ele será indicado como pendência para você completar.</div>
+      <div class="recommendation-item"><strong>4) Revisão obrigatória</strong><br>Revise o texto, complete campos pendentes e ajuste termos. Use Copiar para colar no prontuário/editor e Imprimir quando precisar do documento em papel.</div>
+      <div class="recommendation-item"><strong>5) Atenção</strong><br>Este módulo não substitui sua avaliação clínica. Em documentos com implicações legais/benefícios, confira datas, identificação, período e informações críticas antes de finalizar.</div>
+    </div>
+  </div>
+
 <script>
 
     const DEFAULT_BACKEND_URL = "https://consulta-enfermagem-1.onrender.com";
@@ -13444,6 +13462,22 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       copyMedicalDocsBtn = document.getElementById("copyMedicalDocsBtn");
       printMedicalDocsBtn = document.getElementById("printMedicalDocsBtn");
 
+      const medicalDocsGuideBtn = document.getElementById("medicalDocsGuideBtn");
+      const medicalDocsGuidePanel = document.getElementById("medicalDocsGuidePanel");
+      const closeMedicalDocsGuideBtn = document.getElementById("closeMedicalDocsGuideBtn");
+
+      if (medicalDocsGuideBtn) {
+        medicalDocsGuideBtn.addEventListener("click", () => {
+          setPanelVisible(medicalDocsGuidePanel, true);
+        });
+      }
+      if (closeMedicalDocsGuideBtn) {
+        closeMedicalDocsGuideBtn.addEventListener("click", () => {
+          setPanelVisible(medicalDocsGuidePanel, false);
+        });
+      }
+
+
       if (medicalDocsRecordBtn) {
         medicalDocsRecordBtn.addEventListener("click", () => {
           if (!medicalDocsIsRecording) startMedicalDocsRecording();
@@ -13627,7 +13661,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
         medicalDocsPauseBtn.innerText = "Pausar";
       }
       if (medicalDocsRecordBtn) {
-        medicalDocsRecordBtn.className = "recording";
+        medicalDocsRecordBtn.className = "small-record-btn recording";
         medicalDocsRecordBtn.innerText = "Encerrar gravação";
       }
 
@@ -13689,8 +13723,8 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       medicalDocsPauseTimer();
 
       if (medicalDocsRecordBtn) {
-        medicalDocsRecordBtn.className = "start";
-        medicalDocsRecordBtn.innerText = "Iniciar documento médico";
+        medicalDocsRecordBtn.className = "small-record-btn start";
+        medicalDocsRecordBtn.innerText = "Gerar documentos";
       }
       if (medicalDocsPauseBtn) medicalDocsPauseBtn.style.display = "none";
 
@@ -13793,18 +13827,20 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
   
   <div class="module-divider"></div>
 
+  
   <div id="medicalDocsCard" class="module-card">
-    <h2>Documentos Médicos (INSS, atestado, encaminhamento, declaração, solicitações)</h2>
-    <p class="mini-status" style="margin-top: 0;">
-      Grave em voz alta a consulta inteira ou o trecho necessário. Fale claramente qual documento está sendo solicitado (por exemplo: relatório médico para INSS, atestado, encaminhamento, declaração).
-      Ao encerrar, o sistema identifica o tipo de documento, a queixa/doença e os exames mencionados, e gera um texto formal com campos pendentes para completar.
-    </p>
+    <div class="section-header-row">
+      <h2>Geração de documentos</h2>
+      <button id="medicalDocsGuideBtn" class="btn-print" type="button">Guia</button>
+    </div>
 
-    <button id="medicalDocsRecordBtn" class="start" type="button">Iniciar documento médico</button>
-    <button id="medicalDocsPauseBtn" class="pause-btn" type="button" style="display:none;">Pausar</button>
+    <div class="inline-input-row" style="margin-top: 6px;">
+      <button id="medicalDocsRecordBtn" class="small-record-btn start" type="button">Gerar documentos</button>
+      <button id="medicalDocsPauseBtn" class="pause-btn" type="button" style="display:none;">Pausar</button>
+    </div>
 
     <div id="medicalDocsTimer" class="mini-timer hidden">00:00</div>
-    <div id="medicalDocsMicStatus" class="mini-status">Clique em "Iniciar documento médico" para começar.</div>
+    <div id="medicalDocsMicStatus" class="mini-status">Clique em "Gerar documentos" para começar.</div>
     <div id="medicalDocsError" class="error-text"></div>
 
     <div class="inline-input-row" style="margin-top: 10px;">
@@ -13826,7 +13862,8 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     </div>
   </div>
 
-<div class="whatsapp-fab-label"><div class="wa-label-title">WhatsApp</div><div class="wa-label-sub">Dúvidas, reportar erros, sugestões, melhorias</div></div>
+<div class="whatsapp-fab-label">
+<div class="wa-label-title">WhatsApp</div><div class="wa-label-sub">Dúvidas, reportar erros, sugestões, melhorias</div></div>
   <a
     class="whatsapp-fab"
     href="https://wa.me/5575981457012?text=Ol%C3%A1%21%20Gostaria%20de%20reportar%20um%20erro%2C%20tirar%20uma%20d%C3%BAvida%20ou%20enviar%20uma%20sugest%C3%A3o."
