@@ -13415,9 +13415,367 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       rosterWireUI();
     } catch {}
 
+
+
+    // ============================
+    // Documentos Médicos (consulta completa -> documento) via /api/gerar-documento-medico
+    // ============================
+
+    const medicalDocsRecordBtn = document.getElementById("medicalDocsRecordBtn");
+    const medicalDocsPauseBtn = document.getElementById("medicalDocsPauseBtn");
+    const medicalDocsTimerEl = document.getElementById("medicalDocsTimer");
+    const medicalDocsMicStatus = document.getElementById("medicalDocsMicStatus");
+    const medicalDocsError = document.getElementById("medicalDocsError");
+    const medicalDocsOutput = document.getElementById("medicalDocsOutput");
+    const medicalDocsTypeDetected = document.getElementById("medicalDocsTypeDetected");
+    const medicalDocsMissingFields = document.getElementById("medicalDocsMissingFields");
+    const copyMedicalDocsBtn = document.getElementById("copyMedicalDocsBtn");
+    const printMedicalDocsBtn = document.getElementById("printMedicalDocsBtn");
+
+    let medicalDocsRecognition = null;
+    let medicalDocsIsRecording = false;
+    let medicalDocsIsPaused = false;
+    let medicalDocsFinalTranscript = "";
+    let medicalDocsTimerInterval = null;
+    let medicalDocsStartTime = null;
+    let medicalDocsAccumulatedSeconds = 0;
+
+    let medicalDocsLivePollInterval = null;
+
+    function medicalDocsResetTimer() {
+      medicalDocsStartTime = null;
+      medicalDocsAccumulatedSeconds = 0;
+      if (medicalDocsTimerInterval) clearInterval(medicalDocsTimerInterval);
+      medicalDocsTimerInterval = null;
+      if (medicalDocsTimerEl) medicalDocsTimerEl.textContent = "00:00";
+    }
+
+    function medicalDocsStartTimer() {
+      if (medicalDocsTimerInterval) clearInterval(medicalDocsTimerInterval);
+      medicalDocsStartTime = new Date();
+      medicalDocsTimerInterval = setInterval(() => {
+        const now = new Date();
+        const delta = Math.floor((now - medicalDocsStartTime) / 1000);
+        const total = medicalDocsAccumulatedSeconds + delta;
+        const mm = String(Math.floor(total / 60)).padStart(2, "0");
+        const ss = String(total % 60).padStart(2, "0");
+        if (medicalDocsTimerEl) medicalDocsTimerEl.textContent = `${mm}:${ss}`;
+      }, 1000);
+    }
+
+    function medicalDocsPauseTimer() {
+      if (!medicalDocsStartTime) return;
+      const now = new Date();
+      const delta = Math.floor((now - medicalDocsStartTime) / 1000);
+      medicalDocsAccumulatedSeconds += delta;
+      medicalDocsStartTime = null;
+      if (medicalDocsTimerInterval) clearInterval(medicalDocsTimerInterval);
+      medicalDocsTimerInterval = null;
+    }
+
+    function initMedicalDocsSpeechRecognition() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        if (medicalDocsError) medicalDocsError.textContent = "Seu navegador não suporta reconhecimento de voz. Use Chrome no computador ou Android.";
+        return false;
+      }
+
+      medicalDocsRecognition = new SR();
+      medicalDocsRecognition.continuous = true;
+      medicalDocsRecognition.interimResults = true;
+      medicalDocsRecognition.lang = "pt-BR";
+
+      medicalDocsRecognition.onresult = (event) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript || "";
+          if (event.results[i].isFinal) medicalDocsFinalTranscript += transcript + " ";
+          else interim += transcript;
+        }
+
+        // Atualiza guia em tempo real a partir do acumulado
+        const combined = (medicalDocsFinalTranscript + " " + interim).trim();
+        if (combined.length >= 30) {
+          updateMedicalDocsLiveGuide(combined);
+        }
+      };
+
+      medicalDocsRecognition.onerror = (event) => {
+        const msg = (event && event.error) ? String(event.error) : "erro";
+        if (medicalDocsError) medicalDocsError.textContent = "Falha no microfone/reconhecimento de voz: " + msg;
+      };
+
+      medicalDocsRecognition.onend = () => {
+        if (medicalDocsIsRecording && !medicalDocsIsPaused) {
+          try { medicalDocsRecognition.start(); } catch (e) {}
+        }
+      };
+
+      return true;
+    }
+
+    async function updateMedicalDocsLiveGuide(transcricaoParcial) {
+      // Evita spam no backend; o polling abaixo já chama, mas mantemos também esta atualização por evento
+      // e o backend é leve (8k chars).
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/documento-medico-tempo-real", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcricao: transcricaoParcial })
+        });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const tipo = data && data.tipo_documento ? String(data.tipo_documento) : "";
+        const perguntas = Array.isArray(data?.perguntas) ? data.perguntas : [];
+        const gatilho = !!data?.gatilho;
+
+        if (medicalDocsTypeDetected) medicalDocsTypeDetected.textContent = tipo ? tipo : "não informado";
+        if (medicalDocsMissingFields) {
+          medicalDocsMissingFields.textContent = (perguntas && perguntas.length)
+            ? perguntas.join("\n")
+            : (gatilho ? "Sem perguntas adicionais no momento." : "Sem indício claro de documento ainda.");
+        }
+      } catch (e) {}
+    }
+
+    function startMedicalDocsLivePolling() {
+      stopMedicalDocsLivePolling();
+      medicalDocsLivePollInterval = setInterval(() => {
+        const partial = (medicalDocsFinalTranscript || "").trim();
+        if (partial.length < 30) return;
+        updateMedicalDocsLiveGuide(partial);
+      }, 4000);
+    }
+
+    function stopMedicalDocsLivePolling() {
+      if (medicalDocsLivePollInterval) clearInterval(medicalDocsLivePollInterval);
+      medicalDocsLivePollInterval = null;
+    }
+
+    function startMedicalDocsRecording() {
+      if (medicalDocsIsRecording) return;
+      if (medicalDocsError) medicalDocsError.textContent = "";
+      if (!medicalDocsRecognition) {
+        const ok = initMedicalDocsSpeechRecognition();
+        if (!ok) return;
+      }
+
+      medicalDocsIsRecording = true;
+      medicalDocsIsPaused = false;
+      medicalDocsFinalTranscript = "";
+
+      if (medicalDocsOutput) medicalDocsOutput.value = "";
+      if (medicalDocsTypeDetected) medicalDocsTypeDetected.textContent = "";
+      if (medicalDocsMissingFields) medicalDocsMissingFields.textContent = "";
+
+      if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Gravando consulta para documento médico...";
+      if (medicalDocsTimerEl) medicalDocsTimerEl.classList.remove("hidden");
+
+      if (medicalDocsPauseBtn) {
+        medicalDocsPauseBtn.style.display = "inline-block";
+        medicalDocsPauseBtn.innerText = "Pausar";
+      }
+      if (medicalDocsRecordBtn) {
+        medicalDocsRecordBtn.className = "recording";
+        medicalDocsRecordBtn.innerText = "Encerrar gravação";
+      }
+
+      // Bloqueia outros módulos durante a gravação
+      if (recordBtn) recordBtn.disabled = true;
+      if (triageRecordBtn) triageRecordBtn.disabled = true;
+      if (docsRecordBtn) docsRecordBtn.disabled = true;
+      if (handoffRecordBtn) handoffRecordBtn.disabled = true;
+      if (reportRecordBtn) reportRecordBtn.disabled = true;
+
+      medicalDocsResetTimer();
+      medicalDocsStartTimer();
+      startMedicalDocsLivePolling();
+
+      try { medicalDocsRecognition.start(); } catch (e) {}
+    }
+
+    function pauseMedicalDocsRecording() {
+      if (!medicalDocsIsRecording || medicalDocsIsPaused) return;
+      medicalDocsIsPaused = true;
+      stopMedicalDocsLivePolling();
+
+      if (medicalDocsRecognition) {
+        try { medicalDocsRecognition.stop(); } catch (e) {}
+      }
+      medicalDocsPauseTimer();
+
+      if (medicalDocsPauseBtn) medicalDocsPauseBtn.innerText = "Retomar";
+      if (medicalDocsMicStatus) medicalDocsMicStatus.innerText = "Gravação pausada.";
+    }
+
+    function resumeMedicalDocsRecording() {
+      if (!medicalDocsIsRecording || !medicalDocsIsPaused) return;
+      medicalDocsIsPaused = false;
+
+      startMedicalDocsLivePolling();
+
+      if (medicalDocsRecognition) {
+        try { medicalDocsRecognition.start(); } catch (e) {}
+      }
+      medicalDocsStartTimer();
+
+      if (medicalDocsPauseBtn) medicalDocsPauseBtn.innerText = "Pausar";
+      if (medicalDocsMicStatus) medicalDocsMicStatus.innerText = "Gravando consulta para documento médico...";
+    }
+
+    async function stopMedicalDocsRecordingAndGenerate() {
+      if (!medicalDocsIsRecording) return;
+
+      medicalDocsIsRecording = false;
+      medicalDocsIsPaused = false;
+
+      stopMedicalDocsLivePolling();
+
+      if (medicalDocsRecognition) {
+        try { medicalDocsRecognition.stop(); } catch (e) {}
+      }
+
+      medicalDocsPauseTimer();
+
+      if (medicalDocsRecordBtn) {
+        medicalDocsRecordBtn.className = "start";
+        medicalDocsRecordBtn.innerText = "Iniciar documento médico";
+      }
+      if (medicalDocsPauseBtn) medicalDocsPauseBtn.style.display = "none";
+
+      if (recordBtn) recordBtn.disabled = false;
+      if (triageRecordBtn) triageRecordBtn.disabled = false;
+      if (docsRecordBtn) docsRecordBtn.disabled = false;
+      if (handoffRecordBtn) handoffRecordBtn.disabled = false;
+      if (reportRecordBtn) reportRecordBtn.disabled = false;
+
+      const txt = (medicalDocsFinalTranscript || "").trim();
+      if (!txt || txt.length < 40) {
+        if (medicalDocsError) medicalDocsError.textContent = "A transcrição ficou muito curta. Tente novamente, falando mais próximo ao microfone.";
+        if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Pronto.";
+        return;
+      }
+
+      if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Gerando documento médico...";
+      if (medicalDocsRecordBtn) medicalDocsRecordBtn.disabled = true;
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/gerar-documento-medico", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcricao: txt })
+        });
+
+        if (!resp.ok) {
+          const raw = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (documento médico):", resp.status, raw);
+          if (medicalDocsError) medicalDocsError.textContent = "Não foi possível gerar o documento médico.";
+          if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Pronto.";
+          return;
+        }
+
+        const data = await resp.json();
+        const tipo = data?.tipo_documento ? String(data.tipo_documento) : "";
+        const campos = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : [];
+        const documento = data?.documento ? String(data.documento) : "";
+
+        if (medicalDocsTypeDetected) medicalDocsTypeDetected.textContent = tipo || "não informado";
+        if (medicalDocsMissingFields) medicalDocsMissingFields.textContent = (campos && campos.length) ? campos.join("\n") : "Sem pendências.";
+        if (medicalDocsOutput) medicalDocsOutput.value = normalizeNumberedParagraphs(documento || "");
+
+        if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Documento médico gerado.";
+      } catch (err) {
+        console.error("Erro ao gerar documento médico:", err);
+        if (medicalDocsError) medicalDocsError.textContent = "Erro ao gerar documento médico.";
+        if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Pronto.";
+      } finally {
+        if (medicalDocsRecordBtn) medicalDocsRecordBtn.disabled = false;
+      }
+    }
+
+    if (medicalDocsRecordBtn) {
+      medicalDocsRecordBtn.addEventListener("click", () => {
+        if (!medicalDocsIsRecording) startMedicalDocsRecording();
+        else stopMedicalDocsRecordingAndGenerate();
+      });
+    }
+
+    if (medicalDocsPauseBtn) {
+      medicalDocsPauseBtn.addEventListener("click", () => {
+        if (!medicalDocsIsRecording) return;
+        if (!medicalDocsIsPaused) pauseMedicalDocsRecording();
+        else resumeMedicalDocsRecording();
+      });
+    }
+
+    if (copyMedicalDocsBtn) {
+      copyMedicalDocsBtn.addEventListener("click", () => {
+        const txt = medicalDocsOutput ? String(medicalDocsOutput.value || "").trim() : "";
+        if (!txt) return;
+        copyToClipboard(txt);
+      });
+    }
+
+    function printTextBlock(title, text) {
+      const t = String(text || "").trim();
+      if (!t) return;
+      const w = window.open("", "_blank");
+      if (!w) return;
+      const safeTitle = String(title || "Documento").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const safe = t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br/>");
+      w.document.write(`<html><head><title>${safeTitle}</title></head><body style="font-family: Arial, sans-serif; font-size: 13px; line-height: 1.45; padding: 18px;"><h2 style="margin:0 0 12px 0;">${safeTitle}</h2><div>${safe}</div></body></html>`);
+      w.document.close();
+      w.focus();
+      w.print();
+    }
+
+    if (printMedicalDocsBtn) {
+      printMedicalDocsBtn.addEventListener("click", () => {
+        const txt = medicalDocsOutput ? String(medicalDocsOutput.value || "").trim() : "";
+        const title = medicalDocsTypeDetected ? String(medicalDocsTypeDetected.textContent || "").trim() : "Documento";
+        printTextBlock(title || "Documento", txt);
+      });
+    }
+
 </script>
 
-  <div class="whatsapp-fab-label"><div class="wa-label-title">WhatsApp</div><div class="wa-label-sub">Dúvidas, reportar erros, sugestões, melhorias</div></div>
+  
+  <div class="module-divider"></div>
+
+  <div id="medicalDocsCard" class="module-card">
+    <h2>Documentos Médicos (INSS, atestado, encaminhamento, declaração, solicitações)</h2>
+    <p class="mini-status" style="margin-top: 0;">
+      Grave em voz alta a consulta inteira ou o trecho necessário. Fale claramente qual documento está sendo solicitado (por exemplo: relatório médico para INSS, atestado, encaminhamento, declaração).
+      Ao encerrar, o sistema identifica o tipo de documento, a queixa/doença e os exames mencionados, e gera um texto formal com campos pendentes para completar.
+    </p>
+
+    <button id="medicalDocsRecordBtn" class="start" type="button">Iniciar documento médico</button>
+    <button id="medicalDocsPauseBtn" class="pause-btn" type="button" style="display:none;">Pausar</button>
+
+    <div id="medicalDocsTimer" class="mini-timer hidden">00:00</div>
+    <div id="medicalDocsMicStatus" class="mini-status">Clique em "Iniciar documento médico" para começar.</div>
+    <div id="medicalDocsError" class="error-text"></div>
+
+    <div class="inline-input-row" style="margin-top: 10px;">
+      <div style="flex: 1; min-width: 240px;">
+        <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Tipo identificado</div>
+        <div id="medicalDocsTypeDetected" class="answer-box" style="min-height: 44px;"></div>
+      </div>
+      <div style="flex: 1; min-width: 240px;">
+        <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Perguntas/itens pendentes</div>
+        <div id="medicalDocsMissingFields" class="answer-box" style="min-height: 44px;"></div>
+      </div>
+    </div>
+
+    <textarea id="medicalDocsOutput" class="prescription-textarea" placeholder="O documento médico gerado aparecerá aqui." style="margin-top: 12px;"></textarea>
+
+    <div class="prescription-actions">
+      <button id="copyMedicalDocsBtn" class="btn-copy" type="button">Copiar</button>
+      <button id="printMedicalDocsBtn" class="btn-print" type="button">Imprimir</button>
+    </div>
+  </div>
+
+<div class="whatsapp-fab-label"><div class="wa-label-title">WhatsApp</div><div class="wa-label-sub">Dúvidas, reportar erros, sugestões, melhorias</div></div>
   <a
     class="whatsapp-fab"
     href="https://wa.me/5575981457012?text=Ol%C3%A1%21%20Gostaria%20de%20reportar%20um%20erro%2C%20tirar%20uma%20d%C3%BAvida%20ou%20enviar%20uma%20sugest%C3%A3o."
