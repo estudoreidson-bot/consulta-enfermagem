@@ -152,14 +152,7 @@
     /* Padronizacao: todos os botoes redondos principais */
     #recordBtn,
     #triageRecordBtn,
-    #handoffRecordBtn {
-      width: var(--round-btn-size);
-      height: var(--round-btn-size);
-      border-radius: 50%;
-      font-size: 20px;
-    }
-    
-    /* Triagem hospitalar: botão e separador */
+/* Triagem hospitalar: botão e separador */
     .module-divider {
       width: 100%;
       height: 1px;
@@ -199,7 +192,18 @@
     #triageRecordBtn.recording { background: #dc3545; }
     #triageRecordBtn:active { transform: scale(0.97); }
 
-#triageTimer {
+    /* Documentos: botão e controles (mesmo padrão do Iniciar atendimento) */.start { background: #28a745; }:active { transform: scale(0.97); }
+#triagePauseBtn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      background: #6c757d;
+      color: #fff;
+      font-size: 13px;
+      display: none;
+    }
+    #triageTimer {
       font-size: 26px;
       margin-top: 10px;
       font-family: "Courier New", monospace;
@@ -1392,6 +1396,7 @@
       h1 { font-size: 24px; }
       #recordBtn { width: 145px; height: 145px; }
     }
+
 
 
     /* =========================
@@ -2780,6 +2785,7 @@
       </div>
 
 
+
       <div id="triageReportPanel" class="triage-report-panel hidden">
         <div class="section-header-row">
           <div class="soap-title-actions">
@@ -3569,6 +3575,8 @@
     </div>
 
 
+
+
                 <div id="patientReportCard" class="module-card hidden">
       <h2>Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado de comparecimento ou permanência / ATA reunião / Registros de procedimentos</h2>
       <p class="mini-status" style="margin-top: 0;">
@@ -3818,115 +3826,7 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     </div>
   </div>
 
-    <div class="recommendations-header">
-      <h3>Guia Gerar documentos</h3>
-      <button id="closeDocsGuideBtn" class="close-panel-btn" aria-label="Fechar guia para gerar documentos">X</button>
-    </div>
-
-    <div class="recommendations-status">
-      Este guia é apenas informativo. Use como roteiro do que falar, perguntar e registrar para gerar documentos com máxima qualidade.
-    </div>
-
-      
-      <div class="recommendation-item"><strong>Como usar este guia</strong>
-        <div style="white-space: pre-wrap; margin-top: 8px; font-size: 13px; color: #111827;">
-1) Antes de gravar, defina o tipo de documento e o destinatário.
-2) Durante a gravação, fale de forma organizada seguindo os tópicos abaixo.
-3) Sempre inclua datas e horários completos, com local/unidade, e identifique o profissional.</div>
-      </div>
-
-      <div class="recommendation-item"><strong>1) Tipo de documento e finalidade</strong>
-        <ul>
-          <li>Qual documento é: declaração, encaminhamento, solicitação, relatório, registro de procedimento, atestado de comparecimento/permanência, comunicado, ata.</li>
-          <li>Para quem é: paciente, família, escola, empresa, serviço de referência, secretaria, auditoria, prontuário interno.</li>
-          <li>Objetivo: informar, justificar, solicitar, registrar, encaminhar, comprovar comparecimento, documentar reunião.</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>2) Identificação completa</strong>
-        <ul>
-          <li>Paciente: nome completo; data de nascimento e/ou idade; CPF/CNS/prontuário (quando existir no serviço).</li>
-          <li>Responsável/acompanhante: nome e vínculo (quando relevante).</li>
-          <li>Unidade/setor/leito (se aplicável), município e estado.</li>
-          <li>Data e hora do registro e, quando necessário, período do evento (início e término).</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>3) Contexto clínico essencial</strong>
-        <ul>
-          <li>Motivo do atendimento/queixa principal.</li>
-          <li>História resumida e antecedentes relevantes (comorbidades, alergias, medicações de uso contínuo quando pertinente).</li>
-          <li>Risco/gravidade quando aplicável e evolução desde a chegada.</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>4) Dados objetivos que elevam a qualidade</strong>
-        <ul>
-          <li>Sinais vitais com horário (PA, FC, FR, SpO2, temperatura, glicemia capilar quando houver).</li>
-          <li>Achados relevantes do exame/observação de enfermagem (nível de consciência, dor com escala, perfusão, pele, hidratação, diurese quando aplicável).</li>
-          <li>Resultados de exames já disponíveis (somente se forem relevantes para o documento e se você tiver certeza do resultado).</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>5) Intervenções, procedimentos e resposta</strong>
-        <ul>
-          <li>O que foi realizado: medicação administrada (nome, dose, via, horário), curativo (local e tipo), nebulização, oxigenoterapia, coleta, sondagens, monitorização, orientações.</li>
-          <li>Materiais/técnica quando necessário (ex.: tipo de curativo, cobertura, calibre do dispositivo, local de punção).</li>
-          <li>Resposta do paciente e evolução após a intervenção (melhora/piora, sinais vitais pós, controle de dor).</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>6) Plano, orientações e critérios de retorno</strong>
-        <ul>
-          <li>Condutas orientadas e encaminhamentos realizados (para onde, quando e por qual motivo).</li>
-          <li>Sinais de alarme informados e o que fazer (retornar à unidade/UPA/hospital).</li>
-          <li>Agendamentos, retornos e seguimento (data prevista quando houver).</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>7) Campos obrigatórios por tipo de documento</strong>
-        <div style="white-space: pre-wrap; margin-top: 8px; font-size: 13px; color: #111827;">
-Atestado de comparecimento/permanência:
-- Data; horário de chegada e de saída (ou período); local; motivo de comparecimento (sem expor detalhes sensíveis se não for necessário).
-
-Encaminhamento:
-- Serviço/profissional de destino; município; motivo do encaminhamento; resumo objetivo do quadro; o que já foi feito; anexos/exames enviados.
-
-Solicitação (insumo/exame/transporte/apoio):
-- Item solicitado; quantidade; justificativa técnica; urgência/prazo; dados do paciente; contato/unidade.
-
-Relatório de enfermagem:
-- Identificação; contexto; achados objetivos; intervenções realizadas; evolução; orientações/condutas; pendências.
-
-Registro de procedimento:
-- Indicação; local; data/hora; técnica; materiais; intercorrências; tolerância; evolução imediata; profissional responsável.
-
-Ata de reunião:
-- Data/hora; local; pauta; participantes; deliberações; encaminhamentos; responsáveis e prazos.</div>
-      </div>
-
-      <div class="recommendation-item"><strong>8) Identificação do profissional e fechamento</strong>
-        <ul>
-          <li>Nome do profissional e função.</li>
-          <li>Registro profissional (COREN) quando aplicável no seu serviço.</li>
-          <li>Assinatura e carimbo (quando o documento for impresso).</li>
-        </ul>
-      </div>
-
-      <div class="recommendation-item"><strong>Checklist final de qualidade</strong>
-        <ul>
-          <li>O documento tem tipo, finalidade/destino e está escrito de forma objetiva?</li>
-          <li>Identificação do paciente e datas/horários estão completos e coerentes?</li>
-          <li>Há dados objetivos suficientes para sustentar o registro?</li>
-          <li>Intervenções e orientações estão claras, com horários e resposta?</li>
-          <li>Profissional identificado corretamente no final?</li>
-        </ul>
-      </div>
-
-    </div>
-  </div>
-
-<div id="imageChoiceOverlay" class="modal-overlay hidden">
+  <div id="imageChoiceOverlay" class="modal-overlay hidden">
   <div class="modal" style="max-width: 560px;">
     <h3 id="imageChoiceTitle">Imagens para análise</h3>
     <p id="imageChoiceHint">Selecione uma ou mais imagens. Você pode adicionar várias antes de analisar.</p>
@@ -4755,6 +4655,7 @@ Ata de reunião:
     document.getElementById("closeClientBillingModalBtn")?.addEventListener("click", closeClientBillingModal);
 
 
+
     let recognition;
     let isRecording = false;
     let isPaused = false;
@@ -4835,13 +4736,6 @@ Ata de reunião:
     let handoffStartTime = null;
     let handoffAccumulatedSeconds = 0;
     let handoffTimerInterval = null;
-
-    // ============================
-    // MÓDULO: Documentos (gravação + geração de documento)
-    // ============================
-
-    // Guia em tempo real do módulo de documentos (tipo + até 3 perguntas)
-
 const recordBtn = document.getElementById("recordBtn");
     const pauseBtn = document.getElementById("pauseBtn");
     const timerEl = document.getElementById("timer");
@@ -4849,7 +4743,7 @@ const recordBtn = document.getElementById("recordBtn");
     const resultsCard = document.getElementById("resultsCard");
     const soapResultsMount = document.getElementById("soapResultsMount");
     const triageResultsMount = document.getElementById("triageResultsMount");
-    const handoffResultsMount = document.getElementById("handoffResultsMount");
+const handoffResultsMount = document.getElementById("handoffResultsMount");
 
     function mountResultsCard(mountEl) {
       if (!resultsCard || !mountEl) return;
@@ -4868,12 +4762,15 @@ const recordBtn = document.getElementById("recordBtn");
 
       const triageMode = (v === "triage" || v === "triagem" || v === "triagem_hospitalar");
       const handoffMode = (v === "handoff" || v === "passagem" || v === "sbar");
+      const docsMode = false;
+const consultMode = (!triageMode && !handoffMode && !false);
 
       const patientInfoPanelEl = document.getElementById("patientInfoPanel");
       const triageReportPanelEl = document.getElementById("triageReportPanel");
       const handoffPanelEl = document.getElementById("handoffPanel");
       const soapNursingPanelEl = document.getElementById("soapNursingResultsPanel");
 
+      if (patientInfoPanelEl) patientInfoPanelEl.classList.toggle("hidden", triageMode || handoffMode);
 
       if (triageReportPanelEl) triageReportPanelEl.classList.toggle("hidden", !triageMode);
       if (handoffPanelEl) handoffPanelEl.classList.toggle("hidden", !handoffMode);
@@ -4920,7 +4817,6 @@ const recordBtn = document.getElementById("recordBtn");
         "finishHint",
         "soapError",
         "soapResultsMount",
-
       ];
 
       hideIds.forEach((id) => {
@@ -4965,8 +4861,6 @@ const recordBtn = document.getElementById("recordBtn");
     const handoffTimerEl = document.getElementById("handoffTimer");
     const handoffMicStatus = document.getElementById("handoffMicStatus");
     const handoffError = document.getElementById("handoffError");
-    const closeDocsGuideBtn = document.getElementById("closeDocsGuideBtn");
-
     const patientReportCard = document.getElementById("patientReportCard");
 
     const handoffPanel = document.getElementById("handoffPanel");
@@ -5016,11 +4910,12 @@ const recordBtn = document.getElementById("recordBtn");
     const closeCalculatorsGuideBtn = document.getElementById("closeCalculatorsGuideBtn");
 
 
+
     const triageLiveGuidance = document.getElementById("triageLiveGuidance");
     const triageLiveGuidanceContext = document.getElementById("triageLiveGuidanceContext");
     const triageLiveGuidanceStatus = document.getElementById("triageLiveGuidanceStatus");
     const triageLiveGuidanceList = document.getElementById("triageLiveGuidanceList");
-    const triageReportPanel = document.getElementById("triageReportPanel");
+const triageReportPanel = document.getElementById("triageReportPanel");
     const triageRiskBadge = document.getElementById("triageRiskBadge");
     const triageRiskMeaning = document.getElementById("triageRiskMeaning");
     const triageRiskLegend = document.getElementById("triageRiskLegend");
@@ -5243,6 +5138,8 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       setVisible(copyReportBtn, has);
       setVisible(printReportBtn, has);
     }
+
+
 
 
     // ============================
@@ -6425,6 +6322,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         }
       }
     }
+
 
 
     // ============================
@@ -8920,6 +8818,7 @@ let interim = "";
           // triageIsRecording: triagem
           // reportIsRecording: relatórios
           // questionsIsRecording: perguntas adicionais
+          return !!(isRecording || triageIsRecording || reportIsRecording || questionsIsRecording );
         }
 
         // Guia do SBAR (inline, dentro do próprio módulo)
@@ -9409,140 +9308,6 @@ if (medicalDoubtSendBtn) {
 }
 
 
-    // ============================
-    
-
-
-if (handoffRecordBtn) {
-  handoffRecordBtn.onclick = () => {
-    if (!handoffIsRecording) {
-      startHandoffRecording();
-    } else {
-      stopHandoffRecording();
-      finalizarPassagemPlantao();
-    }
-  };
-}
-
-if (handoffPauseBtn) {
-  handoffPauseBtn.onclick = () => {
-    if (!handoffIsRecording) return;
-    if (!handoffIsPaused) pauseHandoffRecording();
-    else resumeHandoffRecording();
-  };
-}
-
-if (handoffCopyBtn) {
-  handoffCopyBtn.addEventListener("click", () => {
-    const text = (handoffOutput && handoffOutput.value) ? handoffOutput.value.trim() : "";
-    if (!text) {
-      alert("Não há passagem de plantão para copiar.");
-      return;
-    }
-    copyToClipboard(text);
-  });
-}
-
-if (handoffPrintBtn) {
-  handoffPrintBtn.addEventListener("click", () => {
-    const text = (handoffOutput && handoffOutput.value) ? handoffOutput.value : "";
-    openPrintWindow("Passagem de plantão", text);
-  });
-}
-
-function setPanelVisible(panelEl, visible) {
-  if (!panelEl) return;
-  if (visible) panelEl.classList.add("visible");
-  else panelEl.classList.remove("visible");
-}
-
-if (handoffGuideBtn) {
-  handoffGuideBtn.addEventListener("click", () => {
-    setPanelVisible(handoffGuidePanel, true);
-  });
-}
-
-
-if (medSafetyGuideBtn) {
-  medSafetyGuideBtn.addEventListener("click", () => {
-    setPanelVisible(medSafetyGuidePanel, true);
-  });
-}
-if (closeMedSafetyGuideBtn) {
-  closeMedSafetyGuideBtn.addEventListener("click", () => {
-    setPanelVisible(medSafetyGuidePanel, false);
-  });
-}
-
-if (aprazamentoGuideBtn) {
-  aprazamentoGuideBtn.addEventListener("click", () => {
-    setPanelVisible(aprazamentoGuidePanel, true);
-  });
-}
-if (closeAprazamentoGuideBtn) {
-  closeAprazamentoGuideBtn.addEventListener("click", () => {
-    setPanelVisible(aprazamentoGuidePanel, false);
-  });
-}
-
-
-if (woundGuideBtn) {
-  woundGuideBtn.addEventListener("click", () => {
-    setPanelVisible(woundGuidePanel, true);
-  });
-}
-if (closeWoundGuideBtn) {
-  closeWoundGuideBtn.addEventListener("click", () => {
-    setPanelVisible(woundGuidePanel, false);
-  });
-}
-
-if (examGuideBtn) {
-  examGuideBtn.addEventListener("click", () => {
-    setPanelVisible(examGuidePanel, true);
-  });
-}
-if (closeExamGuideBtn) {
-  closeExamGuideBtn.addEventListener("click", () => {
-    setPanelVisible(examGuidePanel, false);
-  });
-}
-
-if (medicalDoubtsGuideBtn) {
-  medicalDoubtsGuideBtn.addEventListener("click", () => {
-    setPanelVisible(medicalDoubtsGuidePanel, true);
-  });
-}
-if (closeMedicalDoubtsGuideBtn) {
-  closeMedicalDoubtsGuideBtn.addEventListener("click", () => {
-    setPanelVisible(medicalDoubtsGuidePanel, false);
-  });
-}
-
-if (calculatorsGuideBtn) {
-  calculatorsGuideBtn.addEventListener("click", () => {
-    setPanelVisible(calculatorsGuidePanel, true);
-  });
-}
-if (closeCalculatorsGuideBtn) {
-  closeCalculatorsGuideBtn.addEventListener("click", () => {
-    setPanelVisible(calculatorsGuidePanel, false);
-  });
-}
-
-if (closeHandoffGuideBtn) {
-  closeHandoffGuideBtn.addEventListener("click", () => {
-    setPanelVisible(handoffGuidePanel, false);
-  });
-}
-
-  });
-}
-if (closeDocsGuideBtn) {
-  closeDocsGuideBtn.addEventListener("click", () => {
-  });
-}
-
 if (transcriptionGuideBtn) {
   transcriptionGuideBtn.addEventListener("click", () => {
     setPanelVisible(transcriptionGuidePanel, true);
@@ -9692,6 +9457,7 @@ recordBtn.onclick = () => {
         openPrintWindow("Evolução de Enfermagem", text);
       });
     }
+
 
 
     copyPrescriptionBtn.addEventListener("click", () => {
@@ -10519,6 +10285,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       const anyVisible = (lv && !lv.classList.contains("hidden")) || (av && !av.classList.contains("hidden")) || (nv && !nv.classList.contains("hidden"));
       if (!anyVisible) showLogin();
     }, 1000);
+
 
 
     
