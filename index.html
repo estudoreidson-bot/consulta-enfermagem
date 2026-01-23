@@ -2485,6 +2485,57 @@
           <button class="consult-type-btn" type="button" data-consult="hiperdia">Consulta hiperdia</button>
           <button class="consult-type-btn" type="button" data-consult="puerperio">Consulta de puerpério</button>
         </div>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+          <button id="startCareGuideBtn" class="btn-print guide-main-btn" type="button">Guia geral do atendimento</button>
+        </div>
+
+        <div id="startCareGuideDrawer" class="consult-guide-drawer hidden" style="margin-bottom: 10px;">
+          <div class="consult-guide-header">
+            <div>
+              <p class="consult-guide-title">Guia geral do módulo Iniciar atendimento</p>
+              <p class="consult-guide-subtitle">Checklist rápido para coletar dados essenciais, reduzir omissões e melhorar a qualidade do SOAP</p>
+            </div>
+            <button id="closeStartCareGuideBtn" class="consult-guide-close" type="button">Fechar</button>
+          </div>
+
+          <div class="consult-guide-content">
+            <div class="consult-guide-card">
+              <div class="consult-guide-card-title">Abertura (primeiros 20 segundos)</div>
+              <div class="consult-guide-card-text">
+                Identificação completa do paciente, idade, peso (quando relevante) e sinais vitais (PA, FC, FR, SpO2, temperatura). Diga o motivo principal da consulta com as palavras do paciente.
+              </div>
+            </div>
+
+            <div class="consult-guide-card">
+              <div class="consult-guide-card-title">Anamnese objetiva</div>
+              <div class="consult-guide-card-text">
+                Início e evolução, localização/irradiação, intensidade, fatores de melhora/piora, sintomas associados, tratamentos já tentados. Em seguida: comorbidades, alergias, medicações em uso, cirurgias, gestação/puérperio quando aplicável.
+              </div>
+            </div>
+
+            <div class="consult-guide-card">
+              <div class="consult-guide-card-title">Sinais de gravidade</div>
+              <div class="consult-guide-card-text">
+                Se houver: dor torácica típica, dispneia, rebaixamento de consciência, febre persistente com sinais sistêmicos, sangramento importante, sinais neurológicos focais, desidratação importante, risco de suicídio/violência, gestante com cefaleia intensa, alteração visual ou dor epigástrica.
+              </div>
+            </div>
+
+            <div class="consult-guide-card">
+              <div class="consult-guide-card-title">Exame físico direcionado</div>
+              <div class="consult-guide-card-text">
+                Registre apenas o que muda conduta: geral (estado, hidratação, perfusão), cardiopulmonar, abdome, neuro, pele e foco do problema. Se não foi possível examinar, diga o motivo.
+              </div>
+            </div>
+
+            <div class="consult-guide-card">
+              <div class="consult-guide-card-title">Fechamento</div>
+              <div class="consult-guide-card-text">
+                Resuma hipótese(s) principais, conduta imediata, orientações e sinais de alarme. Se houver exames solicitados, registre o que espera encontrar e o plano se vier alterado.
+              </div>
+            </div>
+          </div>
+        </div>
+
 
         <div id="consultGuideDrawer" class="consult-guide-drawer hidden">
           <div class="consult-guide-header">
@@ -2539,10 +2590,71 @@
       <div id="soapResultsMount"></div>
 
       <div class="module-divider"></div>
-      <p class="module-title">Triagem hospitalar</p>
+      <div class="section-header-row">
+        <h2>Triagem hospitalar</h2>
+        <button id="triageGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
+      </div>
       <p class="module-subtitle">
         Use este módulo para triagem na porta do hospital. Fale identificação do paciente, queixa principal, sinais vitais, achados do ABCDE, comorbidades, alergias e medicações em uso. Ao encerrar, será gerado um relatório técnico de triagem, condutas iniciais e passagem rápida ao médico.
       </p>
+
+      <div id="triageHelpDrawer" class="consult-guide-drawer hidden" style="margin-bottom: 10px;">
+        <div class="consult-guide-header">
+          <div>
+            <p class="consult-guide-title">Guia rápido da triagem hospitalar</p>
+            <p class="consult-guide-subtitle">Roteiro objetivo para gravar e gerar um relatório completo sem esquecer passos críticos</p>
+          </div>
+          <button id="closeTriageGuideBtn" class="consult-guide-close" type="button">Fechar</button>
+        </div>
+
+        <div class="consult-guide-content">
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Antes de iniciar</div>
+            <div class="consult-guide-card-text">
+              Fale primeiro: identificação (nome completo, idade, sexo), hora de chegada, queixa principal e sinais vitais (PA, FC, FR, SpO2, temperatura, glicemia se aplicável). Se houver risco imediato, descreva as medidas já feitas (oxigênio, acesso venoso, monitorização, analgesia inicial).
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Roteiro ABCDE (diga em voz alta)</div>
+            <div class="consult-guide-card-text">
+              A (Via aérea): fala? roncos/estridor? risco de obstrução? necessidade de cânula/aspiração.
+              B (Respiração): esforço respiratório, ausculta, SpO2, necessidade de O2 e dispositivo.
+              C (Circulação): perfusão, pulso, PA, sangramento ativo, acesso venoso, reposição/hemocomponentes se necessário.
+              D (Neurológico): nível de consciência (AVPU ou Glasgow), pupilas, glicemia capilar se alteração de consciência, convulsão.
+              E (Exposição): temperatura, inspeção geral, trauma, dor, pele, sinais de sepse, gestante, risco de hipotermia.
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">História mínima (1 minuto)</div>
+            <div class="consult-guide-card-text">
+              Início e evolução da queixa, fatores de gravidade, comorbidades relevantes, alergias, medicações em uso, cirurgias recentes, gestação/puérperio quando aplicável. Em trauma: mecanismo e tempo.
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Classificação de risco (se usar protocolo local)</div>
+            <div class="consult-guide-card-text">
+              Registre a cor/nível e o motivo (por exemplo: dispneia com SpO2 baixa, dor torácica típica, rebaixamento de consciência, sangramento importante, sinais de sepse). Se não houver protocolo, descreva apenas: risco imediato, alto, moderado ou baixo.
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Condutas iniciais para registrar</div>
+            <div class="consult-guide-card-text">
+              O2, nebulização, analgesia, antiemético, hidratação, controle glicêmico, imobilização, curativo, antibioticoterapia quando já indicada, coleta de exames e exames de imagem solicitados. Diga também o que ficou pendente para o médico (avaliar, prescrever, solicitar, reavaliar).
+            </div>
+          </div>
+
+          <div class="consult-guide-card">
+            <div class="consult-guide-card-title">Fechamento do relatório</div>
+            <div class="consult-guide-card-text">
+              Resuma em uma frase: quadro + principal risco + resposta inicial. Exemplo: “Dispneia aguda com hipóxia, em O2 e monitorização, aguardando avaliação médica e radiografia/ECG”.
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div id="triageLiveGuidance" class="live-guidance">
         <div class="live-guidance-header">
@@ -2577,11 +2689,9 @@
 
       <div class="module-divider"></div>
 
-      <div class="section-header-row" style="justify-content: center;">
-        <div class="soap-title-actions" style="justify-content: center;">
-          <button id="handoffGuideBtn" class="btn-print guide-main-btn" type="button">Guia de Passagem de Plantão</button>
-          <p class="module-title" style="margin: 0;">Passagem de plantão</p>
-        </div>
+      <div class="section-header-row">
+        <h2>Passagem de plantão</h2>
+        <button id="handoffGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
       </div>
 
       <p class="module-subtitle">
@@ -2608,11 +2718,9 @@
 
       <div class="module-divider"></div>
 
-      <div class="section-header-row" style="justify-content: center;">
-        <div class="soap-title-actions" style="justify-content: center;">
-          <button id="rosterHelpBtn" class="btn-print guide-main-btn" type="button">Guia Escala</button>
-          <p class="module-title" style="margin: 0;">Escala de plantão</p>
-        </div>
+      <div class="section-header-row">
+        <h2>Escala de plantão</h2>
+        <button id="rosterHelpBtn" class="btn-print guide-main-btn" type="button">Guia</button>
       </div>
 
       <p class="module-subtitle">
@@ -4940,6 +5048,16 @@ const recordBtn = document.getElementById("recordBtn");
     const triageTimerEl = document.getElementById("triageTimer");
     const triageMicStatus = document.getElementById("triageMicStatus");
     const triageError = document.getElementById("triageError");
+
+
+    const triageGuideBtn = document.getElementById("triageGuideBtn");
+    const triageHelpDrawer = document.getElementById("triageHelpDrawer");
+    const closeTriageGuideBtn = document.getElementById("closeTriageGuideBtn");
+
+    const startCareGuideBtn = document.getElementById("startCareGuideBtn");
+    const startCareGuideDrawer = document.getElementById("startCareGuideDrawer");
+    const closeStartCareGuideBtn = document.getElementById("closeStartCareGuideBtn");
+
 
 
     const handoffRecordBtn = document.getElementById("handoffRecordBtn");
@@ -9860,6 +9978,30 @@ function setPanelVisible(panelEl, visible) {
   if (visible) panelEl.classList.add("visible");
   else panelEl.classList.remove("visible");
 }
+
+
+if (triageGuideBtn) {
+  triageGuideBtn.addEventListener("click", () => {
+    triageHelpDrawer?.classList.toggle("hidden");
+  });
+}
+if (closeTriageGuideBtn) {
+  closeTriageGuideBtn.addEventListener("click", () => {
+    triageHelpDrawer?.classList.add("hidden");
+  });
+}
+
+if (startCareGuideBtn) {
+  startCareGuideBtn.addEventListener("click", () => {
+    startCareGuideDrawer?.classList.toggle("hidden");
+  });
+}
+if (closeStartCareGuideBtn) {
+  closeStartCareGuideBtn.addEventListener("click", () => {
+    startCareGuideDrawer?.classList.add("hidden");
+  });
+}
+
 
 if (handoffGuideBtn) {
   handoffGuideBtn.addEventListener("click", () => {
