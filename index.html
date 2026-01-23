@@ -152,7 +152,15 @@
     /* Padronizacao: todos os botoes redondos principais */
     #recordBtn,
     #triageRecordBtn,
-/* Triagem hospitalar: botão e separador */
+    #docsRecordBtn,
+    #handoffRecordBtn {
+      width: var(--round-btn-size);
+      height: var(--round-btn-size);
+      border-radius: 50%;
+      font-size: 20px;
+    }
+    
+    /* Triagem hospitalar: botão e separador */
     .module-divider {
       width: 100%;
       height: 1px;
@@ -192,8 +200,61 @@
     #triageRecordBtn.recording { background: #dc3545; }
     #triageRecordBtn:active { transform: scale(0.97); }
 
-    /* Documentos: botão e controles (mesmo padrão do Iniciar atendimento) */.start { background: #28a745; }:active { transform: scale(0.97); }
-#triagePauseBtn {
+    /* Documentos: botão e controles (mesmo padrão do Iniciar atendimento) */
+    #docsRecordBtn {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+      margin-top: 6px;
+      margin-bottom: 10px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    #docsRecordBtn.start { background: #28a745; }
+    #docsRecordBtn.recording { background: #dc3545; }
+    #docsRecordBtn:active { transform: scale(0.97); }
+
+    #docsPauseBtn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      background: #6c757d;
+      color: #fff;
+      font-size: 13px;
+      display: none;
+    }
+    #docsTimer {
+      font-size: 26px;
+      margin-top: 10px;
+      font-family: "Courier New", monospace;
+    }
+    #docsMicStatus {
+      margin-top: 8px;
+      font-size: 14px;
+      text-align: center;
+      color: #333;
+      min-height: 20px;
+    }
+    #docsPauseLabel {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #555;
+      text-align: center;
+    }
+    #docsFinishHint {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #333;
+      text-align: center;
+    }
+
+
+    #triagePauseBtn {
       padding: 6px 14px;
       border-radius: 20px;
       border: none;
@@ -2505,7 +2566,9 @@
 
       <div class="module-divider"></div>
 
-<div class="section-header-row" style="justify-content: center;">
+      <div class="module-divider"></div>
+
+      <div class="section-header-row" style="justify-content: center;">
         <div class="soap-title-actions" style="justify-content: center;">
           <button id="handoffGuideBtn" class="btn-print guide-main-btn" type="button">Guia de Passagem de Plantão</button>
           <p class="module-title" style="margin: 0;">Passagem de plantão</p>
@@ -3826,43 +3889,6 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     </div>
   </div>
 
-  <div id="imageChoiceOverlay" class="modal-overlay hidden">
-  <div class="modal" style="max-width: 560px;">
-    <h3 id="imageChoiceTitle">Imagens para análise</h3>
-    <p id="imageChoiceHint">Selecione uma ou mais imagens. Você pode adicionar várias antes de analisar.</p>
-
-    <div id="imageChoicePreview" class="image-preview-grid" aria-label="Pré-visualização das imagens selecionadas"></div>
-    <div id="imageChoiceCount" style="margin-top: 8px; font-size: 12px; color: #374151;"></div>
-
-    <div class="modal-actions" style="flex-wrap: wrap;">
-      <button id="chooseCameraBtn" class="danger">Tirar foto agora</button>
-      <button id="chooseFileBtn" class="primary">Escolher arquivo</button>
-      <button id="clearChosenImagesBtn">Limpar</button>
-      <button id="runImageAnalysisBtn" class="primary" disabled>Analisar</button>
-      <button id="cancelImageChoiceBtn">Cancelar</button>
-    </div>
-  </div>
-</div>
-  </div>
-
-
-  </div>
-
-  
-  <div id="medMonographOverlay" class="modal-overlay hidden">
-    <div class="modal" style="max-width: 860px;">
-      <div class="section-header-row" style="margin-bottom: 10px;">
-        <h3 id="medMonographTitle" style="margin: 0;">Informações do medicamento</h3>
-        <button id="closeMedMonographBtn" class="btn-print" type="button">Fechar</button>
-      </div>
-      <div id="medMonographStatus" class="mini-status"></div>
-      <pre id="medMonographContent" class="mono-pre">Nenhum conteúdo disponível.</pre>
-      <div class="modal-actions" style="justify-content: flex-start; flex-wrap: wrap;">
-        <button id="copyMedMonographBtn" class="primary" type="button">Copiar informações do medicamento</button>
-      </div>
-    </div>
-  </div>
-
   <div id="medSafetyGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
       <h3>Guia: Administração segura de medicamentos</h3>
@@ -4736,6 +4762,26 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     let handoffStartTime = null;
     let handoffAccumulatedSeconds = 0;
     let handoffTimerInterval = null;
+
+    // ============================
+    // MÓDULO: Documentos (gravação + geração de documento)
+    // ============================
+    let docsRecognition = null;
+    let docsIsRecording = false;
+    let docsIsPaused = false;
+    let docsFinalTranscript = "";
+    let docsInterimTranscript = "";
+
+    let docsStartTime = null;
+    let docsAccumulatedSeconds = 0;
+    let docsTimerInterval = null;
+
+    // Guia em tempo real do módulo de documentos (tipo + até 3 perguntas)
+    let docsGuidanceInterval = null;
+    let docsGuidanceInFlight = false;
+    let docsGuidanceLastHash = "";
+    let docsLastGeneratedDocument = "";
+
 const recordBtn = document.getElementById("recordBtn");
     const pauseBtn = document.getElementById("pauseBtn");
     const timerEl = document.getElementById("timer");
@@ -4743,7 +4789,8 @@ const recordBtn = document.getElementById("recordBtn");
     const resultsCard = document.getElementById("resultsCard");
     const soapResultsMount = document.getElementById("soapResultsMount");
     const triageResultsMount = document.getElementById("triageResultsMount");
-const handoffResultsMount = document.getElementById("handoffResultsMount");
+    const docsResultsMount = document.getElementById("docsResultsMount");
+    const handoffResultsMount = document.getElementById("handoffResultsMount");
 
     function mountResultsCard(mountEl) {
       if (!resultsCard || !mountEl) return;
@@ -4762,15 +4809,15 @@ const handoffResultsMount = document.getElementById("handoffResultsMount");
 
       const triageMode = (v === "triage" || v === "triagem" || v === "triagem_hospitalar");
       const handoffMode = (v === "handoff" || v === "passagem" || v === "sbar");
-      const docsMode = false;
-const consultMode = (!triageMode && !handoffMode && !false);
+      const docsMode = (v === "docs" || v === "documentos");
+      const consultMode = (!triageMode && !handoffMode && !docsMode);
 
       const patientInfoPanelEl = document.getElementById("patientInfoPanel");
       const triageReportPanelEl = document.getElementById("triageReportPanel");
       const handoffPanelEl = document.getElementById("handoffPanel");
       const soapNursingPanelEl = document.getElementById("soapNursingResultsPanel");
 
-      if (patientInfoPanelEl) patientInfoPanelEl.classList.toggle("hidden", triageMode || handoffMode);
+      if (patientInfoPanelEl) patientInfoPanelEl.classList.toggle("hidden", triageMode || handoffMode || docsMode);
 
       if (triageReportPanelEl) triageReportPanelEl.classList.toggle("hidden", !triageMode);
       if (handoffPanelEl) handoffPanelEl.classList.toggle("hidden", !handoffMode);
@@ -4817,6 +4864,16 @@ const consultMode = (!triageMode && !handoffMode && !false);
         "finishHint",
         "soapError",
         "soapResultsMount",
+
+        "docsGuideBtn",
+        "docsRecordBtn",
+        "docsTimer",
+        "docsMicStatus",
+        "docsPauseBtn",
+        "docsPauseLabel",
+        "docsFinishHint",
+        "docsError",
+        "docsResultsMount"
       ];
 
       hideIds.forEach((id) => {
@@ -4861,6 +4918,17 @@ const consultMode = (!triageMode && !handoffMode && !false);
     const handoffTimerEl = document.getElementById("handoffTimer");
     const handoffMicStatus = document.getElementById("handoffMicStatus");
     const handoffError = document.getElementById("handoffError");
+
+    const docsRecordBtn = document.getElementById("docsRecordBtn");
+    const docsPauseBtn = document.getElementById("docsPauseBtn");
+    const docsTimerEl = document.getElementById("docsTimer");
+    const docsMicStatus = document.getElementById("docsMicStatus");
+    const docsError = document.getElementById("docsError");
+
+    const docsGuideBtn = document.getElementById("docsGuideBtn");
+    const docsGuidePanel = document.getElementById("docsGuidePanel");
+    const closeDocsGuideBtn = document.getElementById("closeDocsGuideBtn");
+
     const patientReportCard = document.getElementById("patientReportCard");
 
     const handoffPanel = document.getElementById("handoffPanel");
@@ -4915,7 +4983,13 @@ const consultMode = (!triageMode && !handoffMode && !false);
     const triageLiveGuidanceContext = document.getElementById("triageLiveGuidanceContext");
     const triageLiveGuidanceStatus = document.getElementById("triageLiveGuidanceStatus");
     const triageLiveGuidanceList = document.getElementById("triageLiveGuidanceList");
-const triageReportPanel = document.getElementById("triageReportPanel");
+
+    const docsLiveGuidance = document.getElementById("docsLiveGuidance");
+    const docsLiveGuidanceContext = document.getElementById("docsLiveGuidanceContext");
+    const docsLiveGuidanceStatus = document.getElementById("docsLiveGuidanceStatus");
+    const docsLiveGuidanceList = document.getElementById("docsLiveGuidanceList");
+
+    const triageReportPanel = document.getElementById("triageReportPanel");
     const triageRiskBadge = document.getElementById("triageRiskBadge");
     const triageRiskMeaning = document.getElementById("triageRiskMeaning");
     const triageRiskLegend = document.getElementById("triageRiskLegend");
@@ -8818,7 +8892,7 @@ let interim = "";
           // triageIsRecording: triagem
           // reportIsRecording: relatórios
           // questionsIsRecording: perguntas adicionais
-          return !!(isRecording || triageIsRecording || reportIsRecording || questionsIsRecording );
+          return !!(isRecording || triageIsRecording || reportIsRecording || questionsIsRecording || docsIsRecording);
         }
 
         // Guia do SBAR (inline, dentro do próprio módulo)
@@ -9307,6 +9381,547 @@ if (medicalDoubtSendBtn) {
   });
 }
 
+
+    // ============================
+    // Documentos (gravação + geração via /api/gerar-relatorio)
+    // ============================
+
+    function docsResetTimer() {
+      docsStartTime = null;
+      docsAccumulatedSeconds = 0;
+      if (docsTimerInterval) clearInterval(docsTimerInterval);
+      docsTimerInterval = null;
+      if (docsTimerEl) docsTimerEl.textContent = "00:00";
+    }
+
+    function docsStartTimer() {
+      if (docsTimerInterval) clearInterval(docsTimerInterval);
+      docsStartTime = new Date();
+      docsTimerInterval = setInterval(() => {
+        const now = new Date();
+        const delta = Math.floor((now - docsStartTime) / 1000);
+        const total = docsAccumulatedSeconds + delta;
+        const mm = String(Math.floor(total / 60)).padStart(2, "0");
+        const ss = String(total % 60).padStart(2, "0");
+        if (docsTimerEl) docsTimerEl.textContent = `${mm}:${ss}`;
+      }, 1000);
+    }
+
+    function docsPauseTimer() {
+      if (!docsStartTime) return;
+      const now = new Date();
+      const delta = Math.floor((now - docsStartTime) / 1000);
+      docsAccumulatedSeconds += delta;
+      docsStartTime = null;
+      if (docsTimerInterval) clearInterval(docsTimerInterval);
+      docsTimerInterval = null;
+    }
+
+    function docsGetCombinedTranscript() {
+      const full = (docsFinalTranscript || "").trim();
+      const inter = (docsInterimTranscript || "").trim();
+      return [full, inter].filter(Boolean).join(" ").trim();
+    }
+
+    function ensureDocsRecognition() {
+      if (docsRecognition) return true;
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        if (docsError) docsError.textContent = "Seu navegador não suporta reconhecimento de voz. Use Chrome no computador ou Android.";
+        return false;
+      }
+      docsRecognition = new SR();
+      docsRecognition.continuous = true;
+      docsRecognition.interimResults = true;
+      docsRecognition.lang = "pt-BR";
+
+      docsRecognition.onresult = (event) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const res = event.results[i];
+          const transcript = (res[0] && res[0].transcript) ? res[0].transcript : "";
+          if (res.isFinal) {
+            docsFinalTranscript += transcript + " ";
+          } else {
+            interim += transcript + " ";
+          }
+        }
+        docsInterimTranscript = interim.trim();
+      };
+
+      docsRecognition.onerror = (e) => {
+        console.error("Erro no reconhecimento (documentos):", e);
+      };
+
+      return true;
+    }
+
+    async function docsFetchLiveGuidance() {
+      if (!docsIsRecording || docsIsPaused) return;
+      if (docsGuidanceInFlight) return;
+
+      const transcricao = docsGetCombinedTranscript();
+      if (!transcricao || transcricao.length < 40) {
+        if (docsLiveGuidanceStatus) {
+          docsLiveGuidanceStatus.textContent = "Fale o conteúdo do documento para receber perguntas essenciais em tempo real.";
+        }
+        return;
+      }
+
+      const payload = { transcricao };
+      const h = hashForGuidancePayload(payload);
+      if (h === docsGuidanceLastHash) return;
+      docsGuidanceLastHash = h;
+
+      docsGuidanceInFlight = true;
+
+      try {
+        let resp = await fetch(BACKEND_URL + "/api/documento-tempo-real", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (resp.status === 404) {
+          resp = await fetch(BACKEND_URL + "/api/guia-documento-tempo-real", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+        }
+
+        if (!resp.ok) {
+          const t = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (guia documento):", resp.status, t);
+          if (docsLiveGuidanceStatus) {
+            docsLiveGuidanceStatus.textContent = "Não foi possível atualizar as perguntas em tempo real.";
+          }
+          return;
+        }
+
+        const data = await resp.json().catch(() => ({}));
+        const tipo = (data && (data.tipo_documento || data.tipo)) ? String(data.tipo_documento || data.tipo).trim() : "";
+        const perguntasRaw = Array.isArray(data?.perguntas)
+          ? data.perguntas
+          : (Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : []);
+        const perguntas = perguntasRaw.map(x => String(x || "").trim()).filter(Boolean).slice(0, 3);
+
+        if (docsLiveGuidanceContext) {
+          docsLiveGuidanceContext.textContent = tipo ? ("Tipo identificado: " + tipo) : "";
+        }
+
+        if (docsLiveGuidanceStatus) {
+          docsLiveGuidanceStatus.textContent = perguntas.length
+            ? "Perguntas essenciais sugeridas (não obrigatórias)."
+            : "Nenhuma pergunta sugerida no momento.";
+        }
+
+        if (docsLiveGuidanceList) {
+          if (!perguntas.length) {
+            docsLiveGuidanceList.innerHTML = '<div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>';
+          } else {
+            docsLiveGuidanceList.innerHTML = "";
+            perguntas.forEach((q, idx) => {
+              const el = document.createElement("div");
+              el.className = "live-guidance-item";
+              el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${escapeHtml(q)}</div>`;
+              docsLiveGuidanceList.appendChild(el);
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Erro ao atualizar guia de documento:", e);
+        if (docsLiveGuidanceStatus) {
+          docsLiveGuidanceStatus.textContent = "Erro ao atualizar as perguntas em tempo real.";
+        }
+      } finally {
+        docsGuidanceInFlight = false;
+      }
+    }
+
+    function startDocsLiveGuidancePolling() {
+      stopDocsLiveGuidancePolling();
+      docsFetchLiveGuidance();
+      docsGuidanceInterval = setInterval(() => {
+        docsFetchLiveGuidance();
+      }, 2500);
+    }
+
+    function stopDocsLiveGuidancePolling() {
+      if (docsGuidanceInterval) {
+        clearInterval(docsGuidanceInterval);
+      }
+      docsGuidanceInterval = null;
+      docsGuidanceInFlight = false;
+      docsGuidanceLastHash = "";
+    }
+
+    function renderDocsFinalDocument(documento) {
+      if (!docsResultsMount) return;
+
+      const safeText = normalizeNumberedParagraphs(String(documento || "").trim());
+      docsResultsMount.innerHTML = `
+        <div class="module-card" style="margin-top: 14px;">
+          <h3 style="margin: 0 0 10px 0;">Documento gerado</h3>
+          <div class="prescription-actions">
+            <button id="docsCopyFinalBtn" class="btn-copy" type="button">Copiar documento</button>
+            <button id="docsPrintFinalBtn" class="btn-print" type="button">Imprimir documento</button>
+          </div>
+          <textarea id="docsFinalDocTextarea" class="prescription-textarea" spellcheck="false"></textarea>
+        </div>
+      `;
+
+      const ta = document.getElementById("docsFinalDocTextarea");
+      if (ta) ta.value = safeText;
+
+      const copyBtn = document.getElementById("docsCopyFinalBtn");
+      if (copyBtn) {
+        copyBtn.addEventListener("click", () => {
+          const txt = (ta && ta.value) ? String(ta.value).trim() : "";
+          if (!txt) {
+            alert("Não há documento para copiar.");
+            return;
+          }
+          copyToClipboard(txt);
+        });
+      }
+
+      const printBtn = document.getElementById("docsPrintFinalBtn");
+      if (printBtn) {
+        printBtn.addEventListener("click", () => {
+          const txt = (ta && ta.value) ? String(ta.value) : "";
+          openPrintWindow("Documento", txt);
+        });
+      }
+    }
+
+    function startDocsRecording() {
+      const busy = !!(isRecording || triageIsRecording || handoffIsRecording || reportIsRecording || questionsIsRecording || sbarIsRecording);
+      if (busy) {
+        alert("Finalize a gravação atual antes de iniciar a geração de documentos.");
+        return;
+      }
+
+      if (!ensureDocsRecognition()) return;
+
+      docsIsRecording = true;
+      docsIsPaused = false;
+      docsFinalTranscript = "";
+      docsInterimTranscript = "";
+      docsLastGeneratedDocument = "";
+
+      // Limpa resultado anterior
+      if (docsResultsMount) docsResultsMount.innerHTML = "";
+
+      // Inicializa guia em tempo real (apenas para orientar)
+      if (docsLiveGuidanceStatus) docsLiveGuidanceStatus.textContent = "Iniciando guia em tempo real...";
+      if (docsLiveGuidanceContext) docsLiveGuidanceContext.textContent = "";
+      if (docsLiveGuidanceList) {
+        docsLiveGuidanceList.innerHTML = '<div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>';
+      }
+
+      if (docsError) docsError.textContent = "";
+      if (docsMicStatus) docsMicStatus.textContent = "Gravando documentos...";
+
+      if (docsPauseBtn) {
+        docsPauseBtn.style.display = "inline-block";
+        docsPauseBtn.innerText = "Pausar";
+      }
+
+      if (docsRecordBtn) {
+        docsRecordBtn.className = "recording";
+        docsRecordBtn.innerText = "Encerrar gravação";
+      }
+
+      // Bloqueia outros módulos durante a gravação
+      if (recordBtn) recordBtn.disabled = true;
+      if (triageRecordBtn) triageRecordBtn.disabled = true;
+      if (handoffRecordBtn) handoffRecordBtn.disabled = true;
+      if (reportRecordBtn) reportRecordBtn.disabled = true;
+
+      docsResetTimer();
+      docsStartTimer();
+
+      startDocsLiveGuidancePolling();
+
+      try { docsRecognition.start(); } catch (e) {}
+    }
+
+    function stopDocsRecording() {
+      docsIsRecording = false;
+      docsIsPaused = false;
+
+      stopDocsLiveGuidancePolling();
+
+      if (docsRecognition) {
+        try { docsRecognition.stop(); } catch (e) {}
+      }
+      docsPauseTimer();
+
+      if (docsRecordBtn) {
+        docsRecordBtn.className = "start";
+        docsRecordBtn.innerText = "Iniciar geração de documentos";
+      }
+      if (docsPauseBtn) docsPauseBtn.style.display = "none";
+
+      if (recordBtn) recordBtn.disabled = false;
+      if (triageRecordBtn) triageRecordBtn.disabled = false;
+      if (handoffRecordBtn) handoffRecordBtn.disabled = false;
+      if (reportRecordBtn) reportRecordBtn.disabled = false;
+    }
+
+    function pauseDocsRecording() {
+      if (!docsIsRecording || docsIsPaused) return;
+      docsIsPaused = true;
+
+      stopDocsLiveGuidancePolling();
+
+      if (docsRecognition) {
+        try { docsRecognition.stop(); } catch (e) {}
+      }
+      docsPauseTimer();
+
+      if (docsPauseBtn) docsPauseBtn.innerText = "Retomar";
+      if (docsMicStatus) docsMicStatus.innerText = "Gravação pausada.";
+    }
+
+    function resumeDocsRecording() {
+      if (!docsIsRecording || !docsIsPaused) return;
+      docsIsPaused = false;
+
+      startDocsLiveGuidancePolling();
+
+      if (docsRecognition) {
+        try { docsRecognition.start(); } catch (e) {}
+      }
+      docsStartTimer();
+
+      if (docsPauseBtn) docsPauseBtn.innerText = "Pausar";
+      if (docsMicStatus) docsMicStatus.innerText = "Gravando documentos...";
+    }
+
+    async function generateDocumentFromTranscript(transcricao) {
+      const txt = (transcricao || "").trim();
+      if (!txt || txt.length < 40) {
+        if (docsError) docsError.textContent = "A transcrição ficou muito curta. Tente novamente, falando mais próximo ao microfone.";
+        return;
+      }
+
+      if (docsMicStatus) docsMicStatus.textContent = "Gerando documento...";
+      if (docsRecordBtn) docsRecordBtn.disabled = true;
+
+      try {
+        const body = { transcricao: txt };
+
+        const resp = await fetch(BACKEND_URL + "/api/gerar-relatorio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+
+        if (!resp.ok) {
+          const t = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (documentos):", resp.status, t);
+          if (docsError) docsError.textContent = "Não foi possível gerar o documento.";
+          return;
+        }
+
+        const data = await resp.json().catch(() => ({}));
+        const documento = (data && (data.documento || data.relatorio)) ? String(data.documento || data.relatorio) : "";
+
+        docsLastGeneratedDocument = normalizeNumberedParagraphs(documento);
+        renderDocsFinalDocument(docsLastGeneratedDocument);
+        if (docsMicStatus) docsMicStatus.textContent = documento ? "Documento gerado." : "Não foi possível gerar o documento.";
+
+      } catch (e) {
+        console.error("Erro ao gerar documento:", e);
+        if (docsError) docsError.textContent = "Erro ao gerar documento.";
+      } finally {
+        if (docsRecordBtn) docsRecordBtn.disabled = false;
+      }
+    }
+
+    async function stopDocsRecordingAndGenerate() {
+      stopDocsRecording();
+      const combined = docsGetCombinedTranscript();
+      await generateDocumentFromTranscript(combined);
+    }
+
+
+
+if (triageRecordBtn) {
+  triageRecordBtn.onclick = () => {
+    if (!triageIsRecording) {
+      startTriageRecording();
+    } else {
+      stopTriageRecording();
+      finalizarTriagemHospitalar();
+    }
+  };
+}
+
+if (triagePauseBtn) {
+  triagePauseBtn.onclick = () => {
+    if (!triageIsRecording) return;
+    if (!triageIsPaused) pauseTriageRecording();
+    else resumeTriageRecording();
+  };
+}
+
+if (docsRecordBtn) {
+  docsRecordBtn.onclick = () => {
+    if (!docsIsRecording) {
+      startDocsRecording();
+    } else {
+      stopDocsRecordingAndGenerate();
+    }
+  };
+}
+
+if (docsPauseBtn) {
+  docsPauseBtn.onclick = () => {
+    if (!docsIsRecording) return;
+    if (!docsIsPaused) pauseDocsRecording();
+    else resumeDocsRecording();
+  };
+}
+
+
+
+
+if (handoffRecordBtn) {
+  handoffRecordBtn.onclick = () => {
+    if (!handoffIsRecording) {
+      startHandoffRecording();
+    } else {
+      stopHandoffRecording();
+      finalizarPassagemPlantao();
+    }
+  };
+}
+
+if (handoffPauseBtn) {
+  handoffPauseBtn.onclick = () => {
+    if (!handoffIsRecording) return;
+    if (!handoffIsPaused) pauseHandoffRecording();
+    else resumeHandoffRecording();
+  };
+}
+
+if (handoffCopyBtn) {
+  handoffCopyBtn.addEventListener("click", () => {
+    const text = (handoffOutput && handoffOutput.value) ? handoffOutput.value.trim() : "";
+    if (!text) {
+      alert("Não há passagem de plantão para copiar.");
+      return;
+    }
+    copyToClipboard(text);
+  });
+}
+
+if (handoffPrintBtn) {
+  handoffPrintBtn.addEventListener("click", () => {
+    const text = (handoffOutput && handoffOutput.value) ? handoffOutput.value : "";
+    openPrintWindow("Passagem de plantão", text);
+  });
+}
+
+function setPanelVisible(panelEl, visible) {
+  if (!panelEl) return;
+  if (visible) panelEl.classList.add("visible");
+  else panelEl.classList.remove("visible");
+}
+
+if (handoffGuideBtn) {
+  handoffGuideBtn.addEventListener("click", () => {
+    setPanelVisible(handoffGuidePanel, true);
+  });
+}
+
+
+if (medSafetyGuideBtn) {
+  medSafetyGuideBtn.addEventListener("click", () => {
+    setPanelVisible(medSafetyGuidePanel, true);
+  });
+}
+if (closeMedSafetyGuideBtn) {
+  closeMedSafetyGuideBtn.addEventListener("click", () => {
+    setPanelVisible(medSafetyGuidePanel, false);
+  });
+}
+
+if (aprazamentoGuideBtn) {
+  aprazamentoGuideBtn.addEventListener("click", () => {
+    setPanelVisible(aprazamentoGuidePanel, true);
+  });
+}
+if (closeAprazamentoGuideBtn) {
+  closeAprazamentoGuideBtn.addEventListener("click", () => {
+    setPanelVisible(aprazamentoGuidePanel, false);
+  });
+}
+
+
+if (woundGuideBtn) {
+  woundGuideBtn.addEventListener("click", () => {
+    setPanelVisible(woundGuidePanel, true);
+  });
+}
+if (closeWoundGuideBtn) {
+  closeWoundGuideBtn.addEventListener("click", () => {
+    setPanelVisible(woundGuidePanel, false);
+  });
+}
+
+if (examGuideBtn) {
+  examGuideBtn.addEventListener("click", () => {
+    setPanelVisible(examGuidePanel, true);
+  });
+}
+if (closeExamGuideBtn) {
+  closeExamGuideBtn.addEventListener("click", () => {
+    setPanelVisible(examGuidePanel, false);
+  });
+}
+
+if (medicalDoubtsGuideBtn) {
+  medicalDoubtsGuideBtn.addEventListener("click", () => {
+    setPanelVisible(medicalDoubtsGuidePanel, true);
+  });
+}
+if (closeMedicalDoubtsGuideBtn) {
+  closeMedicalDoubtsGuideBtn.addEventListener("click", () => {
+    setPanelVisible(medicalDoubtsGuidePanel, false);
+  });
+}
+
+if (calculatorsGuideBtn) {
+  calculatorsGuideBtn.addEventListener("click", () => {
+    setPanelVisible(calculatorsGuidePanel, true);
+  });
+}
+if (closeCalculatorsGuideBtn) {
+  closeCalculatorsGuideBtn.addEventListener("click", () => {
+    setPanelVisible(calculatorsGuidePanel, false);
+  });
+}
+
+if (closeHandoffGuideBtn) {
+  closeHandoffGuideBtn.addEventListener("click", () => {
+    setPanelVisible(handoffGuidePanel, false);
+  });
+}
+
+if (docsGuideBtn) {
+  docsGuideBtn.addEventListener("click", () => {
+    setPanelVisible(docsGuidePanel, true);
+  });
+}
+if (closeDocsGuideBtn) {
+  closeDocsGuideBtn.addEventListener("click", () => {
+    setPanelVisible(docsGuidePanel, false);
+  });
+}
 
 if (transcriptionGuideBtn) {
   transcriptionGuideBtn.addEventListener("click", () => {

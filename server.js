@@ -3891,6 +3891,121 @@ Transcrição:
 
 
 // ======================================================================
+// ROTA 6.1 – GUIA EM TEMPO REAL PARA DOCUMENTOS (TIPO + ATÉ 3 PERGUNTAS)
+// ======================================================================
+
+function inferDocumentTypeHeuristic(transcricao) {
+  const t = String(transcricao || "").toLowerCase();
+  if (!t) return "Outros";
+
+  if (t.includes("ata") || t.includes("reunião") || t.includes("reuniao")) return "Ata de reunião";
+  if (t.includes("comparecimento")) return "Declaração de comparecimento";
+  if (t.includes("permanência") || t.includes("permanencia")) return "Declaração de permanência";
+  if (t.includes("acompanhante")) return "Declaração para acompanhante";
+  if (t.includes("curativo")) return "Relatório de curativo seriado";
+  if (t.includes("visita domic") || t.includes("domicílio") || t.includes("domicilio")) return "Relatório de visita domiciliar";
+  if (t.includes("caps") || t.includes("saúde mental") || t.includes("saude mental")) return "Relatório para CAPS / saúde mental (enfermagem)";
+  if (t.includes("encaminh")) return "Encaminhamento para especialista / rede";
+  if (t.includes("solicita") || t.includes("insumo") || t.includes("fralda") || t.includes("dieta") || t.includes("suplement")) return "Solicitação de insumos (fraldas, curativos, suplementos)";
+  if (t.includes("escola")) return "Comunicado para escola";
+  if (t.includes("conselho tutelar")) return "Comunicado ao Conselho Tutelar";
+  if (t.includes("evolução") || t.includes("evolucao")) return "Relatório de evolução de enfermagem";
+  return "Outros";
+}
+
+function suggestDocumentQuestionsHeuristic(transcricao, tipo) {
+  // No máximo 3 perguntas práticas para completar o documento
+  const q = [];
+  const push = (s) => {
+    const v = String(s || "").trim();
+    if (!v) return;
+    if (q.some(x => x.toLowerCase() === v.toLowerCase())) return;
+    if (q.length < 3) q.push(v);
+  };
+
+  push("Qual a Unidade/Serviço e Município/UF?");
+  push("Qual o nome completo do paciente e pelo menos um identificador (CPF ou CNS)?");
+  if (String(tipo || "").toLowerCase().includes("comparecimento") || String(tipo || "").toLowerCase().includes("perman")) {
+    push("Qual a data e o horário de início e término do atendimento/permanência?");
+  } else if (String(tipo || "").toLowerCase().includes("encaminh")) {
+    push("Para qual serviço/profissional é o encaminhamento e qual o motivo principal?");
+  } else if (String(tipo || "").toLowerCase().includes("curativo")) {
+    push("Qual o local da lesão, materiais utilizados e conduta/orientações de curativo?");
+  } else if (String(tipo || "").toLowerCase().includes("ata")) {
+    push("Qual a data/horário da reunião, pauta e participantes?");
+  } else {
+    push("Qual a finalidade/destino do documento (para quem/onde será apresentado)?");
+  }
+
+  return q.slice(0, 3);
+}
+
+async function generateDocumentLiveGuide(transcricao) {
+  const safeTranscricao = normalizeText(transcricao || "", 12000);
+  if (!safeTranscricao || safeTranscricao.length < 20) {
+    return { tipo_documento: "", perguntas: [] };
+  }
+
+  // Com API Key, tenta uma inferência melhor
+  if (process.env.OPENAI_API_KEY) {
+    const prompt = `
+Você está auxiliando um enfermeiro a redigir um documento a partir de uma transcrição.
+Tarefa: identificar o tipo de documento mais provável e sugerir no máximo 3 perguntas essenciais (curtas e objetivas) para completar o documento.
+Regras:
+- Não invente dados.
+- Não use emojis.
+- As perguntas são apenas para guiar o profissional, não são obrigatórias.
+
+Retorne JSON estrito no formato:
+{
+  "tipo_documento": "string",
+  "perguntas": ["...", "...", "..."]
+}
+
+Transcrição (trecho):
+"""${safeTranscricao}"""
+`;
+    const data = await callOpenAIJson(prompt);
+    const tipo = typeof data?.tipo_documento === "string" ? data.tipo_documento.trim() : "";
+    const perguntas = Array.isArray(data?.perguntas) ? data.perguntas : (Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : []);
+    const outPerg = normalizeArrayOfStrings(perguntas, 3, 220);
+    return { tipo_documento: tipo || inferDocumentTypeHeuristic(safeTranscricao), perguntas: outPerg.slice(0, 3) };
+  }
+
+  const tipo = inferDocumentTypeHeuristic(safeTranscricao);
+  const perguntas = suggestDocumentQuestionsHeuristic(safeTranscricao, tipo);
+  return { tipo_documento: tipo, perguntas };
+}
+
+app.post("/api/documento-tempo-real", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const { transcricao } = req.body || {};
+    const out = await generateDocumentLiveGuide(transcricao);
+    return res.json(out);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna no guia em tempo real de documentos." });
+  }
+});
+
+// Alias
+app.post("/api/guia-documento-tempo-real", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const { transcricao } = req.body || {};
+    const out = await generateDocumentLiveGuide(transcricao);
+    return res.json(out);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna no guia em tempo real de documentos." });
+  }
+});
+
+
+
+
+
+
+// ======================================================================
 // SAÚDE DO BACKEND (TESTE RÁPIDO)
 // ======================================================================
 // ======================================================================
