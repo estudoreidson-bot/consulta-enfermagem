@@ -109,54 +109,233 @@ const RECEITUARIO_LISTS = {
   ])
 };
 
-// Dicionário curado (apenas quando há certeza operacional).
-// Campos: tipo_receituario, gravidez_categoria (A/B/C/D/X), lactacao_risco.
-// Se não houver chave, o sistema retorna "não informado" para gravidez/lactação.
-const DRUG_SAFETY_DB = {
-  "amitriptilina": {
-    tipo_receituario: "Receita de Controle Especial (C1) - 2 vias (branca, com retenção)",
-    gravidez_categoria: "C",
-    lactacao_risco: "muito baixo risco"
-  },
-  "fluoxetina": {
-    tipo_receituario: "Receita de Controle Especial (C1) - 2 vias (branca, com retenção)",
-    gravidez_categoria: "C",
-    lactacao_risco: "baixo risco"
+// Segurança reprodutiva e bula:
+// - Não usamos base curada fixa para lactação/gravidez (evita manutenção manual).
+// - Sempre que possível, buscamos fontes oficiais e públicas:
+//   1) Bulário Eletrônico ANVISA (API pública do portal de consultas) para PDF de bula.
+//   2) LactMed (NCBI Bookshelf) para lactação.
+//   3) MotherToBaby (OTIS) para gravidez.
+// Observação: essas fontes podem ficar temporariamente indisponíveis; nesse caso, retornamos links de pesquisa.
+async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 12_000) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, { ...options, signal: ctrl.signal, headers: { ...(options.headers || {}), "User-Agent": "Mozilla/5.0" } });
+    const txt = await resp.text();
+    let data = null;
+    try { data = JSON.parse(txt); } catch { data = null; }
+    return { ok: resp.ok, status: resp.status, data, text: txt };
+  } finally {
+    clearTimeout(id);
   }
-};
-
-function getReceituarioByDrugKey(drugKey) {
-  const k = normalizeDrugKey(drugKey);
-  if (!k) return "Receita simples";
-
-  // correspondência direta
-  if (RECEITUARIO_LISTS.C1.has(k)) return "Receita de Controle Especial (C1) - 2 vias (branca, com retenção)";
-  if (RECEITUARIO_LISTS.B1.has(k)) return "Notificação de Receita B (B1) - azul";
-  if (RECEITUARIO_LISTS.A1.has(k)) return "Notificação de Receita A (entorpecentes) - amarela";
-  if (RECEITUARIO_LISTS.ATM.has(k)) return "Receita de antimicrobiano - 2 vias (com retenção)";
-
-  // heurística simples para combinações (ex.: amoxicilina + clavulanato)
-  if (k.includes("amoxicilina") && k.includes("clav")) return "Receita de antimicrobiano - 2 vias (com retenção)";
-
-  return "Receita simples";
 }
 
-function getDrugSafetyInfo(drugName) {
-  const key = normalizeDrugKey(drugName);
-  const base = {
-    medicamento: String(drugName || "").trim() || "não informado",
-    tipo_receituario: getReceituarioByDrugKey(key),
-    gravidez_categoria: "não informado",
-    lactacao_risco: "não informado"
-  };
-  const curated = DRUG_SAFETY_DB[key];
-  if (curated && typeof curated === "object") {
+async function fetchTextWithTimeout(url, options = {}, timeoutMs = 12_000) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, { ...options, signal: ctrl.signal, headers: { ...(options.headers || {}), "User-Agent": "Mozilla/5.0" } });
+    const text = await resp.text();
+    return { ok: resp.ok, status: resp.status, text };
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+function stripHtml(html) {
+  if (!html) return "";
+  return String(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+function pickBestByName(items, query) {
+  const q = String(query || "").toLowerCase().trim();
+  if (!q) return items[0] || null;
+  let best = null;
+  let bestScore = -1;
+  for (const it of items) {
+    const name = String(it?.nomeProduto || it?.nome || "").toLowerCase();
+    if (!name) continue;
+    let score = 0;
+    if (name === q) score += 100;
+    if (name.includes(q)) score += 50;
+    if (name.startsWith(q)) score += 30;
+    score -= Math.max(0, name.length - q.length) * 0.03;
+    if (score > bestScore) {
+      bestScore = score;
+      best = it;
+    }
+  }
+  return best || (items[0] || null);
+}
+
+async function lookupAnvisaBula(drugName) {
+  const q = String(drugName || "").trim();
+  if (!q) return null;
+
+  const baseUrl = "https://consultas.anvisa.gov.br/api/consulta/bulario";
+  const urls = [
+    `${baseUrl}?count=10&page=1&nomeProduto=${encodeURIComponent(q)}`,
+    `${baseUrl}?count=10&page=1&filter[nomeProduto]=${encodeURIComponent(q)}`,
+    `${baseUrl}?count=10&page=1&nome=${encodeURIComponent(q)}`
+  ];
+
+  for (const url of urls) {
+    const r = await fetchJsonWithTimeout(url, {}, 14_000);
+    const content = Array.isArray(r?.data?.content) ? r.data.content : (Array.isArray(r?.data) ? r.data : null);
+    if (!content || !content.length) continue;
+
+    const best = pickBestByName(content, q);
+    if (!best) continue;
+
+    const idPac = best?.idBulaPacienteProtegido || best?.idBulaPaciente || best?.idBulaPacienteProtegida;
+    const idProf = best?.idBulaProfissionalProtegido || best?.idBulaProfissional || best?.idBulaProfissionalProtegida;
+
+    const mkPdf = (id) => id
+      ? `https://consultas.anvisa.gov.br/api/consulta/medicamentos/arquivo/bula/parecer/${id}/?Authorization=Guest`
+      : "";
+
     return {
-      ...base,
-      ...curated,
-      medicamento: base.medicamento
+      fonte: "ANVISA - Bulário Eletrônico",
+      nomeProduto: String(best?.nomeProduto || "").trim() || q,
+      razaoSocial: String(best?.razaoSocial || best?.empresa || "").trim() || "",
+      numeroRegistro: String(best?.numeroRegistro || "").trim() || "",
+      numProcesso: String(best?.numProcesso || "").trim() || "",
+      idBulaPacienteProtegido: idPac || "",
+      idBulaProfissionalProtegido: idProf || "",
+      bula_paciente_pdf: mkPdf(idPac),
+      bula_profissional_pdf: mkPdf(idProf),
+      pagina_busca: `https://consultas.anvisa.gov.br/#/bulario/q/?nomeProduto=${encodeURIComponent(String(best?.nomeProduto || q))}`
     };
   }
+  return null;
+}
+
+async function lookupLactMed(drugName) {
+  const q = String(drugName || "").trim();
+  if (!q) return null;
+
+  const term = `${q}[Title] AND LactMed`;
+  const esearch = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=books&retmode=json&term=${encodeURIComponent(term)}`;
+  const r = await fetchJsonWithTimeout(esearch, {}, 14_000);
+  const id = Array.isArray(r?.data?.esearchresult?.idlist) ? r.data.esearchresult.idlist[0] : "";
+  if (!id) {
+    return {
+      fonte: "LactMed (NCBI Bookshelf)",
+      url: `https://www.ncbi.nlm.nih.gov/books/?term=${encodeURIComponent(q + " LactMed")}`,
+      resumo: ""
+    };
+  }
+
+  const url = `https://www.ncbi.nlm.nih.gov/books/NBK${id}/`;
+  const printable = `https://www.ncbi.nlm.nih.gov/books/NBK${id}/?report=printable`;
+  const t = await fetchTextWithTimeout(printable, {}, 14_000);
+
+  let resumo = "";
+  if (t.ok && t.text) {
+    const html = t.text;
+    const reSection = /Summary of Use during Lactation<\/h2>([\s\S]*?)(<h2|<h3|<\/div>)/i;
+    const m = html.match(reSection);
+    if (m && m[1]) resumo = stripHtml(m[1]);
+    if (!resumo) {
+      const plain = stripHtml(html);
+      resumo = plain.slice(0, 900);
+    }
+  }
+
+  resumo = normalizeText(resumo, 1200);
+
+  return {
+    fonte: "LactMed (NCBI Bookshelf)",
+    url,
+    resumo
+  };
+}
+
+async function lookupMotherToBaby(drugName) {
+  const q = String(drugName || "").trim();
+  if (!q) return null;
+
+  const searchUrl = `https://mothertobaby.org/?s=${encodeURIComponent(q)}`;
+  const sr = await fetchTextWithTimeout(searchUrl, {}, 14_000);
+  if (!sr.ok || !sr.text) {
+    return { fonte: "MotherToBaby (OTIS)", url: searchUrl, resumo: "" };
+  }
+
+  const match = sr.text.match(/href="(https?:\/\/mothertobaby\.org\/fact-sheets\/[^"]+)"/i) ||
+                sr.text.match(/href="(\/fact-sheets\/[^"]+)"/i);
+  let url = searchUrl;
+  if (match && match[1]) url = match[1].startsWith("http") ? match[1] : `https://mothertobaby.org${match[1]}`;
+
+  const pr = await fetchTextWithTimeout(url, {}, 14_000);
+  let resumo = "";
+  if (pr.ok && pr.text) {
+    const plain = stripHtml(pr.text);
+    resumo = plain.split("\n").map(x => x.trim()).filter(Boolean).slice(0, 18).join("\n");
+  }
+
+  resumo = normalizeText(resumo, 1200);
+
+  return { fonte: "MotherToBaby (OTIS)", url, resumo };
+}
+
+async function getDrugSafetyInfoOnline(drugName) {
+  const nome = String(drugName || "").trim() || "não informado";
+  const keyRaw = normalizeDrugKey(nome);
+  const key = simplifyDrugKey(keyRaw);
+
+  const base = {
+    medicamento: nome,
+    tipo_receituario: getReceituarioByDrugKey(key),
+    gravidez_categoria: "não informado",
+    lactacao_risco: "não informado",
+    fonte_gravidez: "",
+    fonte_lactacao: "",
+    bula_paciente_pdf: "",
+    bula_profissional_pdf: "",
+    bula_pagina_busca: ""
+  };
+
+  if (!key) return base;
+
+  const [anvisa, lact, preg] = await Promise.allSettled([
+    lookupAnvisaBula(nome),
+    lookupLactMed(nome),
+    lookupMotherToBaby(nome)
+  ]);
+
+  if (anvisa.status === "fulfilled" && anvisa.value) {
+    base.bula_paciente_pdf = anvisa.value.bula_paciente_pdf || "";
+    base.bula_profissional_pdf = anvisa.value.bula_profissional_pdf || "";
+    base.bula_pagina_busca = anvisa.value.pagina_busca || "";
+  }
+
+  if (preg.status === "fulfilled" && preg.value) {
+    const resumo = String(preg.value.resumo || "").trim();
+    base.gravidez_categoria = resumo ? resumo : "Consultar fonte (link).";
+    base.fonte_gravidez = preg.value.url || "";
+  }
+
+  if (lact.status === "fulfilled" && lact.value) {
+    const resumo = String(lact.value.resumo || "").trim();
+    base.lactacao_risco = resumo ? resumo : "Consultar fonte (link).";
+    base.fonte_lactacao = lact.value.url || "";
+  }
+
   return base;
 }
 // ======================================================================
@@ -3265,21 +3444,31 @@ Responda SOMENTE com JSON válido no formato:
 
     const resumoOperacional = asText(data?.resumo_operacional, 520);
 
-    // Segurança reprodutiva e tipo de receituário (por medicamento) - determinístico
-    const segurancaReprodutiva = [];
-    {
-      const seen = new Set();
-      for (const m of meds) {
-        const nome = asText(m?.nome, 120);
-        if (!nome) continue;
-        const k = normalizeDrugKey(nome);
-        if (seen.has(k)) continue;
-        seen.add(k);
-        segurancaReprodutiva.push(getDrugSafetyInfo(nome));
-      }
-    }
+    
+// Segurança reprodutiva e tipo de receituário (por medicamento) - consulta online (sem base fixa)
+const segurancaReprodutiva = [];
+{
+  const seen = new Set();
+  const uniqueNames = [];
+  for (const m of meds) {
+    const nome = asText(m?.nome, 120);
+    if (!nome) continue;
+    const k = normalizeDrugKey(nome);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    uniqueNames.push(nome);
+  }
 
-    return res.json({
+  // Limita para evitar sobrecarga em prescrições muito longas
+  const maxLookup = 12;
+  const slice = uniqueNames.slice(0, maxLookup);
+  const results = await Promise.allSettled(slice.map(n => getDrugSafetyInfoOnline(n)));
+  for (const r of results) {
+    if (r.status === "fulfilled" && r.value) segurancaReprodutiva.push(r.value);
+  }
+}
+
+return res.json({
       transcricao_receita: transcricao,
       medicamentos_identificados: meds,
       seguranca_reprodutiva: segurancaReprodutiva,
@@ -3301,179 +3490,96 @@ app.post("/api/medicamento-monografia", requirePaidOrAdmin, async (req, res) => 
     const medicamento = normalizeText(body.medicamento || body.nome || body.principio_ativo || "", 180);
     if (!medicamento) return res.status(400).json({ error: "MEDICAMENTO_INVALIDO" });
 
+    const [anvisaR, lactR, pregR] = await Promise.allSettled([
+      lookupAnvisaBula(medicamento),
+      lookupLactMed(medicamento),
+      lookupMotherToBaby(medicamento)
+    ]);
+
+    const anvisa = (anvisaR.status === "fulfilled") ? anvisaR.value : null;
+    const lact = (lactR.status === "fulfilled") ? lactR.value : null;
+    const preg = (pregR.status === "fulfilled") ? pregR.value : null;
+
+    const fontes = {
+      anvisa: anvisa || null,
+      lactmed: lact || null,
+      mothertobaby: preg || null
+    };
+
+    const contextParts = [];
+    if (anvisa) {
+      contextParts.push([
+        "ANVISA (Bulário Eletrônico):",
+        `- Nome do produto: ${anvisa.nomeProduto || ""}`,
+        `- Empresa: ${anvisa.razaoSocial || ""}`,
+        `- PDF bula (paciente): ${anvisa.bula_paciente_pdf || ""}`,
+        `- PDF bula (profissional): ${anvisa.bula_profissional_pdf || ""}`,
+        `- Página de busca: ${anvisa.pagina_busca || ""}`
+      ].filter(Boolean).join("\n"));
+    }
+    if (lact) {
+      contextParts.push([
+        "LactMed (NCBI Bookshelf) - Lactação:",
+        `- Link: ${lact.url || ""}`,
+        lact.resumo ? `- Trecho: ${lact.resumo}` : ""
+      ].filter(Boolean).join("\n"));
+    }
+    if (preg) {
+      contextParts.push([
+        "MotherToBaby (OTIS) - Gravidez:",
+        `- Link: ${preg.url || ""}`,
+        preg.resumo ? `- Trecho: ${preg.resumo}` : ""
+      ].filter(Boolean).join("\n"));
+    }
+
+    const fontesTexto = contextParts.join("\n\n").trim();
+
+    // Se não houver fontes, retorna resposta mínima com links de pesquisa.
+    if (!fontesTexto) {
+      return res.json({
+        medicamento,
+        monografia: "",
+        fontes,
+        bula_paciente_pdf: "",
+        bula_profissional_pdf: "",
+        bula_pagina_busca: `https://consultas.anvisa.gov.br/#/bulario/`
+      });
+    }
+
     const prompt = `
-Você está redigindo uma monografia estruturada para apoio à enfermagem e prescrição, baseada prioritariamente no Whitebook (Brasil).
+Você é farmacêutico clínico e médico com foco em segurança do paciente.
+Você deve produzir um texto objetivo (sem emojis) para apoio à enfermagem e ao prescritor, usando SOMENTE as informações contidas em "FONTES" abaixo.
+Se um item não estiver apoiado pelas fontes, omita o item (não escreva "não informado").
 
 Medicamento alvo: ${medicamento}
 
-Regras obrigatórias:
-- Não use emojis.
+Estruture com os seguintes títulos (apenas os que tiverem conteúdo apoiado nas fontes):
+- Bula oficial (ANVISA)
+- Lactação (LactMed)
+- Gravidez (MotherToBaby)
+- Alertas de segurança para administração (enfermagem)
+- Interações relevantes (se houver nas fontes)
+- Observações
+
+Regras:
+- Não invente posologias, apresentações ou contraindicações.
 - Não inclua nomes comerciais.
-- Não escreva "não informado" ou variações. Quando não houver dado confiável, deixe o campo vazio ("") ou omita o campo/entrada.
-- Em "apresentacoes", inclua apenas os tipos de apresentação que existirem para o medicamento (não liste tipos inexistentes).
-- Em posologia adulta e pediátrica, descreva apenas vias/apresentações que existirem para o medicamento e que você conseguir preencher com segurança.
-- Não preencha tipo_receituario, categoria_gravidez ou uso_lactacao. Esses campos serão preenchidos pelo backend com regras determinísticas.
-- Para uso clínico: liste apenas doenças/condições mais comuns (sem explicações).
-- Para posologias: fornecer dose usual e dose máxima (quando existirem). Diferenciar por via.
-- Para pediatria: quando aplicável, fornecer dose por kg, intervalo/frequência, dose máxima, restrições etárias e modo de uso.
+- Cite as fontes no final de cada seção apenas como "ANVISA", "LactMed", "MotherToBaby" (sem links dentro do texto; os links já serão retornados em JSON).
 
-Responda SOMENTE com JSON válido. Você pode omitir chaves que não conseguir preencher com segurança.
-
-Formato preferencial (mesmas chaves, mas podem ser omitidas quando vazias):
-{
-  "medicamento": "",
-  "classe": "",
-  "mecanismo_acao": "",
-  "apresentacoes": {
-    "solucao_oral": "",
-    "gotas": "",
-    "suspensao": "",
-    "xarope": "",
-    "comprimidos": "",
-    "capsulas": "",
-    "injetavel": "",
-    "supositorio": "",
-    "topicos": "",
-    "inalatorio": "",
-    "outros": ""
-  },
-  "uso_clinico": ["..."],
-  "tipo_receituario": "",
-  "posologia_adulta": {
-    "oral": {"dose_usual": "", "dose_maxima": "", "observacoes": ""},
-    "injetavel": {"dose_usual": "", "dose_maxima": "", "observacoes": ""},
-    "outros": {"dose_usual": "", "dose_maxima": "", "observacoes": ""}
-  },
-  "categoria_gravidez": "",
-  "uso_lactacao": "",
-  "uso_geriatrico": "",
-  "posologia_pediatrica": {
-    "oral": {"dose_mgkg": "", "intervalo": "", "dose_maxima": "", "restricoes_etarias": "", "modo_uso": ""},
-    "gotas": {"dose_mgkg": "", "intervalo": "", "dose_maxima": "", "restricoes_etarias": "", "modo_uso": ""},
-    "xarope": {"dose_mgkg": "", "intervalo": "", "dose_maxima": "", "restricoes_etarias": "", "modo_uso": ""},
-    "comprimido_capsula": {"dose_mgkg": "", "intervalo": "", "dose_maxima": "", "restricoes_etarias": "", "modo_uso": ""},
-    "injetavel": {"dose_mgkg": "", "intervalo": "", "dose_maxima": "", "restricoes_etarias": "", "modo_uso": ""}
-  },
-  "interacoes_medicamentosas": ["..."],
-  "pontos_enfermagem": ["..."]
-}
+FONTES:
+${fontesTexto}
 `;
 
-    const monografia = await callOpenAIJson(prompt, 3);
+    const monografia = normalizeText(await callOpenAI(prompt), 20000);
 
-    // Higienização mínima
-    function asText(v, maxLen = 400) {
-      const s = typeof v === "string" ? v.trim() : "";
-      return normalizeText(s, maxLen) || "";
-    }
-
-    function cleanText(v, maxLen = 400) {
-      const s = asText(v, maxLen);
-      if (!s) return "";
-      const low = s.toLowerCase();
-      if (low === "não informado" || low === "nao informado") return "";
-      return s;
-    }
-
-    function normalizeReceituario(raw) {
-      const s = cleanText(raw, 160);
-      if (!s) return "";
-      const low = s.toLowerCase();
-      if (low.includes("antimicrob")) return "Receita de antimicrobiano";
-      if (low.includes("controle especial") || low.includes("rce")) return "Receita de controle especial (RCE)";
-      if (low.includes("isento")) return "Isento de prescrição";
-      if (low.includes("receita simples")) return "Receita simples";
-      if (low.includes("notificação") && low.includes(" a")) return "Notificação de receita A (amarela)";
-      if (low.includes("notificação") && low.includes(" b")) return "Notificação de receita B (azul)";
-      if (low.includes("amarela")) return "Notificação de receita A (amarela)";
-      if (low.includes("azul")) return "Notificação de receita B (azul)";
-      return s;
-    }
-
-    function buildApresentacoes(obj) {
-      const src = (obj && typeof obj === "object") ? obj : {};
-      const keys = ["solucao_oral", "gotas", "suspensao", "xarope", "comprimidos", "capsulas", "injetavel", "supositorio", "topicos", "inalatorio", "outros"];
-      const out = {};
-      for (const k of keys) {
-        const v = cleanText(src[k], 220);
-        if (v) out[k] = v;
-      }
-      return out;
-    }
-
-    function buildPosologiaAdulta(obj) {
-      const src = (obj && typeof obj === "object") ? obj : {};
-      const out = {};
-      for (const k of ["oral", "injetavel", "outros"]) {
-        const v = src[k] && typeof src[k] === "object" ? src[k] : {};
-        const dose_usual = cleanText(v.dose_usual, 220);
-        const dose_maxima = cleanText(v.dose_maxima, 220);
-        const observacoes = cleanText(v.observacoes, 520);
-        if (dose_usual || dose_maxima || observacoes) {
-          const via = {};
-          if (dose_usual) via.dose_usual = dose_usual;
-          if (dose_maxima) via.dose_maxima = dose_maxima;
-          if (observacoes) via.observacoes = observacoes;
-          out[k] = via;
-        }
-      }
-      return out;
-    }
-
-    function buildPosologiaPediatrica(obj) {
-      const src = (obj && typeof obj === "object") ? obj : {};
-      const out = {};
-      for (const k of ["oral", "gotas", "xarope", "comprimido_capsula", "injetavel"]) {
-        const v = src[k] && typeof src[k] === "object" ? src[k] : {};
-        const dose_mgkg = cleanText(v.dose_mgkg || v.dose, 220);
-        const intervalo = cleanText(v.intervalo || v.frequencia, 160);
-        const dose_maxima = cleanText(v.dose_maxima, 220);
-        const restricoes_etarias = cleanText(v.restricoes_etarias, 220);
-        const modo_uso = cleanText(v.modo_uso, 520);
-        if (dose_mgkg || intervalo || dose_maxima || restricoes_etarias || modo_uso) {
-          const via = {};
-          if (dose_mgkg) via.dose_mgkg = dose_mgkg;
-          if (intervalo) via.intervalo = intervalo;
-          if (dose_maxima) via.dose_maxima = dose_maxima;
-          if (restricoes_etarias) via.restricoes_etarias = restricoes_etarias;
-          if (modo_uso) via.modo_uso = modo_uso;
-          out[k] = via;
-        }
-      }
-      return out;
-    }
-
-    const out = {
-      medicamento: cleanText(monografia?.medicamento || medicamento, 180) || medicamento,
-      classe: cleanText(monografia?.classe, 200),
-      mecanismo_acao: cleanText(monografia?.mecanismo_acao, 600),
-      apresentacoes: buildApresentacoes(monografia?.apresentacoes),
-      uso_clinico: Array.isArray(monografia?.uso_clinico)
-        ? monografia.uso_clinico.map(x => cleanText(x, 120)).filter(Boolean).slice(0, 40)
-        : [],
-      tipo_receituario: normalizeReceituario(monografia?.tipo_receituario),
-      posologia_adulta: buildPosologiaAdulta(monografia?.posologia_adulta),
-      categoria_gravidez: cleanText(monografia?.categoria_gravidez, 120),
-      uso_lactacao: cleanText(monografia?.uso_lactacao, 320),
-      uso_geriatrico: cleanText(monografia?.uso_geriatrico, 320),
-      posologia_pediatrica: buildPosologiaPediatrica(monografia?.posologia_pediatrica),
-      interacoes_medicamentosas: Array.isArray(monografia?.interacoes_medicamentosas)
-        ? monografia.interacoes_medicamentosas.map(x => cleanText(x, 220)).filter(Boolean).slice(0, 80)
-        : [],
-      pontos_enfermagem: Array.isArray(monografia?.pontos_enfermagem)
-        ? monografia.pontos_enfermagem.map(x => cleanText(x, 240)).filter(Boolean).slice(0, 100)
-        : []
-    };
-
-    // Campos críticos: não aceitar inferência por IA.
-    const safety = getDrugSafetyInfo(out.medicamento || medicamento);
-    out.tipo_receituario = safety.tipo_receituario;
-    // Exibe categoria/uso apenas se houver dado curado; caso contrário, "não informado".
-    out.categoria_gravidez = safety.gravidez_categoria;
-    out.uso_lactacao = safety.lactacao_risco;
-
-    return res.json({ monografia: out });
-
+    return res.json({
+      medicamento,
+      monografia,
+      fontes,
+      bula_paciente_pdf: anvisa?.bula_paciente_pdf || "",
+      bula_profissional_pdf: anvisa?.bula_profissional_pdf || "",
+      bula_pagina_busca: anvisa?.pagina_busca || "https://consultas.anvisa.gov.br/#/bulario/"
+    });
   } catch (e) {
     console.error("/api/medicamento-monografia error:", e?.message || e);
     return res.status(500).json({ error: e?.message || "INTERNAL_ERROR" });
