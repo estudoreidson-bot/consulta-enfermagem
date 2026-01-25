@@ -4982,6 +4982,13 @@ const recordBtn = document.getElementById("recordBtn");
     const copyFullSoapBtn = document.getElementById("copyFullSoapBtn");
     const printSoapBtn = document.getElementById("printSoapBtn");
 
+    // Monografia/Informações do medicamento (overlay)
+    // Algumas telas podem não ter esses elementos; por isso tudo é opcional e sempre checado antes do uso.
+    const medMonographOverlay = document.getElementById("medMonographOverlay");
+    const medMonographContent = document.getElementById("medMonographContent");
+    const copyMedMonographBtn = document.getElementById("copyMedMonographBtn");
+    const closeMedMonographBtn = document.getElementById("closeMedMonographBtn");
+
     const medicalDoubtInput = document.getElementById("medicalDoubtInput");
     const medicalDoubtStatus = document.getElementById("medicalDoubtStatus");
     const medicalDoubtAnswer = document.getElementById("medicalDoubtAnswer");
