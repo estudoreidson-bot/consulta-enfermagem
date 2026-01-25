@@ -808,7 +808,31 @@
       min-height: 70px;
       margin-top: 12px;
     }
-    .small-record-btn {
+    
+
+    /* Saídas formatadas: espaçamento entre parágrafos e tópicos em vermelho/negrito */
+    .formatted-output {
+      white-space: normal !important;
+    }
+    .formatted-output p {
+      margin: 0 0 10px 0;
+    }
+    .formatted-output p:last-child {
+      margin-bottom: 0;
+    }
+    .formatted-output ul,
+    .formatted-output ol {
+      margin: 0 0 10px 18px;
+      padding: 0;
+    }
+    .formatted-output li {
+      margin: 0 0 6px 0;
+    }
+    .formatted-output .topic {
+      color: #b00020;
+      font-weight: bold;
+    }
+.small-record-btn {
       padding: 10px 16px;
       border-radius: 20px;
       border: none;
@@ -3780,6 +3804,8 @@
       </div>
 
       <textarea id="reportOutput" class="prescription-textarea" placeholder="O documento gerado aparecerá aqui." style="margin-top: 12px;"></textarea>
+      <div id="reportPreview" class="classification-box formatted-output" style="margin-top: 12px; display: none;">Nenhum conteúdo disponível.</div>
+
     </div>
 
   </div>
@@ -5675,7 +5701,9 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     const reportRecordBtn = document.getElementById("reportRecordBtn");
     const reportStatus = document.getElementById("reportStatus");
     const reportOutput = document.getElementById("reportOutput");
-    const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
+    
+    const reportPreview = document.getElementById("reportPreview");
+const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
     const reportDocTypeDetected = document.getElementById("reportDocTypeDetected");
     const reportMissingFields = document.getElementById("reportMissingFields");
     const copyReportBtn = document.getElementById("copyReportBtn");
@@ -6967,7 +6995,7 @@ function initSpeech() {
       classificationsStatus.textContent = "";
       pregnancyBox.textContent = "Nenhum conteúdo disponível.";
       lactationBox.textContent = "Nenhum conteúdo disponível.";
-      if (presentationsMaxDoseBox) presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
+      if (presentationsMaxDoseBox) setPlainOutput(presentationsMaxDoseBox, "Nenhum conteúdo disponível.");
       if (presentationsMaxDoseStatus) presentationsMaxDoseStatus.textContent = "";
     }
 
@@ -7597,6 +7625,15 @@ function initSpeech() {
     }
 
     
+    
+    
+    
+    
+    
+    
+    
+    
+            
     function copyToClipboard(text) {
       if (!text) return;
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -7617,7 +7654,118 @@ function initSpeech() {
       }
     }
 
-        // =========================
+    // =========================
+    // Saídas formatadas (parágrafos com espaçamento + tópicos em vermelho/negrito)
+    // =========================
+    function escapeHtml(s) {
+      return String(s || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function looksLikeHeadingLine(line) {
+      const s = String(line || "").trim();
+      if (!s) return false;
+      if (/^\d{1,2}:\d{2}$/.test(s)) return false; // evita horários
+      if (s.length > 90) return false;
+      if (!/:\s*$/.test(s)) return false;
+      return /[A-Za-zÀ-ÿ]/.test(s);
+    }
+
+    function wrapTopicInline(line) {
+      const s = String(line || "");
+      const m = s.match(/^\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9\s\-\(\)\/]{1,80}:)\s*(.*)$/);
+      if (!m) return null;
+      const label = (m[1] || "").trim();
+      const rest = (m[2] || "").trim();
+      if (!/[A-Za-zÀ-ÿ]/.test(label) || /^\d{1,2}:\d{2}:$/.test(label)) return null;
+      return { label, rest };
+    }
+
+    function isBulletLine(line) {
+      return /^\s*(?:[-•*]|\d+\.)\s+/.test(String(line || ""));
+    }
+
+    function formatTextToHtml(rawText) {
+      const original = String(rawText || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      const trimmed = original.trim();
+      if (!trimmed) return "<p>Nenhum conteúdo disponível.</p>";
+
+      // Cria "respiros" antes de linhas que parecem títulos (ex.: "Descrição:", "Conduta:", etc.)
+      const withBreaks = trimmed.replace(
+        /([^\n])\n(?=[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9\s\-\(\)\/]{1,80}:\s*(?:\n|$))/g,
+        "$1\n\n"
+      );
+
+      const blocks = withBreaks.split(/\n\s*\n+/);
+
+      const out = [];
+      for (const block of blocks) {
+        const b = String(block || "").trim();
+        if (!b) continue;
+
+        const lines = b.split("\n");
+        const allBullet = lines.length > 1 && lines.every(isBulletLine);
+
+        if (allBullet) {
+          const isOrdered = lines.every(x => /^\s*\d+\./.test(x));
+          const tag = isOrdered ? "ol" : "ul";
+          const items = lines
+            .map(x => x.replace(/^\s*(?:[-•*]|\d+\.)\s+/, "").trim())
+            .filter(Boolean);
+          const li = items.map(x => `<li>${escapeHtml(x)}</li>`).join("");
+          out.push(`<${tag}>${li}</${tag}>`);
+          continue;
+        }
+
+        // Título isolado (termina com ":")
+        if (lines.length === 1 && looksLikeHeadingLine(lines[0])) {
+          out.push(`<p><span class="topic">${escapeHtml(lines[0].trim())}</span></p>`);
+          continue;
+        }
+
+        // Bloco com primeira linha como título + conteúdo abaixo
+        if (lines.length >= 2 && looksLikeHeadingLine(lines[0])) {
+          const head = lines[0].trim();
+          const rest = lines.slice(1).join("\n").trim();
+          const restHtml = escapeHtml(rest).replace(/\n/g, "<br>");
+          out.push(`<p><span class="topic">${escapeHtml(head)}</span><br>${restHtml}</p>`);
+          continue;
+        }
+
+        // Linha única no formato "Tópico: conteúdo"
+        if (lines.length === 1) {
+          const t = wrapTopicInline(lines[0]);
+          if (t) {
+            if (t.rest) out.push(`<p><span class="topic">${escapeHtml(t.label)}</span> ${escapeHtml(t.rest)}</p>`);
+            else out.push(`<p><span class="topic">${escapeHtml(t.label)}</span></p>`);
+            continue;
+          }
+        }
+
+        // Texto livre (preserva quebras de linha internas)
+        out.push(`<p>${escapeHtml(b).replace(/\n/g, "<br>")}</p>`);
+      }
+
+      return out.length ? out.join("") : "<p>Nenhum conteúdo disponível.</p>";
+    }
+
+    function setFormattedOutput(el, text) {
+      if (!el) return;
+      el.classList.add("formatted-output");
+      el.innerHTML = formatTextToHtml(text);
+    }
+
+    function setPlainOutput(el, text) {
+      if (!el) return;
+      el.classList.remove("formatted-output");
+      el.textContent = String(text || "");
+    }
+
+// =========================
     // IMAGENS - compressão + análise automática (até 4 fotos por módulo)
     // =========================
     async function fileToCompressedDataUrl(file, maxDim = 1280, quality = 0.82) {
@@ -7747,13 +7895,13 @@ async function addFilesToTarget(files, targetKey, mode) {
   const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
   if (!images.length) {
     presentationsMaxDoseStatus.textContent = "Nenhuma imagem selecionada.";
-    presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
+    setPlainOutput(presentationsMaxDoseBox, "Nenhum conteúdo disponível.");
     updateWoundActions();
     return;
   }
 
   presentationsMaxDoseStatus.textContent = "Analisando imagem(ns) da lesão.";
-  presentationsMaxDoseBox.textContent = "Processando.";
+  setPlainOutput(presentationsMaxDoseBox, "Processando.");
   updateWoundActions();
 
   try {
@@ -7772,12 +7920,12 @@ async function addFilesToTarget(files, targetKey, mode) {
     if (!resp.ok) throw new Error(data?.error || "Falha ao analisar imagem.");
 
     const texto = (data?.texto || "").trim();
-    presentationsMaxDoseBox.textContent = texto || "Nenhum conteúdo disponível.";
+    setFormattedOutput(presentationsMaxDoseBox, texto || "Nenhum conteúdo disponível.");
     presentationsMaxDoseStatus.textContent = "Análise concluída.";
     updateWoundActions();
   } catch (e) {
     presentationsMaxDoseStatus.textContent = "Falha ao analisar imagem. " + (e && e.message ? e.message : "");
-    presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
+    setPlainOutput(presentationsMaxDoseBox, "Nenhum conteúdo disponível.");
     updateWoundActions();
   }
 }
@@ -7960,13 +8108,13 @@ async function openMedicationMonograph(name) {
   const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
   if (!images.length) {
     examInterpretationStatus.textContent = "Nenhuma imagem selecionada.";
-    examInterpretationBox.textContent = "Nenhum conteúdo disponível.";
+    setPlainOutput(examInterpretationBox, "Nenhum conteúdo disponível.");
     updateExamActions();
     return;
   }
 
   examInterpretationStatus.textContent = "Analisando exame (imagem(ns)).";
-  examInterpretationBox.textContent = "Processando.";
+  setPlainOutput(examInterpretationBox, "Processando.");
   updateExamActions();
 
   try {
@@ -7985,12 +8133,12 @@ async function openMedicationMonograph(name) {
     if (!resp.ok) throw new Error(data?.error || "Falha ao interpretar o exame.");
 
     const texto = (data?.texto || "").trim();
-    examInterpretationBox.textContent = texto || "Nenhum conteúdo disponível.";
+    setFormattedOutput(examInterpretationBox, texto || "Nenhum conteúdo disponível.");
     examInterpretationStatus.textContent = "Análise concluída.";
     updateExamActions();
   } catch (e) {
     examInterpretationStatus.textContent = "Falha ao interpretar o exame. " + (e && e.message ? e.message : "");
-    examInterpretationBox.textContent = "Nenhum conteúdo disponível.";
+    setPlainOutput(examInterpretationBox, "Nenhum conteúdo disponível.");
     updateExamActions();
   }
 }
@@ -8001,13 +8149,13 @@ async function openMedicationMonograph(name) {
   const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
   if (!images.length) {
     transcriptionStatus.textContent = "Nenhuma imagem selecionada.";
-    transcriptionBox.textContent = "Nenhum conteúdo disponível.";
+    setPlainOutput(transcriptionBox, "Nenhum conteúdo disponível.");
     updateTranscriptionActions();
     return;
   }
 
   transcriptionStatus.textContent = "Transcrevendo documento (imagem(ns)).";
-  transcriptionBox.textContent = "Processando.";
+  setPlainOutput(transcriptionBox, "Processando.");
   updateTranscriptionActions();
 
   try {
@@ -8026,12 +8174,12 @@ async function openMedicationMonograph(name) {
     if (!resp.ok) throw new Error(data?.error || "Falha ao transcrever o documento.");
 
     const texto = (data?.texto || "").trim();
-    transcriptionBox.textContent = texto || "Nenhum conteúdo disponível.";
+    setFormattedOutput(transcriptionBox, texto || "Nenhum conteúdo disponível.");
     transcriptionStatus.textContent = "Transcrição concluída.";
     updateTranscriptionActions();
   } catch (e) {
     transcriptionStatus.textContent = "Falha ao transcrever o documento. " + (e && e.message ? e.message : "");
-    transcriptionBox.textContent = "Nenhum conteúdo disponível.";
+    setPlainOutput(transcriptionBox, "Nenhum conteúdo disponível.");
     updateTranscriptionActions();
   }
 }
@@ -9358,7 +9506,12 @@ if (sbarOutput) sbarOutput.value = "";
     async function startReportRecording() {
       reportStatus.textContent = "";
       reportOutput.value = "";
-      reportFinalTranscript = "";
+      
+      if (reportPreview) {
+        reportPreview.style.display = "none";
+        setPlainOutput(reportPreview, "Nenhum conteúdo disponível.");
+      }
+reportFinalTranscript = "";
       updateReportActions();
       if (reportDocTypeDetected) reportDocTypeDetected.textContent = "";
       if (reportMissingFields) reportMissingFields.textContent = "";
@@ -9437,7 +9590,17 @@ if (sbarOutput) sbarOutput.value = "";
         if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "Nenhum";
 
         reportOutput.value = normalizeNumberedParagraphs(documento);
-        updateReportActions();
+        
+        if (reportPreview) {
+          if (documento && String(documento).trim()) {
+            reportPreview.style.display = "block";
+            setFormattedOutput(reportPreview, reportOutput.value);
+          } else {
+            reportPreview.style.display = "none";
+            setPlainOutput(reportPreview, "Nenhum conteúdo disponível.");
+          }
+        }
+updateReportActions();
 
         reportStatus.textContent = documento ? "Documento gerado." : "Não foi possível gerar o documento.";
         reportStatus.classList.remove("loading-dot");
@@ -9455,7 +9618,7 @@ if (sbarOutput) sbarOutput.value = "";
 
       medicalDoubtStatus.textContent = "Respondendo dúvida...";
       medicalDoubtStatus.classList.add("loading-dot");
-      medicalDoubtAnswer.textContent = "";
+      setPlainOutput(medicalDoubtAnswer, "");
 
       try {
         const resp = await fetch(BACKEND_URL + "/api/duvidas-medicas", {
@@ -9474,7 +9637,7 @@ if (sbarOutput) sbarOutput.value = "";
 
         const data = await resp.json();
         const resposta = data.resposta || "";
-        medicalDoubtAnswer.textContent = resposta || "Sem resposta disponível.";
+        setFormattedOutput(medicalDoubtAnswer, resposta || "Sem resposta disponível.");
         medicalDoubtStatus.textContent = "Resposta gerada.";
         medicalDoubtStatus.classList.remove("loading-dot");
       } catch (err) {
@@ -9500,6 +9663,19 @@ if (medicalDoubtSendBtn) {
   });
 }
 
+
+
+// Pré-visualização formatada do documento gerado (mantém textarea para copiar/editar)
+if (reportOutput) {
+  reportOutput.addEventListener("input", () => {
+    if (!reportPreview) return;
+    const val = reportOutput.value || "";
+    const has = isMeaningfulText(val);
+    reportPreview.style.display = has ? "block" : "none";
+    if (has) setFormattedOutput(reportPreview, val);
+    else setPlainOutput(reportPreview, "Nenhum conteúdo disponível.");
+  });
+}
 
     // ============================
     // Documentos (gravação + geração via /api/gerar-relatorio)
