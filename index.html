@@ -3014,17 +3014,17 @@
     
     <div id="medSafetyCard" class="module-card">
       <div class="section-header-row">
-      <h2>Administração segura de medicamentos</h2>
+      <h2>Avaliar receita médica</h2>
       <button id="medSafetyGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
     </div>
                   <p class="mini-status" style="margin-top: 0;">
-        Use o botão para fotografar a prescrição médica. O sistema irá transcrever o que estiver legível, organizar os medicamentos, apontar riscos e inconsistências relevantes para a enfermagem e sinalizar interações importantes quando for possível confirmar com segurança.
+        Fotografe ou envie um arquivo de uma receita. O sistema transcreve o que estiver legível, identifica e conta os medicamentos e permite gerar fichas completas por medicamento (classe, mecanismo de ação, apresentações no Brasil, uso clínico, tipo de receituário, posologias, uso na gravidez e lactação, interações e pontos de enfermagem).
       </p>
 <div class="prescription-actions">
         <label for="medCameraInput" class="photo-btn">Tirar foto</label>
         <label for="medFileInput" class="photo-btn">Escolher arquivo</label>
-        <button id="copyMedSafetyBtn" class="btn-copy hidden">Copiar segurança dos medicamentos</button>
-        <button id="printMedSafetyBtn" class="btn-print hidden">Imprimir segurança dos medicamentos</button>
+        <button id="copyMedSafetyBtn" class="btn-copy hidden">Copiar relatório completo</button>
+        <button id="printMedSafetyBtn" class="btn-print hidden">Imprimir relatório completo</button>
       </div>
 
 	  <div id="medSafetyResults" class="hidden">
@@ -3035,6 +3035,7 @@
 	      <textarea id="medRxTranscription" class="prescription-textarea" placeholder="A transcrição da receita aparecerá aqui."></textarea>
 	      <div class="prescription-actions" style="justify-content: flex-start; gap: 10px; margin-top: 10px;">
 	        <button id="copyRxTranscriptionBtn" class="btn-copy hidden" type="button">Copiar transcrição da receita</button>
+	      <button id="printRxTranscriptionBtn" class="btn-print hidden" type="button">Imprimir transcrição</button>
 	      </div>
 	    </div>
 
@@ -3049,7 +3050,7 @@
 	    </div>
 
 	    <div class="rx-subsection">
-	      <div class="rx-subsection-title">Clique no nome do medicamento e veja a bula completa</div>
+	      <div class="rx-subsection-title">Medicamentos identificados</div>
 	      <div id="medRxMedButtons" class="pill-buttons" aria-label="Medicamentos identificados"></div>
 	      <div id="medRxMedButtonsHint" class="mini-status">Nenhum conteúdo disponível.</div>
 	    </div>
@@ -3190,7 +3191,6 @@
       </div>
 
       <div class="recommendations-list">
-      <div class="recommendation-item"><strong>Aviso legal</strong><br>A prescrição deve ser clara e legível, em vernáculo, com identificação do paciente e do prescritor, conforme legislação sanitária. Sempre que possível, preferir receita digitada/impressa. Em prescrição manuscrita ilegível, a identificação do medicamento pode falhar; este módulo não substitui a conferência humana e não se responsabiliza por erros decorrentes de texto ilegível. Base legal: Lei nº 5.991/1973 (requisitos de receita); Portaria SVS/MS nº 344/1998 (regras para controle especial, incluindo legibilidade); RDC Anvisa nº 471/2021 (antimicrobianos e requisitos de prescrição).</div>
         <div class="recommendation-item"><strong>1) Envio</strong> Tire uma foto nítida ou selecione um arquivo da galeria. Se houver mais de uma página, envie as páginas mais importantes.</div>
         <div class="recommendation-item"><strong>2) Transcrição fiel</strong> O sistema transcreve somente o que estiver legível. Trechos duvidosos ou ilegíveis serão marcados como "não informado".</div>
         <div class="recommendation-item"><strong>3) Organização</strong> O conteúdo é organizado por seções (tipo de documento, identificação, corpo do texto e assinaturas/carimbo quando existirem). Em prescrições, os itens são listados em linhas separadas para facilitar conferência.</div>
@@ -3875,55 +3875,43 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     </div>
   </div>
 
+  
   <div id="medSafetyGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
-      <h3>Guia: Administração segura de medicamentos</h3>
-      <button id="closeMedSafetyGuideBtn" class="close-panel-btn" aria-label="Fechar guia de administração segura de medicamentos">X</button>
+      <h3>Guia: Avaliar receita médica</h3>
+      <button id="closeMedSafetyGuideBtn" class="close-panel-btn" aria-label="Fechar guia de avaliar receita médica">X</button>
     </div>
     <div class="recommendations-status">
       Como usar este módulo com segurança.
     </div>
     <div class="recommendations-list">
-      <div class="recommendation-item"><strong>1) Captura da prescrição</strong><br>Use "Tirar foto" ou "Escolher arquivo". Garanta boa iluminação, foco e que dose, via e horários estejam legíveis.</div>
-      <div class="recommendation-item"><strong>2) Conferência obrigatória</strong><br>Compare sempre o texto gerado com a imagem original antes de registrar no prontuário ou administrar qualquer medicação.</div>
-      <div class="recommendation-item"><strong>3) Registro</strong><br>Após revisar, use "Copiar segurança dos medicamentos" para colar no registro de enfermagem ou "Imprimir" quando necessário.</div>
-      <div class="recommendation-item"><strong>4) Se houver dúvida</strong><br>Quando faltar informação ou houver risco (alergias, dose incompleta, diluição, velocidade, incompatibilidade), confirme com prescrição oficial e acione o médico/plantonista conforme protocolo.</div>
+      <div class="recommendation-item"><strong>Aviso legal e responsabilidade</strong><br>Receitas devem ser legíveis. A dispensação/aviamento depende de prescrição escrita por extenso e de modo legível, conforme a Lei nº 5.991/1973 (art. 35). Também é vedado ao médico receitar de forma secreta ou ilegível pelo Código de Ética Médica (Resolução CFM nº 2.217/2018, art. 11). Por segurança, prefira receita impressa. Este módulo não se responsabiliza por eventual identificação incorreta do nome do medicamento quando a receita estiver manuscrita, apagada, incompleta ou ilegível. Sempre confirme na prescrição original e na bula oficial antes de prescrever, dispensar ou administrar.</div>
+      <div class="recommendation-item"><strong>1) Captura da receita</strong><br>Use "Tirar foto" ou "Escolher arquivo". Garanta boa iluminação, foco e que nome do medicamento, dose, forma, via e posologia estejam legíveis.</div>
+      <div class="recommendation-item"><strong>2) Conferência obrigatória</strong><br>Compare sempre o texto gerado com a imagem original antes de registrar no prontuário, dispensar ou administrar qualquer medicação.</div>
+      <div class="recommendation-item"><strong>3) Transcrição e fichas</strong><br>A transcrição é editável. Use "Copiar transcrição" ou "Imprimir transcrição" após revisar. Para ficha detalhada, clique no nome do medicamento e/ou gere o relatório completo.</div>
+      <div class="recommendation-item"><strong>4) Se houver dúvida</strong><br>Quando faltar informação ou houver risco (alergias, dose incompleta, via ausente, diluição/velocidade, incompatibilidade, duplicidade terapêutica), confirme na prescrição oficial, na bula e no protocolo institucional. Em caso de divergência, priorize o documento oficial e acione o médico responsável conforme protocolo.</div>
     </div>
   </div>
 
 
-<div id="medMonographOverlay" class="modal-overlay hidden">
-  <div class="modal" style="max-width: 920px;">
-    <div class="modal-header">
-      <div>
-        <h2 id="medMonographTitle" class="modal-title">Informações do medicamento</h2>
-        <p id="medMonographStatus" class="modal-subtitle">.</p>
+  <div id="medMonographOverlay" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal" style="max-width: 920px;">
+      <div class="section-header-row" style="align-items: center;">
+        <h3 id="medMonographTitle" style="margin: 0;">Informações do medicamento</h3>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button id="copyMedMonographBtn" class="admin-btn secondary" type="button">Copiar</button>
+          <button id="printMedMonographBtn" class="admin-btn secondary" type="button">Imprimir</button>
+          <button id="closeMedMonographBtn" class="admin-btn secondary" type="button">Fechar</button>
+        </div>
       </div>
-      <button id="closeMedMonographBtn" class="modal-close" type="button">Fechar</button>
-    </div>
-
-    <div class="modal-body">
-      <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <a id="medBulaPacienteLink" class="auth-btn outline" href="#" target="_blank" rel="noopener">Abrir bula (paciente)</a>
-        <a id="medBulaProfissionalLink" class="auth-btn outline" href="#" target="_blank" rel="noopener">Abrir bula (profissional)</a>
-        <a id="medLactMedLink" class="auth-btn outline" href="#" target="_blank" rel="noopener">Abrir LactMed</a>
-        <a id="medMotherToBabyLink" class="auth-btn outline" href="#" target="_blank" rel="noopener">Abrir MotherToBaby</a>
-        <button id="copyMedMonographBtn" class="auth-btn" type="button">Copiar texto</button>
+      <div id="medMonographStatus" class="mini-status" style="margin-top: 10px;"></div>
+      <div class="classification-box" style="margin-top: 12px; white-space: pre-wrap; max-height: 65vh; overflow: auto;">
+        <div id="medMonographContent"></div>
       </div>
-
-      <div style="margin-top: 12px;">
-        <iframe id="medBulaFrame" title="Bula do medicamento" style="width:100%; height: 420px; border: 1px solid #e6e6e6; border-radius: 10px;" src=""></iframe>
-      </div>
-
-      <div class="module-divider"></div>
-      <pre id="medMonographContent" class="answer-box" style="white-space: pre-wrap;"></pre>
     </div>
   </div>
-</div>
 
-
-
-  <div id="aprazamentoGuidePanel" class="recommendations-panel">
+<div id="aprazamentoGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
       <h3>Guia: Aprazamento de prescrição</h3>
       <button id="closeAprazamentoGuideBtn" class="close-panel-btn" aria-label="Fechar guia de aprazamento de prescrição">X</button>
@@ -5128,6 +5116,7 @@ const recordBtn = document.getElementById("recordBtn");
 
     const medRxTranscription = document.getElementById("medRxTranscription");
     const copyRxTranscriptionBtn = document.getElementById("copyRxTranscriptionBtn");
+    const printRxTranscriptionBtn = document.getElementById("printRxTranscriptionBtn");
     const medRxMedButtons = document.getElementById("medRxMedButtons");
     const medRxMedButtonsHint = document.getElementById("medRxMedButtonsHint");
     const medRxInteractionsBox = document.getElementById("medRxInteractionsBox");
@@ -5138,12 +5127,8 @@ const recordBtn = document.getElementById("recordBtn");
     const medMonographStatus = document.getElementById("medMonographStatus");
     const medMonographContent = document.getElementById("medMonographContent");
     const copyMedMonographBtn = document.getElementById("copyMedMonographBtn");
+    const printMedMonographBtn = document.getElementById("printMedMonographBtn");
     const closeMedMonographBtn = document.getElementById("closeMedMonographBtn");
-    const medBulaPacienteLink = document.getElementById("medBulaPacienteLink");
-    const medBulaProfissionalLink = document.getElementById("medBulaProfissionalLink");
-    const medLactMedLink = document.getElementById("medLactMedLink");
-    const medMotherToBabyLink = document.getElementById("medMotherToBabyLink");
-    const medBulaFrame = document.getElementById("medBulaFrame");
 
 
     const woundPhotoBtn = document.getElementById("woundPhotoBtn");
@@ -5225,6 +5210,7 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
 
       const hasTrans = isMeaningfulText(medRxTranscription ? medRxTranscription.value : "");
       setVisible(copyRxTranscriptionBtn, hasTrans);
+      setVisible(printRxTranscriptionBtn, hasTrans);
     }
 
     function updateWoundActions() {
@@ -7952,6 +7938,25 @@ async function addFilesToTarget(files, targetKey, mode) {
   pushList('Interações medicamentosas', m.interacoes_medicamentosas);
   pushList('Pontos de enfermagem', m.pontos_enfermagem);
 
+
+  if (Array.isArray(m.fontes) && m.fontes.length) {
+    const list = [];
+    for (const f of m.fontes.slice(0, 12)) {
+      if (!f) continue;
+      const url = (f.url || f.link || '').toString().trim();
+      const titulo = (f.titulo || f.title || '').toString().trim();
+      if (!url && !titulo) continue;
+      if (url && titulo) list.push('- ' + titulo + ': ' + url);
+      else if (url) list.push('- ' + url);
+      else list.push('- ' + titulo);
+    }
+    if (list.length) {
+      ln.push('Fontes consultadas:');
+      ln.push(...list);
+      ln.push('');
+    }
+  }
+
   return ln.join('\n').trim();
 }
 
@@ -7961,30 +7966,13 @@ function showMedMonographOverlay(show) {
   else medMonographOverlay.classList.add('hidden');
 }
 
-
 async function openMedicationMonograph(name) {
   const medName = String(name || '').trim();
   if (!medName) return;
-
   if (medMonographTitle) medMonographTitle.textContent = 'Informações do medicamento: ' + medName;
   if (medMonographStatus) medMonographStatus.textContent = 'Carregando informações do medicamento.';
   if (medMonographContent) medMonographContent.textContent = 'Processando.';
   if (medMonographContent && medMonographContent.dataset) medMonographContent.dataset.copyText = '';
-  if (medBulaFrame) medBulaFrame.src = '';
-
-  const hideLink = (el) => { if (!el) return; el.style.display = 'none'; el.href = '#'; };
-  const showLink = (el, href) => {
-    if (!el) return;
-    if (!href) return hideLink(el);
-    el.style.display = '';
-    el.href = href;
-  };
-
-  hideLink(medBulaPacienteLink);
-  hideLink(medBulaProfissionalLink);
-  hideLink(medLactMedLink);
-  hideLink(medMotherToBabyLink);
-
   showMedMonographOverlay(true);
 
   try {
@@ -7995,70 +7983,16 @@ async function openMedicationMonograph(name) {
     });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(data?.error || 'Falha ao obter informações do medicamento.');
-
-    const bulaPaciente = data?.bula_paciente_pdf || data?.fontes?.anvisa?.bula_paciente_pdf || '';
-    const bulaProf = data?.bula_profissional_pdf || data?.fontes?.anvisa?.bula_profissional_pdf || '';
-    const lactLink = data?.fontes?.lactmed?.url || '';
-    const pregLink = data?.fontes?.mothertobaby?.url || '';
-
-    showLink(medBulaPacienteLink, bulaPaciente);
-    showLink(medBulaProfissionalLink, bulaProf);
-    showLink(medLactMedLink, lactLink);
-    showLink(medMotherToBabyLink, pregLink);
-
-    if (medBulaFrame) {
-      if (bulaPaciente) medBulaFrame.src = bulaPaciente;
-      else if (bulaProf) medBulaFrame.src = bulaProf;
-      else medBulaFrame.src = '';
-    }
-
-    let text = '';
-    if (typeof data?.monografia === 'string') {
-      text = String(data.monografia || '').trim();
-    } else if (data?.monografia && typeof data.monografia === 'object') {
-      text = buildMonographText(data.monografia);
-    } else if (typeof data === 'string') {
-      text = data.trim();
-    }
-
-    if (!text) {
-      // fallback: montar texto curto com links e trechos
-      const parts = [];
-      if (data?.fontes?.anvisa) {
-        parts.push('Bula oficial (ANVISA)');
-        if (bulaPaciente) parts.push('PDF (paciente): ' + bulaPaciente);
-        if (bulaProf) parts.push('PDF (profissional): ' + bulaProf);
-        if (data?.fontes?.anvisa?.pagina_busca) parts.push('Página: ' + data.fontes.anvisa.pagina_busca);
-        parts.push('');
-      }
-      if (data?.fontes?.lactmed) {
-        parts.push('Lactação (LactMed)');
-        if (lactLink) parts.push('Link: ' + lactLink);
-        if (data.fontes.lactmed.resumo) parts.push(data.fontes.lactmed.resumo);
-        parts.push('');
-      }
-      if (data?.fontes?.mothertobaby) {
-        parts.push('Gravidez (MotherToBaby)');
-        if (pregLink) parts.push('Link: ' + pregLink);
-        if (data.fontes.mothertobaby.resumo) parts.push(data.fontes.mothertobaby.resumo);
-        parts.push('');
-      }
-      text = parts.join('\n').trim();
-    }
-
+    const monografia = data?.monografia || data || {};
+    const txt = buildMonographText(monografia);
     if (medMonographContent) {
-      medMonographContent.textContent = text || 'Nenhum conteúdo disponível.';
+      medMonographContent.textContent = txt || 'Nenhum conteúdo disponível.';
       if (medMonographContent.dataset) medMonographContent.dataset.copyText = medMonographContent.textContent;
     }
     if (medMonographStatus) medMonographStatus.textContent = 'Informações prontas.';
   } catch (e) {
     if (medMonographStatus) medMonographStatus.textContent = 'Falha ao obter informações do medicamento. ' + (e && e.message ? e.message : '');
     if (medMonographContent) medMonographContent.textContent = 'Nenhum conteúdo disponível.';
-    if (medBulaFrame) medBulaFrame.src = '';
-    hideLink(medBulaPacienteLink);
-    hideLink(medBulaProfissionalLink);
-    hideLink(medLactMedLink);
-    hideLink(medMotherToBabyLink);
   }
 }
 
@@ -8136,7 +8070,7 @@ async function analyzePrescriptionWithImages(dataUrls) {
         medRxMedButtons.appendChild(b);
       }
       if (medRxMedButtonsHint) {
-        medRxMedButtonsHint.textContent = unique.length ? (unique.length + " medicamento(s) identificado(s). Clique no nome do medicamento e veja a bula completa.") : "Nenhum medicamento identificado.";
+        medRxMedButtonsHint.textContent = unique.length ? (unique.length + " medicamento(s) identificado(s). Clique para ver detalhes.") : "Nenhum medicamento identificado.";
       }
     }
 
@@ -8167,21 +8101,17 @@ async function analyzePrescriptionWithImages(dataUrls) {
       uniqueNames.push(nm);
     }
 
-
-const lactLines = [];
-const pregLines = [];
-for (const nm of uniqueNames.slice(0, 60)) {
-  const s = safetyMap.get(nm.toLowerCase()) || {};
-  const lact = (s && (s.lactacao_risco || s.uso_lactacao)) ? String(s.lactacao_risco || s.uso_lactacao).trim() : '';
-  const preg = (s && (s.gravidez_categoria || s.categoria_gravidez)) ? String(s.gravidez_categoria || s.categoria_gravidez).trim() : '';
-  const lactLink = (s && s.fonte_lactacao) ? String(s.fonte_lactacao).trim() : '';
-  const pregLink = (s && s.fonte_gravidez) ? String(s.fonte_gravidez).trim() : '';
-
-  lactLines.push('- ' + nm + ': ' + (lact || 'Não disponível automaticamente.') + (lactLink ? ('\n  Link: ' + lactLink) : ''));
-  pregLines.push('- ' + nm + ': ' + (preg || 'Não disponível automaticamente.') + (pregLink ? ('\n  Link: ' + pregLink) : ''));
-}
-if (medRxLactationBox) medRxLactationBox.textContent = lactLines.length ? lactLines.join('\n') : 'Nenhum conteúdo disponível.';
-if (medRxPregnancyBox) medRxPregnancyBox.textContent = pregLines.length ? pregLines.join('\n') : 'Nenhum conteúdo disponível.';
+    const lactLines = [];
+    const pregLines = [];
+    for (const nm of uniqueNames.slice(0, 60)) {
+      const s = safetyMap.get(nm.toLowerCase()) || {};
+      const lact = (s && (s.lactacao_risco || s.uso_lactacao)) ? String(s.lactacao_risco || s.uso_lactacao).trim() : '';
+      const preg = (s && (s.gravidez_categoria || s.categoria_gravidez)) ? String(s.gravidez_categoria || s.categoria_gravidez).trim() : '';
+      lactLines.push('- ' + nm + ': ' + (lact || 'Não disponível automaticamente.'));
+      pregLines.push('- ' + nm + ': ' + (preg ? ('Categoria ' + preg) : 'Não disponível automaticamente.'));
+    }
+    if (medRxLactationBox) medRxLactationBox.textContent = lactLines.length ? lactLines.join('\n') : 'Nenhum conteúdo disponível.';
+    if (medRxPregnancyBox) medRxPregnancyBox.textContent = pregLines.length ? pregLines.join('\n') : 'Nenhum conteúdo disponível.';
 
     // Texto de exportação (copiar/imprimir) - sem exibir como "Relatório completo"
     const riscos = Array.isArray(data?.riscos_e_inconsistencias) ? data.riscos_e_inconsistencias : [];
@@ -8197,7 +8127,7 @@ if (medRxPregnancyBox) medRxPregnancyBox.textContent = pregLines.length ? pregLi
     exp.push('Uso na lactação (por medicamento):');
     exp.push(lactLines.length ? lactLines.join('\n') : 'Nenhum conteúdo disponível.');
     exp.push('');
-    exp.push('Uso na gravidez (por medicamento):');
+    exp.push('Uso na gravidez (categoria de risco):');
     exp.push(pregLines.length ? pregLines.join('\n') : 'Nenhum conteúdo disponível.');
     exp.push('');
     exp.push('Medicamentos identificados:');
@@ -8232,7 +8162,48 @@ if (medRxPregnancyBox) medRxPregnancyBox.textContent = pregLines.length ? pregLi
       exp.push(resumoOper);
       exp.push('');
     }
-    if (medSafetyExport) medSafetyExport.value = exp.join('\n').trim();
+    
+    let reportText = exp.join('\n').trim();
+
+    // Fichas completas por medicamento (busca online quando habilitado no backend)
+    const maxMonographs = 12;
+    const toFetch = uniqueNames.slice(0, maxMonographs);
+
+    if (toFetch.length) {
+      const blocks = [];
+      for (let i = 0; i < toFetch.length; i++) {
+        const medName = toFetch[i];
+        interactionsStatus.textContent = `Buscando ficha do medicamento (${i + 1}/${toFetch.length}): ${medName}`;
+        updateMedSafetyActions();
+        try {
+          const r = await fetch(BACKEND_URL + "/api/medicamento-monografia", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ medicamento: medName })
+          });
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(d?.error || "Falha ao gerar monografia.");
+          const mono = d?.monografia || {};
+          const txt = buildMonographText(mono);
+          blocks.push('');
+          blocks.push('FICHA DO MEDICAMENTO: ' + medName);
+          blocks.push(txt || 'Nenhum conteúdo disponível.');
+          blocks.push('');
+        } catch (err) {
+          blocks.push('');
+          blocks.push('FICHA DO MEDICAMENTO: ' + medName);
+          blocks.push('Não foi possível gerar automaticamente esta ficha no momento.');
+          blocks.push('');
+        }
+      }
+
+      if (blocks.length) {
+        reportText = (reportText ? (reportText + '\n\n') : '') + 'Fichas completas por medicamento:\n' + blocks.join('\n').trim();
+      }
+    }
+
+    if (medSafetyExport) medSafetyExport.value = reportText;
+
 
     interactionsStatus.textContent = 'Análise concluída.';
     updateMedSafetyActions();
@@ -10220,6 +10191,18 @@ recordBtn.onclick = () => {
       });
     }
 
+
+    if (printRxTranscriptionBtn) {
+      printRxTranscriptionBtn.addEventListener("click", () => {
+        const t = (medRxTranscription && medRxTranscription.value) ? medRxTranscription.value.trim() : "";
+        if (!t) {
+          alert("Não há transcrição para imprimir.");
+          return;
+        }
+        printTextBlock("Transcrição da receita", t);
+      });
+    }
+
     if (copyMedSafetyBtn) {
       copyMedSafetyBtn.addEventListener("click", () => {
         const t = (medSafetyExport && medSafetyExport.value) ? medSafetyExport.value.trim() : "";
@@ -10247,6 +10230,19 @@ recordBtn.onclick = () => {
           return;
         }
         copyToClipboard(s);
+      });
+    }
+
+
+    if (printMedMonographBtn) {
+      printMedMonographBtn.addEventListener("click", () => {
+        const t = (medMonographContent && medMonographContent.dataset && medMonographContent.dataset.copyText) ? medMonographContent.dataset.copyText : (medMonographContent ? medMonographContent.textContent : "");
+        const s = String(t || "").trim();
+        if (!s) {
+          alert("Não há informações do medicamento para imprimir.");
+          return;
+        }
+        printTextBlock("Informações do medicamento", s);
       });
     }
 
