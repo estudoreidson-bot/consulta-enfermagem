@@ -253,6 +253,7 @@
       text-align: center;
     }
 
+
     #triagePauseBtn {
       padding: 6px 14px;
       border-radius: 20px;
@@ -343,6 +344,7 @@
       color: #333;
       text-align: center;
     }
+
 
     .triage-report-panel {
       border: 1px solid #ddd;
@@ -754,6 +756,7 @@
     .swatch-verde { background: #28a745; }
     .swatch-azul { background: #0d6efd; }
 
+
     .section-header-row {
       display: flex;
       justify-content: space-between;
@@ -902,6 +905,7 @@
       color: #333;
       white-space: pre-wrap;
     }
+
 
   
     #patientInfoBtn {
@@ -1104,6 +1108,7 @@
       margin: 0 0 6px 0;
     }
 
+
   
     /* Padronização de botões de copiar e imprimir */
     .btn-copy {
@@ -1131,6 +1136,7 @@
     }
     .btn-print:hover { opacity: 0.92; }
     .btn-print:active { transform: scale(0.98); }
+
 
     .guide-main-btn {
       padding: 7px 12px;
@@ -1404,8 +1410,10 @@
     .admin-actions button { padding: 8px 10px; border-radius: 10px; font-size: 12px; }
     .modal-overlay.hidden { display: none; }
 
+
     .admin-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
     @media (max-width: 720px){.admin-form-grid{grid-template-columns:1fr;}}
+
 
     /* Ajustes visuais e responsividade (computador e celular) */
     .page { width: 100%; }
@@ -1449,6 +1457,8 @@
       h1 { font-size: 24px; }
       #recordBtn { width: 145px; height: 145px; }
     }
+
+
 
     /* =========================
        AJUSTES MOBILE (RESPONSIVO)
@@ -1559,6 +1569,7 @@
       .consult-type-buttons { grid-template-columns: 1fr; }
     }
 
+
     /* =========================
        MÓDULO: CALCULADORAS CLÍNICAS
        ========================= */
@@ -1662,6 +1673,7 @@
       opacity:0.92;
     }
 
+
     .site-verse{
       text-align:center;
       font-size:13px;
@@ -1670,6 +1682,7 @@
       line-height:1.35;
     }
     
+
 
     .page-refresh{
       max-width: 980px;
@@ -1859,6 +1872,7 @@
     box-shadow: none !important;
   }
 }
+
 
     /* MÓDULO: Escala de plantão */
     .roster-shell {
@@ -2108,8 +2122,6 @@
       font-size: 12px;
       margin-top: 4px;
     }
-
-  /* Administração segura de medicamentos: seções adicionais */
   .rx-subsection { margin-top: 12px; }
   .rx-subsection-title { font-size: 13px; font-weight: 700; margin: 0 0 8px 0; }
   .pill-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -2205,6 +2217,7 @@
       </div>
     </div>
   </div>
+
 
   <div id="adminView" class="admin-shell hidden">
     <div class="admin-wrap">
@@ -2432,6 +2445,7 @@
     </div>
   </div>
 
+
 <div id="nurseView" class="hidden">
   <div class="page">
                 <p class="site-verse">Provérbios 16:3: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos"</p>
@@ -2441,6 +2455,7 @@
       <button type="button" class="page-refresh-btn" onclick="window.location.reload();">Atualizar página</button>
     </div>
      <h1>Atendimento de Enfermagem</h1>
+
 
     <div class="nurse-bar" id="nurseBar">
       <div>
@@ -2454,6 +2469,7 @@
         <button id="nurseLogoutBtn" type="button" class="danger-btn">Sair</button>
       </div>
     </div>
+
 
     <div class="center-card">
 
@@ -2672,6 +2688,7 @@
         </div>
       </div>
 
+
       
       <div class="roster-shell" id="rosterToggleShell">
         <div class="roster-actions" style="margin-top:0;">
@@ -2799,6 +2816,7 @@
         </div>
       </div>
 
+
     </div>
 
     <div id="resultsCard" class="results-card hidden">
@@ -2812,6 +2830,8 @@
         </div>
         <div id="patientInfoSummary" class="patient-summary"></div>
       </div>
+
+
 
       <div id="triageReportPanel" class="triage-report-panel hidden">
         <div class="section-header-row">
@@ -2894,6 +2914,7 @@
         <textarea id="handoffOutput" class="prescription-textarea" placeholder="A passagem de plantão gerada aparecerá aqui."></textarea>
         <div id="handoffStatus" class="mini-status"></div>
       </div>
+
 
       <div id="soapNursingResultsPanel">
 
@@ -2983,7 +3004,12 @@
         <button id="copyOrientationsBtn" class="btn-copy">Copiar orientações</button>
         <button id="printLactationBtn" class="btn-print">Imprimir orientações</button>
       </div>
-<div id="aprazamentoCard" class="module-card">
+<div id="classificationsStatus" class="mini-status"></div>
+      </div>
+    </div>
+
+    
+    <div id="aprazamentoCard" class="module-card">
       <div class="section-header-row">
         <h2>Aprazamento de prescrição</h2>
         <button id="aprazamentoGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
@@ -3003,6 +3029,7 @@
       <div id="aprazamentoSheetWrapper" class="rx-sheet-wrapper">
         <div class="rx-sheet-placeholder">Nenhum conteúdo disponível.</div>
       </div>
+
 
       <div class="prescription-actions" style="justify-content: flex-start; gap: 10px; margin-top: 10px;">
         <button id="printAprazGridBtn" class="btn-print hidden" type="button">Imprimir grade de horários</button>
@@ -3039,6 +3066,7 @@
       <input id="woundCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
       <input id="woundFileInput" class="hidden-input" type="file" accept="image/*" multiple />
     </div>
+
 
     <div id="examInterpretationCard" class="module-card">
       <div class="section-header-row">
@@ -3119,6 +3147,7 @@
       <div id="medicalDoubtStatus" class="mini-status"></div>
       <div id="medicalDoubtAnswer" class="answer-box"></div>
     </div>
+
 
                 <div id="calculatorsCard" class="module-card">
       <div class="section-header-row">
@@ -3530,6 +3559,9 @@
       </div>
     </div>
 
+
+
+
                 <div id="patientReportCard" class="module-card hidden">
       <h2>Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado de comparecimento ou permanência / ATA reunião / Registros de procedimentos</h2>
       <p class="mini-status" style="margin-top: 0;">
@@ -3767,7 +3799,19 @@ Avaliação: SV atuais [PA/FC/FR/SpO2/T], tendência [melhora/piora]. Dor [escal
 Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [tarefa]. Exames pendentes: [exame], conferir em [horário] e agir assim: [conduta]. Monitorizar [parâmetros] a cada [intervalo]. Acionar médico se: [sinais de alarme].</div>
       </div>
 
-      <div id="aprazamentoGuidePanel" class="recommendations-panel">
+      <div class="recommendation-item"><strong>Checagem final de qualidade</strong>
+        <ul>
+          <li>A passagem tem identificação completa, problema atual e tendência?</li>
+          <li>Há lista clara de dispositivos/terapias em curso e riscos principais?</li>
+          <li>As pendências estão priorizadas, com horários e conduta se o exame vier alterado?</li>
+          <li>Ficou explícito quando acionar o médico/plantonista e quais são os sinais de alarme?</li>
+        </ul>
+      </div>
+</div>
+    </div>
+  </div>
+
+  <div id="aprazamentoGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
       <h3>Guia: Aprazamento de prescrição</h3>
       <button id="closeAprazamentoGuideBtn" class="close-panel-btn" aria-label="Fechar guia de aprazamento de prescrição">X</button>
@@ -3847,6 +3891,7 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     </div>
   </div>
 
+
   <div id="medicalDocsGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
       <h3>Guia: Geração de documentos</h3>
@@ -3887,10 +3932,10 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     // IMAGENS (Curativos e Prescrição) - estado por módulo (até 4 fotos)
     // =========================
     let woundImages = [];
-let examImages = [];
+    let examImages = [];
     let transcriptionImages = [];
     let woundAnalyzeTimer = null;
-let examAnalyzeTimer = null;
+    let examAnalyzeTimer = null;
     let transcriptionAnalyzeTimer = null;
     let aprazImages = [];
     let aprazAnalyzeTimer = null;
@@ -3905,6 +3950,8 @@ let examAnalyzeTimer = null;
         if (woundImages && woundImages.length) analyzeWoundWithImages(woundImages.slice());
       }, 180);
     }
+
+    
 
     function scheduleExamAnalysis() {
       if (examAnalyzeTimer) clearTimeout(examAnalyzeTimer);
@@ -3981,6 +4028,7 @@ let examAnalyzeTimer = null;
         showFatalError("Erro no sistema: " + m);
       } catch {}
     });
+
 
     // Mostra erros de script diretamente na tela de login (evita sensação de "não acontece nada")
     window.addEventListener('error', (ev) => {
@@ -4552,6 +4600,8 @@ let examAnalyzeTimer = null;
     document.getElementById("openClientBillingBtn")?.addEventListener("click", openClientBillingModal);
     document.getElementById("closeClientBillingModalBtn")?.addEventListener("click", closeClientBillingModal);
 
+
+
     let recognition;
     let isRecording = false;
     let isPaused = false;
@@ -4618,6 +4668,7 @@ let examAnalyzeTimer = null;
     let triageGuidanceChunkStartLen = 0;
     let triageGuidanceSilenceTimer = null;
     let triageGuidanceLastChunkTs = 0;
+
 
     // ============================
     // MÓDULO: Passagem de plantão (gravação + geração de texto)
@@ -4781,6 +4832,7 @@ const recordBtn = document.getElementById("recordBtn");
     const triageMicStatus = document.getElementById("triageMicStatus");
     const triageError = document.getElementById("triageError");
 
+
     const handoffRecordBtn = document.getElementById("handoffRecordBtn");
     const handoffPauseBtn = document.getElementById("handoffPauseBtn");
     const handoffTimerEl = document.getElementById("handoffTimer");
@@ -4808,7 +4860,7 @@ const recordBtn = document.getElementById("recordBtn");
     const handoffGuideBtn = document.getElementById("handoffGuideBtn");
     const handoffGuidePanel = document.getElementById("handoffGuidePanel");
     const closeHandoffGuideBtn = document.getElementById("closeHandoffGuideBtn");
-const aprazamentoGuideBtn = document.getElementById("aprazamentoGuideBtn");
+    const aprazamentoGuideBtn = document.getElementById("aprazamentoGuideBtn");
     const aprazamentoGuidePanel = document.getElementById("aprazamentoGuidePanel");
     const closeAprazamentoGuideBtn = document.getElementById("closeAprazamentoGuideBtn");
 
@@ -4821,6 +4873,7 @@ const aprazamentoGuideBtn = document.getElementById("aprazamentoGuideBtn");
     const aprazamentoFileInput = document.getElementById("aprazamentoFileInput");
     const aprazOriginalDetails = document.getElementById("aprazOriginalDetails");
     const aprazOriginalImages = document.getElementById("aprazOriginalImages");
+
 
     const woundGuideBtn = document.getElementById("woundGuideBtn");
     const woundGuidePanel = document.getElementById("woundGuidePanel");
@@ -4837,6 +4890,8 @@ const aprazamentoGuideBtn = document.getElementById("aprazamentoGuideBtn");
     const calculatorsGuideBtn = document.getElementById("calculatorsGuideBtn");
     const calculatorsGuidePanel = document.getElementById("calculatorsGuidePanel");
     const closeCalculatorsGuideBtn = document.getElementById("closeCalculatorsGuideBtn");
+
+
 
     const triageLiveGuidance = document.getElementById("triageLiveGuidance");
     const triageLiveGuidanceContext = document.getElementById("triageLiveGuidanceContext");
@@ -4897,6 +4952,7 @@ const aprazamentoGuideBtn = document.getElementById("aprazamentoGuideBtn");
     const openSbarGuideBtn = document.getElementById("openSbarGuideBtn");
     const sbarGuidePanel = document.getElementById("sbarGuidePanel");
 
+
     const pregnancyBox = document.getElementById("pregnancyBox");
     const lactationBox = document.getElementById("lactationBox");
 
@@ -4930,7 +4986,9 @@ const aprazamentoGuideBtn = document.getElementById("aprazamentoGuideBtn");
     const medicalDoubtStatus = document.getElementById("medicalDoubtStatus");
     const medicalDoubtAnswer = document.getElementById("medicalDoubtAnswer");
     const medicalDoubtSendBtn = document.getElementById("medicalDoubtSendBtn");
-const woundPhotoBtn = document.getElementById("woundPhotoBtn");
+
+
+    const woundPhotoBtn = document.getElementById("woundPhotoBtn");
     const woundFileBtn = document.getElementById("woundFileBtn");
 const presentationsMaxDoseBox = document.getElementById("presentationsMaxDoseBox");
     const presentationsMaxDoseStatus = document.getElementById("presentationsMaxDoseStatus");
@@ -4985,8 +5043,7 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       if (visible) el.classList.remove("hidden");
       else el.classList.add("hidden");
     }
-
-    // Administração segura de medicamentos: resultados só aparecem após selecionar foto/arquivo.
+    
 
     function isMeaningfulText(t) {
       const s = String(t || "").trim();
@@ -4996,6 +5053,8 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       if (low === "processando." || low === "processando") return false;
       return true;
     }
+
+    
 
     function updateWoundActions() {
       const has = isMeaningfulText(presentationsMaxDoseBox ? presentationsMaxDoseBox.textContent : "");
@@ -5020,11 +5079,15 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       setVisible(printAprazGridBtn, hasGrid);
     }
 
+
     function updateReportActions() {
       const has = isMeaningfulText(reportOutput ? reportOutput.value : "");
       setVisible(copyReportBtn, has);
       setVisible(printReportBtn, has);
     }
+
+
+
 
     // ============================
     // MÓDULO: Coletar dados essenciais (NOVO)
@@ -5286,6 +5349,7 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       }
     }
 
+
 async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText) {
       const t = String(transcricao || "").trim();
       if (!t) return;
@@ -5486,6 +5550,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       t = t.replace(/\n{3,}/g, "\n\n");
       return t.trim();
     }
+
 
     // ============================
     // ============================
@@ -6204,6 +6269,8 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       }
     }
 
+
+
     // ============================
     // Passagem de plantão (gravação + geração)
     // ============================
@@ -6412,6 +6479,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         }
       }
     }
+
 
     function hasLikelyChiefComplaint(text) {
       const t = String(text || "").toLowerCase();
@@ -6741,8 +6809,6 @@ function initSpeech() {
       lactationBox.textContent = "Nenhum conteúdo disponível.";
       if (presentationsMaxDoseBox) presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
       if (presentationsMaxDoseStatus) presentationsMaxDoseStatus.textContent = "";
-      if (presentationsMaxDoseBox) presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
-      if (presentationsMaxDoseStatus) presentationsMaxDoseStatus.textContent = "";
     }
 
     async function finalizarConsulta() {
@@ -6857,6 +6923,7 @@ function initSpeech() {
       return combined;
     }
 
+
     function formatInteractionsList(interacoes, observacoes) {
       const items = Array.isArray(interacoes) ? interacoes : [];
       if (!items.length) {
@@ -6890,36 +6957,8 @@ function initSpeech() {
       return parts.join("\n\n");
     }
 
-    async function updateMedicationSafetyFromContext(contexto) {
-      if (!presentationsMaxDoseBox || !presentationsMaxDoseStatus) return;
 
-      presentationsMaxDoseStatus.textContent = "Gerando registro de administração segura...";
-      presentationsMaxDoseStatus.classList.add("loading-dot");
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/interacoes-medicamentosas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contexto })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP:", resp.status, txt);
-          presentationsMaxDoseBox.textContent = "Falha ao gerar registro.";
-          return;
-        }
-
-        const data = await resp.json().catch(() => ({}));
-        presentationsMaxDoseBox.textContent = (data.registro || "").trim() || "Nenhum conteúdo disponível.";
-      } catch (e) {
-        console.error(e);
-        presentationsMaxDoseBox.textContent = "Falha ao gerar registro (rede/backend).";
-      } finally {
-        presentationsMaxDoseStatus.classList.remove("loading-dot");
-        presentationsMaxDoseStatus.textContent = "";
-      }
-    }
+    
 
     function formatPresentationsMaxDoseList(itens) {
       const items = Array.isArray(itens) ? itens : [];
@@ -6959,6 +6998,7 @@ function initSpeech() {
 
       return lines.join("\n").trim();
     }
+
 
     async function updateWoundCareFromContext(contexto) {
       if (!presentationsMaxDoseBox || !presentationsMaxDoseStatus) return;
@@ -7227,6 +7267,7 @@ function initSpeech() {
       recommendationsStatus.classList.add("loading-dot");
       recommendationsList.innerHTML = "";
 
+
       try {
         const resp = await fetch(BACKEND_URL + "/api/recomendacoes-anamnese", {
           method: "POST",
@@ -7475,7 +7516,7 @@ async function addFilesToTarget(files, targetKey, mode) {
   const list = Array.from(files || []);
   if (!list.length) return;
 
-  const key = (targetKey === "wound" || targetKey === "exam" || targetKey === "transcription" || targetKey === "apraz") ? targetKey : "wound";
+  const key = (targetKey === "wound" || targetKey === "med" || targetKey === "exam" || targetKey === "transcription" || targetKey === "apraz") ? targetKey : "med";
 
   const cfg = key === "wound"
     ? { arr: woundImages, statusEl: presentationsMaxDoseStatus, boxEl: presentationsMaxDoseBox, update: updateWoundActions, schedule: scheduleWoundAnalysis }
@@ -7483,9 +7524,11 @@ async function addFilesToTarget(files, targetKey, mode) {
       ? { arr: examImages, statusEl: examInterpretationStatus, boxEl: examInterpretationBox, update: updateExamActions, schedule: scheduleExamAnalysis }
       : key === "transcription"
         ? { arr: transcriptionImages, statusEl: transcriptionStatus, boxEl: transcriptionBox, update: updateTranscriptionActions, schedule: scheduleTranscriptionAnalysis }
-        : { arr: aprazImages, statusEl: aprazamentoStatus, boxEl: aprazamentoSheetWrapper, update: updateAprazamentoActions, schedule: scheduleAprazAnalysis };
+        : key === "apraz"
+          ? { arr: aprazImages, statusEl: aprazamentoStatus, boxEl: aprazamentoSheetWrapper, update: updateAprazamentoActions, schedule: scheduleAprazAnalysis }
+          : { arr: [], statusEl: null, boxEl: null, update: null, schedule: null };
 
-const arr = cfg.arr;
+  const arr = cfg.arr;
   const statusEl = cfg.statusEl;
   const boxEl = cfg.boxEl;
 
@@ -7576,6 +7619,7 @@ const arr = cfg.arr;
     updateWoundActions();
   }
 }
+
 
     function buildMonographText(m) {
   if (!m || typeof m !== 'object') return 'Nenhum conteúdo disponível.';
@@ -7745,7 +7789,10 @@ async function openMedicationMonograph(name) {
   }
 }
 
-async function analyzeExamWithImages(dataUrls) {
+
+
+
+    async function analyzeExamWithImages(dataUrls) {
   if (!examInterpretationStatus || !examInterpretationBox) return;
 
   const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
@@ -7826,6 +7873,7 @@ async function analyzeExamWithImages(dataUrls) {
     updateTranscriptionActions();
   }
 }
+
 
     function asStr(v) {
       if (v === null || v === undefined) return "";
@@ -8413,6 +8461,7 @@ let sbarFinalTranscript = "";
         let sbarHasAnyResult = false;
         let sbarStartAttemptId = 0;
 
+
         function startSbarTimer() {
           if (!sbarTimer) return;
           sbarStartTs = Date.now();
@@ -8516,6 +8565,7 @@ let interim = "";
             }
           });
         }
+
 
         async function startSbarRecording() {
           if (hasAnyOtherRecordingActive()) {
@@ -8803,6 +8853,7 @@ if (sbarOutput) sbarOutput.value = "";
       reportTimerInterval = null;
     }
 
+
     function initReportSpeech() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) {
@@ -8988,6 +9039,7 @@ if (medicalDoubtSendBtn) {
     submitMedicalDoubt();
   });
 }
+
 
     // ============================
     // Documentos (gravação + geração via /api/gerar-relatorio)
@@ -9354,6 +9406,8 @@ if (medicalDoubtSendBtn) {
       await generateDocumentFromTranscript(combined);
     }
 
+
+
 if (triageRecordBtn) {
   triageRecordBtn.onclick = () => {
     if (!triageIsRecording) {
@@ -9390,6 +9444,9 @@ if (docsPauseBtn) {
     else resumeDocsRecording();
   };
 }
+
+
+
 
 if (handoffRecordBtn) {
   handoffRecordBtn.onclick = () => {
@@ -9440,6 +9497,8 @@ if (handoffGuideBtn) {
   });
 }
 
+
+
 if (aprazamentoGuideBtn) {
   aprazamentoGuideBtn.addEventListener("click", () => {
     setPanelVisible(aprazamentoGuidePanel, true);
@@ -9450,6 +9509,7 @@ if (closeAprazamentoGuideBtn) {
     setPanelVisible(aprazamentoGuidePanel, false);
   });
 }
+
 
 if (woundGuideBtn) {
   woundGuideBtn.addEventListener("click", () => {
@@ -9627,8 +9687,6 @@ recordBtn.onclick = () => {
         copyToClipboard(part + ": " + sectionText);
       });
 
-    });
-
     if (copyFullSoapBtn) {
       copyFullSoapBtn.addEventListener("click", () => {
         const full = getCombinedSoapFromFields();
@@ -9664,6 +9722,8 @@ recordBtn.onclick = () => {
       });
     }
 
+
+
     copyPrescriptionBtn.addEventListener("click", () => {
       const text = prescriptionOutput.value.trim();
       if (!text) {
@@ -9679,7 +9739,6 @@ recordBtn.onclick = () => {
         openPrintWindowHtml("Grade de horários (24 horas)", html);
       });
     }
-
 
     if (copyMedMonographBtn) {
       copyMedMonographBtn.addEventListener("click", () => {
@@ -9704,6 +9763,7 @@ recordBtn.onclick = () => {
         if (e.target === medMonographOverlay) showMedMonographOverlay(false);
       });
     }
+
 
     if (sbarRecordBtn) {
       sbarRecordBtn.addEventListener("click", async (e) => {
@@ -9804,6 +9864,7 @@ recordBtn.onclick = () => {
         copyToClipboard(text);
       });
     }
+    });
 
     printPregnancyBtn.addEventListener("click", () => {
       openPrintWindow("SAE (Processo de Enfermagem)", pregnancyBox.textContent);
@@ -9812,6 +9873,7 @@ recordBtn.onclick = () => {
     printLactationBtn.addEventListener("click", () => {
       openPrintWindow("Orientações ao paciente", lactationBox.textContent);
     });
+
 
     if (chooseCameraBtn) {
   chooseCameraBtn.addEventListener("click", () => {
@@ -9845,8 +9907,8 @@ if (runImageAnalysisBtn) {
 }
 
     // Estado inicial: painel de resultados do módulo de medicamentos fica oculto até selecionar foto/arquivo.
-// Estado inicial: botões de copiar/imprimir ficam ocultos até gerar conteúdo
-updateWoundActions();
+    // Estado inicial: botões de copiar/imprimir ficam ocultos até gerar conteúdo
+    updateWoundActions();
     updateReportActions();
     updateExamActions();
     updateTranscriptionActions();
@@ -9881,7 +9943,7 @@ function getImageUiByKey(key) {
       if (k === "exam") return { statusEl: examInterpretationStatus, boxEl: examInterpretationBox };
       if (k === "transcription") return { statusEl: transcriptionStatus, boxEl: transcriptionBox };
       if (k === "apraz") return { statusEl: aprazamentoStatus, boxEl: aprazamentoSheetWrapper };
-      return { statusEl: presentationsMaxDoseStatus, boxEl: presentationsMaxDoseBox };
+      return { statusEl: null, boxEl: null };
     }
 
     function bindImageInput(inputEl, key, mode) {
@@ -9891,6 +9953,11 @@ function getImageUiByKey(key) {
         const input = e && e.currentTarget ? e.currentTarget : inputEl;
         const files = (input && input.files) ? Array.from(input.files) : [];
         if (!files.length) return;
+
+        if (String(key || "").toLowerCase() === "med") {
+          setMedSafetyResultsVisible(true);
+        }
+
         const ui = getImageUiByKey(key);
         const firstName = (files[0] && files[0].name) ? files[0].name : "arquivo";
         const msg0 = `Arquivo recebido: ${firstName}. Preparando imagem.`;
@@ -9917,7 +9984,7 @@ function getImageUiByKey(key) {
 
 if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
     if (woundFileInput) bindImageInput(woundFileInput, "wound", "replace");
-if (examCameraInput) bindImageInput(examCameraInput, "exam", "append");
+    if (examCameraInput) bindImageInput(examCameraInput, "exam", "append");
     if (examFileInput) bindImageInput(examFileInput, "exam", "replace");
     if (transcriptionCameraInput) bindImageInput(transcriptionCameraInput, "transcription", "append");
     if (transcriptionFileInput) bindImageInput(transcriptionFileInput, "transcription", "replace");
@@ -10389,6 +10456,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       }
     });
 
+
     document.getElementById("createUserBtn")?.addEventListener("click", async () => {
       const fullName = (document.getElementById("newFullName")?.value || "").trim();
       const dob = (document.getElementById("newDob")?.value || "").trim();
@@ -10436,6 +10504,8 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       const anyVisible = (lv && !lv.classList.contains("hidden")) || (av && !av.classList.contains("hidden")) || (nv && !nv.classList.contains("hidden"));
       if (!anyVisible) showLogin();
     }, 1000);
+
+
 
     
 
@@ -11214,6 +11284,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     [cvSex, cvSmoker, cvDiabetes, cvOnHtnMeds, cvOnStatin].forEach(el => el && el.addEventListener("change", calcCvRiskPrevent));
     calcCvRiskPrevent();
 
+
     // BSA (Mosteller)
     const bsaWeightKg = document.getElementById("bsaWeightKg");
     const bsaHeightCm = document.getElementById("bsaHeightCm");
@@ -11512,6 +11583,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     [pewsBehavior, pewsCardio, pewsResp].forEach(el => el && el.addEventListener("change", calcPEWS));
     calcPEWS();
 
+
     // ============================================================
         // MÓDULO: Escala de plantão (geração local + persistência no backend)
     // =========================================
@@ -11619,6 +11691,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       return days;
     }
 
+
     function rosterIsWeekend(dateIso) {
       try {
         const d = new Date(String(dateIso || "") + "T00:00:00");
@@ -11628,6 +11701,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
         return false;
       }
     }
+
 
     function rosterNextDate(dateIso) {
       const d = new Date(dateIso + "T00:00:00");
@@ -12945,6 +13019,8 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       rosterWireUI();
     } catch {}
 
+
+
     // ============================
     // Documentos Médicos (consulta completa -> documento) via /api/gerar-documento-medico
     // ============================
@@ -12996,6 +13072,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
         });
       }
 
+
       if (medicalDocsRecordBtn) {
         medicalDocsRecordBtn.addEventListener("click", () => {
           if (!medicalDocsIsRecording) startMedicalDocsRecording();
@@ -13033,6 +13110,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     } else {
       medicalDocsBindElementsAndWire();
     }
+
 
     let medicalDocsRecognition = null;
     let medicalDocsIsRecording = false;

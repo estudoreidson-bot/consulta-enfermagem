@@ -268,6 +268,7 @@ async function hydrateDbFromPgIfAvailable() {
   }
 }
 
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -457,6 +458,7 @@ const GITHUB_BRANCH = process.env.GITHUB_BRANCH || "main";
 const GITHUB_DB_PATH = process.env.GITHUB_DB_PATH || "data/enfermagem_users_snapshot.json";
 const GITHUB_ENABLED = !!(GITHUB_TOKEN && GITHUB_REPO);
 
+
 function ensureDataDir() {
   try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch {}
 }
@@ -612,6 +614,7 @@ function backupFile(filePath, reason = "auto") {
   } catch {}
 }
 
+
 function migrateDbIfNeeded() {
   ensureDataDir();
 
@@ -651,6 +654,7 @@ function migrateDbIfNeeded() {
     }
   }
 }
+
 
 function nowIso() {
   return new Date().toISOString();
@@ -713,6 +717,7 @@ function loadDb() {
   } catch {}
   return fresh;
 }
+
 
 function normalizeDb(db) {
   const out = (db && typeof db === "object") ? db : {};
@@ -949,6 +954,8 @@ async function bootstrapFromGithubIfEmpty() {
   }
 }
 setTimeout(() => { bootstrapFromGithubIfEmpty(); }, 1500).unref?.();
+
+
 
 let DB = loadDb();
 
@@ -1210,6 +1217,7 @@ function authFromReq(req) {
   return { role: "nurse", token, user };
 }
 
+
 function sendAuthFailure(res, ctx) {
   const code = String(ctx?.invalidReason || "");
   if (code === "SESSION_REPLACED") {
@@ -1415,6 +1423,7 @@ app.post("/api/auth/login", (req, res) => {
   }
 });
 
+
 app.get("/api/auth/me", requireAuth, (req, res) => {
   const role = req.auth.role;
   if (role === "admin") return res.json({ role: "admin" });
@@ -1467,6 +1476,7 @@ app.post("/api/auth/logout", requireAuth, (req, res) => {
   return res.json({ ok: true });
 });
 
+
 app.post("/api/auth/heartbeat", requireAuth, (req, res) => {
   try {
     const sess = getSession(req.auth.token);
@@ -1489,6 +1499,8 @@ app.post("/api/auth/heartbeat", requireAuth, (req, res) => {
 
   return res.json({ ok: true });
 });
+
+
 
 // ======================================================================
 // ROTAS DO CLIENTE (SUBUSUÁRIOS + CÁLCULO DE DESCONTO)
@@ -1787,6 +1799,8 @@ app.post("/api/client/infinitepay/checkout-link", requireAuth, async (req, res) 
   }
 });
 
+
+
 // Rotas administrativas
 app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
   const users = DB.users
@@ -1902,6 +1916,7 @@ app.put("/api/admin/users/:id", requireAuth, requireAdmin, (req, res) => {
     return res.status(500).json({ error: "Falha ao editar usuário." });
   }
 });
+
 
 app.post("/api/admin/users/:id/reset-password", requireAuth, requireAdmin, (req, res) => {
   try {
@@ -2112,6 +2127,10 @@ app.post("/api/admin/backup/import", requireAuth, requireAdmin, (req, res) => {
   }
 });
 
+
+
+
+
 // ======================================================================
 // BASE INTERNA (CURADA) – APRESENTAÇÕES E DOSAGEM MÁXIMA
 // Observação: esta base existe apenas para melhorar consistência quando o
@@ -2161,6 +2180,7 @@ function getKnownPresentationsMaxDose(medicamentoOriginal) {
 
   return null;
 }
+
 
 // ======================================================================
 // ROTA 1 – GERAR SOAP E PRESCRIÇÃO A PARTIR DA TRANSCRIÇÃO (EXISTENTE)
@@ -2212,6 +2232,7 @@ EVOLUÇÃO DE ENFERMAGEM (texto corrido):
 - Incluir segurança: sinais de alarme e critérios objetivos de reavaliação/encaminhamento quando pertinente.
 - Se dados essenciais não estiverem na transcrição (por exemplo: data/hora, sinais vitais, antecedentes), use "não informado".
 
+
 PLANO DE CUIDADOS (prescrição de enfermagem):
 - Monitorização (o que medir e quando).
 - Cuidados diretos (hidratação, curativo, higiene, posicionamento, mobilidade, prevenção de quedas/LPP quando aplicável).
@@ -2235,6 +2256,7 @@ Transcrição:
     return res.status(500).json({ error: "Falha interna ao gerar evolução/plano de cuidados." });
   }
 });
+
 
 // ======================================================================
 // ROTA EXTRA – GERAR RELATÓRIO DE TRIAGEM HOSPITALAR A PARTIR DA TRANSCRIÇÃO
@@ -2334,6 +2356,11 @@ Transcrição:
   }
 });
 
+
+
+
+
+
 // ======================================================================
 // ROTA EXTRA – GERAR PASSAGEM DE PLANTÃO (ENFERMAGEM) A PARTIR DA TRANSCRIÇÃO
 // ======================================================================
@@ -2425,6 +2452,9 @@ SOAP:
   }
 });
 
+
+
+
 // ======================================================================
 // ROTA 2.1 – ATUALIZAR SOAP E PRESCRIÇÃO A PARTIR DE PERGUNTAS/RESPOSTAS
 // ======================================================================
@@ -2483,6 +2513,9 @@ Novas perguntas e respostas:
     return res.status(500).json({ error: "Falha interna ao atualizar evolução." });
   }
 });
+
+
+
 
 // ======================================================================
 // ROTA 3 – GERAR PASSAGEM DE PLANTÃO (SBAR) A PARTIR DA TRANSCRIÇÃO (NOVO)
@@ -2571,6 +2604,9 @@ app.post("/api/prescricao-hospitalar", requirePaidOrAdmin, async (req, res) => {
   }
 });
 
+
+
+
 // ======================================================================
 // ROTA 4 – CLASSIFICAR MEDICAMENTOS EM GESTAÇÃO E LACTAÇÃO (NOVA)
 // ======================================================================
@@ -2632,6 +2668,14 @@ Contexto:
   }
 });
 
+
+
+
+
+
+
+
+
 // ======================================================================
 // ROTA 4.15 – INTERAÇÕES MEDICAMENTOSAS ENTRE MEDICAMENTOS PRESCRITOS (NOVA)
 // ======================================================================
@@ -2673,6 +2717,11 @@ Contexto:
     return res.status(500).json({ error: "Falha interna ao gerar registro." });
   }
 });
+
+
+
+
+
 
 // ======================================================================
 // ROTA 4.16 – APRESENTAÇÕES E DOSAGEM MÁXIMA DIÁRIA (NOVA)
@@ -2719,6 +2768,11 @@ Contexto:
     return res.status(500).json({ error: "Falha interna ao gerar curativos." });
   }
 });
+
+
+
+
+
 
 // ======================================================================
 // ROTA 4.2 – EXTRAIR DADOS DO PACIENTE (NOME / IDADE / PESO) (NOVA)
@@ -2774,6 +2828,11 @@ Fala:
     return res.json({ nome: null, idade: null, peso_kg: null });
   }
 });
+
+
+
+
+
 
 // ======================================================================
 // ROTA 4.3 – CLASSIFICAÇÃO DE RISCO POR CORES (NOVA)
@@ -2861,6 +2920,7 @@ Contexto:
     return res.status(500).json({ error: "Falha interna ao gerar a classificação de risco." });
   }
 });
+
 
 // ======================================================================
 // ROTA 4.4 – ANÁLISE DE LESÃO POR FOTO (CURATIVOS E FERIDAS) (NOVA)
@@ -2956,6 +3016,8 @@ app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
   }
 });
 
+
+
 // ======================================================================
 // ROTA 4.6 – INTERPRETAÇÃO DE EXAME POR FOTO (NOVA)
 // ======================================================================
@@ -3010,6 +3072,7 @@ Formato de saída: JSON estrito:
   };
 }
 
+
 async function transcreverDocumentoPorImagem(safeImage) {
   const prompt = `
 Você é um profissional de saúde transcrevendo um documento ou prescrição fotografada.
@@ -3050,6 +3113,7 @@ Responda EXCLUSIVAMENTE em JSON, sem markdown, neste formato:
     limitacoes: limitacoes || "não informado"
   };
 }
+
 
 app.post("/api/interpretar-exame-imagem", requirePaidOrAdmin, async(req, res) => {
   try {
@@ -3341,6 +3405,9 @@ app.post("/api/duvidas-enfermagem", requirePaidOrAdmin, async(req, res) => {
   }
 });
 
+
+
+
 // ======================================================================
 // ROTA 6 – GERAR RELATÓRIO CLÍNICO DO PACIENTE A PARTIR DA TRANSCRIÇÃO (NOVA)
 // ======================================================================
@@ -3510,6 +3577,9 @@ Transcrição:
     return res.status(500).json({ error: "Falha interna ao gerar documento." });
   }
 });
+
+
+
 
 // ======================================================================
 // ROTA 6.05 – GERAR DOCUMENTO MÉDICO (INSS/ATESTADO/ENCAMINHAMENTO/DECLARAÇÃO) A PARTIR DA TRANSCRIÇÃO (NOVA)
@@ -3833,6 +3903,11 @@ app.post("/api/guia-documento-tempo-real", requirePaidOrAdmin, async (req, res) 
     return res.status(500).json({ error: "Falha interna no guia em tempo real de documentos." });
   }
 });
+
+
+
+
+
 
 // ======================================================================
 // SAÚDE DO BACKEND (TESTE RÁPIDO)
@@ -4323,6 +4398,7 @@ Transcrição (trecho):
     return res.status(500).json({ error: "Falha interna no guia em tempo real." });
   }
 });
+
 
 // ======================================================================
 // INICIALIZAÇÃO DO SERVIDOR
