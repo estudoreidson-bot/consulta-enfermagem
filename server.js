@@ -300,6 +300,26 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Timeout seguro para chamadas ao OpenAI (evita requisições penduradas indefinidamente)
+function withTimeout(promise, ms, timeoutMessage) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      const id = setTimeout(() => {
+        const err = new Error(timeoutMessage || "Tempo excedido ao chamar o OpenAI.");
+        err.code = "OPENAI_TIMEOUT";
+        reject(err);
+      }, ms);
+      // Evita manter o timer vivo caso a promise resolva primeiro
+      promise.finally(() => clearTimeout(id)).catch(() => {});
+    })
+  ]);
+}
+
+async function openaiChatCompletion(params, ms = 45000) {
+  return withTimeout(openai.chat.completions.create(params), ms, "Tempo excedido ao ler/analisar a imagem. Tente novamente com foto mais nítida ou menor.");
+}
+
 // Função genérica para chamar o modelo e retornar o texto
 async function callOpenAI(prompt) {
   if (!process.env.OPENAI_API_KEY) {
@@ -307,7 +327,7 @@ async function callOpenAI(prompt) {
     err.code = "OPENAI_API_KEY_MISSING";
     throw err;
   }
-  const completion = await openai.chat.completions.create({
+  const completion = await openaiChatCompletion({
     model: "gpt-4o-mini",
     temperature: 0.2,
     messages: [
@@ -369,7 +389,7 @@ async function callOpenAIJson(prompt, maxAttempts = 3) {
 
 // Função para chamar o modelo com imagem (data URL) e retornar JSON
 async function callOpenAIVisionJson(prompt, imagemDataUrl) {
-  const completion = await openai.chat.completions.create({
+  const completion = await openaiChatCompletion({
     model: "gpt-4o-mini",
     temperature: 0.2,
     messages: [
@@ -3241,7 +3261,7 @@ Responda EXCLUSIVAMENTE em JSON, neste formato:
     content.push({ type: "image_url", image_url: { url } });
   }
 
-  const completion = await openai.chat.completions.create({
+  const completion = await openaiChatCompletion({
     model: "gpt-4o-mini",
     temperature: 0.2,
     messages: [{ role: "user", content }]
@@ -3754,7 +3774,7 @@ Formato de saída: JSON estrito:
       const content = [{ type: "text", text: prompt }];
       for (const url of imgs) content.push({ type: "image_url", image_url: { url } });
 
-      const completion = await openai.chat.completions.create({
+      const completion = await openaiChatCompletion({
         model: "gpt-4o-mini",
         temperature: 0.2,
         messages: [{ role: "user", content }]
@@ -3854,6 +3874,9 @@ Formato de saída: JSON estrito:
         });
       } catch (e) {
         console.error(e);
+        if (e && (e.code === "OPENAI_TIMEOUT" || e.code === "OPENAI_RATE_LIMIT" || e.name === "AbortError")) {
+          return res.status(504).json({ error: (e && e.message) ? e.message : "Tempo excedido ao processar." });
+        }
         return res.status(500).json({ error: "Falha interna ao avaliar a receita médica." });
       }
     });

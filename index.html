@@ -5277,13 +5277,13 @@ if (printRxEvalTranscriptionBtn) {
 
 if (rxEvalGuideBtn && rxEvalGuidePanel) {
   rxEvalGuideBtn.addEventListener("click", () => {
-    rxEvalGuidePanel.classList.add("show");
+    rxEvalGuidePanel.classList.add("visible");
   });
 }
 
 if (closeRxEvalGuideBtn && rxEvalGuidePanel) {
   closeRxEvalGuideBtn.addEventListener("click", () => {
-    rxEvalGuidePanel.classList.remove("show");
+    rxEvalGuidePanel.classList.remove("visible");
   });
 }
 
@@ -8106,11 +8106,19 @@ async function analyzeRxEvalWithImages(dataUrls) {
       image_data_url: images[0]
     };
 
-    const resp = await fetch(BACKEND_URL + "/api/avaliar-receita-medica-imagem", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s
+    let resp;
+    try {
+      resp = await fetch(BACKEND_URL + "/api/avaliar-receita-medica-imagem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(data?.error || "Falha ao avaliar a receita.");
@@ -8198,7 +8206,7 @@ async function analyzeRxEvalWithImages(dataUrls) {
     rxEvalStatus.textContent = "Análise concluída.";
     updateRxEvalActions();
   } catch (e) {
-    rxEvalStatus.textContent = "Falha ao avaliar a receita. " + (e && e.message ? e.message : "");
+    rxEvalStatus.textContent = "Falha ao avaliar a receita. " + ((e && (e.name === \"AbortError\")) ? "Tempo excedido ao processar. Tente novamente com imagem mais leve/nítida." : (e && e.message ? e.message : ""));
     rxEvalResult.innerHTML = '<div class="rx-eval-placeholder">Nenhum conteúdo disponível.</div>';
     rxEvalTranscriptionEditor = null;
     lastRxEvalPayload = null;
