@@ -268,7 +268,6 @@ async function hydrateDbFromPgIfAvailable() {
   }
 }
 
-
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -359,113 +358,6 @@ async function callOpenAIJson(prompt, maxAttempts = 3) {
 }
 
 // Função para chamar o modelo com imagem (data URL) e retornar JSON
-
-
-const WEB_SEARCH_ALLOWED_DOMAINS = (process.env.WEB_SEARCH_ALLOWED_DOMAINS || [
-  "consultas.anvisa.gov.br",
-  "bula.anvisa.gov.br",
-  "portal.anvisa.gov.br",
-  "www.gov.br",
-  "sistemas.anvisa.gov.br",
-  "anvisa.gov.br",
-  "bulasmed.com.br",
-  "medley.com.br",
-  "ache.com.br",
-  "sanofi.com.br",
-  "pfizer.com.br",
-  "novartis.com.br"
-].join(","))
-  .split(",")
-  .map(s => String(s || "").trim())
-  .filter(Boolean);
-
-function parseJsonLenient(rawText) {
-  const t = String(rawText || "").trim();
-  if (!t) return null;
-  try {
-    return JSON.parse(t);
-  } catch (e) {
-    // Attempt to extract the first JSON object or array from the text
-    const s = t.indexOf("{");
-    const eObj = t.lastIndexOf("}");
-    const a = t.indexOf("[");
-    const eArr = t.lastIndexOf("]");
-    let candidate = "";
-    if (s !== -1 && eObj !== -1 && eObj > s) {
-      candidate = t.slice(s, eObj + 1);
-    } else if (a !== -1 && eArr !== -1 && eArr > a) {
-      candidate = t.slice(a, eArr + 1);
-    }
-    if (!candidate) return null;
-    try {
-      return JSON.parse(candidate);
-    } catch (e2) {
-      return null;
-    }
-  }
-}
-
-function extractWebSourcesFromResponse(resp) {
-  const out = [];
-  try {
-    const arr = Array.isArray(resp?.output) ? resp.output : [];
-    for (const item of arr) {
-      if (!item || item.type !== "web_search_call") continue;
-      const sources = item?.action?.sources || item?.web_search_call?.action?.sources || [];
-      if (Array.isArray(sources)) {
-        for (const s of sources) {
-          const url = String(s?.url || "").trim();
-          const title = String(s?.title || s?.name || "").trim();
-          if (!url && !title) continue;
-          out.push({ titulo: title || "Fonte", url });
-        }
-      }
-    }
-  } catch (_) {}
-  // Dedup by URL/title
-  const seen = new Set();
-  const dedup = [];
-  for (const f of out) {
-    const key = (f.url || "") + "|" + (f.titulo || "");
-    if (seen.has(key)) continue;
-    seen.add(key);
-    dedup.push(f);
-  }
-  return dedup;
-}
-
-async function callOpenAIJsonWithWebSearch(prompt) {
-  const model = process.env.OPENAI_WEB_MODEL || process.env.OPENAI_MODEL || "gpt-5-mini";
-  const maxAttempts = 3;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const resp = await openai.responses.create({
-        model,
-        input: String(prompt || ""),
-        tools: [
-          {
-            type: "web_search",
-            ...(WEB_SEARCH_ALLOWED_DOMAINS.length ? { filters: { allowed_domains: WEB_SEARCH_ALLOWED_DOMAINS } } : {})
-          }
-        ],
-        include: ["web_search_call.action.sources"]
-      });
-
-      const text = String(resp?.output_text || "").trim();
-      const parsed = parseJsonLenient(text);
-      if (!parsed || typeof parsed !== "object") {
-        throw new Error("Resposta não foi JSON válido.");
-      }
-      const fontes = extractWebSourcesFromResponse(resp);
-      return { json: parsed, fontes };
-    } catch (err) {
-      if (attempt === maxAttempts) throw err;
-      await new Promise(r => setTimeout(r, 650 * attempt));
-    }
-  }
-}
-
 async function callOpenAIVisionJson(prompt, imagemDataUrl) {
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
@@ -564,7 +456,6 @@ const GITHUB_REPO = process.env.GITHUB_REPO || "";
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || "main";
 const GITHUB_DB_PATH = process.env.GITHUB_DB_PATH || "data/enfermagem_users_snapshot.json";
 const GITHUB_ENABLED = !!(GITHUB_TOKEN && GITHUB_REPO);
-
 
 function ensureDataDir() {
   try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch {}
@@ -721,7 +612,6 @@ function backupFile(filePath, reason = "auto") {
   } catch {}
 }
 
-
 function migrateDbIfNeeded() {
   ensureDataDir();
 
@@ -761,7 +651,6 @@ function migrateDbIfNeeded() {
     }
   }
 }
-
 
 function nowIso() {
   return new Date().toISOString();
@@ -824,7 +713,6 @@ function loadDb() {
   } catch {}
   return fresh;
 }
-
 
 function normalizeDb(db) {
   const out = (db && typeof db === "object") ? db : {};
@@ -1061,8 +949,6 @@ async function bootstrapFromGithubIfEmpty() {
   }
 }
 setTimeout(() => { bootstrapFromGithubIfEmpty(); }, 1500).unref?.();
-
-
 
 let DB = loadDb();
 
@@ -1324,7 +1210,6 @@ function authFromReq(req) {
   return { role: "nurse", token, user };
 }
 
-
 function sendAuthFailure(res, ctx) {
   const code = String(ctx?.invalidReason || "");
   if (code === "SESSION_REPLACED") {
@@ -1530,7 +1415,6 @@ app.post("/api/auth/login", (req, res) => {
   }
 });
 
-
 app.get("/api/auth/me", requireAuth, (req, res) => {
   const role = req.auth.role;
   if (role === "admin") return res.json({ role: "admin" });
@@ -1583,7 +1467,6 @@ app.post("/api/auth/logout", requireAuth, (req, res) => {
   return res.json({ ok: true });
 });
 
-
 app.post("/api/auth/heartbeat", requireAuth, (req, res) => {
   try {
     const sess = getSession(req.auth.token);
@@ -1606,8 +1489,6 @@ app.post("/api/auth/heartbeat", requireAuth, (req, res) => {
 
   return res.json({ ok: true });
 });
-
-
 
 // ======================================================================
 // ROTAS DO CLIENTE (SUBUSUÁRIOS + CÁLCULO DE DESCONTO)
@@ -1906,8 +1787,6 @@ app.post("/api/client/infinitepay/checkout-link", requireAuth, async (req, res) 
   }
 });
 
-
-
 // Rotas administrativas
 app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
   const users = DB.users
@@ -2023,7 +1902,6 @@ app.put("/api/admin/users/:id", requireAuth, requireAdmin, (req, res) => {
     return res.status(500).json({ error: "Falha ao editar usuário." });
   }
 });
-
 
 app.post("/api/admin/users/:id/reset-password", requireAuth, requireAdmin, (req, res) => {
   try {
@@ -2234,10 +2112,6 @@ app.post("/api/admin/backup/import", requireAuth, requireAdmin, (req, res) => {
   }
 });
 
-
-
-
-
 // ======================================================================
 // BASE INTERNA (CURADA) – APRESENTAÇÕES E DOSAGEM MÁXIMA
 // Observação: esta base existe apenas para melhorar consistência quando o
@@ -2287,7 +2161,6 @@ function getKnownPresentationsMaxDose(medicamentoOriginal) {
 
   return null;
 }
-
 
 // ======================================================================
 // ROTA 1 – GERAR SOAP E PRESCRIÇÃO A PARTIR DA TRANSCRIÇÃO (EXISTENTE)
@@ -2339,7 +2212,6 @@ EVOLUÇÃO DE ENFERMAGEM (texto corrido):
 - Incluir segurança: sinais de alarme e critérios objetivos de reavaliação/encaminhamento quando pertinente.
 - Se dados essenciais não estiverem na transcrição (por exemplo: data/hora, sinais vitais, antecedentes), use "não informado".
 
-
 PLANO DE CUIDADOS (prescrição de enfermagem):
 - Monitorização (o que medir e quando).
 - Cuidados diretos (hidratação, curativo, higiene, posicionamento, mobilidade, prevenção de quedas/LPP quando aplicável).
@@ -2363,7 +2235,6 @@ Transcrição:
     return res.status(500).json({ error: "Falha interna ao gerar evolução/plano de cuidados." });
   }
 });
-
 
 // ======================================================================
 // ROTA EXTRA – GERAR RELATÓRIO DE TRIAGEM HOSPITALAR A PARTIR DA TRANSCRIÇÃO
@@ -2463,11 +2334,6 @@ Transcrição:
   }
 });
 
-
-
-
-
-
 // ======================================================================
 // ROTA EXTRA – GERAR PASSAGEM DE PLANTÃO (ENFERMAGEM) A PARTIR DA TRANSCRIÇÃO
 // ======================================================================
@@ -2559,9 +2425,6 @@ SOAP:
   }
 });
 
-
-
-
 // ======================================================================
 // ROTA 2.1 – ATUALIZAR SOAP E PRESCRIÇÃO A PARTIR DE PERGUNTAS/RESPOSTAS
 // ======================================================================
@@ -2620,9 +2483,6 @@ Novas perguntas e respostas:
     return res.status(500).json({ error: "Falha interna ao atualizar evolução." });
   }
 });
-
-
-
 
 // ======================================================================
 // ROTA 3 – GERAR PASSAGEM DE PLANTÃO (SBAR) A PARTIR DA TRANSCRIÇÃO (NOVO)
@@ -2711,9 +2571,6 @@ app.post("/api/prescricao-hospitalar", requirePaidOrAdmin, async (req, res) => {
   }
 });
 
-
-
-
 // ======================================================================
 // ROTA 4 – CLASSIFICAR MEDICAMENTOS EM GESTAÇÃO E LACTAÇÃO (NOVA)
 // ======================================================================
@@ -2775,14 +2632,6 @@ Contexto:
   }
 });
 
-
-
-
-
-
-
-
-
 // ======================================================================
 // ROTA 4.15 – INTERAÇÕES MEDICAMENTOSAS ENTRE MEDICAMENTOS PRESCRITOS (NOVA)
 // ======================================================================
@@ -2824,11 +2673,6 @@ Contexto:
     return res.status(500).json({ error: "Falha interna ao gerar registro." });
   }
 });
-
-
-
-
-
 
 // ======================================================================
 // ROTA 4.16 – APRESENTAÇÕES E DOSAGEM MÁXIMA DIÁRIA (NOVA)
@@ -2875,11 +2719,6 @@ Contexto:
     return res.status(500).json({ error: "Falha interna ao gerar curativos." });
   }
 });
-
-
-
-
-
 
 // ======================================================================
 // ROTA 4.2 – EXTRAIR DADOS DO PACIENTE (NOME / IDADE / PESO) (NOVA)
@@ -2935,11 +2774,6 @@ Fala:
     return res.json({ nome: null, idade: null, peso_kg: null });
   }
 });
-
-
-
-
-
 
 // ======================================================================
 // ROTA 4.3 – CLASSIFICAÇÃO DE RISCO POR CORES (NOVA)
@@ -3027,7 +2861,6 @@ Contexto:
     return res.status(500).json({ error: "Falha interna ao gerar a classificação de risco." });
   }
 });
-
 
 // ======================================================================
 // ROTA 4.4 – ANÁLISE DE LESÃO POR FOTO (CURATIVOS E FERIDAS) (NOVA)
@@ -3123,8 +2956,6 @@ app.post("/api/analisar-lesao-imagem", requirePaidOrAdmin, async(req, res) => {
   }
 });
 
-
-
 // ======================================================================
 // ROTA 4.6 – INTERPRETAÇÃO DE EXAME POR FOTO (NOVA)
 // ======================================================================
@@ -3179,7 +3010,6 @@ Formato de saída: JSON estrito:
   };
 }
 
-
 async function transcreverDocumentoPorImagem(safeImage) {
   const prompt = `
 Você é um profissional de saúde transcrevendo um documento ou prescrição fotografada.
@@ -3220,7 +3050,6 @@ Responda EXCLUSIVAMENTE em JSON, sem markdown, neste formato:
     limitacoes: limitacoes || "não informado"
   };
 }
-
 
 app.post("/api/interpretar-exame-imagem", requirePaidOrAdmin, async(req, res) => {
   try {
@@ -3276,370 +3105,6 @@ app.post("/api/transcrever-documento-imagem", requirePaidOrAdmin, async (req, re
 });
 
 });
-
-// ======================================================================
-// ROTA 4.5 – ANÁLISE DE PRESCRIÇÃO POR FOTO (ADMINISTRAÇÃO SEGURA) (NOVA)
-// ======================================================================
-
-app.post("/api/analisar-prescricao-imagem", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const body = req.body || {};
-    const imageDataUrlRaw = getImageDataUrlFromBody(body);
-    const imageDataUrl = normalizeImageDataUrl(imageDataUrlRaw, 12_000_000);
-
-    if (!imageDataUrl) {
-      return res.status(400).json({ error: "IMAGEM_INVALIDA" });
-    }
-
-    const prompt = `
-Você é um farmacêutico clínico e enfermeiro preceptor auxiliando na administração segura de medicamentos a partir de uma prescrição fotografada.
-
-Tarefas:
-1) Transcrever apenas o que estiver legível, sem inventar. Preserve quebras de linha.
-2) Identificar os medicamentos legíveis (nome, dose, forma, via, frequência/horários, observações). Se algo estiver ilegível, marque como "não informado".
-3) Listar interações medicamentosas clinicamente relevantes entre os medicamentos identificados (apenas as que fizerem sentido com base na lista). Se não houver, retorne lista vazia.
-4) Listar pontos de enfermagem relevantes para administração segura com base no que foi prescrito (diluição/velocidade quando aplicável, compatibilidade, checagens, alergias, dupla checagem, cuidados com vias, monitorização, horários, armazenamento). Não invente dados específicos que não estejam na prescrição.
-5) Sinalizar riscos e inconsistências relevantes para enfermagem (dose incompleta, via ausente, abreviações perigosas, duplicidade terapêutica, intervalo inconsistente, prescrição ilegível, risco de LASA, etc.).
-6) Listar itens que precisam ser confirmados antes de administrar.
-
-Regras:
-- Não use emojis.
-- Não invente marcas, doses, horários ou diagnósticos.
-- Se não for possível afirmar com segurança, escreva "não informado" ou coloque o item em "itens_a_confirmar".
-
-Responda SOMENTE com JSON válido no formato:
-{
-  "transcricao_receita": "texto",
-  "medicamentos_identificados": [
-    {
-      "nome": "",
-      "dose": "",
-      "forma": "",
-      "via": "",
-      "frequencia_ou_horarios": "",
-      "observacoes": "",
-      "linha_original": "",
-      "confianca_leitura": "alta|media|baixa"
-    }
-  ],
-  "interacoes_medicamentosas": ["..."],
-  "pontos_enfermagem_prescricao": ["..."],
-  "riscos_e_inconsistencias": ["..."],
-  "itens_a_confirmar": ["..."],
-  "resumo_operacional": "texto curto"
-}
-`;
-
-    const data = await callOpenAIVisionJson(prompt, imageDataUrl);
-
-    const transcricao = normalizeText(data?.transcricao_receita || "", 12000);
-    const medsIn = Array.isArray(data?.medicamentos_identificados) ? data.medicamentos_identificados : [];
-
-    function asText(v, maxLen = 220) {
-      const s = typeof v === "string" ? v.trim() : "";
-      return normalizeText(s, maxLen) || "";
-    }
-
-    const meds = [];
-    for (const m of medsIn.slice(0, 60)) {
-      meds.push({
-        nome: asText(m?.nome, 160) || "não informado",
-        dose: asText(m?.dose, 80) || "não informado",
-        forma: asText(m?.forma, 80) || "não informado",
-        via: asText(m?.via, 40) || "não informado",
-        frequencia_ou_horarios: asText(m?.frequencia_ou_horarios, 160) || "não informado",
-        observacoes: asText(m?.observacoes, 320) || "não informado",
-        linha_original: asText(m?.linha_original, 260) || "não informado",
-        confianca_leitura: asText(m?.confianca_leitura, 12) || "não informado"
-      });
-    }
-
-    const interacoes = Array.isArray(data?.interacoes_medicamentosas)
-      ? data.interacoes_medicamentosas.map(x => asText(x, 240)).filter(Boolean).slice(0, 40)
-      : [];
-
-    const pontosEnf = Array.isArray(data?.pontos_enfermagem_prescricao)
-      ? data.pontos_enfermagem_prescricao.map(x => asText(x, 240)).filter(Boolean).slice(0, 60)
-      : [];
-
-    const riscos = Array.isArray(data?.riscos_e_inconsistencias)
-      ? data.riscos_e_inconsistencias.map(x => asText(x, 240)).filter(Boolean).slice(0, 60)
-      : [];
-
-    const confirmar = Array.isArray(data?.itens_a_confirmar)
-      ? data.itens_a_confirmar.map(x => asText(x, 240)).filter(Boolean).slice(0, 60)
-      : [];
-
-    const resumoOperacional = asText(data?.resumo_operacional, 520);
-
-    // Segurança reprodutiva e tipo de receituário (por medicamento) - determinístico
-    const segurancaReprodutiva = [];
-    {
-      const seen = new Set();
-      for (const m of meds) {
-        const nome = asText(m?.nome, 120);
-        if (!nome) continue;
-        const k = normalizeDrugKey(nome);
-        if (seen.has(k)) continue;
-        seen.add(k);
-        segurancaReprodutiva.push(getDrugSafetyInfo(nome));
-      }
-    }
-
-    return res.json({
-      transcricao_receita: transcricao,
-      medicamentos_identificados: meds,
-      seguranca_reprodutiva: segurancaReprodutiva,
-      interacoes_medicamentosas: interacoes,
-      pontos_enfermagem_prescricao: pontosEnf,
-      riscos_e_inconsistencias: riscos,
-      itens_a_confirmar: confirmar,
-      resumo_operacional: resumoOperacional
-    });
-  } catch (e) {
-    console.error("/api/analisar-prescricao-imagem error:", e?.message || e);
-    return res.status(500).json({ error: e?.message || "INTERNAL_ERROR" });
-  }
-});
-
-app.post("/api/medicamento-monografia", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const body = req.body || {};
-    const medicamento = normalizeText(body.medicamento || body.nome || body.principio_ativo || "", 180);
-    if (!medicamento) return res.status(400).json({ error: "MEDICAMENTO_INVALIDO" });
-
-        const prompt = `
-Você está redigindo uma monografia estruturada para apoio à prática clínica e de enfermagem no Brasil.
-
-Medicamento de referência: "${medicamento}"
-
-Instruções obrigatórias:
-1) Use busca na web para confirmar informações. Priorize, nesta ordem:
-   - Bulário Eletrônico / ANVISA e páginas de consulta da ANVISA;
-   - Bulas oficiais do próprio fabricante (sites corporativos no Brasil);
-   - Portais governamentais (gov.br) e documentos técnicos oficiais.
-2) Foque em informações aplicáveis ao mercado brasileiro (apresentações/formas, posologias usuais e limites).
-3) Não use nomes comerciais. Use apenas o princípio ativo ou denominação genérica.
-4) Para "tipo_receituario", descreva de forma objetiva (ex.: "Receita simples", "Receita de Controle Especial (RCE)", "Notificação de Receita (A/B)", "Uso hospitalar", etc.). Se não houver como confirmar com segurança, use "não informado".
-5) Para gravidez e lactação:
-   - Informe a categoria/risco conforme descrito em bula (ex.: "Categoria C", "Categoria D", "não classificado no Brasil", etc.).
-   - Se a bula não trouxer categoria/risco, use "não informado".
-6) Se um campo não puder ser preenchido com segurança, use "não informado". Não invente.
-7) Inclua "fontes" com 2 a 8 referências (título e URL) usadas na busca, preferindo ANVISA quando existir.
-
-Formato de saída:
-- Responda somente com um JSON válido e estrito, sem comentários, sem markdown.
-
-Esquema JSON obrigatório:
-{
-  "medicamento": "string",
-  "classe": "string",
-  "mecanismo_acao": "string",
-  "apresentacoes": {
-    "solucao_oral": "string",
-    "gotas": "string",
-    "suspensao": "string",
-    "xarope": "string",
-    "comprimidos": "string",
-    "capsulas": "string",
-    "injetavel": "string",
-    "supositorio": "string",
-    "topicos": "string",
-    "inalatorio": "string",
-    "outros": "string"
-  },
-  "uso_clinico": ["string"],
-  "tipo_receituario": "string",
-  "posologia_adulta": {
-    "oral": { "dose_usual": "string", "dose_maxima": "string", "observacoes": "string" },
-    "injetavel": { "dose_usual": "string", "dose_maxima": "string", "observacoes": "string" },
-    "outros": { "dose_usual": "string", "dose_maxima": "string", "observacoes": "string" }
-  },
-  "categoria_gravidez": "string",
-  "uso_lactacao": "string",
-  "uso_geriatrico": "string",
-  "posologia_pediatrica": {
-    "oral": { "dose_mgkg": "string", "intervalo": "string", "dose_maxima": "string", "restricoes_etarias": "string", "modo_uso": "string" },
-    "gotas": { "dose_mgkg": "string", "intervalo": "string", "dose_maxima": "string", "restricoes_etarias": "string", "modo_uso": "string" },
-    "xarope": { "dose_mgkg": "string", "intervalo": "string", "dose_maxima": "string", "restricoes_etarias": "string", "modo_uso": "string" },
-    "comprimido_capsula": { "dose_mgkg": "string", "intervalo": "string", "dose_maxima": "string", "restricoes_etarias": "string", "modo_uso": "string" },
-    "injetavel": { "dose_mgkg": "string", "intervalo": "string", "dose_maxima": "string", "restricoes_etarias": "string", "modo_uso": "string" }
-  },
-  "interacoes_medicamentosas": ["string"],
-  "pontos_enfermagem": ["string"],
-  "fontes": [{ "titulo": "string", "url": "string" }]
-};
-`;
-
-    const enableWeb = String(process.env.OPENAI_ENABLE_WEB_SEARCH || "").trim() === "1";
-    let monografia = null;
-    let fontesWeb = [];
-    if (enableWeb) {
-      const r = await callOpenAIJsonWithWebSearch(prompt);
-      monografia = (r && r.json && typeof r.json === "object") ? r.json : {};
-      fontesWeb = Array.isArray(r?.fontes) ? r.fontes : [];
-    } else {
-      monografia = await callOpenAIJson(prompt, 3);
-    }
-
-
-    // Higienização mínima
-    function asText(v, maxLen = 400) {
-      const s = typeof v === "string" ? v.trim() : "";
-      return normalizeText(s, maxLen) || "";
-    }
-
-    function cleanText(v, maxLen = 400) {
-      const s = asText(v, maxLen);
-      if (!s) return "";
-      const low = s.toLowerCase();
-      if (low === "não informado" || low === "nao informado") return "";
-      return s;
-    }
-
-    function normalizeReceituario(raw) {
-      const s = cleanText(raw, 160);
-      if (!s) return "";
-      const low = s.toLowerCase();
-      if (low.includes("antimicrob")) return "Receita de antimicrobiano";
-      if (low.includes("controle especial") || low.includes("rce")) return "Receita de controle especial (RCE)";
-      if (low.includes("isento")) return "Isento de prescrição";
-      if (low.includes("receita simples")) return "Receita simples";
-      if (low.includes("notificação") && low.includes(" a")) return "Notificação de receita A (amarela)";
-      if (low.includes("notificação") && low.includes(" b")) return "Notificação de receita B (azul)";
-      if (low.includes("amarela")) return "Notificação de receita A (amarela)";
-      if (low.includes("azul")) return "Notificação de receita B (azul)";
-      return s;
-    }
-
-    function buildApresentacoes(obj) {
-      const src = (obj && typeof obj === "object") ? obj : {};
-      const keys = ["solucao_oral", "gotas", "suspensao", "xarope", "comprimidos", "capsulas", "injetavel", "supositorio", "topicos", "inalatorio", "outros"];
-      const out = {};
-      for (const k of keys) {
-        const v = cleanText(src[k], 220);
-        if (v) out[k] = v;
-      }
-      return out;
-    }
-
-    function buildPosologiaAdulta(obj) {
-      const src = (obj && typeof obj === "object") ? obj : {};
-      const out = {};
-      for (const k of ["oral", "injetavel", "outros"]) {
-        const v = src[k] && typeof src[k] === "object" ? src[k] : {};
-        const dose_usual = cleanText(v.dose_usual, 220);
-        const dose_maxima = cleanText(v.dose_maxima, 220);
-        const observacoes = cleanText(v.observacoes, 520);
-        if (dose_usual || dose_maxima || observacoes) {
-          const via = {};
-          if (dose_usual) via.dose_usual = dose_usual;
-          if (dose_maxima) via.dose_maxima = dose_maxima;
-          if (observacoes) via.observacoes = observacoes;
-          out[k] = via;
-        }
-      }
-      return out;
-    }
-
-    function buildPosologiaPediatrica(obj) {
-      const src = (obj && typeof obj === "object") ? obj : {};
-      const out = {};
-      for (const k of ["oral", "gotas", "xarope", "comprimido_capsula", "injetavel"]) {
-        const v = src[k] && typeof src[k] === "object" ? src[k] : {};
-        const dose_mgkg = cleanText(v.dose_mgkg || v.dose, 220);
-        const intervalo = cleanText(v.intervalo || v.frequencia, 160);
-        const dose_maxima = cleanText(v.dose_maxima, 220);
-        const restricoes_etarias = cleanText(v.restricoes_etarias, 220);
-        const modo_uso = cleanText(v.modo_uso, 520);
-        if (dose_mgkg || intervalo || dose_maxima || restricoes_etarias || modo_uso) {
-          const via = {};
-          if (dose_mgkg) via.dose_mgkg = dose_mgkg;
-          if (intervalo) via.intervalo = intervalo;
-          if (dose_maxima) via.dose_maxima = dose_maxima;
-          if (restricoes_etarias) via.restricoes_etarias = restricoes_etarias;
-          if (modo_uso) via.modo_uso = modo_uso;
-          out[k] = via;
-        }
-      }
-      return out;
-    }
-
-    const out = {
-      medicamento: cleanText(monografia?.medicamento || medicamento, 180) || medicamento,
-      classe: cleanText(monografia?.classe, 200),
-      mecanismo_acao: cleanText(monografia?.mecanismo_acao, 600),
-      apresentacoes: buildApresentacoes(monografia?.apresentacoes),
-      uso_clinico: Array.isArray(monografia?.uso_clinico)
-        ? monografia.uso_clinico.map(x => cleanText(x, 120)).filter(Boolean).slice(0, 40)
-        : [],
-      tipo_receituario: normalizeReceituario(monografia?.tipo_receituario),
-      posologia_adulta: buildPosologiaAdulta(monografia?.posologia_adulta),
-      categoria_gravidez: cleanText(monografia?.categoria_gravidez, 120),
-      uso_lactacao: cleanText(monografia?.uso_lactacao, 320),
-      uso_geriatrico: cleanText(monografia?.uso_geriatrico, 320),
-      posologia_pediatrica: buildPosologiaPediatrica(monografia?.posologia_pediatrica),
-      interacoes_medicamentosas: Array.isArray(monografia?.interacoes_medicamentosas)
-        ? monografia.interacoes_medicamentosas.map(x => cleanText(x, 220)).filter(Boolean).slice(0, 80)
-        : [],
-      pontos_enfermagem: Array.isArray(monografia?.pontos_enfermagem)
-        ? monografia.pontos_enfermagem.map(x => cleanText(x, 240)).filter(Boolean).slice(0, 100)
-        : []
-    };
-
-    // Campos críticos: não aceitar inferência por IA.
-    const safety = getDrugSafetyInfo(out.medicamento || medicamento);
-    out.tipo_receituario = safety.tipo_receituario;
-
-    // Gravidez/Lactação: usar dado curado quando existir; caso contrário, manter o valor confirmado na busca.
-    const catCurada = normalizeText(safety.gravidez_categoria || "", 120);
-    const lactCurada = normalizeText(safety.lactacao_risco || "", 240);
-
-    if (catCurada && catCurada.toLowerCase() !== "não informado" && catCurada.toLowerCase() !== "nao informado") {
-      out.categoria_gravidez = catCurada;
-    } else if (!out.categoria_gravidez) {
-      out.categoria_gravidez = "não informado";
-    }
-
-    if (lactCurada && lactCurada.toLowerCase() !== "não informado" && lactCurada.toLowerCase() !== "nao informado") {
-      out.uso_lactacao = lactCurada;
-    } else if (!out.uso_lactacao) {
-      out.uso_lactacao = "não informado";
-    }
-
-    // Fontes consultadas (quando a busca na web estiver habilitada)
-    const fontes = [];
-    const addFonte = (f) => {
-      if (!f) return;
-      const url = normalizeText(f.url || f.link || "", 520);
-      const titulo = normalizeText(f.titulo || f.title || f.nome || "Fonte", 180);
-      if (!url && !titulo) return;
-      fontes.push({ titulo: titulo || "Fonte", url });
-    };
-
-    if (Array.isArray(monografia?.fontes)) monografia.fontes.slice(0, 12).forEach(addFonte);
-    if (Array.isArray(fontesWeb)) fontesWeb.slice(0, 12).forEach(addFonte);
-
-    // Deduplicar por URL
-    const seen = new Set();
-    out.fontes = fontes.filter(f => {
-      const key = (f.url || "") || (f.titulo || "");
-      if (!key) return false;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }).slice(0, 12);
-
-    return res.json({ monografia: out });
-
-  } catch (e) {
-    console.error("/api/medicamento-monografia error:", e?.message || e);
-    return res.status(500).json({ error: e?.message || "INTERNAL_ERROR" });
-  }
-});
-
-
-
 
 // ======================================================================
 // ROTA 4.6 – APRAZAMENTO DE PRESCRIÇÃO POR FOTO (FOLHA REFEITA + EDITÁVEL)
@@ -3876,9 +3341,6 @@ app.post("/api/duvidas-enfermagem", requirePaidOrAdmin, async(req, res) => {
   }
 });
 
-
-
-
 // ======================================================================
 // ROTA 6 – GERAR RELATÓRIO CLÍNICO DO PACIENTE A PARTIR DA TRANSCRIÇÃO (NOVA)
 // ======================================================================
@@ -4048,9 +3510,6 @@ Transcrição:
     return res.status(500).json({ error: "Falha interna ao gerar documento." });
   }
 });
-
-
-
 
 // ======================================================================
 // ROTA 6.05 – GERAR DOCUMENTO MÉDICO (INSS/ATESTADO/ENCAMINHAMENTO/DECLARAÇÃO) A PARTIR DA TRANSCRIÇÃO (NOVA)
@@ -4374,11 +3833,6 @@ app.post("/api/guia-documento-tempo-real", requirePaidOrAdmin, async (req, res) 
     return res.status(500).json({ error: "Falha interna no guia em tempo real de documentos." });
   }
 });
-
-
-
-
-
 
 // ======================================================================
 // SAÚDE DO BACKEND (TESTE RÁPIDO)
@@ -4869,7 +4323,6 @@ Transcrição (trecho):
     return res.status(500).json({ error: "Falha interna no guia em tempo real." });
   }
 });
-
 
 // ======================================================================
 // INICIALIZAÇÃO DO SERVIDOR
