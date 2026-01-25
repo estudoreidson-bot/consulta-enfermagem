@@ -3221,7 +3221,8 @@
 
       <div id="rxEvalStatus" class="mini-status"></div>
 
-      <div class="rx-topic">Transcrição da receita (editável)</div>
+      <div id="rxEvalResults" class="hidden">
+<div class="rx-topic">Transcrição da receita (editável)</div>
       <textarea id="rxEvalTranscription" class="rx-editable" placeholder="A transcrição aparecerá aqui. Você pode editar antes de copiar ou imprimir."></textarea>
 
       <div class="prescription-actions" style="margin-top: 10px;">
@@ -3235,7 +3236,8 @@
 
       <div id="rxEvalDetails" class="classification-box rx-details">Selecione um medicamento acima para ver as informações.</div>
 
-      <input id="rxEvalCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
+      </div>
+<input id="rxEvalCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
       <input id="rxEvalFileInput" class="hidden-input" type="file" accept="image/*" multiple />
     </div>
 
@@ -5162,7 +5164,9 @@ const presentationsMaxDoseBox = document.getElementById("presentationsMaxDoseBox
     const rxEvalCameraInput = document.getElementById("rxEvalCameraInput");
     const rxEvalFileInput = document.getElementById("rxEvalFileInput");
 
-    const rxEvalGuideBtn = document.getElementById("rxEvalGuideBtn");
+    
+    const rxEvalResults = document.getElementById("rxEvalResults");
+const rxEvalGuideBtn = document.getElementById("rxEvalGuideBtn");
     const rxEvalGuidePanel = document.getElementById("rxEvalGuidePanel");
     const closeRxEvalGuideBtn = document.getElementById("closeRxEvalGuideBtn");
 
@@ -8487,11 +8491,21 @@ async function openMedicationMonograph(name) {
     async function analyzeRxEvalWithImages(dataUrls) {
       const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
       if (!rxEvalStatus || !rxEvalTranscription) return;
+      if (rxEvalResults) {
+        if (images.length) rxEvalResults.classList.remove("hidden");
+        else rxEvalResults.classList.add("hidden");
+      }
 
       if (!images.length) {
         rxEvalStatus.textContent = "Nenhuma imagem selecionada.";
         rxEvalTranscription.value = "";
         renderRxEvalMedsButtons([]);
+        if (rxEvalDetails) {
+          rxEvalDetails.innerHTML = "Selecione um medicamento acima para ver as informações.";
+          if (rxEvalDetails.dataset) rxEvalDetails.dataset.copyText = "";
+        }
+        if (rxEvalCopyDetailsBtn) rxEvalCopyDetailsBtn.classList.add("hidden");
+        if (rxEvalPrintDetailsBtn) rxEvalPrintDetailsBtn.classList.add("hidden");
         updateRxEvalActions();
         return;
       }
