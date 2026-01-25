@@ -8601,13 +8601,11 @@ async function openMedicationMonograph(name) {
           const fontesClean = Array.isArray(fontes) ? fontes.filter(x => x && typeof x === "object" && (x.url || x.titulo)).slice(0, 6) : [];
           let fontesText = "";
           if (fontesClean.length) {
-            fontesText = "Fontes consultadas:
-" + fontesClean.map(f => {
+            fontesText = "Fontes consultadas:\n" + fontesClean.map(f => {
               const t = String(f.titulo || "").trim();
               const u = String(f.url || "").trim();
               return "- " + (t ? t + (u ? " - " + u : "") : u);
-            }).join("
-");
+            }).join("\n");
           }
 
           let fontesDiv = null;
