@@ -2134,10 +2134,10 @@
       <p class="auth-subtitle">Ferramenta para auxiliar os profissionais de enfermagem.<br>Acesso restrito para profissionais cadastrados.</p>
 
       <label class="auth-label" for="loginField">CPF (Login)</label>
-      <input id="loginField" class="auth-input" autocomplete="username" inputmode="numeric" / onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('loginBtn')?.click();}">
+      <input id="loginField" class="auth-input" autocomplete="username" inputmode="numeric" />
 
       <label class="auth-label" for="passwordField">Senha</label>
-      <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" / onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('loginBtn')?.click();}">
+      <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
 
       <button id="loginBtn" class="auth-btn" type="button">Entrar</button>
       <div id="loginError" class="auth-error"></div>
@@ -2194,7 +2194,7 @@
       <input id="signupLogin" class="auth-input" autocomplete="username" inputmode="numeric" />
 
       <label class="auth-label" for="signupPassword">Senha</label>
-      <input id="signupPassword" class="auth-input" type="password" autocomplete="new-password" / onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('signupBtn')?.click();}">
+      <input id="signupPassword" class="auth-input" type="password" autocomplete="new-password" />
 
       <button id="signupBtn" class="auth-btn" type="button">Cadastrar</button>
       <button id="signupBackBtn" class="auth-btn secondary" type="button">Voltar</button>
@@ -3113,7 +3113,7 @@
       <button id="medicalDoubtsGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
     </div>
       <p class="mini-status" style="margin-top: 0;">Faça qualquer pergunta sobre saúde. Pressione Enter ou clique em Enviar.</p><div class="inline-input-row" style="gap: 10px; align-items: stretch;">
-  <input id="medicalDoubtInput" class="text-input" type="text" placeholder="Digite sua dúvida sobre saúde e pressione Enter" autocomplete="off" style="flex: 1 1 auto; margin: 0;" / enterkeyhint="send" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('medicalDoubtSendBtn')?.click();}">
+  <input id="medicalDoubtInput" class="text-input" type="text" placeholder="Digite sua dúvida sobre saúde e pressione Enter" autocomplete="off" style="flex: 1 1 auto; margin: 0;" />
   <button id="medicalDoubtSendBtn" class="btn-print" type="button" style="white-space: nowrap;">Enviar</button>
 </div>
       <div id="medicalDoubtStatus" class="mini-status"></div>
@@ -9627,6 +9627,8 @@ recordBtn.onclick = () => {
         copyToClipboard(part + ": " + sectionText);
       });
 
+    });
+
     if (copyFullSoapBtn) {
       copyFullSoapBtn.addEventListener("click", () => {
         const full = getCombinedSoapFromFields();
@@ -9677,12 +9679,7 @@ recordBtn.onclick = () => {
         openPrintWindowHtml("Grade de horários (24 horas)", html);
       });
     }
-        copyToClipboard(t);
-      });
-    }
-        copyToClipboard(t);
-      });
-    }
+
 
     if (copyMedMonographBtn) {
       copyMedMonographBtn.addEventListener("click", () => {
@@ -9807,7 +9804,6 @@ recordBtn.onclick = () => {
         copyToClipboard(text);
       });
     }
-    });
 
     printPregnancyBtn.addEventListener("click", () => {
       openPrintWindow("SAE (Processo de Enfermagem)", pregnancyBox.textContent);
