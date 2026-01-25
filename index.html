@@ -1803,6 +1803,97 @@
   outline: none;
   min-height: 16px;
 }
+
+
+/* =========================
+       MÓDULO: AVALIAR RECEITA MÉDICA
+       ========================= */
+    .rx-eval-wrapper{
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .rx-eval-placeholder{
+      color: #6b7280;
+      font-size: 13px;
+      padding: 8px;
+    }
+    .rx-eval-meta{
+      font-size: 12px;
+      color: #374151;
+      margin: 0 0 10px 0;
+    }
+    .rx-eval-editor{
+      width: 100%;
+      min-height: 180px;
+      resize: vertical;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.35;
+      color: #111827;
+      background: #ffffff;
+      box-sizing: border-box;
+      outline: none;
+    }
+    .rx-eval-section-title{
+      margin: 12px 0 8px 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: #111827;
+    }
+    .rx-eval-help{
+      margin: 8px 0 0 0;
+      font-size: 12px;
+      color: #6b7280;
+      white-space: pre-wrap;
+    }
+    .rx-eval-med{
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    .rx-eval-med summary{
+      cursor: pointer;
+      font-weight: 700;
+      color: #111827;
+      font-size: 13px;
+    }
+    .rx-eval-grid{
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin-top: 10px;
+    }
+    .rx-eval-grid td{
+      border: 1px solid #e5e7eb;
+      padding: 7px 7px;
+      font-size: 12px;
+      vertical-align: top;
+      word-break: break-word;
+    }
+    .rx-eval-grid td.label{
+      width: 170px;
+      background: #f9fafb;
+      font-weight: 700;
+      color: #374151;
+    }
+    .rx-eval-list{
+      margin-top: 6px;
+    }
+    .rx-eval-list div{
+      margin: 2px 0;
+    }
+    .rx-eval-sources a{
+      color: #0f172a;
+      text-decoration: underline;
+      word-break: break-all;
+    }
 .rx-field[contenteditable="true"]:focus{
   box-shadow: 0 0 0 2px rgba(59,130,246,0.25);
   border-radius: 4px;
@@ -3135,6 +3226,51 @@
       </div>
     </div>
 
+
+<div id="rxEvalCard" class="module-card">
+  <div class="section-header-row">
+    <h2>Avaliar receita médica</h2>
+    <button id="rxEvalGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
+  </div>
+
+  <p class="mini-status" style="margin-top: 0;">
+    Envie uma foto nítida ou um arquivo da receita. O módulo faz uma transcrição editável, identifica quantos medicamentos existem e busca informações técnicas de cada medicamento em bulas públicas para apoio à conferência.
+  </p>
+
+  <div class="prescription-actions">
+    <label for="rxEvalCameraInput" class="photo-btn">Tirar foto</label>
+    <label for="rxEvalFileInput" class="photo-btn">Escolher arquivo</label>
+    <button id="copyRxEvalTranscriptionBtn" class="btn-copy hidden" type="button">Copiar transcrição</button>
+    <button id="printRxEvalTranscriptionBtn" class="btn-print hidden" type="button">Imprimir transcrição</button>
+  </div>
+
+  <div id="rxEvalStatus" class="mini-status"></div>
+  <div id="rxEvalResult" class="rx-eval-wrapper">
+    <div class="rx-eval-placeholder">Nenhum conteúdo disponível.</div>
+  </div>
+
+  <input id="rxEvalCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
+  <input id="rxEvalFileInput" class="hidden-input" type="file" accept="image/*" multiple />
+</div>
+
+<div id="rxEvalGuidePanel" class="recommendations-panel">
+  <div class="recommendations-header">
+    <h3>Guia de Avaliar receita médica</h3>
+    <button id="closeRxEvalGuideBtn" class="close-panel-btn" aria-label="Fechar guia de avaliar receita médica">X</button>
+  </div>
+
+  <div class="recommendations-status">
+    Este módulo é uma ferramenta de apoio para transcrição e conferência de prescrições.
+  </div>
+
+  <div class="recommendations-list">
+    <div class="recommendation-item"><strong>Legibilidade e responsabilidade</strong> A prescrição deve ser legível. O Código de Ética Médica veda prescrever de forma ilegível, e normas sanitárias exigem que a dispensação considere a legibilidade e a segurança do paciente (ex.: Lei 5.991/1973 e RDC 44/2009).</div>
+    <div class="recommendation-item"><strong>Limitação em receita manuscrita</strong> Se a receita estiver escrita à mão, com rasuras ou baixa qualidade de imagem, o nome do medicamento pode ser identificado incorretamente. Sempre confirme com a imagem original, carimbo e assinatura antes de qualquer decisão.</div>
+    <div class="recommendation-item"><strong>Uso das informações</strong> As informações exibidas são extraídas de bulas públicas e organizadas para facilitar consulta. Elas não substituem julgamento clínico, protocolos locais e checagem farmacêutica.</div>
+    <div class="recommendation-item"><strong>Conferência final</strong> Antes de imprimir/copiar a transcrição, revise nomes, doses, vias e frequência. Corrija manualmente qualquer divergência.</div>
+  </div>
+</div>
+
 <div id="medicalDoubtsCard" class="module-card">
       <div class="section-header-row">
       <h2>Dúvidas em Saúde</h2>
@@ -3939,6 +4075,8 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     let transcriptionAnalyzeTimer = null;
     let aprazImages = [];
     let aprazAnalyzeTimer = null;
+    let rxEvalImages = [];
+    let rxEvalAnalyzeTimer = null;
 
     // Aprazamento: horário de referência do início da geração (baseado no relógio local)
     let aprazStartTs = null;
@@ -3965,6 +4103,13 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
       transcriptionAnalyzeTimer = setTimeout(() => {
         if (transcriptionImages && transcriptionImages.length) analyzeTranscriptionWithImages(transcriptionImages.slice());
       }, 180);
+    }
+
+    function scheduleRxEvalAnalysis() {
+      if (rxEvalAnalyzeTimer) clearTimeout(rxEvalAnalyzeTimer);
+      rxEvalAnalyzeTimer = setTimeout(() => {
+        if (rxEvalImages && rxEvalImages.length) analyzeRxEvalWithImages(rxEvalImages.slice());
+      }, 220);
     }
 
     function scheduleAprazAnalysis() {
@@ -5018,7 +5163,21 @@ const presentationsMaxDoseBox = document.getElementById("presentationsMaxDoseBox
     const transcriptionCameraInput = document.getElementById("transcriptionCameraInput");
     const transcriptionFileInput = document.getElementById("transcriptionFileInput");
 
-    const transcriptionGuideBtn = document.getElementById("transcriptionGuideBtn");
+    
+const rxEvalStatus = document.getElementById("rxEvalStatus");
+const rxEvalResult = document.getElementById("rxEvalResult");
+const rxEvalCameraInput = document.getElementById("rxEvalCameraInput");
+const rxEvalFileInput = document.getElementById("rxEvalFileInput");
+const copyRxEvalTranscriptionBtn = document.getElementById("copyRxEvalTranscriptionBtn");
+const printRxEvalTranscriptionBtn = document.getElementById("printRxEvalTranscriptionBtn");
+const rxEvalGuideBtn = document.getElementById("rxEvalGuideBtn");
+const rxEvalGuidePanel = document.getElementById("rxEvalGuidePanel");
+const closeRxEvalGuideBtn = document.getElementById("closeRxEvalGuideBtn");
+
+let rxEvalTranscriptionEditor = null;
+let lastRxEvalPayload = null;
+
+const transcriptionGuideBtn = document.getElementById("transcriptionGuideBtn");
     const transcriptionGuidePanel = document.getElementById("transcriptionGuidePanel");
     const closeTranscriptionGuideBtn = document.getElementById("closeTranscriptionGuideBtn");
 
@@ -5081,13 +5240,54 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       setVisible(printTranscriptionBtn, has);
     }
 
+    function updateRxEvalActions() {
+      const txt = (rxEvalTranscriptionEditor && rxEvalTranscriptionEditor.value) ? String(rxEvalTranscriptionEditor.value).trim() : "";
+      const has = !!txt;
+      setVisible(copyRxEvalTranscriptionBtn, has);
+      setVisible(printRxEvalTranscriptionBtn, has);
+    }
+
     function updateAprazamentoActions() {
       const hasGrid = !!(aprazamentoSheetWrapper && aprazamentoSheetWrapper.querySelector && aprazamentoSheetWrapper.querySelector("#aprazHoursGrid"));
       setVisible(printAprazGridBtn, hasGrid);
     }
 
 
-    function updateReportActions() {
+    
+// ============================
+// MÓDULO: Avaliar receita médica – copiar/imprimir/guia
+// ============================
+if (copyRxEvalTranscriptionBtn) {
+  copyRxEvalTranscriptionBtn.addEventListener("click", () => {
+    const txt = (rxEvalTranscriptionEditor && rxEvalTranscriptionEditor.value) ? String(rxEvalTranscriptionEditor.value).trim() : "";
+    if (!txt) {
+      alert("Não há transcrição para copiar.");
+      return;
+    }
+    copyToClipboard(txt);
+  });
+}
+
+if (printRxEvalTranscriptionBtn) {
+  printRxEvalTranscriptionBtn.addEventListener("click", () => {
+    const txt = (rxEvalTranscriptionEditor && rxEvalTranscriptionEditor.value) ? String(rxEvalTranscriptionEditor.value) : "";
+    openPrintWindow("Transcrição da receita", txt);
+  });
+}
+
+if (rxEvalGuideBtn && rxEvalGuidePanel) {
+  rxEvalGuideBtn.addEventListener("click", () => {
+    rxEvalGuidePanel.classList.add("show");
+  });
+}
+
+if (closeRxEvalGuideBtn && rxEvalGuidePanel) {
+  closeRxEvalGuideBtn.addEventListener("click", () => {
+    rxEvalGuidePanel.classList.remove("show");
+  });
+}
+
+function updateReportActions() {
       const has = isMeaningfulText(reportOutput ? reportOutput.value : "");
       setVisible(copyReportBtn, has);
       setVisible(printReportBtn, has);
@@ -7523,7 +7723,7 @@ async function addFilesToTarget(files, targetKey, mode) {
   const list = Array.from(files || []);
   if (!list.length) return;
 
-  const key = (targetKey === "wound" || targetKey === "med" || targetKey === "exam" || targetKey === "transcription" || targetKey === "apraz") ? targetKey : "med";
+  const key = (targetKey === "wound" || targetKey === "med" || targetKey === "exam" || targetKey === "transcription" || targetKey === "apraz" || targetKey === "rx_eval") ? targetKey : "med";
 
   const cfg = key === "wound"
     ? { arr: woundImages, statusEl: presentationsMaxDoseStatus, boxEl: presentationsMaxDoseBox, update: updateWoundActions, schedule: scheduleWoundAnalysis }
@@ -7533,7 +7733,9 @@ async function addFilesToTarget(files, targetKey, mode) {
         ? { arr: transcriptionImages, statusEl: transcriptionStatus, boxEl: transcriptionBox, update: updateTranscriptionActions, schedule: scheduleTranscriptionAnalysis }
         : key === "apraz"
           ? { arr: aprazImages, statusEl: aprazamentoStatus, boxEl: aprazamentoSheetWrapper, update: updateAprazamentoActions, schedule: scheduleAprazAnalysis }
-          : { arr: [], statusEl: null, boxEl: null, update: null, schedule: null };
+          : key === "rx_eval"
+            ? { arr: rxEvalImages, statusEl: rxEvalStatus, boxEl: rxEvalResult, update: updateRxEvalActions, schedule: scheduleRxEvalAnalysis }
+            : { arr: [], statusEl: null, boxEl: null, update: null, schedule: null };
 
   const arr = cfg.arr;
   const statusEl = cfg.statusEl;
@@ -7879,6 +8081,132 @@ async function openMedicationMonograph(name) {
     transcriptionBox.textContent = "Nenhum conteúdo disponível.";
     updateTranscriptionActions();
   }
+async function analyzeRxEvalWithImages(dataUrls) {
+  if (!rxEvalStatus || !rxEvalResult) return;
+
+  const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
+  if (!images.length) {
+    rxEvalStatus.textContent = "Nenhuma imagem selecionada.";
+    rxEvalResult.innerHTML = '<div class="rx-eval-placeholder">Nenhum conteúdo disponível.</div>';
+    rxEvalTranscriptionEditor = null;
+    lastRxEvalPayload = null;
+    updateRxEvalActions();
+    return;
+  }
+
+  rxEvalStatus.textContent = "Lendo a receita e buscando informações em bulas públicas.";
+  rxEvalResult.innerHTML = '<div class="rx-eval-placeholder">Processando.</div>';
+  rxEvalTranscriptionEditor = null;
+  lastRxEvalPayload = null;
+  updateRxEvalActions();
+
+  try {
+    const payload = {
+      images_data_url: images,
+      image_data_url: images[0]
+    };
+
+    const resp = await fetch(BACKEND_URL + "/api/avaliar-receita-medica-imagem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data?.error || "Falha ao avaliar a receita.");
+
+    lastRxEvalPayload = data || null;
+
+    const medsCount = Number(data?.medicamentos_contagem || 0);
+    const pdfOk = !!data?.pdf_parse_instalado;
+
+    rxEvalResult.innerHTML = `
+      <div class="rx-eval-meta">
+        Medicamentos identificados: ${Number.isFinite(medsCount) ? medsCount : 0}.
+        ${pdfOk ? "" : "Dependência de leitura de PDF não instalada no servidor; algumas informações podem aparecer como não informado."}
+      </div>
+
+      <div class="rx-eval-section-title">Transcrição editável</div>
+      <textarea id="rxEvalTranscriptionEditor" class="rx-eval-editor" spellcheck="false"></textarea>
+
+      <div class="rx-eval-help">${escapeHtml(String(data?.limitacoes || "").trim())}</div>
+
+      <div class="rx-eval-section-title">Medicamentos e informações</div>
+      <div id="rxEvalMedicamentosList"></div>
+    `;
+
+    rxEvalTranscriptionEditor = document.getElementById("rxEvalTranscriptionEditor");
+    if (rxEvalTranscriptionEditor) {
+      rxEvalTranscriptionEditor.value = String(data?.transcricao || "").trim();
+      rxEvalTranscriptionEditor.addEventListener("input", updateRxEvalActions);
+    }
+
+    const mount = document.getElementById("rxEvalMedicamentosList");
+    const enriched = Array.isArray(data?.medicamentos_enriquecidos) ? data.medicamentos_enriquecidos : [];
+    if (mount) {
+      if (!enriched.length) {
+        mount.innerHTML = '<div class="rx-eval-placeholder">Nenhuma informação de medicamento disponível.</div>';
+      } else {
+        const blocks = enriched.map((m, idx) => {
+          const nome = escapeHtml(String(m?.nome || "não informado"));
+          const classe = escapeHtml(String(m?.classe || "não informado"));
+          const mecanismo = escapeHtml(String(m?.mecanismo_acao_resumo || "não informado"));
+
+          const listToHtml = (arr) => {
+            const a = Array.isArray(arr) ? arr.filter(Boolean) : [];
+            if (!a.length) return "não informado";
+            return a.map((x) => `<div>${escapeHtml(String(x))}</div>`).join("");
+          };
+
+          const fontes = Array.isArray(m?.fontes) ? m.fontes : [];
+          const fontesHtml = fontes.length
+            ? fontes.map((f) => {
+                const desc = escapeHtml(String(f?.descricao || "Fonte"));
+                const url = String(f?.url || "").trim();
+                if (!url) return "";
+                return `<div><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${desc}</a></div>`;
+              }).join("")
+            : "não informado";
+
+          return `
+            <details class="rx-eval-med" ${idx === 0 ? "open" : ""}>
+              <summary>${nome}</summary>
+              <table class="rx-eval-grid">
+                <tr><td class="label">Classe</td><td>${classe}</td></tr>
+                <tr><td class="label">Mecanismo de ação</td><td>${mecanismo}</td></tr>
+                <tr><td class="label">Apresentações</td><td class="rx-eval-list">${listToHtml(m?.apresentacoes_no_brasil)}</td></tr>
+                <tr><td class="label">Uso clínico</td><td class="rx-eval-list">${listToHtml(m?.uso_clinico_comum)}</td></tr>
+                <tr><td class="label">Tipo de receituário</td><td>${escapeHtml(String(m?.tipo_receituario || "não informado"))}</td></tr>
+                <tr><td class="label">Posologia adulto</td><td class="rx-eval-list">${listToHtml(m?.posologia_adulto_por_apresentacao)}</td></tr>
+                <tr><td class="label">Gravidez</td><td>${escapeHtml(String(m?.gravidez?.categoria || "não informado"))}<div style="margin-top:6px;">${escapeHtml(String(m?.gravidez?.resumo || "não informado"))}</div></td></tr>
+                <tr><td class="label">Lactação</td><td>${escapeHtml(String(m?.lactacao?.classificacao || "não informado"))}<div style="margin-top:6px;">${escapeHtml(String(m?.lactacao?.resumo || "não informado"))}</div></td></tr>
+                <tr><td class="label">Posologia pediatria</td><td class="rx-eval-list">${listToHtml(m?.posologia_pediatria_por_apresentacao)}</td></tr>
+                <tr><td class="label">Interações importantes</td><td class="rx-eval-list">${listToHtml(m?.interacoes_medicamentosas?.importantes)}</td></tr>
+                <tr><td class="label">Outras interações</td><td class="rx-eval-list">${listToHtml(m?.interacoes_medicamentosas?.outras)}</td></tr>
+                <tr><td class="label">Pontos de enfermagem</td><td class="rx-eval-list">${listToHtml(m?.pontos_enfermagem)}</td></tr>
+                <tr><td class="label">Fontes</td><td class="rx-eval-sources">${fontesHtml}</td></tr>
+                <tr><td class="label">Limitações</td><td>${escapeHtml(String(m?.limitacoes || "não informado"))}</td></tr>
+              </table>
+            </details>
+          `;
+        }).join("");
+
+        mount.innerHTML = blocks;
+      }
+    }
+
+    rxEvalStatus.textContent = "Análise concluída.";
+    updateRxEvalActions();
+  } catch (e) {
+    rxEvalStatus.textContent = "Falha ao avaliar a receita. " + (e && e.message ? e.message : "");
+    rxEvalResult.innerHTML = '<div class="rx-eval-placeholder">Nenhum conteúdo disponível.</div>';
+    rxEvalTranscriptionEditor = null;
+    lastRxEvalPayload = null;
+    updateRxEvalActions();
+  }
+}
+
+
 }
 
 
@@ -9995,6 +10323,8 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
     if (examFileInput) bindImageInput(examFileInput, "exam", "replace");
     if (transcriptionCameraInput) bindImageInput(transcriptionCameraInput, "transcription", "append");
     if (transcriptionFileInput) bindImageInput(transcriptionFileInput, "transcription", "replace");
+    if (rxEvalCameraInput) bindImageInput(rxEvalCameraInput, "rx_eval", "replace");
+    if (rxEvalFileInput) bindImageInput(rxEvalFileInput, "rx_eval", "replace");
     if (aprazamentoCameraInput) bindImageInput(aprazamentoCameraInput, "apraz", "append");
     if (aprazamentoFileInput) bindImageInput(aprazamentoFileInput, "apraz", "replace");
 

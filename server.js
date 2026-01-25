@@ -7,6 +7,15 @@ const fs = require("fs");
 const crypto = require("crypto");
 const OpenAI = require("openai");
 
+// Extração de texto de PDF (opcional). Se a dependência não estiver instalada,
+// o módulo "Avaliar receita médica" funcionará com saída reduzida.
+let pdfParse = null;
+try {
+  pdfParse = require("pdf-parse");
+} catch (e) {
+  pdfParse = null;
+}
+
 // ======================================================================
 // SEGURANÇA REPRODUTIVA E TIPO DE RECEITUÁRIO
 // Objetivo: evitar campos "inferidos" por IA. Para reduzir margem de erro,
@@ -3344,6 +3353,511 @@ app.post("/api/aprazar-prescricao-imagem", requirePaidOrAdmin, async (req, res) 
     return res.status(500).json({ error: "Falha interna ao aprazar a prescrição." });
   }
 });
+
+    // ======================================================================
+    // ROTA – AVALIAR RECEITA MÉDICA (foto/arquivo -> transcrição + medicamentos + monografia)
+    // Objetivo: identificar quantos medicamentos existem, transcrever a receita de forma editável
+    // e trazer um resumo técnico por medicamento com base em fontes públicas (bula/ANVISA).
+    //
+    // Observações importantes:
+    // - A extração de texto da bula em PDF é feita via pdf-parse (opcional). Sem ele, o módulo
+    //   retorna links e faz um resumo mais curto.
+    // - A identificação automática pode falhar em receitas manuscritas/ilegíveis; o guia no
+    //   frontend reforça a conferência humana.
+    // ======================================================================
+
+    function asText(v, maxLen) {
+      const s = (typeof v === "string" ? v : "").trim();
+      if (!s) return "";
+      return s.length > maxLen ? s.slice(0, maxLen) : s;
+    }
+
+    function stripDoseAndExtras(name) {
+      const s = normalizeDrugKey(name);
+      if (!s) return "";
+      // remove números, mg, ml, % e termos comuns para tentar capturar o "nome base"
+      const cleaned = s
+        .replace(/\b\d+(?:[\.,]\d+)?\b/g, " ")
+        .replace(/\b(mg|mcg|ug|g|ml|ui|iu|%|cp|cps|comprimidos?|capsulas?|cápsulas?|ampolas?|frascos?|gotas?)\b/gi, " ")
+        .replace(/\b(oral|vo|iv|im|sc|subcutanea|subcutânea|intradermica|intradérmica|inalatoria|inalatória|topica|tópica)\b/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      // usa o primeiro e o segundo termos como chave (ex.: "acido valproico")
+      const parts = cleaned.split(" ").filter(Boolean);
+      return parts.slice(0, 2).join(" ").trim();
+    }
+
+    async function fetchJsonWithTimeout(url, options, timeoutMs = 12000) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const resp = await fetch(url, { ...(options || {}), signal: controller.signal });
+        const txt = await resp.text();
+        let data = null;
+        try { data = JSON.parse(txt); } catch {}
+        if (!resp.ok) {
+          const msg = (data && (data.error || data.detail || data.message)) ? String(data.error || data.detail || data.message) : txt.slice(0, 300);
+          const err = new Error("HTTP " + resp.status + ": " + msg);
+          err.status = resp.status;
+          throw err;
+        }
+        return data !== null ? data : { raw: txt };
+      } finally {
+        clearTimeout(id);
+      }
+    }
+
+    async function fetchBufferWithTimeout(url, options, timeoutMs = 20000, maxBytes = 8_000_000) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const resp = await fetch(url, { ...(options || {}), signal: controller.signal });
+        if (!resp.ok) throw new Error("Falha ao baixar PDF (" + resp.status + ").");
+        const ab = await resp.arrayBuffer();
+        if (ab.byteLength > maxBytes) throw new Error("PDF muito grande para processamento.");
+        return Buffer.from(ab);
+      } finally {
+        clearTimeout(id);
+      }
+    }
+
+    // Busca no Bulário (ANVISA). Primeiro tenta o endpoint oficial (Authorization: Guest).
+    // Se falhar, usa um proxy público compatível (bula.vercel.app), descrito na documentação
+    // do projeto bulario-api (iuryLandin).
+    async function bularioSearch(term) {
+      const q = asText(term, 120);
+      if (!q) return { provider: "none", items: [] };
+
+      // 1) Oficial (tentativa): pode variar parâmetros, então tentamos 2 formatos comuns.
+      const officialBase = "https://consultas.anvisa.gov.br/api/consulta/bulario";
+      const headers = { "Authorization": "Guest" };
+
+      const attempts = [
+        officialBase + "?count=20&page=1&q=" + encodeURIComponent(q),
+        officialBase + "?count=20&page=1&filter[nomeProduto]=" + encodeURIComponent(q)
+      ];
+
+      for (const url of attempts) {
+        try {
+          const data = await fetchJsonWithTimeout(url, { headers }, 12000);
+          const content = Array.isArray(data?.content) ? data.content : (Array.isArray(data?.items) ? data.items : []);
+          if (content.length) return { provider: "anvisa", items: content, raw: data };
+        } catch (e) {
+          // segue para fallback
+        }
+      }
+
+      // 2) Proxy (fallback): https://bula.vercel.app/pesquisar?nome=dipirona&pagina=1
+      try {
+        const url = "https://bula.vercel.app/pesquisar?nome=" + encodeURIComponent(q) + "&pagina=1";
+        const data = await fetchJsonWithTimeout(url, {}, 12000);
+        const items = Array.isArray(data?.content) ? data.content : (Array.isArray(data) ? data : []);
+        return { provider: "proxy", items, raw: data };
+      } catch (e) {
+        return { provider: "none", items: [], error: String(e && e.message ? e.message : e) };
+      }
+    }
+
+    async function bularioGetMedicamentoByProcesso(processo) {
+      const p = String(processo || "").trim();
+      if (!p) return null;
+
+      // proxy do bulario-api: /medicamento/{processo}
+      try {
+        const url = "https://bula.vercel.app/medicamento/" + encodeURIComponent(p);
+        const data = await fetchJsonWithTimeout(url, {}, 12000);
+        return data || null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function bularioGetPdfUrlByHash(idHash) {
+      const h = String(idHash || "").trim();
+      if (!h) return "";
+      try {
+        const url = "https://bula.vercel.app/bula?id=" + encodeURIComponent(h);
+        const data = await fetchJsonWithTimeout(url, {}, 12000);
+        // Alguns retornos usam { url: "..." } ou { link: "..." }
+        const out = (typeof data?.url === "string" ? data.url : (typeof data?.link === "string" ? data.link : ""));
+        return out.trim();
+      } catch (e) {
+        return "";
+      }
+    }
+
+    function extractBulaSections(fullText) {
+      const text = String(fullText || "");
+      if (!text) return { full: "" };
+
+      // Limita para reduzir custo e risco de estouro de tokens
+      const trimmed = text.length > 260000 ? text.slice(0, 260000) : text;
+
+      const wanted = [
+        { key: "indicacoes", labels: ["INDICAÇÕES", "INDICAÇÃO", "PARA QUE ESTE MEDICAMENTO É INDICADO"] },
+        { key: "mecanismo", labels: ["COMO ESTE MEDICAMENTO FUNCIONA", "AÇÃO", "MECANISMO DE AÇÃO"] },
+        { key: "posologia", labels: ["POSOLOGIA", "COMO DEVO USAR", "MODO DE USAR"] },
+        { key: "pediatria", labels: ["USO EM CRIANÇAS", "PEDIÁTRICO", "PEDIATRIA"] },
+        { key: "gravidez", labels: ["GRAVIDEZ", "GESTAÇÃO", "USO NA GRAVIDEZ"] },
+        { key: "lactacao", labels: ["LACTAÇÃO", "AMAMENTAÇÃO", "USO NA LACTAÇÃO"] },
+        { key: "interacoes", labels: ["INTERAÇÕES MEDICAMENTOSAS", "INTERAÇÃO MEDICAMENTOSA", "INTERAÇÕES"] },
+        { key: "contraindicacoes", labels: ["CONTRAINDICAÇÕES", "CONTRAINDICAÇÃO"] },
+        { key: "advertencias", labels: ["ADVERTÊNCIAS", "PRECAUÇÕES", "CUIDADOS"] },
+        { key: "apresentacoes", labels: ["APRESENTAÇÕES", "FORMA FARMACÊUTICA", "APRESENTAÇÃO"] }
+      ];
+
+      const upper = trimmed.toUpperCase();
+      const sections = { full: trimmed };
+
+      for (const w of wanted) {
+        let bestIdx = -1;
+        for (const lab of w.labels) {
+          const idx = upper.indexOf(String(lab).toUpperCase());
+          if (idx !== -1 && (bestIdx === -1 || idx < bestIdx)) bestIdx = idx;
+        }
+        if (bestIdx !== -1) {
+          // pega uma janela a partir do título
+          sections[w.key] = trimmed.slice(bestIdx, Math.min(trimmed.length, bestIdx + 18000)).trim();
+        }
+      }
+
+      return sections;
+    }
+
+    // Cache simples em memória para reduzir chamadas e downloads repetidos
+    const RX_EVAL_CACHE = new Map();
+    function cacheGet(key) {
+      const it = RX_EVAL_CACHE.get(key);
+      if (!it) return null;
+      if (Date.now() > it.exp) {
+        RX_EVAL_CACHE.delete(key);
+        return null;
+      }
+      return it.val;
+    }
+    function cacheSet(key, val, ttlMs) {
+      RX_EVAL_CACHE.set(key, { val, exp: Date.now() + Math.max(5000, ttlMs || 60000) });
+    }
+
+    async function getBulaTextForDrug(drugName) {
+      const k = "bula:" + normalizeDrugKey(drugName);
+      const cached = cacheGet(k);
+      if (cached) return cached;
+
+      const search = await bularioSearch(drugName);
+      const items = Array.isArray(search?.items) ? search.items : [];
+      if (!items.length) {
+        const out = { found: false, provider: search.provider, pdf_url: "", processo: "", meta: null, text: "" };
+        cacheSet(k, out, 10 * 60000);
+        return out;
+      }
+
+      // heurística: escolhe o primeiro item
+      const first = items[0] || {};
+      const processo = String(first?.numeroProcesso || first?.processo || first?.numeroProcessoBula || first?.processoBula || "").trim();
+
+      const medInfo = processo ? await bularioGetMedicamentoByProcesso(processo) : null;
+
+      // tenta pegar hash profissional (preferível), senão paciente
+      const hashProf = String(medInfo?.idBulaProfissionalProtegido || first?.idBulaProfissionalProtegido || "").trim();
+      const hashPac = String(medInfo?.idBulaPacienteProtegido || first?.idBulaPacienteProtegido || "").trim();
+
+      const pdf_url = await bularioGetPdfUrlByHash(hashProf || hashPac);
+
+      let text = "";
+      let extracted = false;
+      if (pdf_url && pdfParse) {
+        try {
+          const buf = await fetchBufferWithTimeout(pdf_url, {}, 22000, 8000000);
+          const parsed = await pdfParse(buf);
+          const rawText = typeof parsed?.text === "string" ? parsed.text : "";
+          text = rawText || "";
+          extracted = !!text;
+        } catch (e) {
+          text = "";
+          extracted = false;
+        }
+      }
+
+      const out = {
+        found: true,
+        provider: search.provider,
+        processo: processo || "",
+        pdf_url: pdf_url || "",
+        meta: medInfo || first || null,
+        extracted_pdf_text: extracted,
+        text
+      };
+
+      cacheSet(k, out, 12 * 60 * 60000);
+      return out;
+    }
+
+    async function enriquecerMedicamento(medName) {
+      const rawName = asText(medName, 160) || "não informado";
+      const baseKey = stripDoseAndExtras(rawName) || normalizeDrugKey(rawName);
+      const tipoReceituario = getReceituarioByDrugKey(baseKey || rawName);
+
+      const bula = await getBulaTextForDrug(rawName);
+      const sections = extractBulaSections(bula?.text || "");
+
+      const fontesFallback = [];
+      if (bula?.pdf_url) fontesFallback.push({ descricao: "Bula (PDF)", url: bula.pdf_url });
+      if (bula?.provider === "anvisa") fontesFallback.push({ descricao: "Bulário Eletrônico (ANVISA)", url: "https://consultas.anvisa.gov.br/#/bulario/" });
+      if (bula?.provider === "proxy") fontesFallback.push({ descricao: "Intermediário de consulta", url: "https://bula.vercel.app/" });
+
+      const hasText = !!(sections?.full && sections.full.trim());
+
+      const prompt = `
+Você é um médico e farmacologista clínico.
+Você vai produzir um resumo técnico e prático de 1 medicamento da receita, SEM inventar informações.
+Use exclusivamente as informações fornecidas na bula abaixo. Se algum item não estiver no texto recebido, responda "não informado".
+
+Medicamento identificado na receita:
+<<<${asText(rawName, 180)}>>>
+
+Tipo de receituário (regras determinísticas locais, pode estar incompleto):
+<<<${asText(tipoReceituario, 120)}>>>
+
+Texto de bula disponível: ${hasText ? "SIM" : "NÃO (apenas links)"}.
+
+Seções relevantes (quando existirem):
+INDICAÇÕES:
+<<<${asText(sections?.indicacoes || "", 6000)}>>>
+
+MECANISMO/COMO FUNCIONA:
+<<<${asText(sections?.mecanismo || "", 6000)}>>>
+
+APRESENTAÇÕES:
+<<<${asText(sections?.apresentacoes || "", 6000)}>>>
+
+POSOLOGIA/COMO USAR:
+<<<${asText(sections?.posologia || "", 9000)}>>>
+
+PEDIATRIA:
+<<<${asText(sections?.pediatria || "", 6000)}>>>
+
+GRAVIDEZ:
+<<<${asText(sections?.gravidez || "", 4000)}>>>
+
+LACTAÇÃO:
+<<<${asText(sections?.lactacao || "", 4000)}>>>
+
+INTERAÇÕES:
+<<<${asText(sections?.interacoes || "", 6000)}>>>
+
+ADVERTÊNCIAS/PRECAUÇÕES:
+<<<${asText(sections?.advertencias || "", 5000)}>>>
+
+CONTRAINDICAÇÕES:
+<<<${asText(sections?.contraindicacoes || "", 5000)}>>>
+
+Regras de saída:
+- Sem emojis e sem símbolos gráficos.
+- Responda em português do Brasil.
+- Quando tiver posologia, descreva por apresentação/forma farmacêutica quando possível (comprimido, suspensão, solução injetável, gotas etc).
+- Em "uso clínico", liste apenas nomes de doenças/condições comuns (sem explicações longas).
+- Em gravidez: se houver categoria (A/B/C/D/X ou outra), diga qual; se não, "não informado".
+- Em lactação: classifique como "contraindicado", "baixo risco", "usar com cautela" ou "não informado", justificando com 1 frase quando possível.
+- Interações: separe em "importantes" e "outras" quando possível; se não houver, "não informado".
+- Pontos de enfermagem: administração, preparo (se houver), monitorização e alertas de segurança mais importantes.
+
+Formato de saída: JSON estrito:
+{
+  "nome": "string",
+  "classe": "string",
+  "mecanismo_acao_resumo": "string",
+  "apresentacoes_no_brasil": ["string"],
+  "uso_clinico_comum": ["string"],
+  "tipo_receituario": "string",
+  "posologia_adulto_por_apresentacao": ["string"],
+  "gravidez": { "categoria": "string", "resumo": "string" },
+  "lactacao": { "classificacao": "string", "resumo": "string" },
+  "posologia_pediatria_por_apresentacao": ["string"],
+  "interacoes_medicamentosas": { "importantes": ["string"], "outras": ["string"] },
+  "pontos_enfermagem": ["string"],
+  "fontes": [{"descricao":"string","url":"string"}],
+  "limitacoes": "string"
+}
+
+Se não houver texto de bula, preencha os campos com "não informado" e mantenha "fontes" com os links recebidos.
+`;
+
+      const data = await callOpenAIJson(prompt);
+
+      // sanitização conservadora
+      const out = {
+        nome: asText(data?.nome || rawName, 180) || rawName,
+        classe: asText(data?.classe, 180) || "não informado",
+        mecanismo_acao_resumo: asText(data?.mecanismo_acao_resumo, 1200) || "não informado",
+        apresentacoes_no_brasil: normalizeArrayOfStrings(data?.apresentacoes_no_brasil, 40, 220),
+        uso_clinico_comum: normalizeArrayOfStrings(data?.uso_clinico_comum, 30, 120),
+        tipo_receituario: asText(data?.tipo_receituario || tipoReceituario, 160) || tipoReceituario,
+        posologia_adulto_por_apresentacao: normalizeArrayOfStrings(data?.posologia_adulto_por_apresentacao, 60, 260),
+        gravidez: {
+          categoria: asText(data?.gravidez?.categoria, 60) || "não informado",
+          resumo: asText(data?.gravidez?.resumo, 700) || "não informado"
+        },
+        lactacao: {
+          classificacao: asText(data?.lactacao?.classificacao, 60) || "não informado",
+          resumo: asText(data?.lactacao?.resumo, 700) || "não informado"
+        },
+        posologia_pediatria_por_apresentacao: normalizeArrayOfStrings(data?.posologia_pediatria_por_apresentacao, 60, 260),
+        interacoes_medicamentosas: {
+          importantes: normalizeArrayOfStrings(data?.interacoes_medicamentosas?.importantes, 40, 220),
+          outras: normalizeArrayOfStrings(data?.interacoes_medicamentosas?.outras, 60, 220)
+        },
+        pontos_enfermagem: normalizeArrayOfStrings(data?.pontos_enfermagem, 50, 260),
+        fontes: Array.isArray(data?.fontes)
+          ? data.fontes.slice(0, 6).map((x) => ({
+              descricao: asText(x?.descricao, 80) || "Fonte",
+              url: asText(x?.url, 500) || ""
+            })).filter((x) => x.url)
+          : fontesFallback,
+        limitacoes: asText(data?.limitacoes, 600) || (bula?.extracted_pdf_text ? "Revisar com a bula original antes de usar." : "Texto completo da bula não pôde ser processado automaticamente; revise a bula em PDF.")
+      };
+
+      if (!out.fontes || !out.fontes.length) out.fontes = fontesFallback;
+
+      return out;
+    }
+
+    async function avaliarReceitaMedicaPorImagem(imagensDataUrl) {
+      const prompt = `
+Você é um médico humano e deve transcrever uma receita médica a partir de imagem(ns).
+Regras:
+- Transcreva apenas o que estiver legível. Não invente.
+- Se algum trecho estiver duvidoso/ilegível, escreva "não informado" naquele trecho.
+- Identifique quantos medicamentos existem e liste cada um como um item.
+- Mantenha fidelidade ao texto original, mas organize em linhas por medicamento.
+
+Formato de saída: JSON estrito:
+{
+  "transcricao": "string",
+  "medicamentos": [
+    {
+      "nome": "string",
+      "dose": "string",
+      "forma": "string",
+      "via": "string",
+      "posologia": "string",
+      "duracao": "string",
+      "observacoes": "string"
+    }
+  ],
+  "observacoes": "string",
+  "limitacoes": "string"
+}
+`;
+
+      const imgs = Array.isArray(imagensDataUrl) ? imagensDataUrl.filter(Boolean).slice(0, 4) : [];
+      const content = [{ type: "text", text: prompt }];
+      for (const url of imgs) content.push({ type: "image_url", image_url: { url } });
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.2,
+        messages: [{ role: "user", content }]
+      });
+
+      const raw = (completion.choices?.[0]?.message?.content || "").trim();
+
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch (e) {
+        const firstBrace = raw.indexOf("{");
+        const lastBrace = raw.lastIndexOf("}");
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          const jsonSlice = raw.slice(firstBrace, lastBrace + 1);
+          data = JSON.parse(jsonSlice);
+        } else {
+          throw new Error("Resposta do modelo não pôde ser convertida em JSON.");
+        }
+      }
+
+      const medsIn = Array.isArray(data?.medicamentos) ? data.medicamentos : [];
+      const meds = medsIn.slice(0, 30).map((m) => ({
+        nome: asText(m?.nome, 180) || "não informado",
+        dose: asText(m?.dose, 80) || "não informado",
+        forma: asText(m?.forma, 80) || "não informado",
+        via: asText(m?.via, 60) || "não informado",
+        posologia: asText(m?.posologia, 160) || "não informado",
+        duracao: asText(m?.duracao, 120) || "não informado",
+        observacoes: asText(m?.observacoes, 220) || "não informado"
+      }));
+
+      return {
+        transcricao: asText(data?.transcricao, 18000) || "não informado",
+        medicamentos: meds,
+        observacoes: asText(data?.observacoes, 1200) || "não informado",
+        limitacoes: asText(data?.limitacoes, 1200) || "não informado"
+      };
+    }
+
+    app.post("/api/avaliar-receita-medica-imagem", requirePaidOrAdmin, async (req, res) => {
+      try {
+        const body = req.body || {};
+        const arr = Array.isArray(body.images_data_url) ? body.images_data_url
+          : (Array.isArray(body.imagens_data_url) ? body.imagens_data_url : null);
+
+        const imagens = (arr && arr.length ? arr : [getImageDataUrlFromBody(body)])
+          .filter((x) => typeof x === "string" && x.trim())
+          .slice(0, 4)
+          .map((x) => normalizeImageDataUrl(x, 4000000))
+          .filter(Boolean);
+
+        if (!imagens.length) {
+          return res.status(400).json({
+            error: "Imagem inválida ou muito grande. Envie uma foto em formato de imagem (data URL) e tente novamente."
+          });
+        }
+
+        const rx = await avaliarReceitaMedicaPorImagem(imagens);
+
+        const enriched = [];
+        for (const m of (rx?.medicamentos || []).slice(0, 20)) {
+          try {
+            const info = await enriquecerMedicamento(m?.nome || "");
+            enriched.push(info);
+          } catch (e) {
+            enriched.push({
+              nome: asText(m?.nome, 180) || "não informado",
+              classe: "não informado",
+              mecanismo_acao_resumo: "não informado",
+              apresentacoes_no_brasil: [],
+              uso_clinico_comum: [],
+              tipo_receituario: getReceituarioByDrugKey(stripDoseAndExtras(m?.nome || "") || m?.nome || ""),
+              posologia_adulto_por_apresentacao: [],
+              gravidez: { categoria: "não informado", resumo: "não informado" },
+              lactacao: { classificacao: "não informado", resumo: "não informado" },
+              posologia_pediatria_por_apresentacao: [],
+              interacoes_medicamentosas: { importantes: [], outras: [] },
+              pontos_enfermagem: [],
+              fontes: [],
+              limitacoes: "Falha ao consultar fontes externas para este medicamento."
+            });
+          }
+        }
+
+        return res.json({
+          transcricao: rx?.transcricao || "não informado",
+          medicamentos_contagem: Array.isArray(rx?.medicamentos) ? rx.medicamentos.length : 0,
+          medicamentos: rx?.medicamentos || [],
+          observacoes: rx?.observacoes || "não informado",
+          limitacoes: rx?.limitacoes || "não informado",
+          medicamentos_enriquecidos: enriched,
+          fontes_gerais: [
+            { descricao: "Bulário Eletrônico (ANVISA)", url: "https://consultas.anvisa.gov.br/#/bulario/" }
+          ],
+          pdf_parse_instalado: !!pdfParse
+        });
+      } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: "Falha interna ao avaliar a receita médica." });
+      }
+    });
+
 
 // ======================================================================
 // ROTA 5 – DÚVIDAS MÉDICAS (NOVA)
