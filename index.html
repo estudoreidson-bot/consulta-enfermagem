@@ -8262,13 +8262,21 @@ async function openMedicationMonograph(name) {
 
       const parts = [];
       const pushTopic = (title) => parts.push('<div class="rx-topic">' + escapeText(title) + '</div>');
+      const isMeaningful = (v) => {
+        const s = String(v === null || v === undefined ? "" : v).trim();
+        if (!s) return false;
+        const low = s.toLowerCase();
+        return low !== "não informado" && low !== "nao informado";
+      };
       const pushP = (txt) => {
         const s = String(txt === null || txt === undefined ? "" : txt).trim();
         if (!s || s.toLowerCase() === "não informado" || s.toLowerCase() === "nao informado") return;
         parts.push('<div class="rx-paragraph">' + escapeText(s) + "</div>");
       };
       const pushList = (arr) => {
-        const a = Array.isArray(arr) ? arr.map(x => String(x || "").trim()).filter(Boolean) : [];
+        const a = Array.isArray(arr)
+          ? arr.map(x => String(x || "").trim()).filter(x => isMeaningful(x))
+          : [];
         if (!a.length) return;
         parts.push('<ul style="margin: 0 0 10px 18px;">' + a.map(x => "<li>" + escapeText(x) + "</li>").join("") + "</ul>");
       };
@@ -8277,14 +8285,17 @@ async function openMedicationMonograph(name) {
       pushTopic("Medicamento");
       pushP(nome || "não informado");
 
-      pushTopic("Classe");
-      pushP(m.classe);
+      if (isMeaningful(m.classe)) {
+        pushTopic("Classe");
+        pushP(m.classe);
+      }
 
-      pushTopic("Mecanismo de ação");
-      pushP(m.mecanismo_acao);
+      if (isMeaningful(m.mecanismo_acao)) {
+        pushTopic("Mecanismo de ação");
+        pushP(m.mecanismo_acao);
+      }
 
       // Apresentações
-      pushTopic("Apresentações no mercado brasileiro");
       const ap = (m.apresentacoes && typeof m.apresentacoes === "object") ? m.apresentacoes : {};
       const apItems = [];
       for (const k of Object.keys(ap)) {
@@ -8292,64 +8303,88 @@ async function openMedicationMonograph(name) {
         const s = (v === null || v === undefined) ? "" : String(v).trim();
         if (s && s.toLowerCase() !== "não informado" && s.toLowerCase() !== "nao informado") apItems.push(s);
       }
-      if (apItems.length) pushList(apItems); else pushP("não informado");
+
+      if (apItems.length) {
+        pushTopic("Apresentações no mercado brasileiro");
+        pushList(apItems);
+      }
 
       // Uso clínico
-      pushTopic("Uso clínico (doenças mais comuns)");
-      pushList(m.uso_clinico);
-      if (!Array.isArray(m.uso_clinico) || !m.uso_clinico.length) pushP("não informado");
+      const uso = Array.isArray(m.uso_clinico) ? m.uso_clinico.map(x => String(x || "").trim()).filter(x => isMeaningful(x)) : [];
+      if (uso.length) {
+        pushTopic("Uso clínico (doenças mais comuns)");
+        pushList(uso);
+      }
 
       // Tipo de receituário
-      pushTopic("Tipo de receituário");
-      pushP(m.tipo_receituario);
+      if (isMeaningful(m.tipo_receituario)) {
+        pushTopic("Tipo de receituário");
+        pushP(m.tipo_receituario);
+      }
 
       // Adultos (por apresentação)
-      pushTopic("Posologia em adultos (por via/apresentação)");
       const pa = (m.posologia_adulto && typeof m.posologia_adulto === "object") ? m.posologia_adulto : {};
       const paBlocks = [];
       for (const k of Object.keys(pa)) {
         const v = pa[k] || {};
         const lines = [];
         const label = String(k || "").trim();
-        if (v.dose_usual) lines.push("Dose usual: " + v.dose_usual);
-        if (v.dose_maxima) lines.push("Dose máxima: " + v.dose_maxima);
-        if (v.modo_uso) lines.push("Modo de uso: " + v.modo_uso);
+        if (isMeaningful(v.dose_usual)) lines.push("Dose usual: " + String(v.dose_usual).trim());
+        if (isMeaningful(v.dose_maxima)) lines.push("Dose máxima: " + String(v.dose_maxima).trim());
+        if (isMeaningful(v.modo_uso)) lines.push("Modo de uso: " + String(v.modo_uso).trim());
         if (lines.length) paBlocks.push("<div class='rx-paragraph'><strong>" + escapeText(label) + ":</strong><br>" + lines.map(escapeText).join("<br>") + "</div>");
       }
-      if (paBlocks.length) parts.push(paBlocks.join("")); else pushP("não informado");
+
+      if (paBlocks.length) {
+        pushTopic("Posologia em adultos (por via/apresentação)");
+        parts.push(paBlocks.join(""));
+      }
 
       // Gravidez/lactação
-      pushTopic("Uso na gravidez");
-      pushP(m.categoria_gravidez || m.gravidez_categoria);
+      const grav = m.categoria_gravidez || m.gravidez_categoria;
+      if (isMeaningful(grav)) {
+        pushTopic("Uso na gravidez");
+        pushP(grav);
+      }
 
-      pushTopic("Uso na lactação");
-      pushP(m.uso_lactacao || m.lactacao_risco);
+      const lact = m.uso_lactacao || m.lactacao_risco;
+      if (isMeaningful(lact)) {
+        pushTopic("Uso na lactação");
+        pushP(lact);
+      }
 
       // Pediatria
-      pushTopic("Posologia pediátrica (por via/apresentação)");
       const pp = (m.posologia_pediatrica && typeof m.posologia_pediatrica === "object") ? m.posologia_pediatrica : {};
       const ppBlocks = [];
       for (const k of Object.keys(pp)) {
         const v = pp[k] || {};
         const lines = [];
         const label = String(k || "").trim();
-        if (v.dose_mgkg) lines.push("Dose (mg/kg): " + v.dose_mgkg);
-        if (v.intervalo) lines.push("Intervalo/frequência: " + v.intervalo);
-        if (v.dose_maxima) lines.push("Dose máxima: " + v.dose_maxima);
-        if (v.restricoes_etarias) lines.push("Restrições etárias: " + v.restricoes_etarias);
-        if (v.modo_uso) lines.push("Modo de uso: " + v.modo_uso);
+        if (isMeaningful(v.dose_mgkg)) lines.push("Dose (mg/kg): " + String(v.dose_mgkg).trim());
+        if (isMeaningful(v.intervalo)) lines.push("Intervalo/frequência: " + String(v.intervalo).trim());
+        if (isMeaningful(v.dose_maxima)) lines.push("Dose máxima: " + String(v.dose_maxima).trim());
+        if (isMeaningful(v.restricoes_etarias)) lines.push("Restrições etárias: " + String(v.restricoes_etarias).trim());
+        if (isMeaningful(v.modo_uso)) lines.push("Modo de uso: " + String(v.modo_uso).trim());
         if (lines.length) ppBlocks.push("<div class='rx-paragraph'><strong>" + escapeText(label) + ":</strong><br>" + lines.map(escapeText).join("<br>") + "</div>");
       }
-      if (ppBlocks.length) parts.push(ppBlocks.join("")); else pushP("não informado");
+
+      if (ppBlocks.length) {
+        pushTopic("Posologia pediátrica (por via/apresentação)");
+        parts.push(ppBlocks.join(""));
+      }
 
       // Interações e enfermagem
-      pushTopic("Interações medicamentosas");
-      pushList(m.interacoes_medicamentosas);
-      if (!Array.isArray(m.interacoes_medicamentosas) || !m.interacoes_medicamentosas.length) pushP("não informado");
+      const inter = Array.isArray(m.interacoes_medicamentosas) ? m.interacoes_medicamentosas.map(x => String(x || "").trim()).filter(x => isMeaningful(x)) : [];
+      if (inter.length) {
+        pushTopic("Interações medicamentosas");
+        pushList(inter);
+      }
 
-      pushTopic("Pontos de enfermagem");
-      pushList(m.pontos_enfermagem);
-      if (!Array.isArray(m.pontos_enfermagem) || !m.pontos_enfermagem.length) pushP("não informado");
+      const enf = Array.isArray(m.pontos_enfermagem) ? m.pontos_enfermagem.map(x => String(x || "").trim()).filter(x => isMeaningful(x)) : [];
+      if (enf.length) {
+        pushTopic("Pontos de enfermagem");
+        pushList(enf);
+      }
 
       // Fontes sugeridas
       const fontes = Array.isArray(m.fontes_sugeridas) ? m.fontes_sugeridas : [];

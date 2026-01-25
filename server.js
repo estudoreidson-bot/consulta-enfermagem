@@ -144,10 +144,10 @@ function getReceituarioByDrugKey(drugKey) {
 function getDrugSafetyInfo(drugName) {
   const key = normalizeDrugKey(drugName);
   const base = {
-    medicamento: String(drugName || "").trim() || "não informado",
+    medicamento: String(drugName || "").trim() || "",
     tipo_receituario: getReceituarioByDrugKey(key),
-    gravidez_categoria: "não informado",
-    lactacao_risco: "não informado"
+    gravidez_categoria: "",
+    lactacao_risco: ""
   };
   const curated = DRUG_SAFETY_DB[key];
   if (curated && typeof curated === "object") {
@@ -202,16 +202,16 @@ async function gerarMonografiaMedicamento(medicamento, fontesSugeridas) {
   const nome = normalizeText(medicamento, 140);
   if (!nome) {
     return {
-      medicamento: "não informado",
-      classe: "não informado",
-      mecanismo_acao: "não informado",
-      apresentacoes: { oral: "não informado", gotas: "não informado", xarope: "não informado", comprimido_capsula: "não informado", injetavel: "não informado" },
+      medicamento: "",
+      classe: "",
+      mecanismo_acao: "",
+      apresentacoes: { oral: "", gotas: "", xarope: "", comprimido_capsula: "", injetavel: "" },
       uso_clinico: [],
-      tipo_receituario: "não informado",
+      tipo_receituario: "",
       posologia_adulto: { oral: {}, gotas: {}, xarope: {}, comprimido_capsula: {}, injetavel: {} },
-      categoria_gravidez: "não informado",
-      uso_lactacao: "não informado",
-      uso_geriatrico: "não informado",
+      categoria_gravidez: "",
+      uso_lactacao: "",
+      uso_geriatrico: "",
       posologia_pediatrica: { oral: {}, gotas: {}, xarope: {}, comprimido_capsula: {}, injetavel: {} },
       interacoes_medicamentosas: [],
       pontos_enfermagem: [],
@@ -222,18 +222,18 @@ async function gerarMonografiaMedicamento(medicamento, fontesSugeridas) {
   const safety = getDrugSafetyInfo(nome);
 
   const prompt = `
-Você é um médico no Brasil e deve gerar uma monografia clínica objetiva de um medicamento.
-Prioridade de conteúdo: se tiver conhecimento confiável e consolidado, use-o; se não tiver, escreva "não informado" (não invente).
-Não cite marcas se não tiver certeza.
+Você é um médico no Brasil e deve gerar uma monografia clínica completa e prática de um medicamento.
+Prioridade: use apenas informação consolidada e segura. Se não tiver certeza técnica, deixe o campo em branco (string vazia) ou lista vazia. Não invente.
+Marcas: inclua nomes comerciais apenas quando forem muito conhecidos e você tiver alta confiança; caso contrário, omita.
 
 Regras:
 1) Use português do Brasil.
 2) Sem emojis e sem símbolos gráficos.
 3) Não inclua links no texto (links serão adicionados fora).
 4) Para "uso_clinico", liste apenas nomes de doenças/condições mais comuns (sem explicações).
-5) Para apresentações, foque em formas e concentrações usuais no mercado brasileiro, quando souber; caso contrário, "não informado".
-6) Para posologia, descreva dose usual, dose máxima e modo de uso por via/apresentação; se não souber, "não informado".
-7) Para gravidez e lactação, se não souber com segurança, escreva "não informado".
+5) Para apresentações, descreva de forma detalhada por forma farmacêutica e concentração usuais no Brasil. Quando pertinente, inclua exemplos de nomes comerciais por forma/concentração, se tiver alta confiança.
+6) Para posologia, descreva dose usual, dose máxima e modo de uso por via/apresentação (inclua ajustes ou alertas relevantes). Se não souber com segurança, deixe em branco.
+7) Gravidez e lactação: só preencha se tiver segurança. Caso contrário, deixe em branco.
 
 Responda EXCLUSIVAMENTE em JSON, sem markdown, neste formato:
 {
@@ -278,21 +278,21 @@ Medicamento: ${nome}
 
   const out = {
     medicamento: (typeof data?.medicamento === "string" ? data.medicamento.trim() : nome) || nome,
-    classe: (typeof data?.classe === "string" ? data.classe.trim() : "") || "não informado",
-    mecanismo_acao: (typeof data?.mecanismo_acao === "string" ? data.mecanismo_acao.trim() : "") || "não informado",
+    classe: (typeof data?.classe === "string" ? data.classe.trim() : "") || "",
+    mecanismo_acao: (typeof data?.mecanismo_acao === "string" ? data.mecanismo_acao.trim() : "") || "",
     apresentacoes: {
-      oral: (typeof data?.apresentacoes?.oral === "string" ? data.apresentacoes.oral.trim() : "") || "não informado",
-      gotas: (typeof data?.apresentacoes?.gotas === "string" ? data.apresentacoes.gotas.trim() : "") || "não informado",
-      xarope: (typeof data?.apresentacoes?.xarope === "string" ? data.apresentacoes.xarope.trim() : "") || "não informado",
-      comprimido_capsula: (typeof data?.apresentacoes?.comprimido_capsula === "string" ? data.apresentacoes.comprimido_capsula.trim() : "") || "não informado",
-      injetavel: (typeof data?.apresentacoes?.injetavel === "string" ? data.apresentacoes.injetavel.trim() : "") || "não informado"
+      oral: (typeof data?.apresentacoes?.oral === "string" ? data.apresentacoes.oral.trim() : "") || "",
+      gotas: (typeof data?.apresentacoes?.gotas === "string" ? data.apresentacoes.gotas.trim() : "") || "",
+      xarope: (typeof data?.apresentacoes?.xarope === "string" ? data.apresentacoes.xarope.trim() : "") || "",
+      comprimido_capsula: (typeof data?.apresentacoes?.comprimido_capsula === "string" ? data.apresentacoes.comprimido_capsula.trim() : "") || "",
+      injetavel: (typeof data?.apresentacoes?.injetavel === "string" ? data.apresentacoes.injetavel.trim() : "") || ""
     },
     uso_clinico: Array.isArray(data?.uso_clinico) ? data.uso_clinico.map(x => String(x || "").trim()).filter(Boolean).slice(0, 25) : [],
-    tipo_receituario: (typeof data?.tipo_receituario === "string" ? data.tipo_receituario.trim() : "") || "não informado",
+    tipo_receituario: (typeof data?.tipo_receituario === "string" ? data.tipo_receituario.trim() : "") || "",
     posologia_adulto: (typeof data?.posologia_adulto === "object" && data.posologia_adulto) ? data.posologia_adulto : {},
-    categoria_gravidez: (typeof data?.categoria_gravidez === "string" ? data.categoria_gravidez.trim() : "") || "não informado",
-    uso_lactacao: (typeof data?.uso_lactacao === "string" ? data.uso_lactacao.trim() : "") || "não informado",
-    uso_geriatrico: (typeof data?.uso_geriatrico === "string" ? data.uso_geriatrico.trim() : "") || "não informado",
+    categoria_gravidez: (typeof data?.categoria_gravidez === "string" ? data.categoria_gravidez.trim() : "") || "",
+    uso_lactacao: (typeof data?.uso_lactacao === "string" ? data.uso_lactacao.trim() : "") || "",
+    uso_geriatrico: (typeof data?.uso_geriatrico === "string" ? data.uso_geriatrico.trim() : "") || "",
     posologia_pediatrica: (typeof data?.posologia_pediatrica === "object" && data.posologia_pediatrica) ? data.posologia_pediatrica : {},
     interacoes_medicamentosas: Array.isArray(data?.interacoes_medicamentosas) ? data.interacoes_medicamentosas.map(x => String(x || "").trim()).filter(Boolean).slice(0, 30) : [],
     pontos_enfermagem: Array.isArray(data?.pontos_enfermagem) ? data.pontos_enfermagem.map(x => String(x || "").trim()).filter(Boolean).slice(0, 30) : [],
@@ -300,23 +300,23 @@ Medicamento: ${nome}
   };
 
   // Override/Enriquecimento com bases internas (receituário/gravidez/lactação)
-  if (safety?.tipo_receituario && safety.tipo_receituario !== "não informado") out.tipo_receituario = safety.tipo_receituario;
-  if (safety?.gravidez_categoria && safety.gravidez_categoria !== "não informado") out.categoria_gravidez = safety.gravidez_categoria;
-  if (safety?.lactacao_risco && safety.lactacao_risco !== "não informado") out.uso_lactacao = safety.lactacao_risco;
+  if (safety?.tipo_receituario) out.tipo_receituario = safety.tipo_receituario;
+  if (safety?.gravidez_categoria) out.categoria_gravidez = safety.gravidez_categoria;
+  if (safety?.lactacao_risco) out.uso_lactacao = safety.lactacao_risco;
 
   // Normaliza estruturas para evitar quebra no frontend
   const normPosAdult = (obj) => ({
-    dose_usual: (typeof obj?.dose_usual === "string" ? obj.dose_usual.trim() : "") || "não informado",
-    dose_maxima: (typeof obj?.dose_maxima === "string" ? obj.dose_maxima.trim() : "") || "não informado",
-    modo_uso: (typeof obj?.modo_uso === "string" ? obj.modo_uso.trim() : "") || "não informado"
+    dose_usual: (typeof obj?.dose_usual === "string" ? obj.dose_usual.trim() : "") || "",
+    dose_maxima: (typeof obj?.dose_maxima === "string" ? obj.dose_maxima.trim() : "") || "",
+    modo_uso: (typeof obj?.modo_uso === "string" ? obj.modo_uso.trim() : "") || ""
   });
 
   const normPosPed = (obj) => ({
-    dose_mgkg: (typeof obj?.dose_mgkg === "string" ? obj.dose_mgkg.trim() : "") || "não informado",
-    intervalo: (typeof obj?.intervalo === "string" ? obj.intervalo.trim() : "") || "não informado",
-    dose_maxima: (typeof obj?.dose_maxima === "string" ? obj.dose_maxima.trim() : "") || "não informado",
-    restricoes_etarias: (typeof obj?.restricoes_etarias === "string" ? obj.restricoes_etarias.trim() : "") || "não informado",
-    modo_uso: (typeof obj?.modo_uso === "string" ? obj.modo_uso.trim() : "") || "não informado"
+    dose_mgkg: (typeof obj?.dose_mgkg === "string" ? obj.dose_mgkg.trim() : "") || "",
+    intervalo: (typeof obj?.intervalo === "string" ? obj.intervalo.trim() : "") || "",
+    dose_maxima: (typeof obj?.dose_maxima === "string" ? obj.dose_maxima.trim() : "") || "",
+    restricoes_etarias: (typeof obj?.restricoes_etarias === "string" ? obj.restricoes_etarias.trim() : "") || "",
+    modo_uso: (typeof obj?.modo_uso === "string" ? obj.modo_uso.trim() : "") || ""
   });
 
   const pa = out.posologia_adulto || {};
