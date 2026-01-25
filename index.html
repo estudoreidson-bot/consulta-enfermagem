@@ -1848,7 +1848,7 @@
 }
 
 
-    /* Avaliar receita médica */
+    /* Avaliar receita */
     .rx-eval-header {
       display: flex;
       align-items: center;
@@ -1906,12 +1906,49 @@
       flex-wrap: wrap;
     }
 
-    .rx-eval-med-text {
+    .rx-eval-med-rich {
       width: 100%;
       min-height: 260px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px;
+      color: #111827;
+      line-height: 1.45;
+      white-space: normal;
+      outline: none;
     }
 
-    .rx-eval-sources {
+    .rx-eval-med-rich:focus {
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.25);
+    }
+
+    .rx-eval-med-rich .rx-eval-section {
+      margin: 0 0 12px 0;
+    }
+
+    .rx-eval-med-rich .rx-eval-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .rx-eval-med-rich ul {
+      margin: 6px 0 0 18px;
+      padding: 0;
+    }
+
+    .rx-eval-med-rich li {
+      margin: 0 0 4px 0;
+    }
+
+    .rx-eval-label-hot {
+      color: #c00000;
+      font-weight: 700;
+    }
+
+    .rx-eval-label {
+      font-weight: 700;
+    }
+.rx-eval-sources {
       font-size: 0.9rem;
       opacity: 0.9;
       margin-top: 8px;
@@ -3119,7 +3156,8 @@
     
     <div id="rxEvalCard" class="module-card">
       <div class="section-header-row">
-        <h2>Avaliar receita médica</h2>
+        <h2>Avaliar receita</h2>
+        <button id="rxEvalGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
       </div>
 
       <p class="mini-status" style="margin-top: 0;">
@@ -3942,6 +3980,24 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
       <div class="recommendation-item"><strong>5) Segurança</strong><br>Antes de administrar, confirme via, dose, diluição/velocidade e restrições no documento oficial e no protocolo institucional. Em caso de divergência, priorize a prescrição oficial.</div>
     </div>
   </div>
+  <div id="rxEvalGuidePanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Guia de Avaliar receita</h3>
+      <button id="closeRxEvalGuideBtn" class="close-panel-btn" aria-label="Fechar guia de avaliar receita">X</button>
+    </div>
+
+    <div class="recommendations-status">
+      Este módulo é uma ferramenta de apoio para transcrição e conferência de prescrições.
+    </div>
+
+    <div class="recommendations-list">
+      <div class="recommendation-item"><strong>Legibilidade e responsabilidade</strong><br>A prescrição deve ser legível. O Código de Ética Médica veda prescrever de forma ilegível, e normas sanitárias exigem que a dispensação considere a legibilidade e a segurança do paciente (ex.: Lei 5.991/1973 e RDC 44/2009).</div>
+      <div class="recommendation-item"><strong>Limitação em receita manuscrita</strong><br>Se a receita estiver escrita à mão, com rasuras ou baixa qualidade de imagem, o nome do medicamento pode ser identificado incorretamente. Sempre confirme com a imagem original, carimbo e assinatura antes de qualquer decisão.</div>
+      <div class="recommendation-item"><strong>Uso das informações</strong><br>As informações exibidas são extraídas de bulas públicas e organizadas para facilitar consulta. Elas não substituem julgamento clínico, protocolos locais e checagem farmacêutica.</div>
+      <div class="recommendation-item"><strong>Conferência final</strong><br>Antes de imprimir/copiar a transcrição, revise nomes, doses, vias e frequência. Corrija manualmente qualquer divergência.</div>
+    </div>
+  </div>
+
 
   <div id="woundGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
@@ -5014,6 +5070,11 @@ const recordBtn = document.getElementById("recordBtn");
     const rxEvalFileInput = document.getElementById("rxEvalFileInput");
     const rxEvalOriginalDetails = document.getElementById("rxEvalOriginalDetails");
     const rxEvalOriginalImages = document.getElementById("rxEvalOriginalImages");
+
+    const rxEvalGuideBtn = document.getElementById("rxEvalGuideBtn");
+    const rxEvalGuidePanel = document.getElementById("rxEvalGuidePanel");
+    const closeRxEvalGuideBtn = document.getElementById("closeRxEvalGuideBtn");
+
 
 
 
@@ -7882,7 +7943,7 @@ async function addFilesToTarget(files, targetKey, mode) {
     ln.push(...adBlocks);
   }
 
-  pushKeyVal('Categoria na gravidez', m.categoria_gravidez);
+  pushKeyVal('Categoria da gravidez', m.categoria_gravidez);
   pushKeyVal('Uso na lactação', m.uso_lactacao);
   pushKeyVal('Uso geriátrico', m.uso_geriatrico);
   if (ln.length && ln[ln.length - 1] !== '') ln.push('');
@@ -7922,6 +7983,150 @@ async function addFilesToTarget(files, targetKey, mode) {
   pushList('Pontos de enfermagem', m.pontos_enfermagem);
 
   return ln.join('\n').trim();
+}
+
+function buildMonographRich(m) {
+  const text = buildMonographText(m);
+  if (!m || typeof m !== 'object') {
+    const safe = String(text || 'Nenhum conteúdo disponível.');
+    return { html: '<div class="rx-eval-section">' + escapeHtml(safe) + '</div>', text: safe };
+  }
+
+  function isMeaningful(v) {
+    const s = (v === null || v === undefined) ? '' : String(v).trim();
+    if (!s) return false;
+    const low = s.toLowerCase();
+    if (low === 'não informado' || low === 'nao informado') return false;
+    return true;
+  }
+
+  function esc(v) { return escapeHtml(String(v || '').trim()); }
+
+  const hot = new Set([
+    'Medicamento',
+    'Classe',
+    'Mecanismo de ação',
+    'Apresentações',
+    'Uso clínico',
+    'Tipo de receituário',
+    'Categoria da gravidez',
+    'Uso na lactação',
+    'Uso geriátrico',
+    'Interações medicamentosas',
+    'Pontos de enfermagem'
+  ]);
+
+  function labelSpan(label) {
+    const cls = hot.has(label) ? 'rx-eval-label-hot' : 'rx-eval-label';
+    return '<span class="' + cls + '">' + esc(label) + ':</span>';
+  }
+
+  function sectionLine(label, value) {
+    if (!isMeaningful(value)) return '';
+    return '<div class="rx-eval-section">' + labelSpan(label) + ' <span>' + esc(value) + '</span></div>';
+  }
+
+  function sectionList(label, arr) {
+    const a = Array.isArray(arr)
+      ? Array.from(new Set(arr.map(x => (x === null || x === undefined) ? '' : String(x).trim()).filter(isMeaningful)))
+      : [];
+    if (!a.length) return '';
+    const items = a.map(x => '<li>' + esc(x) + '</li>').join('');
+    return '<div class="rx-eval-section"><div>' + labelSpan(label) + '</div><ul>' + items + '</ul></div>';
+  }
+
+  // Campos principais
+  let htmlOut = '';
+  htmlOut += sectionLine('Medicamento', m.medicamento || m.nome || m.principio_ativo);
+  htmlOut += sectionLine('Classe', m.classe);
+  htmlOut += sectionLine('Mecanismo de ação', m.mecanismo_acao);
+
+  // Apresentações
+  const ap = (m.apresentacoes && typeof m.apresentacoes === 'object') ? m.apresentacoes : {};
+  const apKeys = [
+    ['Solução oral', 'solucao_oral'],
+    ['Gotas', 'gotas'],
+    ['Suspensão', 'suspensao'],
+    ['Xarope', 'xarope'],
+    ['Comprimidos', 'comprimidos'],
+    ['Cápsulas', 'capsulas'],
+    ['Injetável', 'injetavel'],
+    ['Supositório', 'supositorio'],
+    ['Tópicos', 'topicos'],
+    ['Inalatório', 'inalatorio'],
+    ['Outros', 'outros']
+  ];
+  const apItems = [];
+  for (const [label, key] of apKeys) {
+    const v = ap ? ap[key] : '';
+    if (!isMeaningful(v)) continue;
+    apItems.push(label + ': ' + String(v).trim());
+  }
+  if (apItems.length) {
+    htmlOut += '<div class="rx-eval-section"><div>' + labelSpan('Apresentações') + '</div><ul>' + apItems.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></div>';
+  }
+
+  htmlOut += sectionList('Uso clínico', m.uso_clinico);
+  htmlOut += sectionLine('Tipo de receituário', m.tipo_receituario);
+
+  htmlOut += sectionLine('Categoria da gravidez', m.categoria_gravidez);
+  htmlOut += sectionLine('Uso na lactação', m.uso_lactacao);
+  htmlOut += sectionLine('Uso geriátrico', m.uso_geriatrico);
+
+  // Posologias (mantidas para completar a monografia, quando existirem)
+  const ad = (m.posologia_adulta && typeof m.posologia_adulta === 'object') ? m.posologia_adulta : {};
+  const viasAd = [
+    ['oral', 'Oral'],
+    ['injetavel', 'Injetável'],
+    ['outros', 'Outros']
+  ];
+  const adBlocks = [];
+  for (const [k, label] of viasAd) {
+    const v = (ad && ad[k] && typeof ad[k] === 'object') ? ad[k] : {};
+    const lines = [];
+    if (isMeaningful(v.dose_usual)) lines.push('Dose usual: ' + String(v.dose_usual).trim());
+    if (isMeaningful(v.dose_maxima)) lines.push('Dose máxima: ' + String(v.dose_maxima).trim());
+    if (isMeaningful(v.observacoes)) lines.push('Observações: ' + String(v.observacoes).trim());
+    if (lines.length) adBlocks.push({ title: label, lines });
+  }
+  if (adBlocks.length) {
+    htmlOut += '<div class="rx-eval-section"><div>' + labelSpan('Posologia adulta (por via)') + '</div>' +
+      adBlocks.map(b => '<div style="margin-top:6px;"><span class="rx-eval-label">' + esc(b.title) + ':</span><ul>' + b.lines.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></div>').join('') +
+      '</div>';
+  }
+
+  const pd = (m.posologia_pediatrica && typeof m.posologia_pediatrica === 'object') ? m.posologia_pediatrica : {};
+  const pdKeys = [
+    ['oral', 'Oral'],
+    ['gotas', 'Gotas'],
+    ['xarope', 'Xarope'],
+    ['comprimido_capsula', 'Comprimido/Cápsula'],
+    ['injetavel', 'Injetável']
+  ];
+  const pdBlocks = [];
+  for (const [k, label] of pdKeys) {
+    const v = (pd && pd[k] && typeof pd[k] === 'object') ? pd[k] : {};
+    const lines = [];
+    const dose = v.dose_mgkg || v.dose;
+    const intervalo = v.intervalo || v.frequencia;
+    if (isMeaningful(dose)) lines.push('Dose (mg/kg ou equivalente): ' + String(dose).trim());
+    if (isMeaningful(intervalo)) lines.push('Intervalo/frequência: ' + String(intervalo).trim());
+    if (isMeaningful(v.dose_maxima)) lines.push('Dose máxima: ' + String(v.dose_maxima).trim());
+    if (isMeaningful(v.restricoes_etarias)) lines.push('Restrições etárias: ' + String(v.restricoes_etarias).trim());
+    if (isMeaningful(v.modo_uso)) lines.push('Modo de uso: ' + String(v.modo_uso).trim());
+    if (lines.length) pdBlocks.push({ title: label, lines });
+  }
+  if (pdBlocks.length) {
+    htmlOut += '<div class="rx-eval-section"><div>' + labelSpan('Posologia pediátrica (por via/apresentação)') + '</div>' +
+      pdBlocks.map(b => '<div style="margin-top:6px;"><span class="rx-eval-label">' + esc(b.title) + ':</span><ul>' + b.lines.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></div>').join('') +
+      '</div>';
+  }
+
+  htmlOut += sectionList('Interações medicamentosas', m.interacoes_medicamentosas);
+  htmlOut += sectionList('Pontos de enfermagem', m.pontos_enfermagem);
+
+  const finalHtml = (htmlOut || '').trim() || ('<div class="rx-eval-section">' + esc(text || 'Nenhum conteúdo disponível.') + '</div>');
+  return { html: finalHtml, text: String(text || '').trim() };
 }
 
 function showMedMonographOverlay(show) {
@@ -8552,7 +8757,7 @@ async function openMedicationMonograph(name) {
           const linha = String(item?.linha_receita || item?.linha || item?.prescricao || "").trim();
 
           const mon = item?.monografia && typeof item.monografia === "object" ? item.monografia : (item || {});
-          const txt = buildMonographText(mon);
+          const built = buildMonographRich(mon);
 
           const card = document.createElement("div");
           card.className = "rx-eval-med-card";
@@ -8591,12 +8796,17 @@ async function openMedicationMonograph(name) {
           top.appendChild(left);
           top.appendChild(actions);
 
-          const ta = document.createElement("textarea");
-          ta.className = "prescription-textarea rx-eval-med-text";
-          ta.value = txt || "";
-          ta.dataset && (ta.dataset.copyText = ta.value || "");
+        const rich = document.createElement("div");
+          rich.className = "rx-eval-med-rich";
+          rich.setAttribute("contenteditable", "true");
+          rich.setAttribute("spellcheck", "false");
+          rich.innerHTML = (built && built.html) ? built.html : "";
+          if (!String(rich.innerHTML || "").trim()) {
+            rich.textContent = (built && built.text) ? built.text : "Nenhum conteúdo disponível.";
+          }
 
-          // Fontes
+
+  // Fontes
           const fontes = Array.isArray(item?.fontes) ? item.fontes : (Array.isArray(mon?.fontes) ? mon.fontes : []);
           const fontesClean = Array.isArray(fontes) ? fontes.filter(x => x && typeof x === "object" && (x.url || x.titulo)).slice(0, 6) : [];
           let fontesText = "";
@@ -8616,18 +8826,18 @@ async function openMedicationMonograph(name) {
           }
 
           card.appendChild(top);
-          card.appendChild(ta);
+          card.appendChild(rich);
           if (fontesDiv) card.appendChild(fontesDiv);
 
           // handlers
           copyBtn.addEventListener("click", () => {
-            const t = String(ta.value || "").trim();
+            const t = String(rich.innerText || "").trim();
             if (!t) return;
             copyToClipboard(t);
           });
 
           printBtn.addEventListener("click", () => {
-            const t = String(ta.value || "").trim();
+            const t = String(rich.innerText || "").trim();
             openPrintWindow("Informações do medicamento: " + medName, t);
           });
 
@@ -9849,6 +10059,18 @@ if (closeAprazamentoGuideBtn) {
 }
 
 
+
+if (rxEvalGuideBtn) {
+  rxEvalGuideBtn.addEventListener("click", () => {
+    setPanelVisible(rxEvalGuidePanel, true);
+  });
+}
+if (closeRxEvalGuideBtn) {
+  closeRxEvalGuideBtn.addEventListener("click", () => {
+    setPanelVisible(rxEvalGuidePanel, false);
+  });
+}
+
 if (woundGuideBtn) {
   woundGuideBtn.addEventListener("click", () => {
     setPanelVisible(woundGuidePanel, true);
@@ -10102,10 +10324,10 @@ recordBtn.onclick = () => {
         const blocks = [];
         const tx = rxEvalTranscription ? String(rxEvalTranscription.value || "").trim() : "";
         if (tx) blocks.push("Transcrição da receita:\n" + tx + "\n");
-        const cards = rxEvalMedicationsMount ? rxEvalMedicationsMount.querySelectorAll(".rx-eval-med-card textarea") : [];
+        const cards = rxEvalMedicationsMount ? rxEvalMedicationsMount.querySelectorAll(".rx-eval-med-card .rx-eval-med-rich") : [];
         if (cards && cards.length) {
-          for (const ta of Array.from(cards)) {
-            const v = String(ta.value || "").trim();
+          for (const el of Array.from(cards)) {
+            const v = String(el.innerText || "").trim();
             if (v) blocks.push(v);
           }
         }
@@ -10123,15 +10345,15 @@ recordBtn.onclick = () => {
         const blocks = [];
         const tx = rxEvalTranscription ? String(rxEvalTranscription.value || "").trim() : "";
         if (tx) blocks.push("Transcrição da receita:\n" + tx + "\n");
-        const cards = rxEvalMedicationsMount ? rxEvalMedicationsMount.querySelectorAll(".rx-eval-med-card textarea") : [];
+        const cards = rxEvalMedicationsMount ? rxEvalMedicationsMount.querySelectorAll(".rx-eval-med-card .rx-eval-med-rich") : [];
         if (cards && cards.length) {
-          for (const ta of Array.from(cards)) {
-            const v = String(ta.value || "").trim();
+          for (const el of Array.from(cards)) {
+            const v = String(el.innerText || "").trim();
             if (v) blocks.push(v);
           }
         }
         const all = blocks.join("\n\n").trim();
-        openPrintWindow("Avaliar receita médica", all);
+        openPrintWindow("Avaliar receita", all);
       });
     }
 
