@@ -5,8 +5,11 @@ const bodyParser = require("body-parser");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+const os = require("os");
+let PptxGenJS = null;
+try { PptxGenJS = require("pptxgenjs"); } catch { PptxGenJS = null; }
+
 const OpenAI = require("openai");
-const PptxGenJS = require("pptxgenjs");
 
 // ======================================================================
 // SEGURANÇA REPRODUTIVA E TIPO DE RECEITUÁRIO
@@ -4801,327 +4804,504 @@ Transcrição (trecho):
 
 
 // ======================================================================
-// EDUCAÇÃO EM SAÚDE (PPTX)
-// - Gera uma apresentação pronta em PowerPoint com base em tema e duração.
-// - Inclui imagens e GIFs (quando possível) via Wikimedia Commons.
-// - Saída: arquivo .pptx para download.
+// ROTA – EDUCAÇÃO EM SAÚDE (GERAR PPTX)
+// - Gera uma apresentação completa em PPTX a partir de tema + duração (minutos)
+// - Inclui imagens e GIFs (quando disponíveis), com créditos no rodapé
+// Fontes: Wikimedia Commons (principal) + Openverse (fallback para imagens)
 // ======================================================================
-
-const FETCH = (typeof fetch === "function")
-  ? fetch.bind(globalThis)
-  : (...args) => import("node-fetch").then(m => m.default(...args));
 
 function clampInt(n, min, max) {
   const v = parseInt(String(n || ""), 10);
-  if (!Number.isFinite(v)) return min;
+  if (Number.isNaN(v)) return min;
   return Math.max(min, Math.min(max, v));
 }
 
-function estimateSlideCount(durationMin) {
-  // Heurística prática:
-  // - apresentação curta ainda precisa de capa + objetivos
-  // - ~1 slide a cada 2 minutos, com limites conservadores
-  const dur = clampInt(durationMin, 3, 90);
-  const n = Math.round(dur / 2) + 3; // capa + objetivos + encerramento
-  return clampInt(n, 6, 30);
+function sanitizeFilename(input) {
+  const s = String(input || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
+  return s || "Educacao_em_Saude";
 }
 
-async function fetchWithLimit(url, maxBytes) {
-  const resp = await FETCH(url, { redirect: "follow" });
-  if (!resp.ok) throw new Error(`Falha ao baixar mídia (${resp.status}).`);
-
-  const len = parseInt(resp.headers.get("content-length") || "0", 10);
-  if (len && len > maxBytes) throw new Error("Mídia muito grande para incorporar.");
-
-  // Stream -> Buffer com limite
-  const reader = resp.body?.getReader?.();
-  if (!reader) {
-    const ab = await resp.arrayBuffer();
-    if (ab.byteLength > maxBytes) throw new Error("Mídia muito grande para incorporar.");
-    return Buffer.from(ab);
+function pickFirstNonEmpty(arr) {
+  if (!Array.isArray(arr)) return "";
+  for (const x of arr) {
+    const v = String(x || "").trim();
+    if (v) return v;
   }
-
-  let chunks = [];
-  let total = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (!value) continue;
-    total += value.byteLength;
-    if (total > maxBytes) throw new Error("Mídia muito grande para incorporar.");
-    chunks.push(Buffer.from(value));
-  }
-  return Buffer.concat(chunks);
+  return "";
 }
 
-function bufferToDataUri(buf, mime) {
-  const b64 = Buffer.from(buf).toString("base64");
-  return `data:${mime};base64,${b64}`;
-}
-
-async function commonsSearchMedia(query, opts = {}) {
-  const q = String(query || "").trim();
-  if (!q) return null;
-
-  const filetype = String(opts.filetype || "").trim().toLowerCase();
-  const wantGif = filetype === "gif";
-
-  // Usa generator=search para obter pages + imageinfo
-  const searchQ = wantGif
-    ? `${q} filetype:gif`
-    : `${q} (filetype:jpg OR filetype:jpeg OR filetype:png)`;
-
-  const apiUrl = "https://commons.wikimedia.org/w/api.php"
-    + "?action=query"
-    + "&format=json"
-    + "&origin=*"
-    + "&generator=search"
-    + "&gsrnamespace=6"
-    + `&gsrsearch=${encodeURIComponent(searchQ)}`
-    + "&gsrlimit=1"
-    + "&prop=imageinfo"
-    + "&iiprop=url|mime|extmetadata";
+async function fetchBinary(url, maxBytes = 6_000_000, timeoutMs = 12_000) {
+  const u = String(url || "").trim();
+  if (!u) throw new Error("URL vazia.");
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const r = await FETCH(apiUrl);
-    if (!r.ok) return null;
-    const j = await r.json();
-    const pages = j?.query?.pages || {};
-    const page = Object.values(pages)[0];
-    const ii = page?.imageinfo?.[0];
-    if (!ii?.url || !ii?.mime) return null;
-
-    const meta = ii.extmetadata || {};
-    const licenseShort = (meta?.LicenseShortName?.value || "").replace(/<[^>]*>/g, "").trim();
-    const artist = (meta?.Artist?.value || "").replace(/<[^>]*>/g, "").trim();
-    const credit = (meta?.Credit?.value || "").replace(/<[^>]*>/g, "").trim();
-
-    return {
-      url: ii.url,
-      mime: ii.mime,
-      title: String(page?.title || "").trim(),
-      descriptionUrl: ii.descriptionurl || "",
-      licenseShort,
-      artist,
-      credit
-    };
-  } catch {
-    return null;
+    const resp = await fetch(u, { signal: controller.signal, redirect: "follow" });
+    if (!resp.ok) throw new Error("Falha ao baixar mídia.");
+    const ab = await resp.arrayBuffer();
+    if (ab.byteLength > maxBytes) throw new Error("Mídia muito grande.");
+    return Buffer.from(ab);
+  } finally {
+    clearTimeout(t);
   }
 }
 
-async function generateEducationSlidePlan(tema, duracaoMin) {
-  const t = normalizeText(tema, 180);
-  const dur = clampInt(duracaoMin, 3, 90);
-  const nSlides = estimateSlideCount(dur);
+function extFromMimeOrUrl(mime, url) {
+  const m = String(mime || "").toLowerCase();
+  if (m.includes("png")) return "png";
+  if (m.includes("jpeg") || m.includes("jpg")) return "jpg";
+  if (m.includes("gif")) return "gif";
+  if (m.includes("webp")) return "webp";
 
-  const prompt = `
-Você é um enfermeiro educador elaborando uma apresentação didática para educação em saúde.
-Objetivo: gerar um roteiro de slides claro, prático e compatível com o tempo total informado.
-
-Regras:
-- Português do Brasil.
-- Sem emojis e sem símbolos gráficos.
-- Conteúdo de enfermagem, seguro e baseado em práticas aceitas (sem inventar números específicos quando não houver certeza).
-- Evite jargões; prefira frases curtas.
-- Cada slide deve ter no máximo 6 tópicos, cada tópico com até 12 palavras.
-- Distribua o conteúdo para caber em aproximadamente ${dur} minutos.
-- Gere exatamente ${nSlides} slides no total.
-- Para cada slide, sugira 1 consulta de imagem e 1 consulta de GIF (quando fizer sentido). Se não fizer sentido, deixe a consulta de GIF vazia.
-
-Responda EXCLUSIVAMENTE em JSON, sem markdown, no formato:
-{
-  "titulo": "string",
-  "subtitulo": "string",
-  "duracao_min": ${dur},
-  "slides": [
-    {
-      "titulo": "string",
-      "pontos": ["string"],
-      "imagem_query": "string",
-      "gif_query": "string"
-    }
-  ]
+  const u = String(url || "").toLowerCase();
+  const m2 = u.match(/\.(png|jpg|jpeg|gif|webp)(\?|#|$)/i);
+  if (m2 && m2[1]) return m2[1].toLowerCase() === "jpeg" ? "jpg" : m2[1].toLowerCase();
+  return "png";
 }
 
-Tema: ${t}
-`;
+function cleanHtmlToText(v) {
+  const s = String(v || "");
+  return s
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-  const plan = await callOpenAIJson(prompt, 3);
+async function searchWikimediaCommonsMedia(query, { limit = 10, wantGif = false, wantPhoto = true } = {}) {
+  const q = normalizeText(query || "", 180);
+  if (!q) return [];
 
-  const slides = Array.isArray(plan?.slides) ? plan.slides : [];
-  const normalizedSlides = slides.slice(0, nSlides).map((s, i) => {
-    const pontos = Array.isArray(s?.pontos) ? s.pontos.map(x => String(x || "").trim()).filter(Boolean).slice(0, 6) : [];
-    return {
-      titulo: String(s?.titulo || `Slide ${i + 1}`).trim().slice(0, 80),
-      pontos,
-      imagem_query: String(s?.imagem_query || t).trim().slice(0, 140),
-      gif_query: String(s?.gif_query || "").trim().slice(0, 140),
-    };
-  });
+  // gsrnamespace=6 limita a "File:" (Commons)
+  const params = new URLSearchParams();
+  params.set("action", "query");
+  params.set("format", "json");
+  params.set("generator", "search");
+  params.set("gsrsearch", q);
+  params.set("gsrnamespace", "6");
+  params.set("gsrlimit", String(Math.max(1, Math.min(15, limit))));
+  params.set("prop", "imageinfo");
+  params.set("iiprop", "url|mime|extmetadata");
+  params.set("iiurlwidth", "1600");
+  params.set("iiurlheight", "900");
+  params.set("origin", "*");
 
-  // garante quantidade
-  while (normalizedSlides.length < nSlides) {
-    const i = normalizedSlides.length;
-    normalizedSlides.push({
-      titulo: `Tópicos finais (${i + 1})`,
-      pontos: [],
-      imagem_query: t,
-      gif_query: ""
+  const url = "https://commons.wikimedia.org/w/api.php?" + params.toString();
+
+  const resp = await fetch(url);
+  if (!resp.ok) return [];
+  const data = await resp.json().catch(() => ({}));
+  const pages = data?.query?.pages ? Object.values(data.query.pages) : [];
+
+  const out = [];
+  for (const p of pages) {
+    const ii = Array.isArray(p?.imageinfo) ? p.imageinfo[0] : null;
+    const mediaUrl = ii?.thumburl || ii?.url || "";
+    const mime = ii?.mime || "";
+
+    if (!mediaUrl) continue;
+
+    const isGif = String(mime).toLowerCase().includes("gif") || String(mediaUrl).toLowerCase().includes(".gif");
+    if (wantGif && !isGif) continue;
+    if (!wantGif && isGif) continue;
+
+    if (!wantGif && wantPhoto) {
+      const ok = (
+        String(mime).toLowerCase().includes("jpeg") ||
+        String(mime).toLowerCase().includes("jpg") ||
+        String(mime).toLowerCase().includes("png") ||
+        String(mime).toLowerCase().includes("webp")
+      );
+      if (!ok) continue;
+    }
+
+    const md = ii?.extmetadata || {};
+    const credit = cleanHtmlToText(md?.Credit?.value || md?.Attribution?.value || md?.Artist?.value || "");
+    const license = cleanHtmlToText(md?.LicenseShortName?.value || md?.UsageTerms?.value || "");
+    const licenseUrl = cleanHtmlToText(md?.LicenseUrl?.value || "");
+    const title = String(p?.title || "").replace(/^File:/i, "").trim();
+
+    out.push({
+      title,
+      url: mediaUrl,
+      mime,
+      credit,
+      license,
+      licenseUrl
     });
   }
 
+  return out;
+}
+
+// Openverse (fallback): agrega múltiplas fontes abertas, sem chave.
+// Usado apenas como alternativa quando o Commons não retorna algo adequado.
+async function searchOpenverseImages(query, { limit = 8 } = {}) {
+  const q = normalizeText(query || "", 180);
+  if (!q) return [];
+  const params = new URLSearchParams();
+  params.set("q", q);
+  params.set("page_size", String(Math.max(1, Math.min(20, limit))));
+  params.set("license_type", "all");
+  const url = "https://api.openverse.engineering/v1/images/?" + params.toString();
+
+  const resp = await fetch(url);
+  if (!resp.ok) return [];
+  const data = await resp.json().catch(() => ({}));
+  const results = Array.isArray(data?.results) ? data.results : [];
+
+  const out = [];
+  for (const r of results) {
+    const img = String(r?.url || "").trim();
+    const thumb = String(r?.thumbnail || "").trim();
+    const mime = String(r?.mime_type || "");
+    const source = String(r?.source || "").trim();
+    if (!img) continue;
+
+    out.push({
+      title: String(r?.title || "").trim(),
+      url: img,
+      mime,
+      credit: cleanHtmlToText(r?.creator || r?.attribution || ""),
+      license: cleanHtmlToText(r?.license || ""),
+      licenseUrl: cleanHtmlToText(r?.license_url || ""),
+      source
+    });
+  }
+  return out;
+}
+
+function estimateSlideCount(duracaoMin) {
+  const m = clampInt(duracaoMin, 10, 60);
+  // Regra simples: ~1 slide a cada 2 min + base fixa
+  const estimated = Math.round((m / 2)) + 6; // 10->11, 60->36
+  return Math.max(10, Math.min(45, estimated));
+}
+
+function normalizeSlidePlan(raw, tema, duracaoMin) {
+  const title = (typeof raw?.titulo === "string" && raw.titulo.trim()) ? raw.titulo.trim() : (String(tema || "").trim() || "Educação em Saúde");
+  const subtitle = (typeof raw?.subtitulo === "string" ? raw.subtitulo.trim() : "") || `Duração: ${clampInt(duracaoMin, 10, 60)} min`;
+
+  const slidesRaw = Array.isArray(raw?.slides) ? raw.slides : [];
+  const slides = slidesRaw
+    .map((s) => ({
+      titulo: (typeof s?.titulo === "string" ? s.titulo.trim() : "") || "",
+      topicos: Array.isArray(s?.topicos) ? s.topicos.map(x => String(x || "").trim()).filter(Boolean) : [],
+      notas: (typeof s?.notas === "string" ? s.notas.trim() : ""),
+      busca_imagem: (typeof s?.busca_imagem === "string" ? s.busca_imagem.trim() : ""),
+      busca_gif: (typeof s?.busca_gif === "string" ? s.busca_gif.trim() : "")
+    }))
+    .filter(s => s.titulo || s.topicos.length);
+
   return {
-    titulo: String(plan?.titulo || `Educação em Saúde: ${t}`).trim().slice(0, 120),
-    subtitulo: String(plan?.subtitulo || "").trim().slice(0, 140),
-    duracao_min: dur,
-    slides: normalizedSlides
+    titulo: title,
+    subtitulo: subtitle,
+    slides,
+    referencias: Array.isArray(raw?.referencias) ? raw.referencias.map(x => String(x || "").trim()).filter(Boolean).slice(0, 12) : []
   };
 }
 
-async function buildEducationPptx({ tema, duracao_min }) {
-  const plan = await generateEducationSlidePlan(tema, duracao_min);
+async function generateHealthEducationDeckPlan(tema, duracaoMin) {
+  const t = normalizeText(tema || "", 160);
+  const d = clampInt(duracaoMin, 10, 60);
+  const targetSlides = estimateSlideCount(d);
+
+  if (!process.env.OPENAI_API_KEY) {
+    // Fallback conservador (sem OpenAI): estrutura básica
+    const slides = [
+      { titulo: "Objetivos", topicos: ["Definir conceitos principais", "Reconhecer fatores de risco e prevenção", "Orientar sinais de alarme e quando buscar atendimento"], notas: "", busca_imagem: `${t} educação em saúde`, busca_gif: "" },
+      { titulo: "Conceitos essenciais", topicos: ["Definição prática", "Por que importa na APS", "Impacto na saúde e qualidade de vida"], notas: "", busca_imagem: `${t} ilustração`, busca_gif: "" },
+      { titulo: "Prevenção e autocuidado", topicos: ["Medidas não farmacológicas", "Rotina e adesão", "Apoio familiar e comunitário"], notas: "", busca_imagem: `${t} prevenção`, busca_gif: "" },
+      { titulo: "Sinais de alarme", topicos: ["Piora rápida", "Sinais de gravidade", "Quando procurar urgência"], notas: "", busca_imagem: `${t} alerta`, busca_gif: "" },
+      { titulo: "Mensagem final", topicos: ["Resumo do que foi visto", "Como aplicar no dia a dia", "Espaço para perguntas"], notas: "", busca_imagem: `${t} comunidade`, busca_gif: "" }
+    ];
+    return normalizeSlidePlan({ titulo: t || "Educação em Saúde", subtitulo: `Duração: ${d} min`, slides }, t, d);
+  }
+
+  const prompt = `
+Você é um enfermeiro humano no Brasil preparando um material de EDUCAÇÃO EM SAÚDE para uma roda de conversa/aula.
+Seu objetivo é gerar o roteiro COMPLETO de uma apresentação em PPTX (não crie o arquivo, apenas o plano em JSON).
+Tema: "${t}"
+Duração: ${d} minutos
+
+Regras obrigatórias:
+- Português do Brasil.
+- Sem emojis e sem símbolos gráficos.
+- Linguagem clara, prática e segura.
+- Não invente dados epidemiológicos ou percentuais; se precisar, use termos qualitativos (ex.: "frequente", "comum").
+- Inclua sinais de alarme e encaminhamento quando pertinente ao tema.
+- Estruture para APS: prevenção, autocuidado, adesão, barreiras, comunicação com paciente.
+- Quantidade alvo de slides: aproximadamente ${targetSlides} slides (pode variar em +- 3).
+- Em cada slide, gere de 3 a 6 tópicos curtos (frases curtas).
+- Em "busca_imagem" forneça 3 a 6 palavras (ou frase curta) para buscar imagem em repositórios abertos (ex.: Wikimedia).
+- Em "busca_gif" forneça (opcional) 2 a 5 palavras para buscar um GIF animado educativo (se fizer sentido); senão deixe vazio.
+- "notas" deve ter 2 a 5 linhas com orientação de fala (speaker notes), sem mencionar ferramenta, sistema ou tecnologia.
+
+Formato: responda SOMENTE com um JSON válido, sem texto fora do JSON:
+{
+  "titulo": "string",
+  "subtitulo": "string",
+  "slides": [
+    {
+      "titulo": "string",
+      "topicos": ["string"],
+      "notas": "string",
+      "busca_imagem": "string",
+      "busca_gif": "string"
+    }
+  ],
+  "referencias": ["string"]
+}
+`;
+
+  const raw = await callOpenAIJson(prompt);
+  return normalizeSlidePlan(raw, t, d);
+}
+
+function addFooter(slide, text) {
+  try {
+    slide.addText(text, {
+      x: 0.4,
+      y: 7.05,
+      w: 12.5,
+      h: 0.3,
+      fontSize: 10,
+      color: "666666"
+    });
+  } catch {}
+}
+
+function addTitle(slide, title) {
+  slide.addText(String(title || "").trim(), {
+    x: 0.6,
+    y: 0.3,
+    w: 12.1,
+    h: 0.7,
+    fontSize: 34,
+    bold: true,
+    color: "0c5460"
+  });
+}
+
+function addSlideHeading(slide, heading) {
+  slide.addText(String(heading || "").trim(), {
+    x: 0.6,
+    y: 0.35,
+    w: 12.1,
+    h: 0.5,
+    fontSize: 26,
+    bold: true,
+    color: "0c5460"
+  });
+}
+
+function safeBullets(arr) {
+  const a = Array.isArray(arr) ? arr : [];
+  return a.map(x => String(x || "").trim()).filter(Boolean).slice(0, 7);
+}
+
+async function buildEducationPptxBuffer({ tema, duracaoMin }) {
+  if (!PptxGenJS) {
+    const err = new Error("PPTXGENJS_MISSING");
+    err.code = "PPTXGENJS_MISSING";
+    throw err;
+  }
+
+  const plan = await generateHealthEducationDeckPlan(tema, duracaoMin);
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("pt-BR");
 
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
-  pptx.author = "Educação em Saúde";
-  pptx.company = "Atendimento de Enfermagem";
+  pptx.author = "Queimadas Telemedicina";
+  pptx.company = "Prefeitura de Queimadas – Mais trabalho, mais desenvolvimento";
+  pptx.subject = "Educação em Saúde";
+  pptx.title = plan.titulo || "Educação em Saúde";
 
-  // Dimensões aproximadas (WIDE): 13.33 x 7.5
-  const W = 13.33;
-  const H = 7.5;
-
-  const imgBox = { x: 7.2, y: 1.4, w: 5.8, h: 5.6 };
-  const textBox = { x: 0.8, y: 1.6, w: 6.2, h: 5.6 };
-
-  const attributions = [];
-
-  // Slide 1: capa
+  // Slide 1 – Capa
   {
     const s = pptx.addSlide();
-    s.addText(plan.titulo || "Educação em Saúde", { x: 0.8, y: 1.6, w: W - 1.6, h: 0.9, fontSize: 38, bold: true, color: "0C5460" });
-    if (plan.subtitulo) {
-      s.addText(plan.subtitulo, { x: 0.9, y: 2.6, w: W - 1.8, h: 0.6, fontSize: 18, color: "333333" });
-    }
-    s.addText(`Duração estimada: ${plan.duracao_min} min`, { x: 0.9, y: 3.3, w: W - 1.8, h: 0.4, fontSize: 14, color: "555555" });
-
-    // Imagem de capa (tema)
-    const coverMedia = await commonsSearchMedia(plan.titulo || tema, { filetype: "jpg" });
-    if (coverMedia?.url && coverMedia?.mime) {
-      try {
-        const buf = await fetchWithLimit(coverMedia.url, 3_000_000);
-        const dataUri = bufferToDataUri(buf, coverMedia.mime);
-        s.addImage({ data: dataUri, x: 0.8, y: 4.0, w: W - 1.6, h: 3.0 });
-        attributions.push(coverMedia);
-      } catch {}
-    }
+    addTitle(s, plan.titulo || "Educação em Saúde");
+    s.addText(plan.subtitulo || "", {
+      x: 0.7,
+      y: 1.2,
+      w: 12,
+      h: 0.5,
+      fontSize: 18,
+      color: "1f2937"
+    });
+    s.addText(`Data: ${dateStr}`, {
+      x: 0.7,
+      y: 1.7,
+      w: 12,
+      h: 0.4,
+      fontSize: 14,
+      color: "555555"
+    });
+    addFooter(s, "Material de apoio para educação em saúde. Revisar e adaptar ao público-alvo.");
   }
 
-  // Slides de conteúdo
-  for (let i = 0; i < plan.slides.length; i++) {
-    const slidePlan = plan.slides[i];
+  // Slide 2 – Objetivos
+  {
+    const s = pptx.addSlide();
+    addSlideHeading(s, "Objetivos");
+    const obj = [
+      "Informar e orientar de forma prática.",
+      "Promover prevenção e autocuidado.",
+      "Identificar sinais de alarme e quando buscar atendimento."
+    ];
+    s.addText(obj.map(x => "• " + x).join("\n"), {
+      x: 0.8,
+      y: 1.3,
+      w: 12.0,
+      h: 5.3,
+      fontSize: 22,
+      color: "1f2937"
+    });
+    addFooter(s, `Tema: ${plan.titulo || ""}`.trim());
+  }
+
+  const slides = Array.isArray(plan.slides) ? plan.slides : [];
+  const maxSlides = Math.max(6, Math.min(42, slides.length));
+  const slidesToRender = slides.slice(0, maxSlides);
+
+  // Conteúdo
+  for (let idx = 0; idx < slidesToRender.length; idx++) {
+    const it = slidesToRender[idx];
     const s = pptx.addSlide();
 
-    // Título
-    s.addText(slidePlan.titulo, { x: 0.8, y: 0.5, w: W - 1.6, h: 0.6, fontSize: 28, bold: true, color: "0C5460" });
+    addSlideHeading(s, it.titulo || `Slide ${idx + 1}`);
 
-    // Tópicos
-    const bullets = (slidePlan.pontos && slidePlan.pontos.length) ? slidePlan.pontos : [];
-    if (bullets.length) {
-      s.addText(bullets.map(b => `• ${b}`).join("\n"), { x: textBox.x, y: textBox.y, w: textBox.w, h: textBox.h, fontSize: 16, color: "111827", valign: "top" });
-    } else {
-      s.addText("Conteúdo principal (ajuste conforme sua prática).", { x: textBox.x, y: textBox.y, w: textBox.w, h: 1.0, fontSize: 16, color: "111827" });
-    }
+    const bullets = safeBullets(it.topicos);
+    const bulletsText = bullets.length ? bullets.map(b => "• " + b).join("\n") : "";
+    s.addText(bulletsText || "Conteúdo não informado.", {
+      x: 0.8,
+      y: 1.2,
+      w: 6.4,
+      h: 5.6,
+      fontSize: 18,
+      color: "1f2937",
+      valign: "top"
+    });
 
-    // Imagem (foto/gravura)
+    // Mídia: tenta GIF (se houver), senão imagem
+    const qImg = it.busca_imagem || it.titulo || plan.titulo || "";
+    const qGif = it.busca_gif || "";
+
     let media = null;
-    if (slidePlan.imagem_query) {
-      media = await commonsSearchMedia(slidePlan.imagem_query, { filetype: "jpg" });
+
+    // 1) GIF via Wikimedia (quando solicitado)
+    if (qGif) {
+      const gifs = await searchWikimediaCommonsMedia(`${qGif} ${plan.titulo}`, { limit: 8, wantGif: true, wantPhoto: false }).catch(() => []);
+      media = gifs[0] || null;
     }
-    if (media?.url && media?.mime) {
+
+    // 2) Imagem via Wikimedia
+    if (!media) {
+      const imgs = await searchWikimediaCommonsMedia(`${qImg} ${plan.titulo}`, { limit: 10, wantGif: false, wantPhoto: true }).catch(() => []);
+      media = imgs[0] || null;
+    }
+
+    // 3) Fallback Openverse
+    if (!media) {
+      const ov = await searchOpenverseImages(`${qImg} ${plan.titulo}`, { limit: 10 }).catch(() => []);
+      media = ov[0] || null;
+    }
+
+    if (media && media.url) {
       try {
-        const buf = await fetchWithLimit(media.url, 3_000_000);
-        const dataUri = bufferToDataUri(buf, media.mime);
-        s.addImage({ data: dataUri, x: imgBox.x, y: imgBox.y, w: imgBox.w, h: imgBox.h });
-        attributions.push(media);
-      } catch {}
-    }
+        const buf = await fetchBinary(media.url, 6_000_000, 12_000);
+        const ext = extFromMimeOrUrl(media.mime, media.url);
+        const data = "data:image/" + ext + ";base64," + buf.toString("base64");
+        s.addImage({ data, x: 7.4, y: 1.2, w: 5.7, h: 5.6 });
 
-    // GIF animado (opcional, para reforçar técnica/procedimento)
-    // Para evitar arquivos muito grandes, usa no máximo em 1 a cada 3 slides.
-    if (slidePlan.gif_query && (i % 3 === 1)) {
-      const gif = await commonsSearchMedia(slidePlan.gif_query, { filetype: "gif" });
-      if (gif?.url && gif?.mime) {
-        try {
-          const buf = await fetchWithLimit(gif.url, 5_000_000);
-          const dataUri = bufferToDataUri(buf, gif.mime);
-          s.addImage({ data: dataUri, x: imgBox.x, y: imgBox.y, w: imgBox.w, h: imgBox.h });
-          attributions.push(gif);
-        } catch {}
+        const creditPieces = [];
+        if (media.credit) creditPieces.push(media.credit);
+        if (media.license) creditPieces.push(media.license);
+        const credit = creditPieces.length ? creditPieces.join(" | ") : "Fonte: Wikimedia/Openverse";
+        addFooter(s, credit.slice(0, 180));
+      } catch (e) {
+        addFooter(s, "Imagem não disponível no momento.");
       }
+    } else {
+      addFooter(s, "Imagem não disponível no momento.");
     }
 
-    // Rodapé
-    s.addText(`Slide ${i + 2}/${plan.slides.length + 2}`, { x: 0.8, y: H - 0.6, w: W - 1.6, h: 0.3, fontSize: 10, color: "666666", align: "right" });
+    // Notas do apresentador
+    if (it.notas) {
+      try { s.addNotes(String(it.notas || "")); } catch {}
+    }
   }
 
-  // Slide final: referências e atribuições
+  // Slide final – Referências
   {
     const s = pptx.addSlide();
-    s.addText("Referências e imagens", { x: 0.8, y: 0.6, w: W - 1.6, h: 0.6, fontSize: 28, bold: true, color: "0C5460" });
-
-    const lines = [];
-    const uniq = new Map();
-    for (const a of attributions) {
-      if (!a?.url) continue;
-      if (uniq.has(a.url)) continue;
-      uniq.set(a.url, true);
-
-      const title = a.title ? a.title.replace(/^File:/i, "").trim() : "Mídia";
-      const lic = a.licenseShort ? ` (${a.licenseShort})` : "";
-      const src = a.descriptionUrl || a.url;
-      lines.push(`${title}${lic} - ${src}`);
-    }
-    if (!lines.length) lines.push("Imagens: Wikimedia Commons (quando disponíveis).");
-
-    const text = lines.slice(0, 18).join("\n");
-    s.addText(text, { x: 0.9, y: 1.6, w: W - 1.8, h: 5.6, fontSize: 12, color: "111827", valign: "top" });
+    addSlideHeading(s, "Referências e fontes");
+    const refs = (Array.isArray(plan.referencias) && plan.referencias.length)
+      ? plan.referencias.slice(0, 12)
+      : ["Wikimedia Commons (imagens e GIFs)", "Openverse (imagens)", "Conteúdo: revisão pelo profissional responsável"];
+    s.addText(refs.map(x => "• " + x).join("\n"), {
+      x: 0.8,
+      y: 1.2,
+      w: 12.2,
+      h: 5.8,
+      fontSize: 16,
+      color: "1f2937"
+    });
+    addFooter(s, `Gerado em ${dateStr}.`);
   }
 
-  const buf = await pptx.write("nodebuffer");
-  return { buf, title: plan.titulo || "educacao_em_saude", slides: plan.slides.length + 2 };
+  // Saída buffer
+  // Preferência: nodebuffer; fallback: arquivo temporário.
+  try {
+    const b = await pptx.write("nodebuffer");
+    return Buffer.isBuffer(b) ? b : Buffer.from(b);
+  } catch {
+    const tmp = path.join(os.tmpdir(), `educacao_saude_${Date.now()}.pptx`);
+    await pptx.writeFile({ fileName: tmp });
+    const b = fs.readFileSync(tmp);
+    try { fs.unlinkSync(tmp); } catch {}
+    return b;
+  }
 }
 
-app.post("/api/educacao-em-saude/pptx", requirePaidOrAdmin, async (req, res) => {
+app.post("/api/educacao-saude-pptx", requirePaidOrAdmin, async (req, res) => {
   try {
-    const body = req.body || {};
-    const tema = normalizeText(body.tema || "", 180);
-    const duracao_min = clampInt(body.duracao_min, 3, 90);
+    const { tema, duracao_minutos } = req.body || {};
+    const t = normalizeText(tema || "", 160);
+    const d = clampInt(duracao_minutos, 10, 60);
 
-    if (!tema || tema.length < 3) {
-      return res.status(400).json({ error: "O campo 'tema' é obrigatório (mínimo 3 caracteres)." });
+    if (!t) {
+      return res.status(400).json({ error: "Informe o tema para gerar a apresentação." });
     }
 
-    const { buf, title } = await buildEducationPptx({ tema, duracao_min });
-    const safeName = String(title || "educacao_em_saude")
-      .toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "")
-      .slice(0, 60) || "educacao_em_saude";
+    const buf = await buildEducationPptxBuffer({ tema: t, duracaoMin: d });
+
+    const base = sanitizeFilename(t);
+    const filename = `${base}_${d}min.pptx`;
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
-    res.setHeader("Content-Disposition", `attachment; filename="${safeName}.pptx"`);
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
     return res.status(200).send(buf);
   } catch (e) {
     console.error(e);
-    const code = String(e?.code || "");
-    if (code === "OPENAI_API_KEY_MISSING") {
-      return res.status(500).json({ error: "OPENAI_API_KEY não configurada no servidor." });
+    if (e && (e.code === "PPTXGENJS_MISSING" || String(e.message || "").includes("pptxgenjs"))) {
+      return res.status(500).json({
+        error: "Dependência ausente: instale o pacote pptxgenjs no backend (npm i pptxgenjs) e faça redeploy."
+      });
     }
-    return res.status(500).json({ error: "Falha ao gerar a apresentação." });
+    return res.status(500).json({ error: "Falha interna ao gerar a apresentação PPTX." });
   }
 });
+
+
 
 // ======================================================================
 // INICIALIZAÇÃO DO SERVIDOR

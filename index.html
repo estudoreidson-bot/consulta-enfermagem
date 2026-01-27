@@ -3330,7 +3330,41 @@
     </div>
 
 
-                <div id="calculatorsCard" class="module-card">
+                
+
+
+<div id="healthEducationCard" class="module-card">
+      <div class="section-header-row">
+        <h2>Educação em Saúde</h2>
+      </div>
+
+      <p class="mini-status" style="margin-top: 0;">
+        Informe o tema e a duração. O sistema irá gerar uma apresentação PPTX completa com imagens e GIFs (quando disponíveis), pronta para educação em saúde.
+      </p>
+
+      <div class="inline-input-row" style="gap: 10px; align-items: stretch;">
+        <input id="healthEduTheme" class="text-input" type="text" placeholder="Tema (ex.: Hipertensão arterial na APS)" autocomplete="off" style="flex: 1 1 auto; margin: 0;" />
+        <select id="healthEduDuration" class="text-input" style="max-width: 140px;">
+          <option value="10">10 min</option>
+          <option value="15">15 min</option>
+          <option value="20">20 min</option>
+          <option value="25">25 min</option>
+          <option value="30">30 min</option>
+          <option value="35">35 min</option>
+          <option value="40">40 min</option>
+          <option value="45">45 min</option>
+          <option value="50">50 min</option>
+          <option value="55">55 min</option>
+          <option value="60">60 min</option>
+        </select>
+        <button id="healthEduDownloadBtn" class="btn-print" type="button" style="white-space: nowrap;">Baixar apresentação (PPTX)</button>
+      </div>
+
+      <div id="healthEduStatus" class="mini-status"></div>
+    </div>
+
+
+<div id="calculatorsCard" class="module-card">
       <div class="section-header-row">
       <h2>Calculadoras Clínicas</h2>
       <button id="calculatorsGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
@@ -5207,6 +5241,11 @@ const recordBtn = document.getElementById("recordBtn");
     const medicalDoubtStatus = document.getElementById("medicalDoubtStatus");
     const medicalDoubtAnswer = document.getElementById("medicalDoubtAnswer");
     const medicalDoubtSendBtn = document.getElementById("medicalDoubtSendBtn");
+    const healthEduTheme = document.getElementById("healthEduTheme");
+    const healthEduDuration = document.getElementById("healthEduDuration");
+    const healthEduDownloadBtn = document.getElementById("healthEduDownloadBtn");
+    const healthEduStatus = document.getElementById("healthEduStatus");
+
 
 
     const woundPhotoBtn = document.getElementById("woundPhotoBtn");
@@ -9877,6 +9916,97 @@ updateReportActions();
       }
     }
 
+    async function downloadHealthEducationPptx() {
+      if (!healthEduTheme || !healthEduDuration || !healthEduDownloadBtn) return;
+
+      const tema = (healthEduTheme.value || "").trim();
+      const duracao = parseInt(String(healthEduDuration.value || ""), 10);
+
+      if (!tema) {
+        if (healthEduStatus) healthEduStatus.textContent = "Informe o tema para gerar a apresentação.";
+        return;
+      }
+
+      if (!(duracao >= 10 && duracao <= 60)) {
+        if (healthEduStatus) healthEduStatus.textContent = "A duração deve estar entre 10 e 60 minutos.";
+        return;
+      }
+
+      healthEduDownloadBtn.disabled = true;
+      if (healthEduStatus) {
+        healthEduStatus.textContent = "Gerando apresentação...";
+        healthEduStatus.classList.add("loading-dot");
+      }
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/educacao-saude-pptx", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tema, duracao_minutos: duracao })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (educação em saúde):", resp.status, txt);
+          if (healthEduStatus) {
+            healthEduStatus.textContent = "Não foi possível gerar a apresentação.";
+            healthEduStatus.classList.remove("loading-dot");
+          }
+          return;
+        }
+
+        const blob = await resp.blob();
+        const cd = resp.headers.get("content-disposition") || "";
+        let filename = "";
+        const m = cd.match(/filename\*=UTF-8''([^;]+)|filename=\"?([^\";]+)\"?/i);
+        if (m) filename = decodeURIComponent(m[1] || m[2] || "");
+        if (!filename) filename = "Educacao_em_Saude.pptx";
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          try { URL.revokeObjectURL(url); } catch {}
+          try { a.remove(); } catch {}
+        }, 300);
+
+        if (healthEduStatus) {
+          healthEduStatus.textContent = "Apresentação pronta.";
+          healthEduStatus.classList.remove("loading-dot");
+        }
+      } catch (err) {
+        console.error("Erro ao gerar PPTX (educação em saúde):", err);
+        if (healthEduStatus) {
+          healthEduStatus.textContent = "Erro ao gerar a apresentação.";
+          healthEduStatus.classList.remove("loading-dot");
+        }
+      } finally {
+        healthEduDownloadBtn.disabled = false;
+        if (healthEduStatus) healthEduStatus.classList.remove("loading-dot");
+      }
+    }
+
+    // Educação em Saúde: Enter no tema e botão Baixar
+    if (healthEduTheme) {
+      healthEduTheme.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          downloadHealthEducationPptx();
+        }
+      });
+    }
+
+    if (healthEduDownloadBtn) {
+      healthEduDownloadBtn.addEventListener("click", () => {
+        downloadHealthEducationPptx();
+      });
+    }
+
+
+
     // Dúvidas em Saúde: Enter e botão Enviar
 if (medicalDoubtInput) {
   medicalDoubtInput.addEventListener("keydown", (e) => {
@@ -14354,80 +14484,6 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       });
     }
 
-
-// ============================
-// MÓDULO: Educação em Saúde (PPTX)
-// ============================
-(function initHealthEducationModule() {
-  const topicEl = document.getElementById("eduTopic");
-  const durationEl = document.getElementById("eduDuration");
-  const btn = document.getElementById("eduGeneratePptxBtn");
-  const statusEl = document.getElementById("eduStatus");
-
-  if (!topicEl || !durationEl || !btn || !statusEl) return;
-
-  function setStatus(msg) {
-    statusEl.innerText = String(msg || "");
-  }
-
-  async function eduDownloadPptx() {
-    const tema = (topicEl.value || "").trim();
-    const dur = parseInt(String(durationEl.value || "0"), 10);
-
-    if (!tema || tema.length < 3) {
-      setStatus("Informe um tema com pelo menos 3 caracteres.");
-      return;
-    }
-    if (!Number.isFinite(dur) || dur < 3 || dur > 90) {
-      setStatus("Informe a duração em minutos (entre 3 e 90).");
-      return;
-    }
-
-    btn.disabled = true;
-    setStatus("Gerando apresentação. Isso pode levar alguns segundos.");
-
-    try {
-      const resp = await fetch(`${BACKEND_URL}/api/educacao-em-saude/pptx`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tema, duracao_min: dur })
-      });
-
-      if (!resp.ok) {
-        let msg = "Falha ao gerar a apresentação.";
-        try {
-          const j = await resp.json();
-          if (j && j.error) msg = String(j.error);
-        } catch {}
-        throw new Error(msg);
-      }
-
-      const blob = await resp.blob();
-      const cd = resp.headers.get("content-disposition") || "";
-      const m = cd.match(/filename\*?=(?:UTF-8''|")?([^";\n]+)"/i) || cd.match(/filename\*?=(?:UTF-8''|)([^;\n]+)/i);
-      const filename = (m && m[1]) ? decodeURIComponent(m[1].replace(/"/g, "").trim()) : `educacao_em_saude_${Date.now()}.pptx`;
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-
-      setStatus("Apresentação gerada e baixada.");
-    } catch (e) {
-      console.error(e);
-      setStatus(e && e.message ? e.message : "Erro ao gerar a apresentação.");
-    } finally {
-      btn.disabled = false;
-    }
-  }
-
-  btn.addEventListener("click", eduDownloadPptx);
-  setStatus("Escolha um tema e a duração, depois clique para baixar.");
-})();
 </script>
 
 <div id="postLoginOnlyModules" class="hidden">
@@ -14465,27 +14521,6 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     <div class="prescription-actions">
       <button id="copyMedicalDocsBtn" class="btn-copy hidden" type="button">Copiar</button>
       <button id="printMedicalDocsBtn" class="btn-print hidden" type="button">Imprimir</button>
-    </div>
-  </div>
-</div>
-
-<div class="module-card" id="healthEducationModule">
-  <h2>Educação em Saúde</h2>
-  <p class="module-subtitle">Gere e baixe uma apresentação pronta em slides (PPTX) para educação em saúde em enfermagem.</p>
-
-  <div class="inline-input-row" style="margin-top: 6px;">
-    <input id="eduTopic" class="text-input" type="text" placeholder="Tema (ex.: Higienização das mãos, Curativos, Administração de medicamentos)" />
-    <input id="eduDuration" class="text-input" type="number" min="3" max="90" step="1" placeholder="Duração (min)" style="max-width: 160px;" />
-  </div>
-
-  <div class="inline-input-row" style="margin-top: 10px;">
-    <button id="eduGeneratePptxBtn" class="admin-btn" type="button">Baixar apresentação (PPTX)</button>
-    <div id="eduStatus" class="mini-status" style="flex: 1; min-width: 220px;"></div>
-  </div>
-
-  <div id="eduHint" class="guide-inline" style="margin-top: 12px;">
-    <div style="font-size: 13px; line-height: 1.4;">
-      Dica: escolha uma duração realista para o público. O sistema ajusta a quantidade de slides e o nível de detalhe para caber no tempo informado.
     </div>
   </div>
 </div>
