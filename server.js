@@ -3458,8 +3458,6 @@ app.post("/api/interpretar-exame-imagem", requirePaidOrAdmin, async(req, res) =>
     return res.status(500).json({ error: "Falha interna ao interpretar o exame." });
   }
 
-});
-
 app.post("/api/transcrever-documento-imagem", requirePaidOrAdmin, async (req, res) => {
   try {
     const imagemDataUrl = getImageDataUrlFromBody(req.body);
@@ -3486,6 +3484,8 @@ app.post("/api/transcrever-documento-imagem", requirePaidOrAdmin, async (req, re
     console.error(e);
     return res.status(500).json({ error: "Falha interna ao transcrever o documento." });
   }
+});
+
 });
 
 // ======================================================================
