@@ -808,7 +808,31 @@
       min-height: 70px;
       margin-top: 12px;
     }
-    .small-record-btn {
+    
+
+    /* Saídas formatadas: espaçamento entre parágrafos e tópicos em vermelho/negrito */
+    .formatted-output {
+      white-space: normal !important;
+    }
+    .formatted-output p {
+      margin: 0 0 10px 0;
+    }
+    .formatted-output p:last-child {
+      margin-bottom: 0;
+    }
+    .formatted-output ul,
+    .formatted-output ol {
+      margin: 0 0 10px 18px;
+      padding: 0;
+    }
+    .formatted-output li {
+      margin: 0 0 6px 0;
+    }
+    .formatted-output .topic {
+      color: #b00020;
+      font-weight: bold;
+    }
+.small-record-btn {
       padding: 10px 16px;
       border-radius: 20px;
       border: none;
@@ -2122,9 +2146,6 @@
       font-size: 12px;
       margin-top: 4px;
     }
-
-
-  /* Administração segura de medicamentos: seções adicionais */
   .rx-subsection { margin-top: 12px; }
   .rx-subsection-title { font-size: 13px; font-weight: 700; margin: 0 0 8px 0; }
   .pill-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -2137,7 +2158,73 @@
   .tutorial-desc { font-size: 12px; color: #6b7280; margin: 0 0 10px 0; line-height: 1.35; }
   .tutorial-video { width: 100%; max-height: 320px; border-radius: 12px; background: #0b1220; display: block; }
 
-  </style>
+  
+/* ===== Avaliar receita (módulo) ===== */
+.rx-topic {
+  color: var(--danger, #c1121f);
+  font-weight: 700;
+  margin: 16px 0 6px;
+}
+.rx-paragraph {
+  margin: 0 0 10px;
+  line-height: 1.45;
+}
+.rx-details {
+  margin-top: 14px;
+}
+.rx-pill-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.rx-pill-btn {
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.06);
+  color: inherit;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.rx-pill-btn:hover {
+  background: rgba(255,255,255,0.1);
+}
+.rx-editable {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.04);
+  color: inherit;
+  border-radius: 12px;
+  padding: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.rx-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.rx-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.06);
+  color: inherit;
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 600;
+}
+.rx-link-btn:hover {
+  background: rgba(255,255,255,0.1);
+}
+</style>
 </head>
 <body>
 
@@ -2178,6 +2265,15 @@
           <source src="tutorial-2.mp4" type="video/mp4" />
         </video>
       </div>
+
+      <div class="tutorial-module" id="tutorial3">
+        <div class="tutorial-title">Tutorial 3</div>
+        <div class="tutorial-desc">Parte final do treinamento. Assista este vídeo para tirar dúvidas comuns e aprender boas práticas no uso diário da plataforma.</div>
+        <video class="tutorial-video" controls preload="metadata">
+          <source src="tutorial-3.mp4" type="video/mp4" />
+        </video>
+      </div>
+
     </div>
   </div>
 
@@ -2496,17 +2592,6 @@
         </div>
       </div>
 
-      <div id="liveGuidance" class="live-guidance">
-        <div class="live-guidance-header">
-          <p class="live-guidance-title">Perguntas e procedimentos essenciais</p>
-          <p id="liveGuidanceContext" class="live-guidance-context"></p>
-        </div>
-        <p id="liveGuidanceStatus" class="live-guidance-status">Inicie o atendimento para receber perguntas e procedimentos necessários em tempo real.</p>
-        <div id="liveGuidanceList" class="live-guidance-list">
-          <div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>
-        </div>
-      </div>
-
       <button id="recordBtn" class="start">Iniciar atendimento</button>
 
       <p id="startNotice">
@@ -2515,6 +2600,17 @@
 
       <div id="timer">00:00</div>
       <div id="micStatus">Clique em "Iniciar atendimento" para começar.</div>
+      <div id="liveGuidance" class="live-guidance">
+        <div class="live-guidance-header">
+          <div class="live-guidance-title">Perguntas e procedimentos essenciais (tempo real)</div>
+          <div id="liveGuidanceContext" class="live-guidance-context"></div>
+        </div>
+        <div id="liveGuidanceStatus" class="live-guidance-status">Inicie o atendimento para receber perguntas e procedimentos necessários em tempo real.</div>
+        <div id="liveGuidanceList" class="live-guidance-list">
+          <div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>
+        </div>
+      </div>
+
 
       <div class="controls-row">
         <button id="pauseBtn">Pausar</button>
@@ -2535,21 +2631,21 @@
         Use este módulo para triagem na porta do hospital. Fale identificação do paciente, queixa principal, sinais vitais, achados do ABCDE, comorbidades, alergias e medicações em uso. Ao encerrar, será gerado um relatório técnico de triagem, condutas iniciais e passagem rápida ao médico.
       </p>
 
+      <button id="triageRecordBtn" class="start" type="button">Iniciar triagem hospitalar</button>
+
+      <div id="triageTimer">00:00</div>
+      <div id="triageMicStatus">Clique em "Iniciar triagem hospitalar" para começar.</div>
       <div id="triageLiveGuidance" class="live-guidance">
         <div class="live-guidance-header">
-          <p class="live-guidance-title">Perguntas e procedimentos essenciais da triagem</p>
-          <p id="triageLiveGuidanceContext" class="live-guidance-context"></p>
+          <div class="live-guidance-title">Perguntas e procedimentos essenciais (tempo real)</div>
+          <div id="triageLiveGuidanceContext" class="live-guidance-context"></div>
         </div>
-        <p id="triageLiveGuidanceStatus" class="live-guidance-status">Inicie a triagem para receber perguntas e procedimentos necessários em tempo real.</p>
+        <div id="triageLiveGuidanceStatus" class="live-guidance-status">Inicie a triagem para receber perguntas e procedimentos necessários em tempo real.</div>
         <div id="triageLiveGuidanceList" class="live-guidance-list">
           <div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>
         </div>
       </div>
 
-      <button id="triageRecordBtn" class="start" type="button">Iniciar triagem hospitalar</button>
-
-      <div id="triageTimer">00:00</div>
-      <div id="triageMicStatus">Clique em "Iniciar triagem hospitalar" para começar.</div>
 
       <div class="controls-row">
         <button id="triagePauseBtn" type="button">Pausar</button>
@@ -2579,22 +2675,21 @@
         Use este módulo para registrar de forma objetiva a passagem de plantão. Fale identificação do paciente, situação atual, principais riscos, dispositivos, medicações em uso, exames pendentes e condutas/pendências para o próximo turno. Ao encerrar, será gerado um texto pronto para repassar ao colega e colar no prontuário.
       </p>
 
-      
+      <button id="handoffRecordBtn" class="start" type="button">Iniciar passagem de plantão</button>
+
+      <div id="handoffTimer">00:00</div>
+      <div id="handoffMicStatus">Clique em "Iniciar passagem de plantão" para começar.</div>
       <div id="handoffLiveGuidance" class="live-guidance">
         <div class="live-guidance-header">
-          <p class="live-guidance-title">Perguntas e procedimentos essenciais da passagem de plantão</p>
-          <p id="handoffLiveGuidanceContext" class="live-guidance-context"></p>
+          <div class="live-guidance-title">Sugestões essenciais SBAR (tempo real)</div>
+          <div id="handoffLiveGuidanceContext" class="live-guidance-context"></div>
         </div>
-        <p id="handoffLiveGuidanceStatus" class="live-guidance-status">Inicie a passagem de plantão para receber perguntas e procedimentos necessários em tempo real.</p>
+        <div id="handoffLiveGuidanceStatus" class="live-guidance-status">Inicie a passagem de plantão para receber sugestões essenciais SBAR em tempo real.</div>
         <div id="handoffLiveGuidanceList" class="live-guidance-list">
           <div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>
         </div>
       </div>
 
-<button id="handoffRecordBtn" class="start" type="button">Iniciar passagem de plantão</button>
-
-      <div id="handoffTimer">00:00</div>
-      <div id="handoffMicStatus">Clique em "Iniciar passagem de plantão" para começar.</div>
 
       <div class="controls-row">
         <button id="handoffPauseBtn" type="button">Pausar</button>
@@ -3037,66 +3132,6 @@
     </div>
 
     
-    <div id="medSafetyCard" class="module-card">
-      <div class="section-header-row">
-      <h2>Administração segura de medicamentos</h2>
-      <button id="medSafetyGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
-    </div>
-                  <p class="mini-status" style="margin-top: 0;">
-        Use o botão para fotografar a prescrição médica. O sistema irá transcrever o que estiver legível, organizar os medicamentos, apontar riscos e inconsistências relevantes para a enfermagem e sinalizar interações importantes quando for possível confirmar com segurança.
-      </p>
-<div class="prescription-actions">
-        <label for="medCameraInput" class="photo-btn">Tirar foto</label>
-        <label for="medFileInput" class="photo-btn">Escolher arquivo</label>
-        <button id="copyMedSafetyBtn" class="btn-copy hidden">Copiar segurança dos medicamentos</button>
-        <button id="printMedSafetyBtn" class="btn-print hidden">Imprimir segurança dos medicamentos</button>
-      </div>
-
-	  <div id="medSafetyResults" class="hidden">
-	    <div id="interactionsStatus" class="mini-status"></div>
-
-	    <div class="rx-subsection">
-	      <div class="rx-subsection-title">Transcrição da receita</div>
-	      <textarea id="medRxTranscription" class="prescription-textarea" placeholder="A transcrição da receita aparecerá aqui."></textarea>
-	      <div class="prescription-actions" style="justify-content: flex-start; gap: 10px; margin-top: 10px;">
-	        <button id="copyRxTranscriptionBtn" class="btn-copy hidden" type="button">Copiar transcrição da receita</button>
-	      </div>
-	    </div>
-
-	    <div class="rx-subsection">
-	      <div class="rx-subsection-title">Lactação (por medicamento)</div>
-	      <div id="medRxLactationBox" class="classification-box">Nenhum conteúdo disponível.</div>
-	    </div>
-
-	    <div class="rx-subsection">
-	      <div class="rx-subsection-title">Gravidez (categoria de risco)</div>
-	      <div id="medRxPregnancyBox" class="classification-box">Nenhum conteúdo disponível.</div>
-	    </div>
-
-	    <div class="rx-subsection">
-	      <div class="rx-subsection-title">Medicamentos identificados</div>
-	      <div id="medRxMedButtons" class="pill-buttons" aria-label="Medicamentos identificados"></div>
-	      <div id="medRxMedButtonsHint" class="mini-status">Nenhum conteúdo disponível.</div>
-	    </div>
-
-	    <div class="rx-subsection">
-	      <div class="rx-subsection-title">Interações medicamentosas (da prescrição)</div>
-	      <div id="medRxInteractionsBox" class="classification-box">Nenhum conteúdo disponível.</div>
-	    </div>
-
-	    <div class="rx-subsection">
-	      <div class="rx-subsection-title">Pontos de enfermagem (da prescrição)</div>
-	      <div id="medRxNursingPointsBox" class="classification-box">Nenhum conteúdo disponível.</div>
-	    </div>
-
-	    <textarea id="medSafetyExport" class="hidden-input"></textarea>
-	  </div>
-
-      <input id="medCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
-      <input id="medFileInput" class="hidden-input" type="file" accept="image/*" multiple />
-    </div>
-
-
     <div id="aprazamentoCard" class="module-card">
       <div class="section-header-row">
         <h2>Aprazamento de prescrição</h2>
@@ -3220,6 +3255,64 @@
         <div class="recommendation-item"><strong>3) Organização</strong> O conteúdo é organizado por seções (tipo de documento, identificação, corpo do texto e assinaturas/carimbo quando existirem). Em prescrições, os itens são listados em linhas separadas para facilitar conferência.</div>
         <div class="recommendation-item"><strong>4) Sem invenção</strong> Nenhum dado é criado. Se um campo não aparecer no documento, ele será mantido como "não informado" ou ficará em branco quando apropriado.</div>
         <div class="recommendation-item"><strong>5) Conferência</strong> Sempre confirme a transcrição com a imagem original antes de registrar ou executar qualquer conduta.</div>
+      </div>
+    </div>
+
+
+    <div id="rxEvalCard" class="module-card">
+      <div class="section-header-row">
+        <h2>Avaliar receita</h2>
+        <button id="rxEvalGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
+      </div>
+
+      <p class="mini-status" style="margin-top: 0;">
+        Tire uma foto da receita ou selecione um arquivo. O sistema transcreve somente o que estiver legível e identifica os medicamentos citados para gerar bulas e informações clínicas organizadas.
+      </p>
+
+      <div class="prescription-actions">
+        <label for="rxEvalCameraInput" class="photo-btn">Tirar foto</label>
+        <label for="rxEvalFileInput" class="photo-btn">Escolher arquivo</label>
+        <button id="rxEvalCopyTranscriptionBtn" class="btn-copy hidden" type="button">Copiar transcrição</button>
+        <button id="rxEvalPrintTranscriptionBtn" class="btn-print hidden" type="button">Imprimir transcrição</button>
+      </div>
+
+      <div id="rxEvalStatus" class="mini-status"></div>
+
+      <div id="rxEvalResults" class="hidden">
+<div class="rx-topic">Transcrição da receita (editável)</div>
+      <textarea id="rxEvalTranscription" class="rx-editable" placeholder="A transcrição aparecerá aqui. Você pode editar antes de copiar ou imprimir."></textarea>
+
+      <div class="prescription-actions" style="margin-top: 10px;">
+        <button id="rxEvalCopyDetailsBtn" class="btn-copy hidden" type="button">Copiar informações do medicamento</button>
+        <button id="rxEvalPrintDetailsBtn" class="btn-print hidden" type="button">Imprimir informações do medicamento</button>
+      </div>
+
+      <div class="rx-topic" style="margin-top: 18px;">Bula dos medicamentos</div>
+      <p id="rxEvalMedsCount" class="mini-status" style="margin-top: 0;">Nenhum medicamento identificado.</p>
+      <div id="rxEvalMedsButtons" class="rx-pill-wrap"></div>
+
+      <div id="rxEvalDetails" class="classification-box rx-details">Selecione um medicamento acima para ver as informações.</div>
+
+      </div>
+<input id="rxEvalCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" />
+      <input id="rxEvalFileInput" class="hidden-input" type="file" accept="image/*" multiple />
+    </div>
+
+    <div id="rxEvalGuidePanel" class="recommendations-panel">
+      <div class="recommendations-header">
+        <h3>Guia de Avaliar receita</h3>
+        <button id="closeRxEvalGuideBtn" class="close-panel-btn" aria-label="Fechar guia de avaliar receita">X</button>
+      </div>
+
+      <div class="recommendations-status">
+        Este módulo ajuda a transcrever receitas e a organizar informações de bula. Não substitui a revisão e assinatura do médico responsável.
+      </div>
+
+      <div class="recommendations-list">
+        <div class="recommendation-item"><strong>1) Qualidade da imagem</strong> Use boa iluminação, foco e enquadre toda a prescrição. Evite sombras e reflexos.</div>
+        <div class="recommendation-item"><strong>2) Receita legível</strong> Pela Lei nº 5.991/1973 (art. 35), a dispensação em farmácias depende de receita escrita por extenso e de modo legível. Sempre que possível, forneça prescrição legível e preferencialmente impressa.</div>
+        <div class="recommendation-item"><strong>3) Limitações e responsabilidade</strong> Em receitas manuscritas ou ilegíveis, pode haver erro na identificação do nome do medicamento. Este recurso não se responsabiliza por identificações incorretas; confirme sempre com a prescrição original e com fontes oficiais.</div>
+        <div class="recommendation-item"><strong>4) Fontes recomendadas</strong> Para conferência, utilize o Bulário Eletrônico da Anvisa e, quando necessário, bulas públicas de referência. O conteúdo gerado deve ser validado pelo profissional.</div>
       </div>
     </div>
 
@@ -3744,6 +3837,8 @@
       </div>
 
       <textarea id="reportOutput" class="prescription-textarea" placeholder="O documento gerado aparecerá aqui." style="margin-top: 12px;"></textarea>
+      <div id="reportPreview" class="classification-box formatted-output" style="margin-top: 12px; display: none;">Nenhum conteúdo disponível.</div>
+
     </div>
 
   </div>
@@ -3899,23 +3994,6 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     </div>
   </div>
 
-  <div id="medSafetyGuidePanel" class="recommendations-panel">
-    <div class="recommendations-header">
-      <h3>Guia: Administração segura de medicamentos</h3>
-      <button id="closeMedSafetyGuideBtn" class="close-panel-btn" aria-label="Fechar guia de administração segura de medicamentos">X</button>
-    </div>
-    <div class="recommendations-status">
-      Como usar este módulo com segurança.
-    </div>
-    <div class="recommendations-list">
-      <div class="recommendation-item"><strong>1) Captura da prescrição</strong><br>Use "Tirar foto" ou "Escolher arquivo". Garanta boa iluminação, foco e que dose, via e horários estejam legíveis.</div>
-      <div class="recommendation-item"><strong>2) Conferência obrigatória</strong><br>Compare sempre o texto gerado com a imagem original antes de registrar no prontuário ou administrar qualquer medicação.</div>
-      <div class="recommendation-item"><strong>3) Registro</strong><br>Após revisar, use "Copiar segurança dos medicamentos" para colar no registro de enfermagem ou "Imprimir" quando necessário.</div>
-      <div class="recommendation-item"><strong>4) Se houver dúvida</strong><br>Quando faltar informação ou houver risco (alergias, dose incompleta, diluição, velocidade, incompatibilidade), confirme com prescrição oficial e acione o médico/plantonista conforme protocolo.</div>
-    </div>
-  </div>
-
-
   <div id="aprazamentoGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
       <h3>Guia: Aprazamento de prescrição</h3>
@@ -4037,13 +4115,13 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     // IMAGENS (Curativos e Prescrição) - estado por módulo (até 4 fotos)
     // =========================
     let woundImages = [];
-    let medImages = [];
     let examImages = [];
     let transcriptionImages = [];
+    let rxEvalImages = [];
     let woundAnalyzeTimer = null;
-    let medAnalyzeTimer = null;
     let examAnalyzeTimer = null;
     let transcriptionAnalyzeTimer = null;
+    let rxEvalAnalyzeTimer = null;
     let aprazImages = [];
     let aprazAnalyzeTimer = null;
 
@@ -4058,12 +4136,7 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
       }, 180);
     }
 
-    function scheduleMedAnalysis() {
-      if (medAnalyzeTimer) clearTimeout(medAnalyzeTimer);
-      medAnalyzeTimer = setTimeout(() => {
-        if (medImages && medImages.length) analyzePrescriptionWithImages(medImages.slice());
-      }, 180);
-    }
+    
 
     function scheduleExamAnalysis() {
       if (examAnalyzeTimer) clearTimeout(examAnalyzeTimer);
@@ -4078,6 +4151,14 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
         if (transcriptionImages && transcriptionImages.length) analyzeTranscriptionWithImages(transcriptionImages.slice());
       }, 180);
     }
+
+    function scheduleRxEvalAnalysis() {
+      if (rxEvalAnalyzeTimer) clearTimeout(rxEvalAnalyzeTimer);
+      rxEvalAnalyzeTimer = setTimeout(() => {
+        if (rxEvalImages && rxEvalImages.length) analyzeRxEvalWithImages(rxEvalImages.slice());
+      }, 180);
+    }
+
 
     function scheduleAprazAnalysis() {
       if (aprazAnalyzeTimer) clearTimeout(aprazAnalyzeTimer);
@@ -4795,24 +4876,20 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     let handoffAccumulatedSeconds = 0;
     let handoffTimerInterval = null;
 
-
-    // Guia em tempo real da passagem de plantão (até 3 itens por vez)
+    // Guia em tempo real da passagem de plantão (SBAR - até 3 sugestões por vez)
     let handoffGuidanceEnabled = false;
-    let handoffGuidanceStage = "aguardando_motivo";
+    let handoffGuidanceStage = "sbar"; // "sbar"
     let handoffGuidancePending = [];
     let handoffGuidanceContextLabel = "";
     let handoffGuidanceHypothesis = "";
     let handoffGuidanceConfidence = 0;
 
     let handoffGuidanceInFlight = false;
-    let handoffGuidanceAskedQuestion = "";
-    let handoffGuidanceAskedAtLen = 0;
-    let handoffGuidanceAskedAtTs = 0;
     let handoffGuidanceLastPayloadHash = "";
-    let handoffGuidanceTurnState = "aguardando_pergunta";
     let handoffGuidanceChunkStartLen = 0;
     let handoffGuidanceSilenceTimer = null;
     let handoffGuidanceLastChunkTs = 0;
+
 
     // ============================
     // MÓDULO: Documentos (gravação + geração de documento)
@@ -4991,12 +5068,6 @@ const recordBtn = document.getElementById("recordBtn");
     const handoffGuideBtn = document.getElementById("handoffGuideBtn");
     const handoffGuidePanel = document.getElementById("handoffGuidePanel");
     const closeHandoffGuideBtn = document.getElementById("closeHandoffGuideBtn");
-
-
-    const medSafetyGuideBtn = document.getElementById("medSafetyGuideBtn");
-    const medSafetyGuidePanel = document.getElementById("medSafetyGuidePanel");
-    const closeMedSafetyGuideBtn = document.getElementById("closeMedSafetyGuideBtn");
-
     const aprazamentoGuideBtn = document.getElementById("aprazamentoGuideBtn");
     const aprazamentoGuidePanel = document.getElementById("aprazamentoGuidePanel");
     const closeAprazamentoGuideBtn = document.getElementById("closeAprazamentoGuideBtn");
@@ -5125,38 +5196,17 @@ const recordBtn = document.getElementById("recordBtn");
     const copyFullSoapBtn = document.getElementById("copyFullSoapBtn");
     const printSoapBtn = document.getElementById("printSoapBtn");
 
+    // Monografia/Informações do medicamento (overlay)
+    // Algumas telas podem não ter esses elementos; por isso tudo é opcional e sempre checado antes do uso.
+    const medMonographOverlay = document.getElementById("medMonographOverlay");
+    const medMonographContent = document.getElementById("medMonographContent");
+    const copyMedMonographBtn = document.getElementById("copyMedMonographBtn");
+    const closeMedMonographBtn = document.getElementById("closeMedMonographBtn");
+
     const medicalDoubtInput = document.getElementById("medicalDoubtInput");
     const medicalDoubtStatus = document.getElementById("medicalDoubtStatus");
     const medicalDoubtAnswer = document.getElementById("medicalDoubtAnswer");
     const medicalDoubtSendBtn = document.getElementById("medicalDoubtSendBtn");
-
-
-    const medPhotoBtn = document.getElementById("medPhotoBtn");
-    const medFileBtn = document.getElementById("medFileBtn");
-    const medRxLactationBox = document.getElementById("medRxLactationBox");
-    const medRxPregnancyBox = document.getElementById("medRxPregnancyBox");
-    const medSafetyExport = document.getElementById("medSafetyExport");
-    const medSafetyResults = document.getElementById("medSafetyResults");
-    const interactionsBox = document.getElementById("interactionsBox");
-    const interactionsStatus = document.getElementById("interactionsStatus");
-    const copyMedSafetyBtn = document.getElementById("copyMedSafetyBtn");
-    const printMedSafetyBtn = document.getElementById("printMedSafetyBtn");
-    const medCameraInput = document.getElementById("medCameraInput");
-    const medFileInput = document.getElementById("medFileInput");
-
-    const medRxTranscription = document.getElementById("medRxTranscription");
-    const copyRxTranscriptionBtn = document.getElementById("copyRxTranscriptionBtn");
-    const medRxMedButtons = document.getElementById("medRxMedButtons");
-    const medRxMedButtonsHint = document.getElementById("medRxMedButtonsHint");
-    const medRxInteractionsBox = document.getElementById("medRxInteractionsBox");
-    const medRxNursingPointsBox = document.getElementById("medRxNursingPointsBox");
-
-    const medMonographOverlay = document.getElementById("medMonographOverlay");
-    const medMonographTitle = document.getElementById("medMonographTitle");
-    const medMonographStatus = document.getElementById("medMonographStatus");
-    const medMonographContent = document.getElementById("medMonographContent");
-    const copyMedMonographBtn = document.getElementById("copyMedMonographBtn");
-    const closeMedMonographBtn = document.getElementById("closeMedMonographBtn");
 
 
     const woundPhotoBtn = document.getElementById("woundPhotoBtn");
@@ -5181,6 +5231,25 @@ const presentationsMaxDoseBox = document.getElementById("presentationsMaxDoseBox
     const printTranscriptionBtn = document.getElementById("printTranscriptionBtn");
     const transcriptionCameraInput = document.getElementById("transcriptionCameraInput");
     const transcriptionFileInput = document.getElementById("transcriptionFileInput");
+
+    const rxEvalStatus = document.getElementById("rxEvalStatus");
+    const rxEvalTranscription = document.getElementById("rxEvalTranscription");
+    const rxEvalDetails = document.getElementById("rxEvalDetails");
+    const rxEvalMedsCount = document.getElementById("rxEvalMedsCount");
+    const rxEvalMedsButtons = document.getElementById("rxEvalMedsButtons");
+    const rxEvalCopyTranscriptionBtn = document.getElementById("rxEvalCopyTranscriptionBtn");
+    const rxEvalPrintTranscriptionBtn = document.getElementById("rxEvalPrintTranscriptionBtn");
+    const rxEvalCopyDetailsBtn = document.getElementById("rxEvalCopyDetailsBtn");
+    const rxEvalPrintDetailsBtn = document.getElementById("rxEvalPrintDetailsBtn");
+    const rxEvalCameraInput = document.getElementById("rxEvalCameraInput");
+    const rxEvalFileInput = document.getElementById("rxEvalFileInput");
+
+    
+    const rxEvalResults = document.getElementById("rxEvalResults");
+const rxEvalGuideBtn = document.getElementById("rxEvalGuideBtn");
+    const rxEvalGuidePanel = document.getElementById("rxEvalGuidePanel");
+    const closeRxEvalGuideBtn = document.getElementById("closeRxEvalGuideBtn");
+
 
     const transcriptionGuideBtn = document.getElementById("transcriptionGuideBtn");
     const transcriptionGuidePanel = document.getElementById("transcriptionGuidePanel");
@@ -5214,13 +5283,7 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       if (visible) el.classList.remove("hidden");
       else el.classList.add("hidden");
     }
-
-    // Administração segura de medicamentos: resultados só aparecem após selecionar foto/arquivo.
-    function setMedSafetyResultsVisible(visible) {
-      if (!medSafetyResults) return;
-      if (visible) medSafetyResults.classList.remove("hidden");
-      else medSafetyResults.classList.add("hidden");
-    }
+    
 
     function isMeaningfulText(t) {
       const s = String(t || "").trim();
@@ -5231,14 +5294,7 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       return true;
     }
 
-    function updateMedSafetyActions() {
-      const hasReport = isMeaningfulText(medSafetyExport ? medSafetyExport.value : "");
-      setVisible(copyMedSafetyBtn, hasReport);
-      setVisible(printMedSafetyBtn, hasReport);
-
-      const hasTrans = isMeaningfulText(medRxTranscription ? medRxTranscription.value : "");
-      setVisible(copyRxTranscriptionBtn, hasTrans);
-    }
+    
 
     function updateWoundActions() {
       const has = isMeaningfulText(presentationsMaxDoseBox ? presentationsMaxDoseBox.textContent : "");
@@ -5699,7 +5755,9 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     const reportRecordBtn = document.getElementById("reportRecordBtn");
     const reportStatus = document.getElementById("reportStatus");
     const reportOutput = document.getElementById("reportOutput");
-    const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
+    
+    const reportPreview = document.getElementById("reportPreview");
+const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
     const reportDocTypeDetected = document.getElementById("reportDocTypeDetected");
     const reportMissingFields = document.getElementById("reportMissingFields");
     const copyReportBtn = document.getElementById("copyReportBtn");
@@ -5836,7 +5894,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     }
 
     function resetLiveGuidanceState() {
-      guidanceEnabled = true;
+      guidanceEnabled = false;
       guidanceStage = "aguardando_motivo";
       guidancePending = [];
       guidanceContextLabel = "";
@@ -5860,12 +5918,11 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       renderLiveGuidance();
     }
 
-    function startGuidanceLoop() {
-      // Sem polling: só reage a eventos (inicial após motivo e após cada resposta)
-      guidanceEnabled = true;
-      renderLiveGuidance();
-      maybeStartInitialGuidance(false);
-    }
+        function startGuidanceLoop() {
+          guidanceEnabled = true;
+          renderLiveGuidance();
+          maybeStartInitialGuidance(false);
+        }
 
     function stopGuidanceLoop() {
       guidanceEnabled = false;
@@ -5957,7 +6014,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     }
 
     function triageResetLiveGuidanceState() {
-      triageGuidanceEnabled = true;
+      triageGuidanceEnabled = false;
       triageGuidanceStage = "aguardando_motivo";
       triageGuidancePending = [];
       triageGuidanceContextLabel = "";
@@ -5981,11 +6038,11 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       triageRenderLiveGuidance();
     }
 
-    function triageStartGuidanceLoop() {
-      triageGuidanceEnabled = true;
-      triageRenderLiveGuidance();
-      triageMaybeStartInitialGuidance(false);
-    }
+        function triageStartGuidanceLoop() {
+          triageGuidanceEnabled = true;
+          triageRenderLiveGuidance();
+          triageMaybeStartInitialGuidance(false);
+        }
 
     function triageStopGuidanceLoop() {
       triageGuidanceEnabled = false;
@@ -6151,286 +6208,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         triageRenderLiveGuidance();
       }
     }
-
-    // ============================
-    // Perguntas e procedimentos essenciais da passagem de plantão em tempo real (FLUXO CONTROLADO)
-    // ============================
-    function handoffRenderLiveGuidance() {
-      if (!handoffLiveGuidance || !handoffLiveGuidanceStatus || !handoffLiveGuidanceList || !handoffLiveGuidanceContext) return;
-
-      if (!handoffGuidanceEnabled || !handoffIsRecording) {
-        handoffLiveGuidanceContext.textContent = "";
-        handoffLiveGuidanceStatus.textContent = "Inicie a passagem de plantão para receber perguntas e procedimentos necessários em tempo real.";
-        handoffLiveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma sugestão por enquanto.</div>";
-        return;
-      }
-
-      const ctx = (handoffGuidanceContextLabel || "").trim();
-      handoffLiveGuidanceContext.textContent = ctx ? ("Passagem: " + ctx) : "";
-
-      if (handoffGuidanceStage === "aguardando_motivo") {
-        handoffLiveGuidanceStatus.textContent = "Aguardando o início da passagem (identificação e situação). Após iniciar, serão sugeridos itens essenciais para uma passagem segura (SBAR).";
-        handoffLiveGuidanceList.innerHTML = `
-          <div class="live-guidance-empty">
-            Oriente: comece pela identificação do paciente e situação atual (SBAR). Em seguida, riscos, dispositivos, medicações, exames pendentes e plano.
-            <div style="margin-top:10px;">
-              <button id="handoffForceStartGuidanceBtn" class="mini-red-btn" style="background:#b00020;">Início já foi informado</button>
-            </div>
-          </div>
-        `;
-        const btn = document.getElementById("handoffForceStartGuidanceBtn");
-        if (btn) {
-          btn.onclick = () => {
-            if (handoffGuidanceStage !== "aguardando_motivo") return;
-            handoffGuidanceStage = "perguntas";
-            handoffGuidanceTurnState = "aguardando_pergunta";
-            handoffGuidanceAskedQuestion = "";
-            handoffGuidanceAskedAtLen = handoffGetCombinedTranscriptForGuidance().length;
-            handoffGuidanceAskedAtTs = Date.now();
-            handoffGuidanceChunkStartLen = handoffGetCombinedTranscriptForGuidance().length;
-            handoffRequestGuidanceFromBackend({ evento: "inicial" });
-          };
-        }
-        return;
-      }
-
-      const confTxt = (typeof handoffGuidanceConfidence === "number" && handoffGuidanceConfidence > 0)
-        ? ("Nível de confiança do cenário: " + Math.round(handoffGuidanceConfidence) + "% (não chega a 100%).")
-        : "";
-
-      const hypo = (handoffGuidanceHypothesis || "").trim();
-      const hypoTxt = hypo ? ("Cenário principal: " + hypo + ". " + confTxt) : confTxt;
-
-      if (handoffGuidanceTurnState === "aguardando_resposta") {
-        handoffLiveGuidanceStatus.textContent = "Item em andamento. Aguardando complementação para atualizar os próximos itens...";
-      } else if (handoffGuidanceInFlight) {
-        handoffLiveGuidanceStatus.textContent = "Atualizando itens essenciais...";
-      } else {
-        handoffLiveGuidanceStatus.textContent = hypoTxt || "Itens essenciais sugeridos. Complete um item e avance para o próximo.";
-      }
-
-      if (!handoffGuidancePending || !handoffGuidancePending.length) {
-        handoffLiveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhum item essencial no momento.</div>";
-        return;
-      }
-
-      handoffLiveGuidanceList.innerHTML = "";
-      handoffGuidancePending.slice(0, 3).forEach((q, idx) => {
-        const safeQ = escapeHtml(String(q || ""));
-        const askedMark = (handoffGuidanceAskedQuestion && handoffGuidanceAskedQuestion.toLowerCase() === String(q || "").toLowerCase())
-          ? " (item executado)"
-          : "";
-        const el = document.createElement("div");
-        el.className = "live-guidance-item";
-        el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${safeQ}${askedMark}</div>`;
-        handoffLiveGuidanceList.appendChild(el);
-      });
-    }
-
-    function handoffGetCombinedTranscriptForGuidance() {
-      const combined = ((handoffFinalTranscript || "") + " " + (handoffInterimTranscript || "")).trim();
-      if (!combined) return "";
-      const MAX = 8000;
-      return combined.length > MAX ? combined.slice(combined.length - MAX) : combined;
-    }
-
-    function handoffResetLiveGuidanceState() {
-      handoffGuidanceEnabled = false;
-      handoffGuidanceStage = "aguardando_motivo";
-      handoffGuidancePending = [];
-      handoffGuidanceContextLabel = "";
-      handoffGuidanceHypothesis = "";
-      handoffGuidanceConfidence = 0;
-
-      handoffGuidanceInFlight = false;
-
-      handoffGuidanceTurnState = "aguardando_pergunta";
-      handoffGuidanceAskedQuestion = "";
-      handoffGuidanceAskedAtLen = 0;
-      handoffGuidanceAskedAtTs = 0;
-
-      handoffGuidanceChunkStartLen = 0;
-      handoffGuidanceSilenceTimer && clearTimeout(handoffGuidanceSilenceTimer);
-      handoffGuidanceSilenceTimer = null;
-
-      handoffGuidanceLastPayloadHash = "";
-      handoffGuidanceLastChunkTs = 0;
-
-      handoffRenderLiveGuidance();
-    }
-
-    function handoffStartGuidanceLoop() {
-      handoffGuidanceEnabled = true;
-      handoffRenderLiveGuidance();
-      handoffMaybeStartInitialGuidance(false);
-    }
-
-    function handoffStopGuidanceLoop() {
-      handoffGuidanceEnabled = false;
-      handoffGuidanceInFlight = false;
-      handoffGuidanceTurnState = "aguardando_pergunta";
-      handoffGuidanceAskedQuestion = "";
-      handoffGuidanceSilenceTimer && clearTimeout(handoffGuidanceSilenceTimer);
-      handoffGuidanceSilenceTimer = null;
-      handoffRenderLiveGuidance();
-    }
-
-    function handoffMaybeStartInitialGuidance(force) {
-      if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
-      if (handoffGuidanceStage !== "aguardando_motivo") return;
-
-      const combined = handoffGetCombinedTranscriptForGuidance();
-      if (!combined || combined.length < 120) return;
-
-      // Para passagem, inicia por comprimento (não depende de palavras-chave)
-      if (!force && combined.length < 220) return;
-
-      handoffGuidanceStage = "perguntas";
-      handoffGuidanceTurnState = "aguardando_pergunta";
-      handoffGuidanceAskedQuestion = "";
-      handoffGuidanceAskedAtLen = combined.length;
-      handoffGuidanceAskedAtTs = Date.now();
-      handoffGuidanceChunkStartLen = combined.length;
-
-      handoffRequestGuidanceFromBackend({ evento: "inicial" });
-    }
-
-    function handoffOnTranscriptUpdateForGuidance() {
-      if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
-
-      if (handoffGuidanceStage === "aguardando_motivo") {
-        handoffMaybeStartInitialGuidance(false);
-        return;
-      }
-
-      handoffScheduleGuidanceSilenceFinalize();
-    }
-
-    function handoffScheduleGuidanceSilenceFinalize() {
-      if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
-
-      if (handoffGuidanceSilenceTimer) clearTimeout(handoffGuidanceSilenceTimer);
-      handoffGuidanceSilenceTimer = setTimeout(() => {
-        handoffFinalizeGuidanceChunk();
-      }, 1400);
-    }
-
-    function handoffFinalizeGuidanceChunk() {
-      if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
-
-      const combined = handoffGetCombinedTranscriptForGuidance();
-      if (!combined) return;
-
-      if (handoffGuidanceChunkStartLen <= 0) {
-        handoffGuidanceChunkStartLen = combined.length;
-        return;
-      }
-
-      const chunk = combined.slice(handoffGuidanceChunkStartLen).trim();
-      handoffGuidanceChunkStartLen = combined.length;
-
-      if (!chunk || chunk.length < 10) return;
-
-      const now = Date.now();
-      if (handoffGuidanceLastChunkTs && (now - handoffGuidanceLastChunkTs) < 900) return;
-      handoffGuidanceLastChunkTs = now;
-
-      handoffHandleGuidanceUtteranceChunk(chunk);
-    }
-
-    function handoffHandleGuidanceUtteranceChunk(chunkText) {
-      if (!chunkText) return;
-      if (!handoffGuidancePending || !handoffGuidancePending.length) return;
-      if (handoffGuidanceInFlight) return;
-
-      if (handoffGuidanceTurnState === "aguardando_pergunta") {
-        const matched = matchQuestionFromUtterance(chunkText, handoffGuidancePending);
-
-        handoffGuidanceAskedQuestion = matched ? matched : "";
-        handoffGuidanceAskedAtTs = Date.now();
-        handoffGuidanceAskedAtLen = handoffGetCombinedTranscriptForGuidance().length;
-
-        handoffGuidanceTurnState = "aguardando_resposta";
-        handoffRenderLiveGuidance();
-        return;
-      }
-
-      if (handoffGuidanceTurnState === "aguardando_resposta") {
-        const dt = Date.now() - (handoffGuidanceAskedAtTs || 0);
-        if (dt < 900) return;
-
-        handoffRequestGuidanceFromBackend({ evento: "resposta", ultima_fala: chunkText });
-        return;
-      }
-    }
-
-    async function handoffRequestGuidanceFromBackend({ evento, ultima_fala }) {
-      if (handoffGuidanceInFlight) return;
-      if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
-
-      const combined = handoffGetCombinedTranscriptForGuidance();
-      if (!combined || combined.length < 50) {
-        handoffRenderLiveGuidance();
-        return;
-      }
-
-      const payload = {
-        modo: "passagem_plantao",
-        transcricao: combined,
-        estado: handoffGuidanceStage,
-        evento: evento || "stream",
-        pergunta_feita: handoffGuidanceAskedQuestion || "",
-        perguntas_pendentes: Array.isArray(handoffGuidancePending) ? handoffGuidancePending.slice(0, 3) : [],
-        confianca_atual: typeof handoffGuidanceConfidence === "number" ? handoffGuidanceConfidence : 0,
-        hipotese_atual: handoffGuidanceHypothesis || "",
-        ultima_fala: typeof ultima_fala === "string" ? ultima_fala.slice(0, 800) : ""
-      };
-
-      const h = hashForGuidancePayload(payload);
-      if (h === handoffGuidanceLastPayloadHash && evento !== "inicial" && evento !== "resposta") return;
-      handoffGuidanceLastPayloadHash = h;
-
-      handoffGuidanceInFlight = true;
-      handoffRenderLiveGuidance();
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/guia-tempo-real", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text();
-          console.error("Erro HTTP do backend (guia passagem):", resp.status, txt);
-          return;
-        }
-
-        const data = await resp.json();
-        handoffGuidanceContextLabel = data.contexto || handoffGuidanceContextLabel || "";
-        handoffGuidanceHypothesis = data.hipotese_principal || handoffGuidanceHypothesis || "";
-        if (typeof data.confianca === "number") handoffGuidanceConfidence = data.confianca;
-
-        const itens = Array.isArray(data.perguntas) ? data.perguntas : (Array.isArray(data.itens) ? data.itens : []);
-        const normalized = itens.map(x => String(x || "").trim()).filter(Boolean);
-        handoffGuidancePending = normalized.slice(0, 3);
-
-        if (evento === "resposta" || evento === "inicial") {
-          handoffGuidanceTurnState = "aguardando_pergunta";
-          handoffGuidanceAskedQuestion = "";
-          handoffGuidanceAskedAtLen = combined.length;
-          handoffGuidanceAskedAtTs = Date.now();
-          handoffGuidanceChunkStartLen = combined.length;
-        }
-      } catch (err) {
-        console.error("Falha ao buscar guia passagem:", err);
-      } finally {
-        handoffGuidanceInFlight = false;
-        handoffRenderLiveGuidance();
-      }
-    }
-
-
 
     function initTriageSpeech() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -6777,6 +6554,168 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       return [full, inter].filter(Boolean).join(" ").trim();
     }
 
+    function handoffResetLiveGuidanceState() {
+      handoffGuidanceEnabled = false;
+      handoffGuidanceStage = "sbar";
+      handoffGuidancePending = [];
+      handoffGuidanceContextLabel = "";
+      handoffGuidanceHypothesis = "";
+      handoffGuidanceConfidence = 0;
+
+      handoffGuidanceInFlight = false;
+      handoffGuidanceLastPayloadHash = "";
+      handoffGuidanceChunkStartLen = 0;
+
+      if (handoffGuidanceSilenceTimer) clearTimeout(handoffGuidanceSilenceTimer);
+      handoffGuidanceSilenceTimer = null;
+      handoffGuidanceLastChunkTs = 0;
+
+      handoffRenderLiveGuidance();
+    }
+
+    function handoffRenderLiveGuidance() {
+      if (!handoffLiveGuidance || !handoffLiveGuidanceStatus || !handoffLiveGuidanceList || !handoffLiveGuidanceContext) return;
+
+      if (!handoffIsRecording) {
+        handoffLiveGuidanceStatus.textContent = "Inicie a passagem de plantão para receber sugestões essenciais SBAR em tempo real.";
+        handoffLiveGuidanceContext.textContent = "";
+        handoffLiveGuidanceList.innerHTML = '<div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>';
+        return;
+      }
+
+      const ctx = String(handoffGuidanceContextLabel || "").trim();
+      handoffLiveGuidanceContext.textContent = ctx ? ("Passagem: " + ctx) : "";
+
+      if (handoffGuidanceInFlight) {
+        handoffLiveGuidanceStatus.textContent = "Atualizando sugestões SBAR...";
+      } else if (handoffGuidanceHypothesis) {
+        handoffLiveGuidanceStatus.textContent = handoffGuidanceHypothesis;
+      } else {
+        handoffLiveGuidanceStatus.textContent = "Sugestões SBAR ativas. Siga o roteiro e inclua os itens pendentes.";
+      }
+
+      const itens = Array.isArray(handoffGuidancePending) ? handoffGuidancePending : [];
+      if (!itens.length) {
+        handoffLiveGuidanceList.innerHTML = '<div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>';
+        return;
+      }
+
+      handoffLiveGuidanceList.innerHTML = "";
+      itens.slice(0, 3).forEach((q, idx) => {
+        const el = document.createElement("div");
+        el.className = "live-guidance-item";
+        el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${escapeHtml(q)}</div>`;
+        handoffLiveGuidanceList.appendChild(el);
+      });
+    }
+
+    function handoffStartGuidanceLoop() {
+      handoffGuidanceEnabled = true;
+      handoffGuidanceChunkStartLen = handoffGetCombinedTranscript().length;
+      handoffRenderLiveGuidance();
+      handoffRequestGuidanceFromBackend({ evento: "inicial" });
+    }
+
+    function handoffStopGuidanceLoop() {
+      handoffGuidanceEnabled = false;
+      handoffGuidanceInFlight = false;
+      if (handoffGuidanceSilenceTimer) clearTimeout(handoffGuidanceSilenceTimer);
+      handoffGuidanceSilenceTimer = null;
+      handoffRenderLiveGuidance();
+    }
+
+    function handoffOnTranscriptUpdateForGuidance() {
+      if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
+      handoffScheduleGuidanceSilenceFinalize();
+    }
+
+    function handoffScheduleGuidanceSilenceFinalize() {
+      if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
+
+      if (handoffGuidanceSilenceTimer) clearTimeout(handoffGuidanceSilenceTimer);
+      handoffGuidanceSilenceTimer = setTimeout(() => {
+        handoffFinalizeGuidanceChunk();
+      }, 1400);
+    }
+
+    function handoffFinalizeGuidanceChunk() {
+      if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
+
+      const combined = handoffGetCombinedTranscript();
+      if (!combined) return;
+
+      if (handoffGuidanceChunkStartLen <= 0) {
+        handoffGuidanceChunkStartLen = combined.length;
+        return;
+      }
+
+      const chunk = combined.slice(handoffGuidanceChunkStartLen).trim();
+      handoffGuidanceChunkStartLen = combined.length;
+
+      if (!chunk || chunk.length < 10) return;
+
+      const now = Date.now();
+      if (handoffGuidanceLastChunkTs && (now - handoffGuidanceLastChunkTs) < 900) return;
+      handoffGuidanceLastChunkTs = now;
+
+      handoffRequestGuidanceFromBackend({ evento: "stream", ultima_fala: chunk });
+    }
+
+    async function handoffRequestGuidanceFromBackend({ evento, ultima_fala }) {
+      if (handoffGuidanceInFlight) return;
+      if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
+
+      const combined = handoffGetCombinedTranscript();
+
+      const payload = {
+        transcricao: combined,
+        estado: "sbar",
+        modo: "passagem_plantao",
+        evento: evento || "stream",
+        pergunta_feita: "",
+        perguntas_pendentes: Array.isArray(handoffGuidancePending) ? handoffGuidancePending.slice(0, 3) : [],
+        confianca_atual: typeof handoffGuidanceConfidence === "number" ? handoffGuidanceConfidence : 0,
+        hipotese_atual: handoffGuidanceHypothesis || "",
+        ultima_fala: typeof ultima_fala === "string" ? ultima_fala.slice(0, 800) : ""
+      };
+
+      const h = hashForGuidancePayload(payload);
+      if (h === handoffGuidanceLastPayloadHash && evento !== "inicial") return;
+      handoffGuidanceLastPayloadHash = h;
+
+      handoffGuidanceInFlight = true;
+      handoffRenderLiveGuidance();
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/guia-tempo-real", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (SBAR tempo real):", resp.status, txt);
+          return;
+        }
+
+        const data = await resp.json().catch(() => ({}));
+        handoffGuidanceContextLabel = data.contexto || handoffGuidanceContextLabel || "";
+        handoffGuidanceHypothesis = data.hipotese_principal || handoffGuidanceHypothesis || "";
+        if (typeof data.confianca === "number") handoffGuidanceConfidence = data.confianca;
+
+        const itens = Array.isArray(data.perguntas) ? data.perguntas : (Array.isArray(data.itens) ? data.itens : []);
+        const normalized = itens.map(x => String(x || "").trim()).filter(Boolean);
+        handoffGuidancePending = normalized.slice(0, 3);
+      } catch (err) {
+        console.error("Falha ao buscar SBAR em tempo real:", err);
+      } finally {
+        handoffGuidanceInFlight = false;
+        handoffRenderLiveGuidance();
+      }
+    }
+
+
     function handoffClearUI() {
       if (handoffOutput) handoffOutput.value = "";
       if (handoffStatus) handoffStatus.textContent = "";
@@ -6806,7 +6745,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
           }
         }
         handoffInterimTranscript = interim.trim();
-              handoffOnTranscriptUpdateForGuidance();
+        handoffOnTranscriptUpdateForGuidance();
       };
 
       handoffRecognition.onerror = (e) => {
@@ -6821,16 +6760,14 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
       handoffIsRecording = true;
       handoffIsPaused = false;
+
+      handoffStartGuidanceLoop();
       handoffFinalTranscript = "";
       handoffInterimTranscript = "";
 
       if (handoffError) handoffError.textContent = "";
       handoffClearUI();
 
-
-      handoffResetLiveGuidanceState();
-      handoffRenderLiveGuidance();
-      handoffStartGuidanceLoop();
       if (handoffPauseBtn) {
         handoffPauseBtn.style.display = "inline-block";
         handoffPauseBtn.innerText = "Pausar";
@@ -6848,6 +6785,10 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       handoffResetTimer();
       handoffStartTimer();
 
+      handoffResetLiveGuidanceState();
+      handoffRenderLiveGuidance();
+      handoffStartGuidanceLoop();
+
       try { handoffRecognition.start(); } catch (e) {}
     }
 
@@ -6855,10 +6796,10 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       handoffIsRecording = false;
       handoffIsPaused = false;
 
-
       handoffStopGuidanceLoop();
-      handoffInterimTranscript = \"\";
+      handoffInterimTranscript = "";
       handoffRenderLiveGuidance();
+
       if (handoffRecognition) {
         try { handoffRecognition.stop(); } catch (e) {}
       }
@@ -6878,9 +6819,9 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       if (!handoffIsRecording || handoffIsPaused) return;
       handoffIsPaused = true;
 
-
       handoffStopGuidanceLoop();
-      if (handoffLiveGuidanceStatus) handoffLiveGuidanceStatus.textContent = \"Passagem de plantão pausada. As sugestões em tempo real serão retomadas ao retomar a gravação.\";
+      if (handoffLiveGuidanceStatus) handoffLiveGuidanceStatus.textContent = "Passagem de plantão pausada. As sugestões SBAR em tempo real serão retomadas ao retomar a gravação.";
+
       if (handoffRecognition) {
         try { handoffRecognition.stop(); } catch (e) {}
       }
@@ -6894,8 +6835,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       if (!handoffIsRecording || !handoffIsPaused) return;
       handoffIsPaused = false;
 
-
-      handoffStartGuidanceLoop();
       if (handoffRecognition) {
         try { handoffRecognition.start(); } catch (e) {}
       }
@@ -7286,9 +7225,7 @@ function initSpeech() {
       classificationsStatus.textContent = "";
       pregnancyBox.textContent = "Nenhum conteúdo disponível.";
       lactationBox.textContent = "Nenhum conteúdo disponível.";
-      if (interactionsBox) interactionsBox.textContent = "Nenhum conteúdo disponível.";
-      if (interactionsStatus) interactionsStatus.textContent = "";
-      if (presentationsMaxDoseBox) presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
+      if (presentationsMaxDoseBox) setPlainOutput(presentationsMaxDoseBox, "Nenhum conteúdo disponível.");
       if (presentationsMaxDoseStatus) presentationsMaxDoseStatus.textContent = "";
     }
 
@@ -7439,36 +7376,7 @@ function initSpeech() {
     }
 
 
-    async function updateMedicationSafetyFromContext(contexto) {
-      if (!interactionsBox || !interactionsStatus) return;
-
-      interactionsStatus.textContent = "Gerando registro de administração segura...";
-      interactionsStatus.classList.add("loading-dot");
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/interacoes-medicamentosas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contexto })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP:", resp.status, txt);
-          interactionsBox.textContent = "Falha ao gerar registro.";
-          return;
-        }
-
-        const data = await resp.json().catch(() => ({}));
-        interactionsBox.textContent = (data.registro || "").trim() || "Nenhum conteúdo disponível.";
-      } catch (e) {
-        console.error(e);
-        interactionsBox.textContent = "Falha ao gerar registro (rede/backend).";
-      } finally {
-        interactionsStatus.classList.remove("loading-dot");
-        interactionsStatus.textContent = "";
-      }
-    }
+    
 
     function formatPresentationsMaxDoseList(itens) {
       const items = Array.isArray(itens) ? itens : [];
@@ -7947,6 +7855,15 @@ function initSpeech() {
     }
 
     
+    
+    
+    
+    
+    
+    
+    
+    
+            
     function copyToClipboard(text) {
       if (!text) return;
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -7967,7 +7884,118 @@ function initSpeech() {
       }
     }
 
-        // =========================
+    // =========================
+    // Saídas formatadas (parágrafos com espaçamento + tópicos em vermelho/negrito)
+    // =========================
+    function escapeHtml(s) {
+      return String(s || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function looksLikeHeadingLine(line) {
+      const s = String(line || "").trim();
+      if (!s) return false;
+      if (/^\d{1,2}:\d{2}$/.test(s)) return false; // evita horários
+      if (s.length > 90) return false;
+      if (!/:\s*$/.test(s)) return false;
+      return /[A-Za-zÀ-ÿ]/.test(s);
+    }
+
+    function wrapTopicInline(line) {
+      const s = String(line || "");
+      const m = s.match(/^\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9\s\-\(\)\/]{1,80}:)\s*(.*)$/);
+      if (!m) return null;
+      const label = (m[1] || "").trim();
+      const rest = (m[2] || "").trim();
+      if (!/[A-Za-zÀ-ÿ]/.test(label) || /^\d{1,2}:\d{2}:$/.test(label)) return null;
+      return { label, rest };
+    }
+
+    function isBulletLine(line) {
+      return /^\s*(?:[-•*]|\d+\.)\s+/.test(String(line || ""));
+    }
+
+    function formatTextToHtml(rawText) {
+      const original = String(rawText || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      const trimmed = original.trim();
+      if (!trimmed) return "<p>Nenhum conteúdo disponível.</p>";
+
+      // Cria "respiros" antes de linhas que parecem títulos (ex.: "Descrição:", "Conduta:", etc.)
+      const withBreaks = trimmed.replace(
+        /([^\n])\n(?=[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9\s\-\(\)\/]{1,80}:\s*(?:\n|$))/g,
+        "$1\n\n"
+      );
+
+      const blocks = withBreaks.split(/\n\s*\n+/);
+
+      const out = [];
+      for (const block of blocks) {
+        const b = String(block || "").trim();
+        if (!b) continue;
+
+        const lines = b.split("\n");
+        const allBullet = lines.length > 1 && lines.every(isBulletLine);
+
+        if (allBullet) {
+          const isOrdered = lines.every(x => /^\s*\d+\./.test(x));
+          const tag = isOrdered ? "ol" : "ul";
+          const items = lines
+            .map(x => x.replace(/^\s*(?:[-•*]|\d+\.)\s+/, "").trim())
+            .filter(Boolean);
+          const li = items.map(x => `<li>${escapeHtml(x)}</li>`).join("");
+          out.push(`<${tag}>${li}</${tag}>`);
+          continue;
+        }
+
+        // Título isolado (termina com ":")
+        if (lines.length === 1 && looksLikeHeadingLine(lines[0])) {
+          out.push(`<p><span class="topic">${escapeHtml(lines[0].trim())}</span></p>`);
+          continue;
+        }
+
+        // Bloco com primeira linha como título + conteúdo abaixo
+        if (lines.length >= 2 && looksLikeHeadingLine(lines[0])) {
+          const head = lines[0].trim();
+          const rest = lines.slice(1).join("\n").trim();
+          const restHtml = escapeHtml(rest).replace(/\n/g, "<br>");
+          out.push(`<p><span class="topic">${escapeHtml(head)}</span><br>${restHtml}</p>`);
+          continue;
+        }
+
+        // Linha única no formato "Tópico: conteúdo"
+        if (lines.length === 1) {
+          const t = wrapTopicInline(lines[0]);
+          if (t) {
+            if (t.rest) out.push(`<p><span class="topic">${escapeHtml(t.label)}</span> ${escapeHtml(t.rest)}</p>`);
+            else out.push(`<p><span class="topic">${escapeHtml(t.label)}</span></p>`);
+            continue;
+          }
+        }
+
+        // Texto livre (preserva quebras de linha internas)
+        out.push(`<p>${escapeHtml(b).replace(/\n/g, "<br>")}</p>`);
+      }
+
+      return out.length ? out.join("") : "<p>Nenhum conteúdo disponível.</p>";
+    }
+
+    function setFormattedOutput(el, text) {
+      if (!el) return;
+      el.classList.add("formatted-output");
+      el.innerHTML = formatTextToHtml(text);
+    }
+
+    function setPlainOutput(el, text) {
+      if (!el) return;
+      el.classList.remove("formatted-output");
+      el.textContent = String(text || "");
+    }
+
+// =========================
     // IMAGENS - compressão + análise automática (até 4 fotos por módulo)
     // =========================
     async function fileToCompressedDataUrl(file, maxDim = 1280, quality = 0.82) {
@@ -8026,7 +8054,7 @@ async function addFilesToTarget(files, targetKey, mode) {
   const list = Array.from(files || []);
   if (!list.length) return;
 
-  const key = (targetKey === "wound" || targetKey === "med" || targetKey === "exam" || targetKey === "transcription" || targetKey === "apraz") ? targetKey : "med";
+  const key = (targetKey === "wound" || targetKey === "med" || targetKey === "exam" || targetKey === "transcription" || targetKey === "apraz" || targetKey === "rxEval") ? targetKey : "med";
 
   const cfg = key === "wound"
     ? { arr: woundImages, statusEl: presentationsMaxDoseStatus, boxEl: presentationsMaxDoseBox, update: updateWoundActions, schedule: scheduleWoundAnalysis }
@@ -8034,9 +8062,11 @@ async function addFilesToTarget(files, targetKey, mode) {
       ? { arr: examImages, statusEl: examInterpretationStatus, boxEl: examInterpretationBox, update: updateExamActions, schedule: scheduleExamAnalysis }
       : key === "transcription"
         ? { arr: transcriptionImages, statusEl: transcriptionStatus, boxEl: transcriptionBox, update: updateTranscriptionActions, schedule: scheduleTranscriptionAnalysis }
+        : key === "rxEval"
+          ? { arr: rxEvalImages, statusEl: rxEvalStatus, boxEl: rxEvalTranscription, update: updateRxEvalActions, schedule: scheduleRxEvalAnalysis }
         : key === "apraz"
-        ? { arr: aprazImages, statusEl: aprazamentoStatus, boxEl: aprazamentoSheetWrapper, update: updateAprazamentoActions, schedule: scheduleAprazAnalysis }
-        : { arr: medImages, statusEl: interactionsStatus, boxEl: medRxInteractionsBox, update: updateMedSafetyActions, schedule: scheduleMedAnalysis };
+          ? { arr: aprazImages, statusEl: aprazamentoStatus, boxEl: aprazamentoSheetWrapper, update: updateAprazamentoActions, schedule: scheduleAprazAnalysis }
+          : { arr: [], statusEl: null, boxEl: null, update: null, schedule: null };
 
   const arr = cfg.arr;
   const statusEl = cfg.statusEl;
@@ -8047,8 +8077,8 @@ async function addFilesToTarget(files, targetKey, mode) {
   }
 
   // Feedback imediato (para não parecer que "não aconteceu nada")
-  if (statusEl) statusEl.textContent = "Carregando imagem(ns).";
-  if (boxEl) boxEl.textContent = "Processando.";
+  setElementText(statusEl, "Carregando imagem(ns).");
+  setElementText(boxEl, "Processando.");
   if (cfg && cfg.update) cfg.update();
 
   const remaining = Math.max(0, 4 - arr.length);
@@ -8095,13 +8125,13 @@ async function addFilesToTarget(files, targetKey, mode) {
   const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
   if (!images.length) {
     presentationsMaxDoseStatus.textContent = "Nenhuma imagem selecionada.";
-    presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
+    setPlainOutput(presentationsMaxDoseBox, "Nenhum conteúdo disponível.");
     updateWoundActions();
     return;
   }
 
   presentationsMaxDoseStatus.textContent = "Analisando imagem(ns) da lesão.";
-  presentationsMaxDoseBox.textContent = "Processando.";
+  setPlainOutput(presentationsMaxDoseBox, "Processando.");
   updateWoundActions();
 
   try {
@@ -8120,12 +8150,12 @@ async function addFilesToTarget(files, targetKey, mode) {
     if (!resp.ok) throw new Error(data?.error || "Falha ao analisar imagem.");
 
     const texto = (data?.texto || "").trim();
-    presentationsMaxDoseBox.textContent = texto || "Nenhum conteúdo disponível.";
+    setFormattedOutput(presentationsMaxDoseBox, texto || "Nenhum conteúdo disponível.");
     presentationsMaxDoseStatus.textContent = "Análise concluída.";
     updateWoundActions();
   } catch (e) {
     presentationsMaxDoseStatus.textContent = "Falha ao analisar imagem. " + (e && e.message ? e.message : "");
-    presentationsMaxDoseBox.textContent = "Nenhum conteúdo disponível.";
+    setPlainOutput(presentationsMaxDoseBox, "Nenhum conteúdo disponível.");
     updateWoundActions();
   }
 }
@@ -8299,189 +8329,7 @@ async function openMedicationMonograph(name) {
   }
 }
 
-async function analyzePrescriptionWithImages(dataUrls) {
-  if (!interactionsStatus) return;
 
-  const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
-  if (!images.length) {
-    setMedSafetyResultsVisible(false);
-    interactionsStatus.textContent = "Nenhuma imagem selecionada.";
-    if (medRxTranscription) medRxTranscription.value = "";
-    if (medRxMedButtons) medRxMedButtons.innerHTML = "";
-    if (medRxMedButtonsHint) medRxMedButtonsHint.textContent = "Nenhum conteúdo disponível.";
-    if (medRxLactationBox) medRxLactationBox.textContent = "Nenhum conteúdo disponível.";
-    if (medRxPregnancyBox) medRxPregnancyBox.textContent = "Nenhum conteúdo disponível.";
-    if (medRxInteractionsBox) medRxInteractionsBox.textContent = "Nenhum conteúdo disponível.";
-    if (medRxNursingPointsBox) medRxNursingPointsBox.textContent = "Nenhum conteúdo disponível.";
-    if (medSafetyExport) medSafetyExport.value = "";
-    updateMedSafetyActions();
-    return;
-  }
-
-  // Mostra o painel de resultados apenas depois que o profissional seleciona foto/arquivo.
-  setMedSafetyResultsVisible(true);
-
-  interactionsStatus.textContent = "Analisando prescrição (imagem(ns)).";
-  if (medRxTranscription) medRxTranscription.value = "Processando.";
-  if (medRxMedButtons) medRxMedButtons.innerHTML = "";
-  if (medRxMedButtonsHint) medRxMedButtonsHint.textContent = "Processando.";
-  if (medRxLactationBox) medRxLactationBox.textContent = "Processando.";
-  if (medRxPregnancyBox) medRxPregnancyBox.textContent = "Processando.";
-  if (medRxInteractionsBox) medRxInteractionsBox.textContent = "Processando.";
-  if (medRxNursingPointsBox) medRxNursingPointsBox.textContent = "Processando.";
-  if (medSafetyExport) medSafetyExport.value = "";
-  updateMedSafetyActions();
-
-  try {
-    const payload = {
-      images_data_url: images,
-      image_data_url: images[0]
-    };
-
-    const resp = await fetch(BACKEND_URL + "/api/analisar-prescricao-imagem", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) throw new Error(data?.error || "Falha ao analisar prescrição.");
-
-    const trans = String(data?.transcricao_receita || data?.transcricao || "").trim();
-    if (medRxTranscription) medRxTranscription.value = trans || "Nenhum conteúdo disponível.";
-
-    const meds = Array.isArray(data?.medicamentos_identificados) ? data.medicamentos_identificados
-      : (Array.isArray(data?.medicamentos) ? data.medicamentos : []);
-
-    if (medRxMedButtons) {
-      medRxMedButtons.innerHTML = "";
-      const unique = [];
-      const seen = new Set();
-      for (const m of meds) {
-        const name = (m && (m.nome || m.medicamento)) ? String(m.nome || m.medicamento).trim() : "";
-        if (!name) continue;
-        const key = name.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        unique.push(name);
-      }
-      for (const name of unique.slice(0, 30)) {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.textContent = name;
-        b.addEventListener('click', () => openMedicationMonograph(name));
-        medRxMedButtons.appendChild(b);
-      }
-      if (medRxMedButtonsHint) {
-        medRxMedButtonsHint.textContent = unique.length ? (unique.length + " medicamento(s) identificado(s). Clique para ver detalhes.") : "Nenhum medicamento identificado.";
-      }
-    }
-
-    const inter = Array.isArray(data?.interacoes_medicamentosas) ? data.interacoes_medicamentosas : [];
-    const interText = inter.length ? inter.map(x => '- ' + String(x)).join('\n') : 'Nenhum conteúdo disponível.';
-    if (medRxInteractionsBox) medRxInteractionsBox.textContent = interText;
-
-    const nursing = Array.isArray(data?.pontos_enfermagem_prescricao) ? data.pontos_enfermagem_prescricao : (Array.isArray(data?.pontos_enfermagem) ? data.pontos_enfermagem : []);
-    const nursingText = nursing.length ? nursing.map(x => '- ' + String(x)).join('\n') : 'Nenhum conteúdo disponível.';
-    if (medRxNursingPointsBox) medRxNursingPointsBox.textContent = nursingText;
-
-    // Lactação e gravidez (por medicamento)
-    const safety = Array.isArray(data?.seguranca_reprodutiva) ? data.seguranca_reprodutiva : [];
-    const safetyMap = new Map();
-    for (const s of safety) {
-      const name = (s && (s.medicamento || s.nome)) ? String(s.medicamento || s.nome).trim() : '';
-      if (!name) continue;
-      safetyMap.set(name.toLowerCase(), s);
-    }
-    const uniqueNames = [];
-    const seen = new Set();
-    for (const m of meds) {
-      const nm = (m && (m.nome || m.medicamento)) ? String(m.nome || m.medicamento).trim() : '';
-      if (!nm) continue;
-      const key = nm.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      uniqueNames.push(nm);
-    }
-
-    const lactLines = [];
-    const pregLines = [];
-    for (const nm of uniqueNames.slice(0, 60)) {
-      const s = safetyMap.get(nm.toLowerCase()) || {};
-      const lact = (s && (s.lactacao_risco || s.uso_lactacao)) ? String(s.lactacao_risco || s.uso_lactacao).trim() : '';
-      const preg = (s && (s.gravidez_categoria || s.categoria_gravidez)) ? String(s.gravidez_categoria || s.categoria_gravidez).trim() : '';
-      lactLines.push('- ' + nm + ': ' + (lact || 'Não disponível automaticamente.'));
-      pregLines.push('- ' + nm + ': ' + (preg ? ('Categoria ' + preg) : 'Não disponível automaticamente.'));
-    }
-    if (medRxLactationBox) medRxLactationBox.textContent = lactLines.length ? lactLines.join('\n') : 'Nenhum conteúdo disponível.';
-    if (medRxPregnancyBox) medRxPregnancyBox.textContent = pregLines.length ? pregLines.join('\n') : 'Nenhum conteúdo disponível.';
-
-    // Texto de exportação (copiar/imprimir) - sem exibir como "Relatório completo"
-    const riscos = Array.isArray(data?.riscos_e_inconsistencias) ? data.riscos_e_inconsistencias : [];
-    const confirmar = Array.isArray(data?.itens_a_confirmar) ? data.itens_a_confirmar : [];
-    const resumoOper = String(data?.resumo_operacional || '').trim();
-
-    const exp = [];
-    exp.push('Administração segura de medicamentos');
-    exp.push('');
-    exp.push('Transcrição da receita (apenas o que estava legível):');
-    exp.push(trans || 'Nenhum conteúdo disponível.');
-    exp.push('');
-    exp.push('Uso na lactação (por medicamento):');
-    exp.push(lactLines.length ? lactLines.join('\n') : 'Nenhum conteúdo disponível.');
-    exp.push('');
-    exp.push('Uso na gravidez (categoria de risco):');
-    exp.push(pregLines.length ? pregLines.join('\n') : 'Nenhum conteúdo disponível.');
-    exp.push('');
-    exp.push('Medicamentos identificados:');
-    if (!meds.length) {
-      exp.push('- Nenhum conteúdo disponível.');
-    } else {
-      for (const m of meds) {
-        const nome = m && m.nome ? String(m.nome).trim() : '';
-        if (!nome) continue;
-        exp.push(`- ${nome} | Dose: ${m.dose || ''} | Forma: ${m.forma || ''} | Via: ${m.via || ''} | Frequência/horários: ${m.frequencia_ou_horarios || ''} | Obs.: ${m.observacoes || ''}`.trim());
-      }
-    }
-    exp.push('');
-    exp.push('Interações medicamentosas (da prescrição):');
-    exp.push(interText || 'Nenhum conteúdo disponível.');
-    exp.push('');
-    exp.push('Pontos de enfermagem (da prescrição):');
-    exp.push(nursingText || 'Nenhum conteúdo disponível.');
-    exp.push('');
-    if (riscos.length) {
-      exp.push('Riscos e inconsistências relevantes:');
-      for (const it of riscos) exp.push('- ' + String(it));
-      exp.push('');
-    }
-    if (confirmar.length) {
-      exp.push('Itens a confirmar antes de administrar:');
-      for (const it of confirmar) exp.push('- ' + String(it));
-      exp.push('');
-    }
-    if (resumoOper) {
-      exp.push('Resumo operacional:');
-      exp.push(resumoOper);
-      exp.push('');
-    }
-    if (medSafetyExport) medSafetyExport.value = exp.join('\n').trim();
-
-    interactionsStatus.textContent = 'Análise concluída.';
-    updateMedSafetyActions();
-  } catch (e) {
-    interactionsStatus.textContent = 'Falha ao analisar prescrição. ' + (e && e.message ? e.message : '');
-    if (medRxTranscription) medRxTranscription.value = 'Nenhum conteúdo disponível.';
-    if (medRxMedButtons) medRxMedButtons.innerHTML = '';
-    if (medRxMedButtonsHint) medRxMedButtonsHint.textContent = 'Nenhum conteúdo disponível.';
-    if (medRxLactationBox) medRxLactationBox.textContent = 'Nenhum conteúdo disponível.';
-    if (medRxPregnancyBox) medRxPregnancyBox.textContent = 'Nenhum conteúdo disponível.';
-    if (medRxInteractionsBox) medRxInteractionsBox.textContent = 'Nenhum conteúdo disponível.';
-    if (medRxNursingPointsBox) medRxNursingPointsBox.textContent = 'Nenhum conteúdo disponível.';
-    if (medSafetyExport) medSafetyExport.value = '';
-    updateMedSafetyActions();
-  }
-}
 
 
     async function analyzeExamWithImages(dataUrls) {
@@ -8490,13 +8338,13 @@ async function analyzePrescriptionWithImages(dataUrls) {
   const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
   if (!images.length) {
     examInterpretationStatus.textContent = "Nenhuma imagem selecionada.";
-    examInterpretationBox.textContent = "Nenhum conteúdo disponível.";
+    setPlainOutput(examInterpretationBox, "Nenhum conteúdo disponível.");
     updateExamActions();
     return;
   }
 
   examInterpretationStatus.textContent = "Analisando exame (imagem(ns)).";
-  examInterpretationBox.textContent = "Processando.";
+  setPlainOutput(examInterpretationBox, "Processando.");
   updateExamActions();
 
   try {
@@ -8515,12 +8363,12 @@ async function analyzePrescriptionWithImages(dataUrls) {
     if (!resp.ok) throw new Error(data?.error || "Falha ao interpretar o exame.");
 
     const texto = (data?.texto || "").trim();
-    examInterpretationBox.textContent = texto || "Nenhum conteúdo disponível.";
+    setFormattedOutput(examInterpretationBox, texto || "Nenhum conteúdo disponível.");
     examInterpretationStatus.textContent = "Análise concluída.";
     updateExamActions();
   } catch (e) {
     examInterpretationStatus.textContent = "Falha ao interpretar o exame. " + (e && e.message ? e.message : "");
-    examInterpretationBox.textContent = "Nenhum conteúdo disponível.";
+    setPlainOutput(examInterpretationBox, "Nenhum conteúdo disponível.");
     updateExamActions();
   }
 }
@@ -8531,13 +8379,13 @@ async function analyzePrescriptionWithImages(dataUrls) {
   const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
   if (!images.length) {
     transcriptionStatus.textContent = "Nenhuma imagem selecionada.";
-    transcriptionBox.textContent = "Nenhum conteúdo disponível.";
+    setPlainOutput(transcriptionBox, "Nenhum conteúdo disponível.");
     updateTranscriptionActions();
     return;
   }
 
   transcriptionStatus.textContent = "Transcrevendo documento (imagem(ns)).";
-  transcriptionBox.textContent = "Processando.";
+  setPlainOutput(transcriptionBox, "Processando.");
   updateTranscriptionActions();
 
   try {
@@ -8556,12 +8404,12 @@ async function analyzePrescriptionWithImages(dataUrls) {
     if (!resp.ok) throw new Error(data?.error || "Falha ao transcrever o documento.");
 
     const texto = (data?.texto || "").trim();
-    transcriptionBox.textContent = texto || "Nenhum conteúdo disponível.";
+    setFormattedOutput(transcriptionBox, texto || "Nenhum conteúdo disponível.");
     transcriptionStatus.textContent = "Transcrição concluída.";
     updateTranscriptionActions();
   } catch (e) {
     transcriptionStatus.textContent = "Falha ao transcrever o documento. " + (e && e.message ? e.message : "");
-    transcriptionBox.textContent = "Nenhum conteúdo disponível.";
+    setPlainOutput(transcriptionBox, "Nenhum conteúdo disponível.");
     updateTranscriptionActions();
   }
 }
@@ -8778,7 +8626,305 @@ async function analyzePrescriptionWithImages(dataUrls) {
       return s ? s : "não informado";
     }
 
-    function normalizeFolhaData(rawFolha, startInfo) {
+    
+    function setElementText(el, text) {
+      if (!el) return;
+      const t = (text === null || text === undefined) ? "" : String(text);
+      if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") el.value = t;
+      else el.textContent = t;
+      if (el.dataset) el.dataset.copyText = t;
+    }
+
+    function escapeText(v) {
+      return escapeHtml(String(v === null || v === undefined ? "" : v));
+    }
+
+    function buildMonographHtml(m) {
+      if (!m || typeof m !== "object") return '<div class="rx-paragraph">Nenhum conteúdo disponível.</div>';
+
+      const parts = [];
+      const pushTopic = (title) => parts.push('<div class="rx-topic">' + escapeText(title) + '</div>');
+      const isMeaningful = (v) => {
+        const s = String(v === null || v === undefined ? "" : v).trim();
+        if (!s) return false;
+        const low = s.toLowerCase();
+        return low !== "não informado" && low !== "nao informado";
+      };
+      const pushP = (txt) => {
+        const s = String(txt === null || txt === undefined ? "" : txt).trim();
+        if (!s || s.toLowerCase() === "não informado" || s.toLowerCase() === "nao informado") return;
+        parts.push('<div class="rx-paragraph">' + escapeText(s) + "</div>");
+      };
+      const pushList = (arr) => {
+        const a = Array.isArray(arr)
+          ? arr.map(x => String(x || "").trim()).filter(x => isMeaningful(x))
+          : [];
+        if (!a.length) return;
+        parts.push('<ul style="margin: 0 0 10px 18px;">' + a.map(x => "<li>" + escapeText(x) + "</li>").join("") + "</ul>");
+      };
+
+      const nome = m.medicamento || m.nome || m.principio_ativo || "";
+      pushTopic("Medicamento");
+      pushP(nome || "não informado");
+
+      if (isMeaningful(m.classe)) {
+        pushTopic("Classe");
+        pushP(m.classe);
+      }
+
+      if (isMeaningful(m.mecanismo_acao)) {
+        pushTopic("Mecanismo de ação");
+        pushP(m.mecanismo_acao);
+      }
+
+      // Apresentações
+      const ap = (m.apresentacoes && typeof m.apresentacoes === "object") ? m.apresentacoes : {};
+      const apItems = [];
+      for (const k of Object.keys(ap)) {
+        const v = ap[k];
+        const s = (v === null || v === undefined) ? "" : String(v).trim();
+        if (s && s.toLowerCase() !== "não informado" && s.toLowerCase() !== "nao informado") apItems.push(s);
+      }
+
+      if (apItems.length) {
+        pushTopic("Apresentações no mercado brasileiro");
+        pushList(apItems);
+      }
+
+      // Uso clínico
+      const uso = Array.isArray(m.uso_clinico) ? m.uso_clinico.map(x => String(x || "").trim()).filter(x => isMeaningful(x)) : [];
+      if (uso.length) {
+        pushTopic("Uso clínico (doenças mais comuns)");
+        pushList(uso);
+      }
+
+      // Tipo de receituário
+      if (isMeaningful(m.tipo_receituario)) {
+        pushTopic("Tipo de receituário");
+        pushP(m.tipo_receituario);
+      }
+
+      // Adultos (por apresentação)
+      const pa = (m.posologia_adulto && typeof m.posologia_adulto === "object") ? m.posologia_adulto : {};
+      const paBlocks = [];
+      for (const k of Object.keys(pa)) {
+        const v = pa[k] || {};
+        const lines = [];
+        const label = String(k || "").trim();
+        if (isMeaningful(v.dose_usual)) lines.push("Dose usual: " + String(v.dose_usual).trim());
+        if (isMeaningful(v.dose_maxima)) lines.push("Dose máxima: " + String(v.dose_maxima).trim());
+        if (isMeaningful(v.modo_uso)) lines.push("Modo de uso: " + String(v.modo_uso).trim());
+        if (lines.length) paBlocks.push("<div class='rx-paragraph'><strong>" + escapeText(label) + ":</strong><br>" + lines.map(escapeText).join("<br>") + "</div>");
+      }
+
+      if (paBlocks.length) {
+        pushTopic("Posologia em adultos (por via/apresentação)");
+        parts.push(paBlocks.join(""));
+      }
+
+      // Gravidez/lactação
+      const grav = m.categoria_gravidez || m.gravidez_categoria;
+      if (isMeaningful(grav)) {
+        pushTopic("Uso na gravidez");
+        pushP(grav);
+      }
+
+      const lact = m.uso_lactacao || m.lactacao_risco;
+      if (isMeaningful(lact)) {
+        pushTopic("Uso na lactação");
+        pushP(lact);
+      }
+
+      // Pediatria
+      const pp = (m.posologia_pediatrica && typeof m.posologia_pediatrica === "object") ? m.posologia_pediatrica : {};
+      const ppBlocks = [];
+      for (const k of Object.keys(pp)) {
+        const v = pp[k] || {};
+        const lines = [];
+        const label = String(k || "").trim();
+        if (isMeaningful(v.dose_mgkg)) lines.push("Dose (mg/kg): " + String(v.dose_mgkg).trim());
+        if (isMeaningful(v.intervalo)) lines.push("Intervalo/frequência: " + String(v.intervalo).trim());
+        if (isMeaningful(v.dose_maxima)) lines.push("Dose máxima: " + String(v.dose_maxima).trim());
+        if (isMeaningful(v.restricoes_etarias)) lines.push("Restrições etárias: " + String(v.restricoes_etarias).trim());
+        if (isMeaningful(v.modo_uso)) lines.push("Modo de uso: " + String(v.modo_uso).trim());
+        if (lines.length) ppBlocks.push("<div class='rx-paragraph'><strong>" + escapeText(label) + ":</strong><br>" + lines.map(escapeText).join("<br>") + "</div>");
+      }
+
+      if (ppBlocks.length) {
+        pushTopic("Posologia pediátrica (por via/apresentação)");
+        parts.push(ppBlocks.join(""));
+      }
+
+      // Interações e enfermagem
+      const inter = Array.isArray(m.interacoes_medicamentosas) ? m.interacoes_medicamentosas.map(x => String(x || "").trim()).filter(x => isMeaningful(x)) : [];
+      if (inter.length) {
+        pushTopic("Interações medicamentosas");
+        pushList(inter);
+      }
+
+      const enf = Array.isArray(m.pontos_enfermagem) ? m.pontos_enfermagem.map(x => String(x || "").trim()).filter(x => isMeaningful(x)) : [];
+      if (enf.length) {
+        pushTopic("Pontos de enfermagem");
+        pushList(enf);
+      }
+
+      // Fontes sugeridas
+      const fontes = Array.isArray(m.fontes_sugeridas) ? m.fontes_sugeridas : [];
+      if (fontes.length) {
+        pushTopic("Fontes sugeridas para conferência");
+        const links = fontes
+          .map(f => f && f.url ? '<a class="rx-link-btn" target="_blank" rel="noopener noreferrer" href="' + escapeText(f.url) + '">' + escapeText(f.nome || "Fonte") + "</a>" : "")
+          .filter(Boolean)
+          .join("");
+        parts.push('<div class="rx-links">' + links + "</div>");
+      }
+
+      return parts.join("");
+    }
+
+    function normalizeMedNameForLink(name) {
+      return encodeURIComponent(String(name || "").trim());
+    }
+
+    function suggestedSourcesForDrug(name) {
+      const q = normalizeMedNameForLink(name);
+      return [
+        { nome: "Bulário Eletrônico (Anvisa)", url: "https://consultas.anvisa.gov.br/#/bulario/" },
+        { nome: "Consulta Remédios (bula)", url: "https://consultaremedios.com.br/busca?termo=" + q },
+        { nome: "BulasMed (bula)", url: "https://www.bulas.med.br/?s=" + q }
+      ];
+    }
+
+    function renderRxEvalMedsButtons(meds) {
+      if (!rxEvalMedsButtons || !rxEvalMedsCount) return;
+      rxEvalMedsButtons.innerHTML = "";
+      const uniq = Array.from(new Set((Array.isArray(meds) ? meds : []).map(x => String(x || "").trim()).filter(Boolean)));
+      if (!uniq.length) {
+        rxEvalMedsCount.textContent = "Nenhum medicamento identificado.";
+        return;
+      }
+      rxEvalMedsCount.textContent = "Medicamentos identificados: " + uniq.length + ". Clique em um medicamento para ver a bula e informações.";
+      for (const med of uniq) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "rx-pill-btn";
+        btn.textContent = med;
+        btn.addEventListener("click", () => loadRxEvalMedication(med));
+        rxEvalMedsButtons.appendChild(btn);
+      }
+    }
+
+    async function loadRxEvalMedication(medName) {
+      const med = String(medName || "").trim();
+      if (!med) return;
+
+      if (rxEvalDetails) {
+        rxEvalDetails.innerHTML = '<div class="rx-paragraph">Carregando informações do medicamento.</div>';
+        if (rxEvalDetails.dataset) rxEvalDetails.dataset.copyText = "";
+      }
+      if (rxEvalCopyDetailsBtn) rxEvalCopyDetailsBtn.classList.add("hidden");
+      if (rxEvalPrintDetailsBtn) rxEvalPrintDetailsBtn.classList.add("hidden");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/medicamento-monografia", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ medicamento: med, fontes_sugeridas: suggestedSourcesForDrug(med) })
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(data?.error || "Falha ao obter informações do medicamento.");
+
+        const monografia = data?.monografia || data || {};
+        // garante fontes sugeridas básicas, caso o backend não preencha
+        if (!Array.isArray(monografia.fontes_sugeridas) || !monografia.fontes_sugeridas.length) {
+          monografia.fontes_sugeridas = suggestedSourcesForDrug(med);
+        }
+
+        const html = buildMonographHtml(monografia);
+        if (rxEvalDetails) {
+          rxEvalDetails.innerHTML = html || '<div class="rx-paragraph">Nenhum conteúdo disponível.</div>';
+          if (rxEvalDetails.dataset) rxEvalDetails.dataset.copyText = rxEvalDetails.innerText || "";
+        }
+        if (rxEvalCopyDetailsBtn) rxEvalCopyDetailsBtn.classList.remove("hidden");
+        if (rxEvalPrintDetailsBtn) rxEvalPrintDetailsBtn.classList.remove("hidden");
+      } catch (e) {
+        if (rxEvalDetails) {
+          rxEvalDetails.innerHTML = '<div class="rx-paragraph">Falha ao obter informações do medicamento. ' + escapeText(e && e.message ? e.message : "") + "</div>";
+        }
+      }
+    }
+
+    function updateRxEvalActions() {
+      if (!rxEvalTranscription || !rxEvalCopyTranscriptionBtn || !rxEvalPrintTranscriptionBtn) return;
+      const hasText = String(rxEvalTranscription.value || "").trim().length > 0;
+      if (hasText) {
+        rxEvalCopyTranscriptionBtn.classList.remove("hidden");
+        rxEvalPrintTranscriptionBtn.classList.remove("hidden");
+      } else {
+        rxEvalCopyTranscriptionBtn.classList.add("hidden");
+        rxEvalPrintTranscriptionBtn.classList.add("hidden");
+      }
+    }
+
+    async function analyzeRxEvalWithImages(dataUrls) {
+      const images = Array.isArray(dataUrls) ? dataUrls.filter(Boolean) : [];
+      if (!rxEvalStatus || !rxEvalTranscription) return;
+      if (rxEvalResults) {
+        if (images.length) rxEvalResults.classList.remove("hidden");
+        else rxEvalResults.classList.add("hidden");
+      }
+
+      if (!images.length) {
+        rxEvalStatus.textContent = "Nenhuma imagem selecionada.";
+        rxEvalTranscription.value = "";
+        renderRxEvalMedsButtons([]);
+        if (rxEvalDetails) {
+          rxEvalDetails.innerHTML = "Selecione um medicamento acima para ver as informações.";
+          if (rxEvalDetails.dataset) rxEvalDetails.dataset.copyText = "";
+        }
+        if (rxEvalCopyDetailsBtn) rxEvalCopyDetailsBtn.classList.add("hidden");
+        if (rxEvalPrintDetailsBtn) rxEvalPrintDetailsBtn.classList.add("hidden");
+        updateRxEvalActions();
+        return;
+      }
+
+      rxEvalStatus.textContent = "Avaliando receita (imagem(ns)).";
+      rxEvalTranscription.value = "Processando.";
+      renderRxEvalMedsButtons([]);
+      updateRxEvalActions();
+
+      try {
+        const payload = { images_data_url: images, image_data_url: images[0] };
+        const resp = await fetch(BACKEND_URL + "/api/avaliar-receita-imagem", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(data?.error || "Falha ao avaliar a receita.");
+
+        const out = data?.avaliacao || data || {};
+        const trans = String(out?.transcricao_organizada || out?.transcricao || out?.texto || "").trim();
+        rxEvalTranscription.value = trans || "";
+        updateRxEvalActions();
+
+        const meds = Array.isArray(out?.medicamentos) ? out.medicamentos : [];
+        const medNames = meds.map(x => (typeof x === "string" ? x : (x?.nome || x?.medicamento || ""))).map(x => String(x || "").trim()).filter(Boolean);
+        const fallback = extractMedicationsFromPrescriptionText(trans || "");
+        const list = medNames.length ? medNames : fallback;
+        renderRxEvalMedsButtons(list);
+
+        rxEvalStatus.textContent = "Avaliação concluída.";
+      } catch (e) {
+        rxEvalStatus.textContent = "Falha ao avaliar a receita. " + (e && e.message ? e.message : "");
+        rxEvalTranscription.value = "";
+        renderRxEvalMedsButtons([]);
+        updateRxEvalActions();
+      }
+    }
+
+function normalizeFolhaData(rawFolha, startInfo) {
       const folha = rawFolha && typeof rawFolha === "object" ? rawFolha : {};
       const cab = (folha.cabecalho && typeof folha.cabecalho === "object") ? folha.cabecalho : {};
       const meds = Array.isArray(folha.medicamentos) ? folha.medicamentos : [];
@@ -9590,7 +9736,12 @@ if (sbarOutput) sbarOutput.value = "";
     async function startReportRecording() {
       reportStatus.textContent = "";
       reportOutput.value = "";
-      reportFinalTranscript = "";
+      
+      if (reportPreview) {
+        reportPreview.style.display = "none";
+        setPlainOutput(reportPreview, "Nenhum conteúdo disponível.");
+      }
+reportFinalTranscript = "";
       updateReportActions();
       if (reportDocTypeDetected) reportDocTypeDetected.textContent = "";
       if (reportMissingFields) reportMissingFields.textContent = "";
@@ -9669,7 +9820,17 @@ if (sbarOutput) sbarOutput.value = "";
         if (reportMissingFields) reportMissingFields.textContent = pendentes.length ? pendentes.join("\n") : "Nenhum";
 
         reportOutput.value = normalizeNumberedParagraphs(documento);
-        updateReportActions();
+        
+        if (reportPreview) {
+          if (documento && String(documento).trim()) {
+            reportPreview.style.display = "block";
+            setFormattedOutput(reportPreview, reportOutput.value);
+          } else {
+            reportPreview.style.display = "none";
+            setPlainOutput(reportPreview, "Nenhum conteúdo disponível.");
+          }
+        }
+updateReportActions();
 
         reportStatus.textContent = documento ? "Documento gerado." : "Não foi possível gerar o documento.";
         reportStatus.classList.remove("loading-dot");
@@ -9687,7 +9848,7 @@ if (sbarOutput) sbarOutput.value = "";
 
       medicalDoubtStatus.textContent = "Respondendo dúvida...";
       medicalDoubtStatus.classList.add("loading-dot");
-      medicalDoubtAnswer.textContent = "";
+      setPlainOutput(medicalDoubtAnswer, "");
 
       try {
         const resp = await fetch(BACKEND_URL + "/api/duvidas-medicas", {
@@ -9706,7 +9867,7 @@ if (sbarOutput) sbarOutput.value = "";
 
         const data = await resp.json();
         const resposta = data.resposta || "";
-        medicalDoubtAnswer.textContent = resposta || "Sem resposta disponível.";
+        setFormattedOutput(medicalDoubtAnswer, resposta || "Sem resposta disponível.");
         medicalDoubtStatus.textContent = "Resposta gerada.";
         medicalDoubtStatus.classList.remove("loading-dot");
       } catch (err) {
@@ -9732,6 +9893,19 @@ if (medicalDoubtSendBtn) {
   });
 }
 
+
+
+// Pré-visualização formatada do documento gerado (mantém textarea para copiar/editar)
+if (reportOutput) {
+  reportOutput.addEventListener("input", () => {
+    if (!reportPreview) return;
+    const val = reportOutput.value || "";
+    const has = isMeaningfulText(val);
+    reportPreview.style.display = has ? "block" : "none";
+    if (has) setFormattedOutput(reportPreview, val);
+    else setPlainOutput(reportPreview, "Nenhum conteúdo disponível.");
+  });
+}
 
     // ============================
     // Documentos (gravação + geração via /api/gerar-relatorio)
@@ -10190,16 +10364,6 @@ if (handoffGuideBtn) {
 }
 
 
-if (medSafetyGuideBtn) {
-  medSafetyGuideBtn.addEventListener("click", () => {
-    setPanelVisible(medSafetyGuidePanel, true);
-  });
-}
-if (closeMedSafetyGuideBtn) {
-  closeMedSafetyGuideBtn.addEventListener("click", () => {
-    setPanelVisible(medSafetyGuidePanel, false);
-  });
-}
 
 if (aprazamentoGuideBtn) {
   aprazamentoGuideBtn.addEventListener("click", () => {
@@ -10284,6 +10448,20 @@ if (closeTranscriptionGuideBtn) {
     setPanelVisible(transcriptionGuidePanel, false);
   });
 }
+
+
+if (rxEvalGuideBtn) {
+  rxEvalGuideBtn.addEventListener("click", () => {
+    setPanelVisible(rxEvalGuidePanel, true);
+  });
+}
+if (closeRxEvalGuideBtn) {
+  closeRxEvalGuideBtn.addEventListener("click", () => {
+    setPanelVisible(rxEvalGuidePanel, false);
+  });
+}
+
+
 
 if (triageCopyFullBtn) {
   triageCopyFullBtn.addEventListener("click", () => {
@@ -10439,35 +10617,6 @@ recordBtn.onclick = () => {
         const el = aprazamentoSheetWrapper ? aprazamentoSheetWrapper.querySelector("#aprazGridSheet") : null;
         const html = el ? el.outerHTML : "";
         openPrintWindowHtml("Grade de horários (24 horas)", html);
-      });
-    }
-
-    if (copyRxTranscriptionBtn) {
-      copyRxTranscriptionBtn.addEventListener("click", () => {
-        const t = (medRxTranscription && medRxTranscription.value) ? medRxTranscription.value.trim() : "";
-        if (!t) {
-          alert("Não há transcrição para copiar.");
-          return;
-        }
-        copyToClipboard(t);
-      });
-    }
-
-    if (copyMedSafetyBtn) {
-      copyMedSafetyBtn.addEventListener("click", () => {
-        const t = (medSafetyExport && medSafetyExport.value) ? medSafetyExport.value.trim() : "";
-        if (!t) {
-          alert("Não há conteúdo para copiar.");
-          return;
-        }
-        copyToClipboard(t);
-      });
-    }
-
-    if (printMedSafetyBtn) {
-      printMedSafetyBtn.addEventListener("click", () => {
-        const t = (medSafetyExport && medSafetyExport.value) ? medSafetyExport.value : "";
-        openPrintWindow("Administração segura de medicamentos", t);
       });
     }
 
@@ -10638,10 +10787,7 @@ if (runImageAnalysisBtn) {
 }
 
     // Estado inicial: painel de resultados do módulo de medicamentos fica oculto até selecionar foto/arquivo.
-    setMedSafetyResultsVisible(false);
-
     // Estado inicial: botões de copiar/imprimir ficam ocultos até gerar conteúdo
-    updateMedSafetyActions();
     updateWoundActions();
     updateReportActions();
     updateExamActions();
@@ -10671,24 +10817,14 @@ if (runImageAnalysisBtn) {
         if (woundFileInput) woundFileInput.click();
       });
     }
-if (medPhotoBtn) {
-      medPhotoBtn.addEventListener("click", () => {
-        if (medCameraInput) medCameraInput.click();
-      });
-    }
-
-    if (medFileBtn) {
-      medFileBtn.addEventListener("click", () => {
-        if (medFileInput) medFileInput.click();
-      });
-    }
 function getImageUiByKey(key) {
       const k = String(key || "").toLowerCase();
       if (k === "wound") return { statusEl: presentationsMaxDoseStatus, boxEl: presentationsMaxDoseBox };
       if (k === "exam") return { statusEl: examInterpretationStatus, boxEl: examInterpretationBox };
       if (k === "transcription") return { statusEl: transcriptionStatus, boxEl: transcriptionBox };
       if (k === "apraz") return { statusEl: aprazamentoStatus, boxEl: aprazamentoSheetWrapper };
-      return { statusEl: interactionsStatus, boxEl: interactionsBox };
+      if (k === "rxeval" || k === "rx_eval" || k === "rx") return { statusEl: rxEvalStatus, boxEl: rxEvalTranscription };
+      return { statusEl: null, boxEl: null };
     }
 
     function bindImageInput(inputEl, key, mode) {
@@ -10729,12 +10865,64 @@ function getImageUiByKey(key) {
 
 if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
     if (woundFileInput) bindImageInput(woundFileInput, "wound", "replace");
-    if (medCameraInput) bindImageInput(medCameraInput, "med", "append");
-    if (medFileInput) bindImageInput(medFileInput, "med", "replace");
     if (examCameraInput) bindImageInput(examCameraInput, "exam", "append");
     if (examFileInput) bindImageInput(examFileInput, "exam", "replace");
     if (transcriptionCameraInput) bindImageInput(transcriptionCameraInput, "transcription", "append");
     if (transcriptionFileInput) bindImageInput(transcriptionFileInput, "transcription", "replace");
+    if (rxEvalCameraInput) bindImageInput(rxEvalCameraInput, "rxEval", "append");
+    if (rxEvalFileInput) bindImageInput(rxEvalFileInput, "rxEval", "replace");
+
+    if (rxEvalTranscription) {
+      rxEvalTranscription.addEventListener("input", () => {
+        updateRxEvalActions();
+      });
+    }
+
+    if (rxEvalCopyTranscriptionBtn) {
+      rxEvalCopyTranscriptionBtn.addEventListener("click", () => {
+        const text = (rxEvalTranscription && rxEvalTranscription.value) ? rxEvalTranscription.value.trim() : "";
+        if (!text) {
+          alert("Não há transcrição para copiar.");
+          return;
+        }
+        copyToClipboard(text);
+      });
+    }
+
+    if (rxEvalPrintTranscriptionBtn) {
+      rxEvalPrintTranscriptionBtn.addEventListener("click", () => {
+        const text = (rxEvalTranscription && rxEvalTranscription.value) ? rxEvalTranscription.value.trim() : "";
+        if (!text) {
+          alert("Não há transcrição para imprimir.");
+          return;
+        }
+        printTextBlock("Transcrição da receita", text);
+      });
+    }
+
+    if (rxEvalCopyDetailsBtn) {
+      rxEvalCopyDetailsBtn.addEventListener("click", () => {
+        const text = (rxEvalDetails && rxEvalDetails.dataset && rxEvalDetails.dataset.copyText) ? String(rxEvalDetails.dataset.copyText).trim() : "";
+        if (!text) {
+          alert("Não há informações do medicamento para copiar.");
+          return;
+        }
+        copyToClipboard(text);
+      });
+    }
+
+    if (rxEvalPrintDetailsBtn) {
+      rxEvalPrintDetailsBtn.addEventListener("click", () => {
+        const text = (rxEvalDetails && rxEvalDetails.dataset && rxEvalDetails.dataset.copyText) ? String(rxEvalDetails.dataset.copyText).trim() : "";
+        if (!text) {
+          alert("Não há informações do medicamento para imprimir.");
+          return;
+        }
+        printTextBlock("Informações do medicamento", text);
+      });
+    }
+
+
     if (aprazamentoCameraInput) bindImageInput(aprazamentoCameraInput, "apraz", "append");
     if (aprazamentoFileInput) bindImageInput(aprazamentoFileInput, "apraz", "replace");
 
