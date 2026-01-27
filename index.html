@@ -2579,7 +2579,19 @@
         Use este módulo para registrar de forma objetiva a passagem de plantão. Fale identificação do paciente, situação atual, principais riscos, dispositivos, medicações em uso, exames pendentes e condutas/pendências para o próximo turno. Ao encerrar, será gerado um texto pronto para repassar ao colega e colar no prontuário.
       </p>
 
-      <button id="handoffRecordBtn" class="start" type="button">Iniciar passagem de plantão</button>
+      
+      <div id="handoffLiveGuidance" class="live-guidance">
+        <div class="live-guidance-header">
+          <p class="live-guidance-title">Perguntas e procedimentos essenciais da passagem de plantão</p>
+          <p id="handoffLiveGuidanceContext" class="live-guidance-context"></p>
+        </div>
+        <p id="handoffLiveGuidanceStatus" class="live-guidance-status">Inicie a passagem de plantão para receber perguntas e procedimentos necessários em tempo real.</p>
+        <div id="handoffLiveGuidanceList" class="live-guidance-list">
+          <div class="live-guidance-empty">Nenhuma sugestão por enquanto.</div>
+        </div>
+      </div>
+
+<button id="handoffRecordBtn" class="start" type="button">Iniciar passagem de plantão</button>
 
       <div id="handoffTimer">00:00</div>
       <div id="handoffMicStatus">Clique em "Iniciar passagem de plantão" para começar.</div>
@@ -4783,6 +4795,25 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     let handoffAccumulatedSeconds = 0;
     let handoffTimerInterval = null;
 
+
+    // Guia em tempo real da passagem de plantão (até 3 itens por vez)
+    let handoffGuidanceEnabled = false;
+    let handoffGuidanceStage = "aguardando_motivo";
+    let handoffGuidancePending = [];
+    let handoffGuidanceContextLabel = "";
+    let handoffGuidanceHypothesis = "";
+    let handoffGuidanceConfidence = 0;
+
+    let handoffGuidanceInFlight = false;
+    let handoffGuidanceAskedQuestion = "";
+    let handoffGuidanceAskedAtLen = 0;
+    let handoffGuidanceAskedAtTs = 0;
+    let handoffGuidanceLastPayloadHash = "";
+    let handoffGuidanceTurnState = "aguardando_pergunta";
+    let handoffGuidanceChunkStartLen = 0;
+    let handoffGuidanceSilenceTimer = null;
+    let handoffGuidanceLastChunkTs = 0;
+
     // ============================
     // MÓDULO: Documentos (gravação + geração de documento)
     // ============================
@@ -5003,6 +5034,12 @@ const recordBtn = document.getElementById("recordBtn");
     const triageLiveGuidanceContext = document.getElementById("triageLiveGuidanceContext");
     const triageLiveGuidanceStatus = document.getElementById("triageLiveGuidanceStatus");
     const triageLiveGuidanceList = document.getElementById("triageLiveGuidanceList");
+
+
+    const handoffLiveGuidance = document.getElementById("handoffLiveGuidance");
+    const handoffLiveGuidanceContext = document.getElementById("handoffLiveGuidanceContext");
+    const handoffLiveGuidanceStatus = document.getElementById("handoffLiveGuidanceStatus");
+    const handoffLiveGuidanceList = document.getElementById("handoffLiveGuidanceList");
 
     const docsLiveGuidance = document.getElementById("docsLiveGuidance");
     const docsLiveGuidanceContext = document.getElementById("docsLiveGuidanceContext");
@@ -6115,6 +6152,286 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       }
     }
 
+    // ============================
+    // Perguntas e procedimentos essenciais da passagem de plantão em tempo real (FLUXO CONTROLADO)
+    // ============================
+    function handoffRenderLiveGuidance() {
+      if (!handoffLiveGuidance || !handoffLiveGuidanceStatus || !handoffLiveGuidanceList || !handoffLiveGuidanceContext) return;
+
+      if (!handoffGuidanceEnabled || !handoffIsRecording) {
+        handoffLiveGuidanceContext.textContent = "";
+        handoffLiveGuidanceStatus.textContent = "Inicie a passagem de plantão para receber perguntas e procedimentos necessários em tempo real.";
+        handoffLiveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhuma sugestão por enquanto.</div>";
+        return;
+      }
+
+      const ctx = (handoffGuidanceContextLabel || "").trim();
+      handoffLiveGuidanceContext.textContent = ctx ? ("Passagem: " + ctx) : "";
+
+      if (handoffGuidanceStage === "aguardando_motivo") {
+        handoffLiveGuidanceStatus.textContent = "Aguardando o início da passagem (identificação e situação). Após iniciar, serão sugeridos itens essenciais para uma passagem segura (SBAR).";
+        handoffLiveGuidanceList.innerHTML = `
+          <div class="live-guidance-empty">
+            Oriente: comece pela identificação do paciente e situação atual (SBAR). Em seguida, riscos, dispositivos, medicações, exames pendentes e plano.
+            <div style="margin-top:10px;">
+              <button id="handoffForceStartGuidanceBtn" class="mini-red-btn" style="background:#b00020;">Início já foi informado</button>
+            </div>
+          </div>
+        `;
+        const btn = document.getElementById("handoffForceStartGuidanceBtn");
+        if (btn) {
+          btn.onclick = () => {
+            if (handoffGuidanceStage !== "aguardando_motivo") return;
+            handoffGuidanceStage = "perguntas";
+            handoffGuidanceTurnState = "aguardando_pergunta";
+            handoffGuidanceAskedQuestion = "";
+            handoffGuidanceAskedAtLen = handoffGetCombinedTranscriptForGuidance().length;
+            handoffGuidanceAskedAtTs = Date.now();
+            handoffGuidanceChunkStartLen = handoffGetCombinedTranscriptForGuidance().length;
+            handoffRequestGuidanceFromBackend({ evento: "inicial" });
+          };
+        }
+        return;
+      }
+
+      const confTxt = (typeof handoffGuidanceConfidence === "number" && handoffGuidanceConfidence > 0)
+        ? ("Nível de confiança do cenário: " + Math.round(handoffGuidanceConfidence) + "% (não chega a 100%).")
+        : "";
+
+      const hypo = (handoffGuidanceHypothesis || "").trim();
+      const hypoTxt = hypo ? ("Cenário principal: " + hypo + ". " + confTxt) : confTxt;
+
+      if (handoffGuidanceTurnState === "aguardando_resposta") {
+        handoffLiveGuidanceStatus.textContent = "Item em andamento. Aguardando complementação para atualizar os próximos itens...";
+      } else if (handoffGuidanceInFlight) {
+        handoffLiveGuidanceStatus.textContent = "Atualizando itens essenciais...";
+      } else {
+        handoffLiveGuidanceStatus.textContent = hypoTxt || "Itens essenciais sugeridos. Complete um item e avance para o próximo.";
+      }
+
+      if (!handoffGuidancePending || !handoffGuidancePending.length) {
+        handoffLiveGuidanceList.innerHTML = "<div class=\"live-guidance-empty\">Nenhum item essencial no momento.</div>";
+        return;
+      }
+
+      handoffLiveGuidanceList.innerHTML = "";
+      handoffGuidancePending.slice(0, 3).forEach((q, idx) => {
+        const safeQ = escapeHtml(String(q || ""));
+        const askedMark = (handoffGuidanceAskedQuestion && handoffGuidanceAskedQuestion.toLowerCase() === String(q || "").toLowerCase())
+          ? " (item executado)"
+          : "";
+        const el = document.createElement("div");
+        el.className = "live-guidance-item";
+        el.innerHTML = `<div class="live-guidance-item-text">${idx + 1}. ${safeQ}${askedMark}</div>`;
+        handoffLiveGuidanceList.appendChild(el);
+      });
+    }
+
+    function handoffGetCombinedTranscriptForGuidance() {
+      const combined = ((handoffFinalTranscript || "") + " " + (handoffInterimTranscript || "")).trim();
+      if (!combined) return "";
+      const MAX = 8000;
+      return combined.length > MAX ? combined.slice(combined.length - MAX) : combined;
+    }
+
+    function handoffResetLiveGuidanceState() {
+      handoffGuidanceEnabled = false;
+      handoffGuidanceStage = "aguardando_motivo";
+      handoffGuidancePending = [];
+      handoffGuidanceContextLabel = "";
+      handoffGuidanceHypothesis = "";
+      handoffGuidanceConfidence = 0;
+
+      handoffGuidanceInFlight = false;
+
+      handoffGuidanceTurnState = "aguardando_pergunta";
+      handoffGuidanceAskedQuestion = "";
+      handoffGuidanceAskedAtLen = 0;
+      handoffGuidanceAskedAtTs = 0;
+
+      handoffGuidanceChunkStartLen = 0;
+      handoffGuidanceSilenceTimer && clearTimeout(handoffGuidanceSilenceTimer);
+      handoffGuidanceSilenceTimer = null;
+
+      handoffGuidanceLastPayloadHash = "";
+      handoffGuidanceLastChunkTs = 0;
+
+      handoffRenderLiveGuidance();
+    }
+
+    function handoffStartGuidanceLoop() {
+      handoffGuidanceEnabled = true;
+      handoffRenderLiveGuidance();
+      handoffMaybeStartInitialGuidance(false);
+    }
+
+    function handoffStopGuidanceLoop() {
+      handoffGuidanceEnabled = false;
+      handoffGuidanceInFlight = false;
+      handoffGuidanceTurnState = "aguardando_pergunta";
+      handoffGuidanceAskedQuestion = "";
+      handoffGuidanceSilenceTimer && clearTimeout(handoffGuidanceSilenceTimer);
+      handoffGuidanceSilenceTimer = null;
+      handoffRenderLiveGuidance();
+    }
+
+    function handoffMaybeStartInitialGuidance(force) {
+      if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
+      if (handoffGuidanceStage !== "aguardando_motivo") return;
+
+      const combined = handoffGetCombinedTranscriptForGuidance();
+      if (!combined || combined.length < 120) return;
+
+      // Para passagem, inicia por comprimento (não depende de palavras-chave)
+      if (!force && combined.length < 220) return;
+
+      handoffGuidanceStage = "perguntas";
+      handoffGuidanceTurnState = "aguardando_pergunta";
+      handoffGuidanceAskedQuestion = "";
+      handoffGuidanceAskedAtLen = combined.length;
+      handoffGuidanceAskedAtTs = Date.now();
+      handoffGuidanceChunkStartLen = combined.length;
+
+      handoffRequestGuidanceFromBackend({ evento: "inicial" });
+    }
+
+    function handoffOnTranscriptUpdateForGuidance() {
+      if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
+
+      if (handoffGuidanceStage === "aguardando_motivo") {
+        handoffMaybeStartInitialGuidance(false);
+        return;
+      }
+
+      handoffScheduleGuidanceSilenceFinalize();
+    }
+
+    function handoffScheduleGuidanceSilenceFinalize() {
+      if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
+
+      if (handoffGuidanceSilenceTimer) clearTimeout(handoffGuidanceSilenceTimer);
+      handoffGuidanceSilenceTimer = setTimeout(() => {
+        handoffFinalizeGuidanceChunk();
+      }, 1400);
+    }
+
+    function handoffFinalizeGuidanceChunk() {
+      if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
+
+      const combined = handoffGetCombinedTranscriptForGuidance();
+      if (!combined) return;
+
+      if (handoffGuidanceChunkStartLen <= 0) {
+        handoffGuidanceChunkStartLen = combined.length;
+        return;
+      }
+
+      const chunk = combined.slice(handoffGuidanceChunkStartLen).trim();
+      handoffGuidanceChunkStartLen = combined.length;
+
+      if (!chunk || chunk.length < 10) return;
+
+      const now = Date.now();
+      if (handoffGuidanceLastChunkTs && (now - handoffGuidanceLastChunkTs) < 900) return;
+      handoffGuidanceLastChunkTs = now;
+
+      handoffHandleGuidanceUtteranceChunk(chunk);
+    }
+
+    function handoffHandleGuidanceUtteranceChunk(chunkText) {
+      if (!chunkText) return;
+      if (!handoffGuidancePending || !handoffGuidancePending.length) return;
+      if (handoffGuidanceInFlight) return;
+
+      if (handoffGuidanceTurnState === "aguardando_pergunta") {
+        const matched = matchQuestionFromUtterance(chunkText, handoffGuidancePending);
+
+        handoffGuidanceAskedQuestion = matched ? matched : "";
+        handoffGuidanceAskedAtTs = Date.now();
+        handoffGuidanceAskedAtLen = handoffGetCombinedTranscriptForGuidance().length;
+
+        handoffGuidanceTurnState = "aguardando_resposta";
+        handoffRenderLiveGuidance();
+        return;
+      }
+
+      if (handoffGuidanceTurnState === "aguardando_resposta") {
+        const dt = Date.now() - (handoffGuidanceAskedAtTs || 0);
+        if (dt < 900) return;
+
+        handoffRequestGuidanceFromBackend({ evento: "resposta", ultima_fala: chunkText });
+        return;
+      }
+    }
+
+    async function handoffRequestGuidanceFromBackend({ evento, ultima_fala }) {
+      if (handoffGuidanceInFlight) return;
+      if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
+
+      const combined = handoffGetCombinedTranscriptForGuidance();
+      if (!combined || combined.length < 50) {
+        handoffRenderLiveGuidance();
+        return;
+      }
+
+      const payload = {
+        modo: "passagem_plantao",
+        transcricao: combined,
+        estado: handoffGuidanceStage,
+        evento: evento || "stream",
+        pergunta_feita: handoffGuidanceAskedQuestion || "",
+        perguntas_pendentes: Array.isArray(handoffGuidancePending) ? handoffGuidancePending.slice(0, 3) : [],
+        confianca_atual: typeof handoffGuidanceConfidence === "number" ? handoffGuidanceConfidence : 0,
+        hipotese_atual: handoffGuidanceHypothesis || "",
+        ultima_fala: typeof ultima_fala === "string" ? ultima_fala.slice(0, 800) : ""
+      };
+
+      const h = hashForGuidancePayload(payload);
+      if (h === handoffGuidanceLastPayloadHash && evento !== "inicial" && evento !== "resposta") return;
+      handoffGuidanceLastPayloadHash = h;
+
+      handoffGuidanceInFlight = true;
+      handoffRenderLiveGuidance();
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/guia-tempo-real", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text();
+          console.error("Erro HTTP do backend (guia passagem):", resp.status, txt);
+          return;
+        }
+
+        const data = await resp.json();
+        handoffGuidanceContextLabel = data.contexto || handoffGuidanceContextLabel || "";
+        handoffGuidanceHypothesis = data.hipotese_principal || handoffGuidanceHypothesis || "";
+        if (typeof data.confianca === "number") handoffGuidanceConfidence = data.confianca;
+
+        const itens = Array.isArray(data.perguntas) ? data.perguntas : (Array.isArray(data.itens) ? data.itens : []);
+        const normalized = itens.map(x => String(x || "").trim()).filter(Boolean);
+        handoffGuidancePending = normalized.slice(0, 3);
+
+        if (evento === "resposta" || evento === "inicial") {
+          handoffGuidanceTurnState = "aguardando_pergunta";
+          handoffGuidanceAskedQuestion = "";
+          handoffGuidanceAskedAtLen = combined.length;
+          handoffGuidanceAskedAtTs = Date.now();
+          handoffGuidanceChunkStartLen = combined.length;
+        }
+      } catch (err) {
+        console.error("Falha ao buscar guia passagem:", err);
+      } finally {
+        handoffGuidanceInFlight = false;
+        handoffRenderLiveGuidance();
+      }
+    }
+
+
+
     function initTriageSpeech() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) {
@@ -6489,6 +6806,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
           }
         }
         handoffInterimTranscript = interim.trim();
+              handoffOnTranscriptUpdateForGuidance();
       };
 
       handoffRecognition.onerror = (e) => {
@@ -6509,6 +6827,10 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       if (handoffError) handoffError.textContent = "";
       handoffClearUI();
 
+
+      handoffResetLiveGuidanceState();
+      handoffRenderLiveGuidance();
+      handoffStartGuidanceLoop();
       if (handoffPauseBtn) {
         handoffPauseBtn.style.display = "inline-block";
         handoffPauseBtn.innerText = "Pausar";
@@ -6533,6 +6855,10 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       handoffIsRecording = false;
       handoffIsPaused = false;
 
+
+      handoffStopGuidanceLoop();
+      handoffInterimTranscript = \"\";
+      handoffRenderLiveGuidance();
       if (handoffRecognition) {
         try { handoffRecognition.stop(); } catch (e) {}
       }
@@ -6552,6 +6878,9 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       if (!handoffIsRecording || handoffIsPaused) return;
       handoffIsPaused = true;
 
+
+      handoffStopGuidanceLoop();
+      if (handoffLiveGuidanceStatus) handoffLiveGuidanceStatus.textContent = \"Passagem de plantão pausada. As sugestões em tempo real serão retomadas ao retomar a gravação.\";
       if (handoffRecognition) {
         try { handoffRecognition.stop(); } catch (e) {}
       }
@@ -6565,6 +6894,8 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       if (!handoffIsRecording || !handoffIsPaused) return;
       handoffIsPaused = false;
 
+
+      handoffStartGuidanceLoop();
       if (handoffRecognition) {
         try { handoffRecognition.start(); } catch (e) {}
       }

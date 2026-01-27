@@ -4543,6 +4543,29 @@ if (isTriage) {
   return { contexto, hipotese, sugestoes: q };
 }
 
+
+function heuristicHandoff(transcricao) {
+  const t = String(transcricao || "").toLowerCase();
+  const { contexto, hipotese } = guessContextAndHypothesis(t);
+
+  const q = [];
+  const push = (s) => {
+    const x = String(s || "").trim();
+    if (!x) return;
+    if (!q.some(a => a.toLowerCase() === x.toLowerCase())) q.push(x);
+  };
+
+  push("Confirmar identificação do paciente (nome/idade) e local (leito/box), além do responsável atual.");
+  push("Descrever situação atual e motivo da internação/atendimento; gravidade e principais riscos imediatos.");
+  push("Checar via aérea/oxigênio/ventilação e hemodinâmica (PA/FC/SpO2) e tendências nas últimas horas.");
+  push("Listar dispositivos (acesso venoso central/periférico, sonda, drenos) e cuidados associados.");
+  push("Revisar medicações em uso (especialmente vasoativas, insulina, sedação, anticoagulantes) e alergias.");
+  push("Apontar resultados críticos recentes e exames pendentes (o que esperar e quando checar).");
+  push("Definir plano e pendências do turno (condutas programadas, reavaliações, metas) e red flags para acionar equipe.");
+
+  return { contexto, hipotese, sugestoes: q };
+}
+
 function isRedFlagQuestion(question) {
   const q = String(question || "").toLowerCase();
   return q.includes("sinais de alarme") || q.includes("gravidade") || q.includes("instabilidade") || q.includes("spo2") || q.includes("rigidez de nuca");
@@ -4585,6 +4608,7 @@ app.post("/api/guia-tempo-real", requirePaidOrAdmin, async(req, res) => {
 
     const modo = String(body.modo || "").trim().toLowerCase();
     const isTriage = (modo === "triagem_hospitalar" || modo === "triagem" || modo === "hospital_triage" || modo === "triagem_hospital");
+    const isHandoff = (modo === "passagem_plantao" || modo === "passagem" || modo === "handoff" || modo === "plantao" || modo === "sbar" || modo === "passagem_de_plantao");
 
     let contexto = "";
     let hipotese = "";
@@ -4654,14 +4678,45 @@ Transcrição (trecho):
 """${transcricao}"""
 `;
 
-      const prompt = isTriage ? promptTriage : promptConsulta;
+            const promptHandoff = `
+Você está auxiliando um enfermeiro durante uma passagem de plantão (handoff), preferencialmente no modelo SBAR.
+Objetivo: sugerir no máximo 3 itens essenciais por vez (perguntas e/ou pontos de checagem) para garantir segurança na transferência de cuidado.
+Regras:
+- Não invente dados. Se faltar informação, sugira como obter.
+- Não escreva emojis.
+- Itens devem ser curtos, objetivos e executáveis durante a passagem.
+- Priorize: identificação/localização do paciente, situação/diagnóstico sindrômico, gravidade/risco imediato, via aérea/oxigênio, hemodinâmica, dispositivos, medicações em uso (principalmente vasoativas/insulina/anticoagulantes), alergias, resultados críticos, exames pendentes, condutas pendentes, metas e red flags para acionar equipe.
+- Se for evento "resposta", atualize os próximos itens com base na última fala.
+
+Retorne JSON estrito no formato:
+{
+  "contexto": "texto curto",
+  "hipotese_principal": "cenário/situação principal (não diagnóstico definitivo)",
+  "confianca": 0,
+  "perguntas_sugeridas": ["item 1", "item 2", "item 3"]
+}
+
+Dados atuais:
+- Estado: ${estado}
+- Evento: ${evento}
+- Cenário atual: ${hipoteseAtual || "não informado"}
+- Confiança atual: ${confiancaAtual}
+- Item executado (se houver): ${perguntaFeita || "nenhum"}
+- Itens pendentes (se houver): ${(pendentes && pendentes.length) ? pendentes.join(" | ") : "nenhum"}
+- Última fala (se houver): ${ultimaFala || "nenhuma"}
+
+Transcrição (trecho):
+\"\"\"${transcricao}\"\"\"
+`;
+
+      const prompt = isTriage ? promptTriage : (isHandoff ? promptHandoff : promptConsulta);
       const data = await callOpenAIJson(prompt);
       contexto = typeof data?.contexto === "string" ? data.contexto.trim() : "";
       hipotese = typeof data?.hipotese_principal === "string" ? data.hipotese_principal.trim() : "";
       confianca = clampNumber(data?.confianca, 0, 95);
       sugestoes = Array.isArray(data?.perguntas_sugeridas) ? data.perguntas_sugeridas : [];
     } else {
-      const h = heuristicQuestions(transcricao, isTriage);
+      const h = isHandoff ? heuristicHandoff(transcricao) : heuristicQuestions(transcricao, isTriage);
       contexto = h.contexto || "";
       hipotese = h.hipotese || "";
       sugestoes = h.sugestoes || [];
