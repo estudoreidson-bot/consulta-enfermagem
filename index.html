@@ -14354,6 +14354,80 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       });
     }
 
+
+// ============================
+// MÓDULO: Educação em Saúde (PPTX)
+// ============================
+(function initHealthEducationModule() {
+  const topicEl = document.getElementById("eduTopic");
+  const durationEl = document.getElementById("eduDuration");
+  const btn = document.getElementById("eduGeneratePptxBtn");
+  const statusEl = document.getElementById("eduStatus");
+
+  if (!topicEl || !durationEl || !btn || !statusEl) return;
+
+  function setStatus(msg) {
+    statusEl.innerText = String(msg || "");
+  }
+
+  async function eduDownloadPptx() {
+    const tema = (topicEl.value || "").trim();
+    const dur = parseInt(String(durationEl.value || "0"), 10);
+
+    if (!tema || tema.length < 3) {
+      setStatus("Informe um tema com pelo menos 3 caracteres.");
+      return;
+    }
+    if (!Number.isFinite(dur) || dur < 3 || dur > 90) {
+      setStatus("Informe a duração em minutos (entre 3 e 90).");
+      return;
+    }
+
+    btn.disabled = true;
+    setStatus("Gerando apresentação. Isso pode levar alguns segundos.");
+
+    try {
+      const resp = await fetch(`${BACKEND_URL}/api/educacao-em-saude/pptx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tema, duracao_min: dur })
+      });
+
+      if (!resp.ok) {
+        let msg = "Falha ao gerar a apresentação.";
+        try {
+          const j = await resp.json();
+          if (j && j.error) msg = String(j.error);
+        } catch {}
+        throw new Error(msg);
+      }
+
+      const blob = await resp.blob();
+      const cd = resp.headers.get("content-disposition") || "";
+      const m = cd.match(/filename\*?=(?:UTF-8''|")?([^";\n]+)"/i) || cd.match(/filename\*?=(?:UTF-8''|)([^;\n]+)/i);
+      const filename = (m && m[1]) ? decodeURIComponent(m[1].replace(/"/g, "").trim()) : `educacao_em_saude_${Date.now()}.pptx`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      setStatus("Apresentação gerada e baixada.");
+    } catch (e) {
+      console.error(e);
+      setStatus(e && e.message ? e.message : "Erro ao gerar a apresentação.");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  btn.addEventListener("click", eduDownloadPptx);
+  setStatus("Escolha um tema e a duração, depois clique para baixar.");
+})();
 </script>
 
 <div id="postLoginOnlyModules" class="hidden">
@@ -14391,6 +14465,27 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     <div class="prescription-actions">
       <button id="copyMedicalDocsBtn" class="btn-copy hidden" type="button">Copiar</button>
       <button id="printMedicalDocsBtn" class="btn-print hidden" type="button">Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<div class="module-card" id="healthEducationModule">
+  <h2>Educação em Saúde</h2>
+  <p class="module-subtitle">Gere e baixe uma apresentação pronta em slides (PPTX) para educação em saúde em enfermagem.</p>
+
+  <div class="inline-input-row" style="margin-top: 6px;">
+    <input id="eduTopic" class="text-input" type="text" placeholder="Tema (ex.: Higienização das mãos, Curativos, Administração de medicamentos)" />
+    <input id="eduDuration" class="text-input" type="number" min="3" max="90" step="1" placeholder="Duração (min)" style="max-width: 160px;" />
+  </div>
+
+  <div class="inline-input-row" style="margin-top: 10px;">
+    <button id="eduGeneratePptxBtn" class="admin-btn" type="button">Baixar apresentação (PPTX)</button>
+    <div id="eduStatus" class="mini-status" style="flex: 1; min-width: 220px;"></div>
+  </div>
+
+  <div id="eduHint" class="guide-inline" style="margin-top: 12px;">
+    <div style="font-size: 13px; line-height: 1.4;">
+      Dica: escolha uma duração realista para o público. O sistema ajusta a quantidade de slides e o nível de detalhe para caber no tempo informado.
     </div>
   </div>
 </div>

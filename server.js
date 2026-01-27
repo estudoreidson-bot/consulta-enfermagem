@@ -6,6 +6,7 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const OpenAI = require("openai");
+const PptxGenJS = require("pptxgenjs");
 
 // ======================================================================
 // SEGURANÇA REPRODUTIVA E TIPO DE RECEITUÁRIO
@@ -4798,6 +4799,329 @@ Transcrição (trecho):
   }
 });
 
+
+// ======================================================================
+// EDUCAÇÃO EM SAÚDE (PPTX)
+// - Gera uma apresentação pronta em PowerPoint com base em tema e duração.
+// - Inclui imagens e GIFs (quando possível) via Wikimedia Commons.
+// - Saída: arquivo .pptx para download.
+// ======================================================================
+
+const FETCH = (typeof fetch === "function")
+  ? fetch.bind(globalThis)
+  : (...args) => import("node-fetch").then(m => m.default(...args));
+
+function clampInt(n, min, max) {
+  const v = parseInt(String(n || ""), 10);
+  if (!Number.isFinite(v)) return min;
+  return Math.max(min, Math.min(max, v));
+}
+
+function estimateSlideCount(durationMin) {
+  // Heurística prática:
+  // - apresentação curta ainda precisa de capa + objetivos
+  // - ~1 slide a cada 2 minutos, com limites conservadores
+  const dur = clampInt(durationMin, 3, 90);
+  const n = Math.round(dur / 2) + 3; // capa + objetivos + encerramento
+  return clampInt(n, 6, 30);
+}
+
+async function fetchWithLimit(url, maxBytes) {
+  const resp = await FETCH(url, { redirect: "follow" });
+  if (!resp.ok) throw new Error(`Falha ao baixar mídia (${resp.status}).`);
+
+  const len = parseInt(resp.headers.get("content-length") || "0", 10);
+  if (len && len > maxBytes) throw new Error("Mídia muito grande para incorporar.");
+
+  // Stream -> Buffer com limite
+  const reader = resp.body?.getReader?.();
+  if (!reader) {
+    const ab = await resp.arrayBuffer();
+    if (ab.byteLength > maxBytes) throw new Error("Mídia muito grande para incorporar.");
+    return Buffer.from(ab);
+  }
+
+  let chunks = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    total += value.byteLength;
+    if (total > maxBytes) throw new Error("Mídia muito grande para incorporar.");
+    chunks.push(Buffer.from(value));
+  }
+  return Buffer.concat(chunks);
+}
+
+function bufferToDataUri(buf, mime) {
+  const b64 = Buffer.from(buf).toString("base64");
+  return `data:${mime};base64,${b64}`;
+}
+
+async function commonsSearchMedia(query, opts = {}) {
+  const q = String(query || "").trim();
+  if (!q) return null;
+
+  const filetype = String(opts.filetype || "").trim().toLowerCase();
+  const wantGif = filetype === "gif";
+
+  // Usa generator=search para obter pages + imageinfo
+  const searchQ = wantGif
+    ? `${q} filetype:gif`
+    : `${q} (filetype:jpg OR filetype:jpeg OR filetype:png)`;
+
+  const apiUrl = "https://commons.wikimedia.org/w/api.php"
+    + "?action=query"
+    + "&format=json"
+    + "&origin=*"
+    + "&generator=search"
+    + "&gsrnamespace=6"
+    + `&gsrsearch=${encodeURIComponent(searchQ)}`
+    + "&gsrlimit=1"
+    + "&prop=imageinfo"
+    + "&iiprop=url|mime|extmetadata";
+
+  try {
+    const r = await FETCH(apiUrl);
+    if (!r.ok) return null;
+    const j = await r.json();
+    const pages = j?.query?.pages || {};
+    const page = Object.values(pages)[0];
+    const ii = page?.imageinfo?.[0];
+    if (!ii?.url || !ii?.mime) return null;
+
+    const meta = ii.extmetadata || {};
+    const licenseShort = (meta?.LicenseShortName?.value || "").replace(/<[^>]*>/g, "").trim();
+    const artist = (meta?.Artist?.value || "").replace(/<[^>]*>/g, "").trim();
+    const credit = (meta?.Credit?.value || "").replace(/<[^>]*>/g, "").trim();
+
+    return {
+      url: ii.url,
+      mime: ii.mime,
+      title: String(page?.title || "").trim(),
+      descriptionUrl: ii.descriptionurl || "",
+      licenseShort,
+      artist,
+      credit
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function generateEducationSlidePlan(tema, duracaoMin) {
+  const t = normalizeText(tema, 180);
+  const dur = clampInt(duracaoMin, 3, 90);
+  const nSlides = estimateSlideCount(dur);
+
+  const prompt = `
+Você é um enfermeiro educador elaborando uma apresentação didática para educação em saúde.
+Objetivo: gerar um roteiro de slides claro, prático e compatível com o tempo total informado.
+
+Regras:
+- Português do Brasil.
+- Sem emojis e sem símbolos gráficos.
+- Conteúdo de enfermagem, seguro e baseado em práticas aceitas (sem inventar números específicos quando não houver certeza).
+- Evite jargões; prefira frases curtas.
+- Cada slide deve ter no máximo 6 tópicos, cada tópico com até 12 palavras.
+- Distribua o conteúdo para caber em aproximadamente ${dur} minutos.
+- Gere exatamente ${nSlides} slides no total.
+- Para cada slide, sugira 1 consulta de imagem e 1 consulta de GIF (quando fizer sentido). Se não fizer sentido, deixe a consulta de GIF vazia.
+
+Responda EXCLUSIVAMENTE em JSON, sem markdown, no formato:
+{
+  "titulo": "string",
+  "subtitulo": "string",
+  "duracao_min": ${dur},
+  "slides": [
+    {
+      "titulo": "string",
+      "pontos": ["string"],
+      "imagem_query": "string",
+      "gif_query": "string"
+    }
+  ]
+}
+
+Tema: ${t}
+`;
+
+  const plan = await callOpenAIJson(prompt, 3);
+
+  const slides = Array.isArray(plan?.slides) ? plan.slides : [];
+  const normalizedSlides = slides.slice(0, nSlides).map((s, i) => {
+    const pontos = Array.isArray(s?.pontos) ? s.pontos.map(x => String(x || "").trim()).filter(Boolean).slice(0, 6) : [];
+    return {
+      titulo: String(s?.titulo || `Slide ${i + 1}`).trim().slice(0, 80),
+      pontos,
+      imagem_query: String(s?.imagem_query || t).trim().slice(0, 140),
+      gif_query: String(s?.gif_query || "").trim().slice(0, 140),
+    };
+  });
+
+  // garante quantidade
+  while (normalizedSlides.length < nSlides) {
+    const i = normalizedSlides.length;
+    normalizedSlides.push({
+      titulo: `Tópicos finais (${i + 1})`,
+      pontos: [],
+      imagem_query: t,
+      gif_query: ""
+    });
+  }
+
+  return {
+    titulo: String(plan?.titulo || `Educação em Saúde: ${t}`).trim().slice(0, 120),
+    subtitulo: String(plan?.subtitulo || "").trim().slice(0, 140),
+    duracao_min: dur,
+    slides: normalizedSlides
+  };
+}
+
+async function buildEducationPptx({ tema, duracao_min }) {
+  const plan = await generateEducationSlidePlan(tema, duracao_min);
+
+  const pptx = new PptxGenJS();
+  pptx.layout = "LAYOUT_WIDE";
+  pptx.author = "Educação em Saúde";
+  pptx.company = "Atendimento de Enfermagem";
+
+  // Dimensões aproximadas (WIDE): 13.33 x 7.5
+  const W = 13.33;
+  const H = 7.5;
+
+  const imgBox = { x: 7.2, y: 1.4, w: 5.8, h: 5.6 };
+  const textBox = { x: 0.8, y: 1.6, w: 6.2, h: 5.6 };
+
+  const attributions = [];
+
+  // Slide 1: capa
+  {
+    const s = pptx.addSlide();
+    s.addText(plan.titulo || "Educação em Saúde", { x: 0.8, y: 1.6, w: W - 1.6, h: 0.9, fontSize: 38, bold: true, color: "0C5460" });
+    if (plan.subtitulo) {
+      s.addText(plan.subtitulo, { x: 0.9, y: 2.6, w: W - 1.8, h: 0.6, fontSize: 18, color: "333333" });
+    }
+    s.addText(`Duração estimada: ${plan.duracao_min} min`, { x: 0.9, y: 3.3, w: W - 1.8, h: 0.4, fontSize: 14, color: "555555" });
+
+    // Imagem de capa (tema)
+    const coverMedia = await commonsSearchMedia(plan.titulo || tema, { filetype: "jpg" });
+    if (coverMedia?.url && coverMedia?.mime) {
+      try {
+        const buf = await fetchWithLimit(coverMedia.url, 3_000_000);
+        const dataUri = bufferToDataUri(buf, coverMedia.mime);
+        s.addImage({ data: dataUri, x: 0.8, y: 4.0, w: W - 1.6, h: 3.0 });
+        attributions.push(coverMedia);
+      } catch {}
+    }
+  }
+
+  // Slides de conteúdo
+  for (let i = 0; i < plan.slides.length; i++) {
+    const slidePlan = plan.slides[i];
+    const s = pptx.addSlide();
+
+    // Título
+    s.addText(slidePlan.titulo, { x: 0.8, y: 0.5, w: W - 1.6, h: 0.6, fontSize: 28, bold: true, color: "0C5460" });
+
+    // Tópicos
+    const bullets = (slidePlan.pontos && slidePlan.pontos.length) ? slidePlan.pontos : [];
+    if (bullets.length) {
+      s.addText(bullets.map(b => `• ${b}`).join("\n"), { x: textBox.x, y: textBox.y, w: textBox.w, h: textBox.h, fontSize: 16, color: "111827", valign: "top" });
+    } else {
+      s.addText("Conteúdo principal (ajuste conforme sua prática).", { x: textBox.x, y: textBox.y, w: textBox.w, h: 1.0, fontSize: 16, color: "111827" });
+    }
+
+    // Imagem (foto/gravura)
+    let media = null;
+    if (slidePlan.imagem_query) {
+      media = await commonsSearchMedia(slidePlan.imagem_query, { filetype: "jpg" });
+    }
+    if (media?.url && media?.mime) {
+      try {
+        const buf = await fetchWithLimit(media.url, 3_000_000);
+        const dataUri = bufferToDataUri(buf, media.mime);
+        s.addImage({ data: dataUri, x: imgBox.x, y: imgBox.y, w: imgBox.w, h: imgBox.h });
+        attributions.push(media);
+      } catch {}
+    }
+
+    // GIF animado (opcional, para reforçar técnica/procedimento)
+    // Para evitar arquivos muito grandes, usa no máximo em 1 a cada 3 slides.
+    if (slidePlan.gif_query && (i % 3 === 1)) {
+      const gif = await commonsSearchMedia(slidePlan.gif_query, { filetype: "gif" });
+      if (gif?.url && gif?.mime) {
+        try {
+          const buf = await fetchWithLimit(gif.url, 5_000_000);
+          const dataUri = bufferToDataUri(buf, gif.mime);
+          s.addImage({ data: dataUri, x: imgBox.x, y: imgBox.y, w: imgBox.w, h: imgBox.h });
+          attributions.push(gif);
+        } catch {}
+      }
+    }
+
+    // Rodapé
+    s.addText(`Slide ${i + 2}/${plan.slides.length + 2}`, { x: 0.8, y: H - 0.6, w: W - 1.6, h: 0.3, fontSize: 10, color: "666666", align: "right" });
+  }
+
+  // Slide final: referências e atribuições
+  {
+    const s = pptx.addSlide();
+    s.addText("Referências e imagens", { x: 0.8, y: 0.6, w: W - 1.6, h: 0.6, fontSize: 28, bold: true, color: "0C5460" });
+
+    const lines = [];
+    const uniq = new Map();
+    for (const a of attributions) {
+      if (!a?.url) continue;
+      if (uniq.has(a.url)) continue;
+      uniq.set(a.url, true);
+
+      const title = a.title ? a.title.replace(/^File:/i, "").trim() : "Mídia";
+      const lic = a.licenseShort ? ` (${a.licenseShort})` : "";
+      const src = a.descriptionUrl || a.url;
+      lines.push(`${title}${lic} - ${src}`);
+    }
+    if (!lines.length) lines.push("Imagens: Wikimedia Commons (quando disponíveis).");
+
+    const text = lines.slice(0, 18).join("\n");
+    s.addText(text, { x: 0.9, y: 1.6, w: W - 1.8, h: 5.6, fontSize: 12, color: "111827", valign: "top" });
+  }
+
+  const buf = await pptx.write("nodebuffer");
+  return { buf, title: plan.titulo || "educacao_em_saude", slides: plan.slides.length + 2 };
+}
+
+app.post("/api/educacao-em-saude/pptx", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const tema = normalizeText(body.tema || "", 180);
+    const duracao_min = clampInt(body.duracao_min, 3, 90);
+
+    if (!tema || tema.length < 3) {
+      return res.status(400).json({ error: "O campo 'tema' é obrigatório (mínimo 3 caracteres)." });
+    }
+
+    const { buf, title } = await buildEducationPptx({ tema, duracao_min });
+    const safeName = String(title || "educacao_em_saude")
+      .toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 60) || "educacao_em_saude";
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}.pptx"`);
+    return res.status(200).send(buf);
+  } catch (e) {
+    console.error(e);
+    const code = String(e?.code || "");
+    if (code === "OPENAI_API_KEY_MISSING") {
+      return res.status(500).json({ error: "OPENAI_API_KEY não configurada no servidor." });
+    }
+    return res.status(500).json({ error: "Falha ao gerar a apresentação." });
+  }
+});
 
 // ======================================================================
 // INICIALIZAÇÃO DO SERVIDOR
