@@ -4950,7 +4950,6 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     let handoffGuidanceSilenceTimer = null;
     let handoffGuidanceLastChunkTs = 0;
 
-    let handoffFinalizeAfterStop = false;
 
     // ============================
     // MÓDULO: Documentos (gravação + geração de documento)
@@ -6190,14 +6189,7 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
       if (triageGuidanceTurnState === "aguardando_pergunta") {
         const matched = matchQuestionFromUtterance(chunkText, triageGuidancePending);
 
-        // Se não casar com nenhuma das sugestões atuais, mantém o turno.
-        // Envia o trecho como "stream" para permitir atualização por contexto.
-        if (!matched) {
-          triageRequestGuidanceFromBackend({ evento: "stream", ultima_fala: chunkText });
-          return;
-        }
-
-        triageGuidanceAskedQuestion = matched;
+        triageGuidanceAskedQuestion = matched ? matched : "";
         triageGuidanceAskedAtTs = Date.now();
         triageGuidanceAskedAtLen = triageGetCombinedTranscript().length;
 
@@ -6731,10 +6723,15 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
       if (handoffGuidanceLastChunkTs && (now - handoffGuidanceLastChunkTs) < 900) return;
       handoffGuidanceLastChunkTs = now;
 
-      handoffRequestGuidanceFromBackend({ evento: "stream", ultima_fala: chunk });
-    }
+      const matchedItem = matchQuestionFromUtterance(chunk, handoffGuidancePending);
+if (matchedItem) {
+  handoffRequestGuidanceFromBackend({ evento: "resposta", ultima_fala: chunk, pergunta_feita: matchedItem });
+} else {
+  handoffRequestGuidanceFromBackend({ evento: "stream", ultima_fala: chunk });
+}
+}
 
-    async function handoffRequestGuidanceFromBackend({ evento, ultima_fala }) {
+    async function handoffRequestGuidanceFromBackend({ evento, ultima_fala, pergunta_feita }) {
       if (handoffGuidanceInFlight) return;
       if (!handoffGuidanceEnabled || !handoffIsRecording || handoffIsPaused) return;
 
@@ -6745,7 +6742,7 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
         estado: "sbar",
         modo: "passagem_plantao",
         evento: evento || "stream",
-        pergunta_feita: "",
+        pergunta_feita: (typeof pergunta_feita === "string" ? pergunta_feita : ""),
         perguntas_pendentes: Array.isArray(handoffGuidancePending) ? handoffGuidancePending.slice(0, 3) : [],
         confianca_atual: typeof handoffGuidanceConfidence === "number" ? handoffGuidanceConfidence : 0,
         hipotese_atual: handoffGuidanceHypothesis || "",
@@ -6821,20 +6818,37 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
         handoffOnTranscriptUpdateForGuidance();
       };
 
-      handoffRecognition.onerror = (e) => {
-        console.error("Erro no reconhecimento (passagem):", e);
-      };
+      handoffRecognition.onerror = (event) => {
+  const err = (event && event.error) ? event.error : event;
+  console.error("Erro no reconhecimento de voz (passagem):", err);
+  if (handoffMicStatus) {
+    if (err === "not-allowed" || err === "service-not-allowed") {
+      handoffMicStatus.innerText = "Permita o acesso ao microfone nas configurações do navegador e tente novamente.";
+    } else if (err === "no-speech") {
+      handoffMicStatus.innerText = "Nenhuma fala detectada. Fale mais próximo ao microfone e tente novamente.";
+    } else if (err === "network") {
+      handoffMicStatus.innerText = "Falha de rede no reconhecimento de voz. Verifique sua conexão.";
+    } else {
+      handoffMicStatus.innerText = "Ocorreu um erro no reconhecimento de voz. Tente novamente.";
+    }
+  }
+  if (handoffError) {
+    if (err === "not-allowed" || err === "service-not-allowed") {
+      handoffError.textContent = "Permissão de microfone negada. Libere o microfone e tente novamente.";
+    } else {
+      handoffError.textContent = "";
+    }
+  }
+};
 
-      handoffRecognition.onend = () => {
-        // Em alguns navegadores, os últimos resultados finais chegam apenas após o "stop".
-        // Quando o usuário encerra, aguardamos o onend para gerar a passagem com a transcrição completa.
-        if (handoffFinalizeAfterStop) {
-          handoffFinalizeAfterStop = false;
-          setTimeout(() => {
-            finalizarPassagemPlantao();
-          }, 250);
-        }
-      };
+// Em muitos dispositivos móveis, o reconhecimento encerra sozinho mesmo em modo contínuo.
+// Reinicia automaticamente enquanto estiver gravando e não estiver pausado.
+handoffRecognition.onend = () => {
+  if (handoffIsRecording && !handoffIsPaused) {
+    try { handoffRecognition.start(); } catch (err) {}
+  }
+};
+
 
       return true;
     }
@@ -6842,13 +6856,12 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
     function startHandoffRecording() {
       if (!ensureHandoffRecognition()) return;
 
-      // Zera transcrição antes de iniciar qualquer lógica dependente do texto
-      handoffFinalTranscript = "";
-      handoffInterimTranscript = "";
-      handoffFinalizeAfterStop = false;
-
       handoffIsRecording = true;
       handoffIsPaused = false;
+
+      handoffStartGuidanceLoop();
+      handoffFinalTranscript = "";
+      handoffInterimTranscript = "";
 
       if (handoffError) handoffError.textContent = "";
       handoffClearUI();
@@ -6871,6 +6884,7 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
       handoffStartTimer();
 
       handoffResetLiveGuidanceState();
+      handoffRenderLiveGuidance();
       handoffStartGuidanceLoop();
 
       try { handoffRecognition.start(); } catch (e) {}
@@ -6881,6 +6895,7 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
       handoffIsPaused = false;
 
       handoffStopGuidanceLoop();
+      handoffInterimTranscript = "";
       handoffRenderLiveGuidance();
 
       if (handoffRecognition) {
@@ -6896,8 +6911,6 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
       if (handoffPauseBtn) handoffPauseBtn.style.display = "none";
       if (recordBtn) recordBtn.disabled = false;
       if (triageRecordBtn) triageRecordBtn.disabled = false;
-
-      if (handoffMicStatus) handoffMicStatus.innerText = "Passagem de plantão encerrada.";
     }
 
     function pauseHandoffRecording() {
@@ -6950,31 +6963,47 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
       }
 
       try {
-        const resp = await fetch(BACKEND_URL + "/api/gerar-passagem-plantao", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcricao: txt })
-        });
+        // Preferência: gerar SBAR estruturado (padrão do módulo)
+let textoFinal = "";
 
-        if (!resp.ok) {
-          const t = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (passagem):", resp.status, t);
-          if (handoffStatus) {
-            handoffStatus.textContent = "Não foi possível gerar a passagem de plantão.";
-            handoffStatus.classList.remove("loading-dot");
-          }
-          return;
-        }
+// 1) Tenta SBAR
+let resp = await fetch(BACKEND_URL + "/api/gerar-sbar", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ transcricao: txt })
+});
 
-        const data = await resp.json();
-        const passagem = (data?.passagem_plantao || "").trim();
+if (resp.ok) {
+  const data = await resp.json().catch(() => ({}));
+  textoFinal = (data?.sbar || "").trim();
+} else {
+  const t = await resp.text().catch(() => "");
+  console.error("Erro HTTP do backend (SBAR):", resp.status, t);
+}
 
-        if (handoffOutput) handoffOutput.value = passagem || "";
-        if (handoffStatus) {
-          handoffStatus.textContent = passagem ? "Passagem de plantão gerada." : "Sem conteúdo disponível.";
-          handoffStatus.classList.remove("loading-dot");
-        }
-      } catch (e) {
+// 2) Fallback: passagem narrativa (se SBAR vier vazio)
+if (!textoFinal) {
+  resp = await fetch(BACKEND_URL + "/api/gerar-passagem-plantao", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ transcricao: txt })
+  });
+
+  if (resp.ok) {
+    const data2 = await resp.json().catch(() => ({}));
+    textoFinal = (data2?.passagem_plantao || "").trim();
+  } else {
+    const t2 = await resp.text().catch(() => "");
+    console.error("Erro HTTP do backend (passagem narrativa):", resp.status, t2);
+  }
+}
+
+if (handoffOutput) handoffOutput.value = textoFinal || "";
+if (handoffStatus) {
+  handoffStatus.textContent = textoFinal ? "Passagem de plantão gerada." : "Sem conteúdo disponível.";
+  handoffStatus.classList.remove("loading-dot");
+}
+} catch (e) {
         console.error("Erro ao gerar passagem:", e);
         if (handoffStatus) {
           handoffStatus.textContent = "Erro ao gerar passagem de plantão.";
@@ -7085,14 +7114,7 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
         "tem","tá","está","foi","era","são","ser","ter","há"
       ]);
 
-      const base = t.split(" ").filter(w => w && w.length > 2 && !stop.has(w));
-      // Leve "radicalização" para capturar variações comuns (ex.: "saturação"/"saturando", "alérgico"/"alergia")
-      const out = [];
-      for (const w of base) {
-        out.push(w);
-        if (w.length > 5) out.push(w.slice(0, 5));
-      }
-      return out;
+      return t.split(" ").filter(w => w && w.length > 2 && !stop.has(w));
     }
 
     function jaccardSimilarity(aTokens, bTokens) {
@@ -7123,7 +7145,7 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
       }
 
       // Se a similaridade for baixa, não “chuta” qual foi, para não apagar/alterar errado.
-      if (bestScore < 0.12) return "";
+      if (bestScore < 0.18) return "";
       return String(bestQ || "").trim();
     }
 
@@ -7136,14 +7158,7 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
       if (guidanceTurnState === "aguardando_pergunta") {
         const matched = matchQuestionFromUtterance(chunkText, guidancePending);
 
-        // Se não conseguiu casar com nenhuma pergunta sugerida, não muda o turno.
-        // Ainda assim, envia o trecho como "stream" para o backend atualizar as sugestões pelo contexto.
-        if (!matched) {
-          requestGuidanceFromBackend({ evento: "stream", ultima_fala: chunkText });
-          return;
-        }
-
-        guidanceAskedQuestion = matched;
+        guidanceAskedQuestion = matched ? matched : "";
         guidanceAskedAtTs = Date.now();
         guidanceAskedAtLen = getCombinedTranscript().length;
 
@@ -7157,6 +7172,7 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
         const dt = Date.now() - (guidanceAskedAtTs || 0);
         if (dt < 900) return; // evita disparo imediato
 
+        // Atualiza com base no diálogo novo
         requestGuidanceFromBackend({ evento: "resposta", ultima_fala: chunkText });
         return;
       }
@@ -10519,9 +10535,8 @@ if (handoffRecordBtn) {
     if (!handoffIsRecording) {
       startHandoffRecording();
     } else {
-      // Finaliza apenas após o reconhecimento encerrar e consolidar a transcrição
-      handoffFinalizeAfterStop = true;
       stopHandoffRecording();
+      finalizarPassagemPlantao();
     }
   };
 }
