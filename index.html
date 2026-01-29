@@ -4579,6 +4579,7 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
         : (me && me.isTrialActive !== undefined) ? !!me.isTrialActive
         : false;
 
+      const trialStartedAt = (u.trialStartedAt || (me && me.trialStartedAt) || "");
       const trialEndsAt = (u.trialEndsAt || (me && me.trialEndsAt) || "");
       const trialDaysLeft = Number((u.trialDaysLeft !== undefined) ? u.trialDaysLeft : (me && me.trialDaysLeft !== undefined) ? me.trialDaysLeft : 0) || 0;
 
@@ -4591,20 +4592,34 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
       if (lblLogin) lblLogin.textContent = login;
 
       if (pay) {
-        const isTrialLabel = (isTrialActive && !paidCurrentMonth);
+        const isTrialLabel = (paidFlag && isTrialActive && !paidCurrentMonth);
+
         if (isTrialLabel) {
+          let startStr = "";
           let endStr = "";
+          try {
+            if (trialStartedAt) startStr = formatDatePt(new Date(trialStartedAt));
+          } catch {}
           try {
             if (trialEndsAt) endStr = formatDatePt(new Date(trialEndsAt));
           } catch {}
-          const extra = (endStr ? (" até " + endStr) : "") + (trialDaysLeft ? (" (" + trialDaysLeft + " dias)") : "");
+
+          let range = "";
+          if (startStr && endStr) range = `${startStr}–${endStr}`;
+          else if (startStr) range = `${startStr}`;
+          else if (endStr) range = `${endStr}`;
+
+          const daysTxt = (trialDaysLeft ? (" (" + trialDaysLeft + " dias)") : "");
+          const extra = (range ? (": " + range) : "") + daysTxt;
+
           pay.textContent = "Teste gratuito" + extra;
+          pay.classList.remove("green","red");
+          pay.classList.add("red");
         } else {
           pay.textContent = paidFlag ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Em atraso" + (month ? " (" + month + ")" : ""));
+          pay.classList.remove("green","red");
+          pay.classList.add(paidFlag ? "green" : "red");
         }
-        pay.classList.remove("green","red");
-        // Durante o teste gratuito, exibir em vermelho para destacar o tempo restante.
-        pay.classList.add(isTrialLabel ? "red" : (paidFlag ? "green" : "red"));
       }
     }
 
@@ -11278,26 +11293,21 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
         const btnHist = document.createElement("button");
         btnHist.className = "admin-btn secondary";
         btnHist.type = "button";
-        // Mostrar também o período de teste gratuito diretamente no botão (controle do administrador)
-        try {
-          let trialText = "";
-          const ts = u.trialStartedAt || "";
-          const te = u.trialEndsAt || "";
-          let tsStr = "";
-          let teStr = "";
-          try { if (ts) tsStr = formatDatePt(new Date(ts)); } catch {}
-          try { if (te) teStr = formatDatePt(new Date(te)); } catch {}
-
-          if (tsStr || teStr) {
-            const daysLeft = Number(u.trialDaysLeft || 0) || 0;
-            const range = (tsStr && teStr) ? (`${tsStr} a ${teStr}`) : (teStr ? (`até ${teStr}`) : (tsStr ? (`início ${tsStr}`) : ""));
-            const extra = (u.isTrialActive && daysLeft > 0) ? (`; ${daysLeft} dias`) : "";
-            trialText = ` (Teste gratuito: ${range}${extra})`;
+        const trialStartRaw = (u.trialStartedAt || "");
+        const trialEndRaw = (u.trialEndsAt || "");
+        let trialLabel = "";
+        if (trialStartRaw || trialEndRaw) {
+          let sStr = "";
+          let eStr = "";
+          try { if (trialStartRaw) sStr = formatDatePt(new Date(trialStartRaw)); } catch {}
+          try { if (trialEndRaw) eStr = formatDatePt(new Date(trialEndRaw)); } catch {}
+          const range = (sStr && eStr) ? (sStr + "–" + eStr) : (sStr || eStr || "");
+          if (range) {
+            trialLabel = "Teste " + range;
+            if (u.isTrialActive && Number(u.trialDaysLeft || 0) > 0) trialLabel += ", " + Number(u.trialDaysLeft || 0) + "d";
           }
-          btnHist.textContent = "Histórico" + trialText;
-        } catch {
-          btnHist.textContent = "Histórico";
         }
+        btnHist.textContent = trialLabel ? ("Histórico (" + trialLabel + ")") : "Histórico";
         btnHist.addEventListener("click", async () => {
           try {
             const data = await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/payments`);

@@ -1600,6 +1600,7 @@ app.post("/api/auth/login", (req, res) => {
       isPaidThisMonth: isUserAccessOk(user),
       paidCurrentMonth: isUserPaidThisMonth(user.id),
       isTrialActive: isUserTrialActive(user),
+      trialStartedAt: user.trialStartedAt || "",
       trialEndsAt: user.trialEndsAt || "",
       trialDaysLeft: userTrialDaysLeft(user),
       user: {
@@ -1611,6 +1612,7 @@ app.post("/api/auth/login", (req, res) => {
         isPaidThisMonth: isUserAccessOk(user),
         paidCurrentMonth: isUserPaidThisMonth(user.id),
         isTrialActive: isUserTrialActive(user),
+        trialStartedAt: user.trialStartedAt || "",
         trialEndsAt: user.trialEndsAt || "",
         trialDaysLeft: userTrialDaysLeft(user)
       }
@@ -1636,6 +1638,7 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
     isPaidThisMonth: isUserAccessOk(u),
     paidCurrentMonth: isUserPaidThisMonth(u.id),
     isTrialActive: isUserTrialActive(u),
+    trialStartedAt: u.trialStartedAt || "",
     trialEndsAt: u.trialEndsAt || "",
     trialDaysLeft: userTrialDaysLeft(u),
     user: {
@@ -1647,6 +1650,7 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
       isPaidThisMonth: isUserAccessOk(u),
       paidCurrentMonth: isUserPaidThisMonth(u.id),
       isTrialActive: isUserTrialActive(u),
+      trialStartedAt: u.trialStartedAt || "",
       trialEndsAt: u.trialEndsAt || "",
       trialDaysLeft: userTrialDaysLeft(u)
     }
