@@ -579,22 +579,6 @@
       border-color: #c82333;
     }
 
-    /* Botão de perguntas essenciais (Passagem de plantão) */
-    #handoffEssentialBtn {
-      margin-left: 0;
-      padding: 8px 18px;
-      border-radius: 20px;
-      border: 1px solid #dc3545;
-      background: #dc3545;
-      color: #fff;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    #handoffEssentialBtn:hover {
-      background: #c82333;
-      border-color: #c82333;
-    }
-
     
     #sbarRecordBtn {
       border: 1px solid #dc3545;
@@ -2765,21 +2749,6 @@
         Use este módulo para registrar de forma objetiva a passagem de plantão. Fale identificação do paciente, situação atual, principais riscos, dispositivos, medicações em uso, exames pendentes e condutas/pendências para o próximo turno. Ao encerrar, será gerado um texto pronto para repassar ao colega e colar no prontuário.
       </p>
 
-      <div id="handoffEssentialPanel" class="handoff-essential-panel hidden">
-        <div class="handoff-essential-title">Perguntas essenciais para a passagem de plantão</div>
-        <div id="handoffEssentialQuestionsList" class="handoff-essential-questions"></div>
-        <div class="handoff-essential-custom">
-          <div class="handoff-essential-custom-label">Respostas adicionais (opcional)</div>
-          <textarea id="handoffEssentialCustomQA" class="handoff-essential-custom-text" placeholder="Você pode ditar ou digitar respostas complementares que desejar registrar."></textarea>
-        </div>
-      </div>
-
-      <div id="handoffEssentialRow" class="patientinfo-row" style="margin-top: 10px; justify-content: center; gap: 10px;">
-        <button id="handoffEssentialBtn" type="button">Perguntas essenciais</button>
-        <div id="handoffEssentialTimer" class="mini-timer">00:00</div>
-        <div id="handoffEssentialStatus" class="mini-status"></div>
-      </div>
-
       <button id="handoffRecordBtn" class="start" type="button">Iniciar passagem de plantão</button>
 
       <div id="handoffTimer">00:00</div>
@@ -3057,7 +3026,20 @@
           <div id="patientInfoStatus" class="mini-status"></div>
         </div>
         <div id="patientInfoSummary" class="patient-summary"></div>
+        <div id="handoffEssentialPanel" class="handoff-essential-panel hidden">
+          <div class="handoff-essential-title">Perguntas essenciais para a passagem de plantão</div>
+          <div id="handoffEssentialQuestionsList" class="handoff-essential-questions"></div>
+          <div class="handoff-essential-custom">
+            <div class="handoff-essential-custom-label">Perguntas e respostas adicionais (opcional)</div>
+            <textarea id="handoffEssentialCustomQA" class="handoff-essential-custom-text" placeholder="Digite aqui perguntas e respostas adicionais que desejar registrar (uma por linha, se preferir)."></textarea>
+          </div>
+        </div>
 
+        <div id="handoffEssentialRow" class="patientinfo-row hidden" style="margin-top: 10px;">
+          <button id="handoffEssentialBtn" class="small-record-btn" type="button">Perguntas essenciais para a passagem de plantão</button>
+          <div id="handoffEssentialTimer" class="mini-timer">00:00</div>
+          <div id="handoffEssentialStatus" class="mini-status"></div>
+        </div>
 
       </div>
 
@@ -5516,6 +5498,7 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
     // ============================
     const patientInfoBtn = document.getElementById("patientInfoBtn");
     const handoffEssentialBtn = document.getElementById("handoffEssentialBtn");
+    const handoffEssentialRow = document.getElementById("handoffEssentialRow");
     const handoffEssentialPanel = document.getElementById("handoffEssentialPanel");
     const handoffEssentialQuestionsList = document.getElementById("handoffEssentialQuestionsList");
     const handoffEssentialCustomQA = document.getElementById("handoffEssentialCustomQA");
@@ -5525,6 +5508,24 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
     const patientInfoStatus = document.getElementById("patientInfoStatus");
     const patientInfoSummary = document.getElementById("patientInfoSummary");
 
+    function updateHandoffEssentialRowVisibility() {
+      const hasPassagem = isMeaningfulText(handoffOutput ? handoffOutput.value : "");
+      setVisible(handoffEssentialRow, hasPassagem);
+
+      if (!hasPassagem) {
+        // Garante estado inicial quando ainda não há passagem gerada
+        handoffEssentialActive = false;
+        handoffEssentialClearUI();
+        handoffEssentialResetTimer();
+        if (handoffEssentialPanel) handoffEssentialPanel.classList.add("hidden");
+        if (handoffEssentialBtn) handoffEssentialBtn.textContent = "Perguntas essenciais para a passagem de plantão";
+        if (handoffEssentialStatus) {
+          handoffEssentialStatus.classList.remove("loading-dot");
+          handoffEssentialStatus.textContent = "";
+        }
+      }
+    }
+
     let patientContext = { nome: null, idade: null, peso_kg: null };
 
     let patientInfoRecognition = null;
@@ -5533,11 +5534,6 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
     let patientInfoTimerInterval = null;
     let patientInfoStartTime = null;
     let patientInfoAccumulatedSeconds = 0;
-
-    // Perguntas essenciais (Passagem de plantão): gravação curta de respostas
-    let handoffEssentialRecognition = null;
-    let handoffEssentialIsRecording = false;
-    let handoffEssentialFinalTranscript = "";
 
     function resetPatientInfoTimer() {
       patientInfoAccumulatedSeconds = 0;
@@ -5605,43 +5601,6 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
     function handoffEssentialClearUI() {
       if (handoffEssentialQuestionsList) handoffEssentialQuestionsList.innerHTML = "";
       if (handoffEssentialCustomQA) handoffEssentialCustomQA.value = "";
-    }
-
-    function initHandoffEssentialSpeech() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) return false;
-
-      handoffEssentialRecognition = new SR();
-      handoffEssentialRecognition.lang = "pt-BR";
-      handoffEssentialRecognition.continuous = true;
-      handoffEssentialRecognition.interimResults = true;
-
-      handoffEssentialRecognition.onresult = (event) => {
-        let gotFinal = false;
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const txt = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            handoffEssentialFinalTranscript += txt + " ";
-            gotFinal = true;
-          }
-        }
-
-        // Atualiza o campo opcional para facilitar revisão (somente quando chega final)
-        if (gotFinal && handoffEssentialCustomQA) {
-          const base = String(handoffEssentialCustomQA.value || "").trim();
-          const add = String(handoffEssentialFinalTranscript || "").trim();
-          if (add) {
-            const composed = base ? (base + "\n\nRespostas ditadas:\n" + add) : ("Respostas ditadas:\n" + add);
-            handoffEssentialCustomQA.value = composed;
-          }
-        }
-      };
-
-      handoffEssentialRecognition.onerror = (e) => {
-        console.warn("Erro no reconhecimento (perguntas essenciais - passagem):", e);
-      };
-
-      return true;
     }
 
     function handoffEssentialRenderQuestions(perguntas) {
@@ -5752,38 +5711,13 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
         return;
       }
 
-      // Evita concorrência com gravações longas
-      if (handoffIsRecording) {
-        if (handoffEssentialStatus) handoffEssentialStatus.textContent = "Finalize a gravação da passagem de plantão antes de usar as perguntas essenciais.";
-        return;
-      }
-      if (isRecording || triageIsRecording || sbarIsRecording || reportIsRecording) {
-        if (handoffEssentialStatus) handoffEssentialStatus.textContent = "Finalize a gravação atual antes de usar as perguntas essenciais.";
-        return;
-      }
-
       // Primeiro clique: abre, inicia timer e sugere perguntas
       if (!handoffEssentialActive) {
         handoffEssentialActive = true;
+        if (handoffEssentialBtn) handoffEssentialBtn.textContent = "Encerrar e atualizar passagem";
         handoffEssentialClearUI();
         handoffEssentialResetTimer();
         handoffEssentialStartTimer();
-
-        if (handoffEssentialBtn) handoffEssentialBtn.textContent = "Encerrar e atualizar";
-
-        handoffEssentialFinalTranscript = "";
-        handoffEssentialIsRecording = false;
-        if (!handoffEssentialRecognition) {
-          initHandoffEssentialSpeech();
-        }
-        if (handoffEssentialRecognition) {
-          try {
-            handoffEssentialIsRecording = true;
-            handoffEssentialRecognition.start();
-          } catch (e) {
-            handoffEssentialIsRecording = false;
-          }
-        }
 
         if (handoffEssentialPanel) handoffEssentialPanel.classList.remove("hidden");
         if (handoffEssentialStatus) {
@@ -5795,7 +5729,7 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
           const perguntas = await handoffEssentialFetchQuestions();
           handoffEssentialRenderQuestions(perguntas);
           if (handoffEssentialStatus) {
-            handoffEssentialStatus.textContent = handoffEssentialRecognition ? "Responda em voz alta e/ou digite o que souber. Clique novamente no botão para encerrar e atualizar a passagem." : "Digite o que souber. Clique novamente no botão para encerrar e atualizar a passagem.";
+            handoffEssentialStatus.textContent = "Responda o que souber e clique novamente no botão para atualizar a passagem.";
             handoffEssentialStatus.classList.remove("loading-dot");
           }
         } catch (e) {
@@ -5815,29 +5749,21 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
         handoffEssentialStatus.classList.add("loading-dot");
       }
 
-      if (handoffEssentialIsRecording && handoffEssentialRecognition) {
-        try {
-          handoffEssentialIsRecording = false;
-          handoffEssentialRecognition.stop();
-        } catch (e) {
-          handoffEssentialIsRecording = false;
-        }
-      }
-
       try {
         const updated = await handoffEssentialUpdatePassagem();
         if (updated && handoffOutput) {
           handoffOutput.value = updated;
           handoffLastGeneratedText = updated;
         }
+        updateHandoffEssentialRowVisibility();
 
         handoffEssentialStopTimer();
         handoffEssentialResetTimer();
         handoffEssentialActive = false;
         handoffEssentialClearUI();
         if (handoffEssentialPanel) handoffEssentialPanel.classList.add("hidden");
-
-        if (handoffEssentialBtn) handoffEssentialBtn.textContent = "Perguntas essenciais";
+        if (handoffEssentialBtn) handoffEssentialBtn.textContent = "Perguntas essenciais para a passagem de plantão";
+        if (handoffEssentialBtn) handoffEssentialBtn.textContent = "Perguntas essenciais para a passagem de plantão";
 
         if (handoffEssentialStatus) {
           handoffEssentialStatus.textContent = updated ? "Passagem de plantão atualizada." : "Sem atualização disponível.";
@@ -5848,10 +5774,6 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
         if (handoffEssentialStatus) {
           handoffEssentialStatus.textContent = "Falha ao atualizar a passagem de plantão.";
           handoffEssentialStatus.classList.remove("loading-dot");
-        }
-      } finally {
-        if (!handoffEssentialActive && handoffEssentialBtn) {
-          handoffEssentialBtn.textContent = "Perguntas essenciais";
         }
       }
     }
@@ -5908,6 +5830,7 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       return true;
     }
 
+    
     function getNursingContext() {
       const t = (baseTranscriptRaw || baseTranscript || finalTranscript || "").trim();
       const s = (soapS?.value || "").trim();
@@ -6229,14 +6152,16 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
           await startPatientInfoRecording();
         }
       });
-    
+    }
 
     if (handoffEssentialBtn) {
-      handoffEssentialBtn.addEventListener("click", () => {
-        onHandoffEssentialBtnClick();
+      handoffEssentialBtn.addEventListener("click", async () => {
+        await onHandoffEssentialBtnClick();
       });
     }
-}
+
+    // Inicialmente, o botão de perguntas essenciais da passagem só deve aparecer após gerar a passagem
+    updateHandoffEssentialRowVisibility();
 
     const reportRecordBtn = document.getElementById("reportRecordBtn");
     const reportStatus = document.getElementById("reportStatus");
@@ -7217,6 +7142,7 @@ if (matchedItem) {
       if (handoffEssentialStatus) {
         handoffEssentialStatus.classList.remove("loading-dot");
         handoffEssentialStatus.textContent = "";
+      updateHandoffEssentialRowVisibility();
       }
     }
 
@@ -7432,6 +7358,7 @@ if (!textoFinal) {
 
 if (handoffOutput) handoffOutput.value = textoFinal || "";
 handoffLastGeneratedText = textoFinal || "";
+updateHandoffEssentialRowVisibility();
 if (handoffStatus) {
   handoffStatus.textContent = textoFinal ? "Passagem de plantão gerada." : "Sem conteúdo disponível.";
   handoffStatus.classList.remove("loading-dot");
