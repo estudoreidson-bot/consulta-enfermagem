@@ -4950,6 +4950,7 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     let handoffGuidanceSilenceTimer = null;
     let handoffGuidanceLastChunkTs = 0;
 
+    let handoffFinalizeAfterStop = false;
 
     // ============================
     // MÓDULO: Documentos (gravação + geração de documento)
@@ -6189,7 +6190,14 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
       if (triageGuidanceTurnState === "aguardando_pergunta") {
         const matched = matchQuestionFromUtterance(chunkText, triageGuidancePending);
 
-        triageGuidanceAskedQuestion = matched ? matched : "";
+        // Se não casar com nenhuma das sugestões atuais, mantém o turno.
+        // Envia o trecho como "stream" para permitir atualização por contexto.
+        if (!matched) {
+          triageRequestGuidanceFromBackend({ evento: "stream", ultima_fala: chunkText });
+          return;
+        }
+
+        triageGuidanceAskedQuestion = matched;
         triageGuidanceAskedAtTs = Date.now();
         triageGuidanceAskedAtLen = triageGetCombinedTranscript().length;
 
@@ -6817,18 +6825,30 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
         console.error("Erro no reconhecimento (passagem):", e);
       };
 
+      handoffRecognition.onend = () => {
+        // Em alguns navegadores, os últimos resultados finais chegam apenas após o "stop".
+        // Quando o usuário encerra, aguardamos o onend para gerar a passagem com a transcrição completa.
+        if (handoffFinalizeAfterStop) {
+          handoffFinalizeAfterStop = false;
+          setTimeout(() => {
+            finalizarPassagemPlantao();
+          }, 250);
+        }
+      };
+
       return true;
     }
 
     function startHandoffRecording() {
       if (!ensureHandoffRecognition()) return;
 
-      handoffIsRecording = true;
-      handoffIsPaused = false;
-
-      handoffStartGuidanceLoop();
+      // Zera transcrição antes de iniciar qualquer lógica dependente do texto
       handoffFinalTranscript = "";
       handoffInterimTranscript = "";
+      handoffFinalizeAfterStop = false;
+
+      handoffIsRecording = true;
+      handoffIsPaused = false;
 
       if (handoffError) handoffError.textContent = "";
       handoffClearUI();
@@ -6851,7 +6871,6 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
       handoffStartTimer();
 
       handoffResetLiveGuidanceState();
-      handoffRenderLiveGuidance();
       handoffStartGuidanceLoop();
 
       try { handoffRecognition.start(); } catch (e) {}
@@ -6862,7 +6881,6 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
       handoffIsPaused = false;
 
       handoffStopGuidanceLoop();
-      handoffInterimTranscript = "";
       handoffRenderLiveGuidance();
 
       if (handoffRecognition) {
@@ -6878,6 +6896,8 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
       if (handoffPauseBtn) handoffPauseBtn.style.display = "none";
       if (recordBtn) recordBtn.disabled = false;
       if (triageRecordBtn) triageRecordBtn.disabled = false;
+
+      if (handoffMicStatus) handoffMicStatus.innerText = "Passagem de plantão encerrada.";
     }
 
     function pauseHandoffRecording() {
@@ -7065,7 +7085,14 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
         "tem","tá","está","foi","era","são","ser","ter","há"
       ]);
 
-      return t.split(" ").filter(w => w && w.length > 2 && !stop.has(w));
+      const base = t.split(" ").filter(w => w && w.length > 2 && !stop.has(w));
+      // Leve "radicalização" para capturar variações comuns (ex.: "saturação"/"saturando", "alérgico"/"alergia")
+      const out = [];
+      for (const w of base) {
+        out.push(w);
+        if (w.length > 5) out.push(w.slice(0, 5));
+      }
+      return out;
     }
 
     function jaccardSimilarity(aTokens, bTokens) {
@@ -7096,7 +7123,7 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
       }
 
       // Se a similaridade for baixa, não “chuta” qual foi, para não apagar/alterar errado.
-      if (bestScore < 0.18) return "";
+      if (bestScore < 0.12) return "";
       return String(bestQ || "").trim();
     }
 
@@ -7109,7 +7136,14 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
       if (guidanceTurnState === "aguardando_pergunta") {
         const matched = matchQuestionFromUtterance(chunkText, guidancePending);
 
-        guidanceAskedQuestion = matched ? matched : "";
+        // Se não conseguiu casar com nenhuma pergunta sugerida, não muda o turno.
+        // Ainda assim, envia o trecho como "stream" para o backend atualizar as sugestões pelo contexto.
+        if (!matched) {
+          requestGuidanceFromBackend({ evento: "stream", ultima_fala: chunkText });
+          return;
+        }
+
+        guidanceAskedQuestion = matched;
         guidanceAskedAtTs = Date.now();
         guidanceAskedAtLen = getCombinedTranscript().length;
 
@@ -7123,7 +7157,6 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
         const dt = Date.now() - (guidanceAskedAtTs || 0);
         if (dt < 900) return; // evita disparo imediato
 
-        // Atualiza com base no diálogo novo
         requestGuidanceFromBackend({ evento: "resposta", ultima_fala: chunkText });
         return;
       }
@@ -10486,8 +10519,9 @@ if (handoffRecordBtn) {
     if (!handoffIsRecording) {
       startHandoffRecording();
     } else {
+      // Finaliza apenas após o reconhecimento encerrar e consolidar a transcrição
+      handoffFinalizeAfterStop = true;
       stopHandoffRecording();
-      finalizarPassagemPlantao();
     }
   };
 }

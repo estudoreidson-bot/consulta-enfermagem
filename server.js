@@ -4598,6 +4598,60 @@ function heuristicHandoffItems(transcricao) {
   return { contexto, hipotese, sugestoes: q.slice(0, 6) };
 }
 
+
+function stripAccentsLower(s) {
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function isGuidanceItemCovered(item, transcricao, isHandoff, isTriage) {
+  const q = stripAccentsLower(item || "");
+  const t = stripAccentsLower(transcricao || "");
+
+  if (!q || !t) return false;
+
+  const hasId = (t.includes("leito") || t.includes("box") || t.includes("enfermaria") || t.includes("prontu") || t.includes("nome") || t.includes("idade"));
+  const hasSituation = (t.includes("intern") || t.includes("motivo") || t.includes("quadro") || t.includes("diagn") || t.includes("situa") || t.includes("admiss") || t.includes("hoje"));
+  const hasComorb = (t.includes("hiperten") || t.includes("diabet") || t.includes("dpo") || t.includes("asma") || t.includes("cardio") || t.includes("renal") || t.includes("hepat") || t.includes("avc") || t.includes("iam") || t.includes("canc") || t.includes("imunoss"));
+  const hasAllergy = (t.includes("alerg") || t.includes("reac"));
+  const hasMeds = (t.includes("medica") || t.includes("antib") || t.includes("anticoag") || t.includes("hepar") || t.includes("insulin") || t.includes("vasopress") || t.includes("sed") || t.includes("analg"));
+  const hasVitals = (t.includes("pa") || t.includes("press") || t.includes("fc") || t.includes("frequ") || t.includes("fr") || t.includes("spo2") || t.includes("satura") || t.includes("temp"));
+  const hasDevices = (t.includes("acesso") || t.includes("cateter") || t.includes("sonda") || t.includes("sng") || t.includes("sne") || t.includes("dreno") || t.includes("curat") || t.includes("oxig") || t.includes("ventil") || t.includes("bomba") || t.includes("infus"));
+  const hasLabs = (t.includes("exame") || t.includes("labor") || t.includes("rx") || t.includes("tc") || t.includes("usg") || t.includes("gasom") || t.includes("hemog") || t.includes("lactato") || t.includes("eletr"));
+  const hasPlan = (t.includes("conduta") || t.includes("plano") || t.includes("penden") || t.includes("manter") || t.includes("ajust") || t.includes("reavali") || t.includes("avaliar") || t.includes("considerar") || t.includes("se ") || t.includes("caso"));
+
+  // Handoff (SBAR): remove itens já cobertos pelo texto, mesmo sem "pergunta_feita"
+  if (isHandoff) {
+    if (q.includes("identificar paciente") || (q.includes("nome") && q.includes("leito"))) return hasId;
+    if (q.includes("situacao") || q.includes("situa")) return hasSituation;
+    if (q.includes("comorb") || q.includes("anteced")) return hasComorb;
+    if (q.includes("alerg")) return hasAllergy;
+    if (q.includes("medic") || q.includes("antib") || q.includes("hepar") || q.includes("insulin")) return hasMeds;
+    if (q.includes("sinais vitais") || q.includes("nivel de consc") || q.includes("tendencia")) return hasVitals;
+    if (q.includes("disposit") || q.includes("terapia") || q.includes("o2") || q.includes("oxig") || q.includes("sonda") || q.includes("dreno") || q.includes("bomba")) return hasDevices;
+    if (q.includes("exames") || q.includes("pendenc") || q.includes("gasom") || q.includes("labor") || q.includes("rx") || q.includes("tc")) return hasLabs;
+    if (q.includes("recomend") || q.includes("proximas acoes") || q.includes("metas") || q.includes("quando acionar")) return hasPlan;
+    return false;
+  }
+
+  // Triagem/consulta: regras simples por categoria (evita repetir o que já está claramente presente)
+  if (q.includes("alerg")) return hasAllergy;
+  if (q.includes("medic") || q.includes("remed") || q.includes("antib") || q.includes("hepar") || q.includes("insulin")) return hasMeds;
+  if (q.includes("sinais vitais") || q.includes("pa") || q.includes("fc") || q.includes("fr") || q.includes("satur") || q.includes("spo2")) return hasVitals;
+  if (q.includes("disposit") || q.includes("oxig") || q.includes("cateter") || q.includes("sonda") || q.includes("dreno")) return hasDevices;
+  if (q.includes("exame") || q.includes("gasom") || q.includes("labor") || q.includes("rx") || q.includes("tc") || q.includes("usg")) return hasLabs;
+
+  // Identificação do paciente pode aparecer também na triagem (quando aplicável)
+  if (q.includes("identificar") && (q.includes("nome") || q.includes("idade"))) return hasId;
+
+  // Plano/conduta/reavaliação
+  if (q.includes("conduta") || q.includes("plano") || q.includes("reavali") || q.includes("pendenc")) return hasPlan;
+
+  return false;
+}
+
 function isRedFlagQuestion(question) {
   const q = String(question || "").toLowerCase();
   return q.includes("sinais de alarme") || q.includes("gravidade") || q.includes("instabilidade") || q.includes("spo2") || q.includes("rigidez de nuca");
@@ -4791,11 +4845,32 @@ Transcrição (trecho):
       if (!exists) next.push(String(old || "").trim());
     }
 
+
+    // Remove itens já cobertos na transcrição (principalmente quando o usuário não marcou "pergunta_feita")
+    let finalNext = next.slice(0, 3).filter(q => !isGuidanceItemCovered(q, transcricao, isHandoff, isTriage));
+
+    if (finalNext.length < 3) {
+      for (const s of sugNorm) {
+        if (finalNext.length >= 3) break;
+        if (isGuidanceItemCovered(s, transcricao, isHandoff, isTriage)) continue;
+        const exists = finalNext.some(x => x.toLowerCase() === s.toLowerCase());
+        if (!exists) finalNext.push(s);
+      }
+      for (const old of pend) {
+        if (finalNext.length >= 3) break;
+        const o = String(old || "").trim();
+        if (!o) continue;
+        if (isGuidanceItemCovered(o, transcricao, isHandoff, isTriage)) continue;
+        const exists = finalNext.some(x => x.toLowerCase() === o.toLowerCase());
+        if (!exists) finalNext.push(o);
+      }
+    }
+
     return res.json({
       contexto,
       hipotese_principal: hipotese,
       confianca,
-      perguntas: next.slice(0, 3)
+      perguntas: (finalNext && finalNext.length ? finalNext : next).slice(0, 3)
     });
   } catch (e) {
     console.error(e);
