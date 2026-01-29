@@ -2616,6 +2616,127 @@ Transcrição:
   }
 });
 
+
+
+// ======================================================================
+// ROTA EXTRA – PERGUNTAS ESSENCIAIS PARA A PASSAGEM DE PLANTÃO (APÓS GERAR)
+// ======================================================================
+
+function gerarPerguntasEssenciaisPassagemFallback(passagem) {
+  const t = String(passagem || "").toLowerCase();
+  const qs = [];
+
+  const need = (kw, q) => { if (!t.includes(kw) && qs.length < 8) qs.push(q); };
+
+  need("identifica", "Qual a identificação completa do paciente (nome, idade, leito/setor)?");
+  need("situa", "Qual a situação atual e sinais vitais mais recentes?");
+  need("alerg", "Há alergias conhecidas?");
+  need("acesso", "Quais dispositivos/acessos estão em uso e quais cuidados associados?");
+  need("sonda", "Há sonda, drenos ou curativos? Quais os cuidados e pendências?");
+  need("antibi", "Quais medicações críticas estão em curso e quando é a próxima dose?");
+  need("exame", "Há exames pendentes e qual a conduta conforme o resultado?");
+  need("risco", "Quais riscos principais (queda, LPP, broncoaspiração, isolamento) e medidas em curso?");
+
+  // Se já estiver muito completo, ainda sugere checagens operacionais.
+  if (qs.length < 3) {
+    qs.push("Há pendências específicas para o próximo turno (monitorização, reavaliações, metas)?");
+    qs.push("Quais sinais de alarme devem motivar acionar o médico/equipe de resposta rápida?");
+  }
+
+  return qs.slice(0, 8);
+}
+
+app.post("/api/perguntas-essenciais-passagem-plantao", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const passagem = normalizeText(req.body?.passagem_plantao, 12000);
+    if (!passagem) return res.json({ perguntas: [] });
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.json({ perguntas: gerarPerguntasEssenciaisPassagemFallback(passagem) });
+    }
+
+    const prompt = `
+Você é um enfermeiro humano experiente em passagem de plantão.
+Tarefa: avaliar a passagem de plantão atual e propor PERGUNTAS ESSENCIAIS para completar lacunas e aumentar a segurança do próximo turno.
+
+Regras:
+- Não invente dados.
+- Perguntas curtas, objetivas e acionáveis.
+- Priorize itens críticos: identificação, situação atual, sinais vitais, dispositivos, medicações críticas, exames pendentes, riscos, metas e pendências.
+- Evite redundâncias.
+- No máximo 8 perguntas.
+- Sem emojis e sem símbolos gráficos.
+
+Formato de saída: JSON estrito:
+{ "perguntas": ["...", "..."] }
+
+Passagem de plantão atual:
+"""${passagem}"""
+`;
+
+    const data = await callOpenAIJson(prompt);
+    const perguntas = normalizeArrayOfStrings(data?.perguntas, 8, 220);
+    return res.json({ perguntas });
+  } catch (e) {
+    console.error(e);
+    return res.json({ perguntas: [] });
+  }
+});
+
+
+// ======================================================================
+// ROTA EXTRA – ATUALIZAR PASSAGEM DE PLANTÃO COM COMPLEMENTOS (Q/A)
+// ======================================================================
+
+app.post("/api/atualizar-passagem-plantao", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const passagemAtual = normalizeText(req.body?.passagem_plantao_atual, 18000);
+    const complementos = normalizeText(req.body?.complementos, 12000);
+    const transcricaoBase = normalizeText(req.body?.transcricao_base, 18000);
+
+    if (!passagemAtual) return res.json({ passagem_plantao: "" });
+
+    if (!process.env.OPENAI_API_KEY) {
+      // Sem chave, devolve a passagem atual com um rodapé curto.
+      const msg = "Sem chave OPENAI_API_KEY configurada no servidor.";
+      const extra = complementos ? ("\n\nComplementos registrados:\n" + complementos) : "";
+      return res.json({ passagem_plantao: (passagemAtual + extra + "\n\nObservação: " + msg).trim() });
+    }
+
+    const prompt = `
+Você é um enfermeiro humano experiente em passagem de plantão hospitalar.
+Tarefa: atualizar a PASSAGEM DE PLANTÃO mantendo linguagem técnica, objetiva e segura.
+
+Instruções:
+- Use a passagem atual como base.
+- Incorpore os complementos (perguntas e respostas) de forma coerente, sem repetir informações.
+- Se houver conflito, priorize o que estiver nos complementos.
+- Se algo permanecer ausente, mantenha "não informado" e/ou indique o que precisa ser checado.
+- Sem emojis e sem símbolos gráficos.
+
+Saída: JSON estrito:
+{ "passagem_plantao": "texto atualizado" }
+
+Passagem atual:
+"""${passagemAtual}"""
+
+Complementos (perguntas e respostas):
+"""${complementos || ""}"""
+
+Transcrição base (se ajudar a contextualizar, pode usar, mas não é obrigatório):
+"""${transcricaoBase || ""}"""
+`;
+
+    const data = await callOpenAIJson(prompt);
+    const passagem = typeof data?.passagem_plantao === "string" ? data.passagem_plantao.trim() : "";
+    return res.json({ passagem_plantao: passagem || passagemAtual });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao atualizar passagem de plantão." });
+  }
+});
+
+
 // ======================================================================
 // ROTA 2 – RECOMENDAÇÕES DE PERGUNTAS COMPLEMENTARES (ANAMNESE) (EXISTENTE)
 // ======================================================================
@@ -4598,60 +4719,6 @@ function heuristicHandoffItems(transcricao) {
   return { contexto, hipotese, sugestoes: q.slice(0, 6) };
 }
 
-
-function stripAccentsLower(s) {
-  return String(s || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-function isGuidanceItemCovered(item, transcricao, isHandoff, isTriage) {
-  const q = stripAccentsLower(item || "");
-  const t = stripAccentsLower(transcricao || "");
-
-  if (!q || !t) return false;
-
-  const hasId = (t.includes("leito") || t.includes("box") || t.includes("enfermaria") || t.includes("prontu") || t.includes("nome") || t.includes("idade"));
-  const hasSituation = (t.includes("intern") || t.includes("motivo") || t.includes("quadro") || t.includes("diagn") || t.includes("situa") || t.includes("admiss") || t.includes("hoje"));
-  const hasComorb = (t.includes("hiperten") || t.includes("diabet") || t.includes("dpo") || t.includes("asma") || t.includes("cardio") || t.includes("renal") || t.includes("hepat") || t.includes("avc") || t.includes("iam") || t.includes("canc") || t.includes("imunoss"));
-  const hasAllergy = (t.includes("alerg") || t.includes("reac"));
-  const hasMeds = (t.includes("medica") || t.includes("antib") || t.includes("anticoag") || t.includes("hepar") || t.includes("insulin") || t.includes("vasopress") || t.includes("sed") || t.includes("analg"));
-  const hasVitals = (t.includes("pa") || t.includes("press") || t.includes("fc") || t.includes("frequ") || t.includes("fr") || t.includes("spo2") || t.includes("satura") || t.includes("temp"));
-  const hasDevices = (t.includes("acesso") || t.includes("cateter") || t.includes("sonda") || t.includes("sng") || t.includes("sne") || t.includes("dreno") || t.includes("curat") || t.includes("oxig") || t.includes("ventil") || t.includes("bomba") || t.includes("infus"));
-  const hasLabs = (t.includes("exame") || t.includes("labor") || t.includes("rx") || t.includes("tc") || t.includes("usg") || t.includes("gasom") || t.includes("hemog") || t.includes("lactato") || t.includes("eletr"));
-  const hasPlan = (t.includes("conduta") || t.includes("plano") || t.includes("penden") || t.includes("manter") || t.includes("ajust") || t.includes("reavali") || t.includes("avaliar") || t.includes("considerar") || t.includes("se ") || t.includes("caso"));
-
-  // Handoff (SBAR): remove itens já cobertos pelo texto, mesmo sem "pergunta_feita"
-  if (isHandoff) {
-    if (q.includes("identificar paciente") || (q.includes("nome") && q.includes("leito"))) return hasId;
-    if (q.includes("situacao") || q.includes("situa")) return hasSituation;
-    if (q.includes("comorb") || q.includes("anteced")) return hasComorb;
-    if (q.includes("alerg")) return hasAllergy;
-    if (q.includes("medic") || q.includes("antib") || q.includes("hepar") || q.includes("insulin")) return hasMeds;
-    if (q.includes("sinais vitais") || q.includes("nivel de consc") || q.includes("tendencia")) return hasVitals;
-    if (q.includes("disposit") || q.includes("terapia") || q.includes("o2") || q.includes("oxig") || q.includes("sonda") || q.includes("dreno") || q.includes("bomba")) return hasDevices;
-    if (q.includes("exames") || q.includes("pendenc") || q.includes("gasom") || q.includes("labor") || q.includes("rx") || q.includes("tc")) return hasLabs;
-    if (q.includes("recomend") || q.includes("proximas acoes") || q.includes("metas") || q.includes("quando acionar")) return hasPlan;
-    return false;
-  }
-
-  // Triagem/consulta: regras simples por categoria (evita repetir o que já está claramente presente)
-  if (q.includes("alerg")) return hasAllergy;
-  if (q.includes("medic") || q.includes("remed") || q.includes("antib") || q.includes("hepar") || q.includes("insulin")) return hasMeds;
-  if (q.includes("sinais vitais") || q.includes("pa") || q.includes("fc") || q.includes("fr") || q.includes("satur") || q.includes("spo2")) return hasVitals;
-  if (q.includes("disposit") || q.includes("oxig") || q.includes("cateter") || q.includes("sonda") || q.includes("dreno")) return hasDevices;
-  if (q.includes("exame") || q.includes("gasom") || q.includes("labor") || q.includes("rx") || q.includes("tc") || q.includes("usg")) return hasLabs;
-
-  // Identificação do paciente pode aparecer também na triagem (quando aplicável)
-  if (q.includes("identificar") && (q.includes("nome") || q.includes("idade"))) return hasId;
-
-  // Plano/conduta/reavaliação
-  if (q.includes("conduta") || q.includes("plano") || q.includes("reavali") || q.includes("pendenc")) return hasPlan;
-
-  return false;
-}
-
 function isRedFlagQuestion(question) {
   const q = String(question || "").toLowerCase();
   return q.includes("sinais de alarme") || q.includes("gravidade") || q.includes("instabilidade") || q.includes("spo2") || q.includes("rigidez de nuca");
@@ -4845,32 +4912,11 @@ Transcrição (trecho):
       if (!exists) next.push(String(old || "").trim());
     }
 
-
-    // Remove itens já cobertos na transcrição (principalmente quando o usuário não marcou "pergunta_feita")
-    let finalNext = next.slice(0, 3).filter(q => !isGuidanceItemCovered(q, transcricao, isHandoff, isTriage));
-
-    if (finalNext.length < 3) {
-      for (const s of sugNorm) {
-        if (finalNext.length >= 3) break;
-        if (isGuidanceItemCovered(s, transcricao, isHandoff, isTriage)) continue;
-        const exists = finalNext.some(x => x.toLowerCase() === s.toLowerCase());
-        if (!exists) finalNext.push(s);
-      }
-      for (const old of pend) {
-        if (finalNext.length >= 3) break;
-        const o = String(old || "").trim();
-        if (!o) continue;
-        if (isGuidanceItemCovered(o, transcricao, isHandoff, isTriage)) continue;
-        const exists = finalNext.some(x => x.toLowerCase() === o.toLowerCase());
-        if (!exists) finalNext.push(o);
-      }
-    }
-
     return res.json({
       contexto,
       hipotese_principal: hipotese,
       confianca,
-      perguntas: (finalNext && finalNext.length ? finalNext : next).slice(0, 3)
+      perguntas: next.slice(0, 3)
     });
   } catch (e) {
     console.error(e);
