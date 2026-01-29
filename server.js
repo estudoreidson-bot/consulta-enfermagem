@@ -4620,6 +4620,11 @@ app.post("/api/guia-tempo-real", requirePaidOrAdmin, async(req, res) => {
     const estado = String(body.estado || "").trim() || "perguntas";
     const evento = String(body.evento || "").trim() || "stream";
 
+    // Importante: as flags de modo precisam existir antes de qualquer uso (evita ReferenceError do "isHandoff")
+    const modo = String(body.modo || "").trim().toLowerCase();
+    const isTriage = (modo === "triagem_hospitalar" || modo === "triagem" || modo === "hospital_triage" || modo === "triagem_hospital");
+    const isHandoff = (modo === "passagem_plantao" || modo === "passagem" || modo === "handoff" || modo === "sbar");
+
     if (estado === "aguardando_motivo" && !isHandoff) {
       return res.json({ contexto: "", hipotese_principal: "", confianca: 0, perguntas: [] });
     }
@@ -4642,10 +4647,6 @@ app.post("/api/guia-tempo-real", requirePaidOrAdmin, async(req, res) => {
     const confiancaAtual = clampNumber(body.confianca_atual, 0, 95);
     const hipoteseAtual = String(body.hipotese_atual || "").trim();
     const ultimaFala = normalizeText(body.ultima_fala || "", 800);
-
-    const modo = String(body.modo || "").trim().toLowerCase();
-    const isTriage = (modo === "triagem_hospitalar" || modo === "triagem" || modo === "hospital_triage" || modo === "triagem_hospital");
-    const isHandoff = (modo === "passagem_plantao" || modo === "passagem" || modo === "handoff" || modo === "sbar");
 
     let contexto = "";
     let hipotese = "";
