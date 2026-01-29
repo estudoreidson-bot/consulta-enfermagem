@@ -231,54 +231,44 @@ async function gerarMonografiaMedicamento(medicamento, fontesSugeridas) {
   const safety = getDrugSafetyInfo(nome);
 
   const prompt = `
-Você é um médico no Brasil e deve gerar uma monografia clínica completa e prática de um medicamento.
-Prioridade: use apenas informação consolidada e segura. Se não tiver certeza técnica, deixe o campo em branco (string vazia) ou lista vazia. Não invente.
-Marcas: inclua nomes comerciais apenas quando forem muito conhecidos e você tiver alta confiança; caso contrário, omita.
+Você é um médico no Brasil preparando um material de EDUCAÇÃO EM SAÚDE para uma roda de conversa/aula.
+Seu objetivo é gerar o roteiro COMPLETO de uma apresentação em PPTX (não crie o arquivo, apenas o plano em JSON).
+Tema: "${t}"
+Duração: ${d} minutos
 
-Regras:
-1) Use português do Brasil.
-2) Sem emojis e sem símbolos gráficos.
-3) Não inclua links no texto (links serão adicionados fora).
-4) Para "uso_clinico", liste apenas nomes de doenças/condições mais comuns (sem explicações).
-5) Para apresentações, descreva de forma detalhada por forma farmacêutica e concentração usuais no Brasil. Quando pertinente, inclua exemplos de nomes comerciais por forma/concentração, se tiver alta confiança.
-6) Para posologia, descreva dose usual, dose máxima e modo de uso por via/apresentação (inclua ajustes ou alertas relevantes). Se não souber com segurança, deixe em branco.
-7) Gravidez e lactação: só preencha se tiver segurança. Caso contrário, deixe em branco.
+Regras obrigatórias:
+- Português do Brasil.
+- Sem emojis.
+- Linguagem clara, prática e segura.
+- Não invente dados epidemiológicos ou percentuais; se precisar, use termos qualitativos (ex.: "frequente", "comum").
+- Inclua sinais de alarme e encaminhamento quando pertinente ao tema.
+- Estruture para APS: prevenção, autocuidado, adesão, barreiras, comunicação com paciente.
+- Quantidade alvo de slides: aproximadamente ${targetSlides} slides (pode variar em +- 3).
+- Em cada slide, gere de 3 a 6 tópicos. Cada tópico deve ter:
+  - "titulo": uma frase bem curta (até 7 palavras).
+  - "resumo": 1 a 2 frases em português claro, sem números inventados.
+- "busca_imagem": 3 a 6 palavras (ou frase curta) para buscar imagem em repositórios abertos (ex.: Wikimedia).
+- "busca_gif": opcional, 2 a 5 palavras para buscar um GIF animado educativo (se fizer sentido); senão deixe vazio.
+- "notas": 2 a 5 linhas com orientação de fala (speaker notes), sem mencionar ferramenta, sistema ou tecnologia.
 
-Responda EXCLUSIVAMENTE em JSON, sem markdown, neste formato:
+Formato: responda SOMENTE com um JSON válido, sem texto fora do JSON:
 {
-  "medicamento": "string",
-  "classe": "string",
-  "mecanismo_acao": "string",
-  "apresentacoes": {
-    "oral": "string",
-    "gotas": "string",
-    "xarope": "string",
-    "comprimido_capsula": "string",
-    "injetavel": "string"
-  },
-  "uso_clinico": ["string"],
-  "tipo_receituario": "string",
-  "posologia_adulto": {
-    "oral": { "dose_usual": "string", "dose_maxima": "string", "modo_uso": "string" },
-    "gotas": { "dose_usual": "string", "dose_maxima": "string", "modo_uso": "string" },
-    "xarope": { "dose_usual": "string", "dose_maxima": "string", "modo_uso": "string" },
-    "comprimido_capsula": { "dose_usual": "string", "dose_maxima": "string", "modo_uso": "string" },
-    "injetavel": { "dose_usual": "string", "dose_maxima": "string", "modo_uso": "string" }
-  },
-  "categoria_gravidez": "string",
-  "uso_lactacao": "string",
-  "uso_geriatrico": "string",
-  "posologia_pediatrica": {
-    "oral": { "dose_mgkg": "string", "intervalo": "string", "dose_maxima": "string", "restricoes_etarias": "string", "modo_uso": "string" },
-    "gotas": { "dose_mgkg": "string", "intervalo": "string", "dose_maxima": "string", "restricoes_etarias": "string", "modo_uso": "string" },
-    "xarope": { "dose_mgkg": "string", "intervalo": "string", "dose_maxima": "string", "restricoes_etarias": "string", "modo_uso": "string" },
-    "comprimido_capsula": { "dose_mgkg": "string", "intervalo": "string", "dose_maxima": "string", "restricoes_etarias": "string", "modo_uso": "string" },
-    "injetavel": { "dose_mgkg": "string", "intervalo": "string", "dose_maxima": "string", "restricoes_etarias": "string", "modo_uso": "string" }
-  },
-  "interacoes_medicamentosas": ["string"],
-  "pontos_enfermagem": ["string"]
+  "titulo": "string",
+  "subtitulo": "string",
+  "slides": [
+    {
+      "titulo": "string",
+      "topicos": [
+        { "titulo": "string", "resumo": "string" }
+      ],
+      "notas": "string",
+      "busca_imagem": "string",
+      "busca_gif": "string"
+    }
+  ],
+  "referencias": ["string"]
 }
-`;
+  `;
 
   const data = await callOpenAIJson(prompt.replace("{MED}", nome) + `
 
@@ -4990,26 +4980,62 @@ function estimateSlideCount(duracaoMin) {
   return Math.max(10, Math.min(45, estimated));
 }
 
+function normalizeTopicItem(x) {
+  if (x && typeof x === "object") {
+    const titulo =
+      (typeof x.titulo === "string" && x.titulo.trim()) ? x.titulo.trim() :
+      (typeof x.topico === "string" && x.topico.trim()) ? x.topico.trim() :
+      (typeof x.nome === "string" && x.nome.trim()) ? x.nome.trim() : "";
+    const resumo =
+      (typeof x.resumo === "string" && x.resumo.trim()) ? x.resumo.trim() :
+      (typeof x.descricao === "string" && x.descricao.trim()) ? x.descricao.trim() :
+      (typeof x.texto === "string" && x.texto.trim()) ? x.texto.trim() : "";
+    if (!titulo) return null;
+    return { titulo, resumo };
+  }
+
+  const s = String(x || "").trim();
+  if (!s) return null;
+
+  // Compatibilidade: se vier "Título: resumo", separa
+  const m = s.match(/^(.{3,80}?)[\:\-\–\—]\s+(.{3,200})$/);
+  if (m) return { titulo: m[1].trim(), resumo: m[2].trim() };
+
+  return { titulo: s, resumo: "" };
+}
+
 function normalizeSlidePlan(raw, tema, duracaoMin) {
-  const title = (typeof raw?.titulo === "string" && raw.titulo.trim()) ? raw.titulo.trim() : (String(tema || "").trim() || "Educação em Saúde");
-  const subtitle = (typeof raw?.subtitulo === "string" ? raw.subtitulo.trim() : "") || `Duração: ${clampInt(duracaoMin, 10, 60)} min`;
+  const title = (typeof raw?.titulo === "string" && raw.titulo.trim())
+    ? raw.titulo.trim()
+    : (String(tema || "").trim() || "Educação em Saúde");
+
+  const subtitle = (typeof raw?.subtitulo === "string" ? raw.subtitulo.trim() : "")
+    || `Duração: ${clampInt(duracaoMin, 10, 60)} min`;
 
   const slidesRaw = Array.isArray(raw?.slides) ? raw.slides : [];
   const slides = slidesRaw
-    .map((s) => ({
-      titulo: (typeof s?.titulo === "string" ? s.titulo.trim() : "") || "",
-      topicos: Array.isArray(s?.topicos) ? s.topicos.map(x => String(x || "").trim()).filter(Boolean) : [],
-      notas: (typeof s?.notas === "string" ? s.notas.trim() : ""),
-      busca_imagem: (typeof s?.busca_imagem === "string" ? s.busca_imagem.trim() : ""),
-      busca_gif: (typeof s?.busca_gif === "string" ? s.busca_gif.trim() : "")
-    }))
-    .filter(s => s.titulo || s.topicos.length);
+    .map((s) => {
+      const topicos = Array.isArray(s?.topicos)
+        ? s.topicos.map(normalizeTopicItem).filter(Boolean).slice(0, 7)
+        : [];
+
+      return {
+        titulo: (typeof s?.titulo === "string" ? s.titulo.trim() : "") || "",
+        topicos,
+        notas: (typeof s?.notas === "string" ? s.notas.trim() : ""),
+        busca_imagem: (typeof s?.busca_imagem === "string" ? s.busca_imagem.trim() : ""),
+        busca_gif: (typeof s?.busca_gif === "string" ? s.busca_gif.trim() : "")
+      };
+    })
+    .filter(s => s.titulo || (Array.isArray(s.topicos) && s.topicos.length));
 
   return {
     titulo: title,
     subtitulo: subtitle,
     slides,
-    referencias: Array.isArray(raw?.referencias) ? raw.referencias.map(x => String(x || "").trim()).filter(Boolean).slice(0, 12) : []
+    referencias: Array.isArray(raw?.referencias)
+      ? raw.referencias.map(x => String(x || "").trim()).filter(Boolean).slice(0, 12)
+      : []
   };
 }
 
@@ -5018,14 +5044,75 @@ async function generateHealthEducationDeckPlan(tema, duracaoMin) {
   const d = clampInt(duracaoMin, 10, 60);
   const targetSlides = estimateSlideCount(d);
 
-  if (!process.env.OPENAI_API_KEY) {
-    // Fallback conservador (sem OpenAI): estrutura básica
+    if (!process.env.OPENAI_API_KEY) {
+    // Fallback conservador (sem OpenAI): estrutura básica com tópicos + resumos e mídia
     const slides = [
-      { titulo: "Objetivos", topicos: ["Definir conceitos principais", "Reconhecer fatores de risco e prevenção", "Orientar sinais de alarme e quando buscar atendimento"], notas: "", busca_imagem: `${t} educação em saúde`, busca_gif: "" },
-      { titulo: "Conceitos essenciais", topicos: ["Definição prática", "Por que importa na APS", "Impacto na saúde e qualidade de vida"], notas: "", busca_imagem: `${t} ilustração`, busca_gif: "" },
-      { titulo: "Prevenção e autocuidado", topicos: ["Medidas não farmacológicas", "Rotina e adesão", "Apoio familiar e comunitário"], notas: "", busca_imagem: `${t} prevenção`, busca_gif: "" },
-      { titulo: "Sinais de alarme", topicos: ["Piora rápida", "Sinais de gravidade", "Quando procurar urgência"], notas: "", busca_imagem: `${t} alerta`, busca_gif: "" },
-      { titulo: "Mensagem final", topicos: ["Resumo do que foi visto", "Como aplicar no dia a dia", "Espaço para perguntas"], notas: "", busca_imagem: `${t} comunidade`, busca_gif: "" }
+      {
+        titulo: "Objetivos",
+        topicos: [
+          { titulo: "Entender o tema", resumo: "Apresentar conceitos essenciais e linguagem acessível para o público." },
+          { titulo: "Prevenir complicações", resumo: "Reforçar medidas de prevenção, autocuidado e adesão no dia a dia." },
+          { titulo: "Reconhecer gravidade", resumo: "Orientar sinais de alarme e quando procurar atendimento imediato." }
+        ],
+        notas: "Abra a conversa perguntando o que as pessoas já sabem. Ajuste a linguagem ao público. Estimule dúvidas ao longo da apresentação.",
+        busca_imagem: `${t} educação em saúde`,
+        busca_gif: "educação em saúde"
+      },
+      {
+        titulo: "Conceitos essenciais",
+        topicos: [
+          { titulo: "Definição prática", resumo: "Explique o tema de forma simples, com exemplos do cotidiano." },
+          { titulo: "Por que importa na APS", resumo: "Relacione com prevenção e acompanhamento longitudinal na unidade." },
+          { titulo: "Impacto na qualidade de vida", resumo: "Mostre como mudanças pequenas podem trazer benefício real." }
+        ],
+        notas: "Use exemplos comuns do território. Evite números específicos. Confirme se todos entenderam os termos principais.",
+        busca_imagem: `${t} ilustração`,
+        busca_gif: ""
+      },
+      {
+        titulo: "Fatores de risco e proteção",
+        topicos: [
+          { titulo: "O que aumenta o risco", resumo: "Liste fatores modificáveis e não modificáveis de forma objetiva." },
+          { titulo: "O que protege", resumo: "Destaque hábitos e apoio social que reduzem risco e melhoram adesão." },
+          { titulo: "Barreiras comuns", resumo: "Explique dificuldades reais e alternativas possíveis dentro da rotina." }
+        ],
+        notas: "Valide as dificuldades do público. Ofereça alternativas factíveis. Encoraje metas pequenas e sustentáveis.",
+        busca_imagem: `${t} fatores de risco`,
+        busca_gif: ""
+      },
+      {
+        titulo: "Prevenção e autocuidado",
+        topicos: [
+          { titulo: "Rotina e hábitos", resumo: "Reforce sono, alimentação, atividade física e redução de excessos." },
+          { titulo: "Adesão ao plano", resumo: "Dê dicas práticas para lembrar e manter o cuidado contínuo." },
+          { titulo: "Apoio familiar e comunitário", resumo: "Sugira estratégias com família, escola, trabalho e comunidade." }
+        ],
+        notas: "Mostre opções do SUS e do território. Sugira um plano simples. Combine um compromisso para a próxima semana.",
+        busca_imagem: `${t} prevenção autocuidado`,
+        busca_gif: ""
+      },
+      {
+        titulo: "Sinais de alarme",
+        topicos: [
+          { titulo: "Piora rápida", resumo: "Oriente a procurar atendimento se houver piora progressiva em pouco tempo." },
+          { titulo: "Sinais de gravidade", resumo: "Liste sintomas que exigem avaliação imediata conforme o tema." },
+          { titulo: "Quando ir à urgência", resumo: "Explique onde buscar ajuda e o que levar (documentos, exames, medicações)." }
+        ],
+        notas: "Se o tema permitir, simule situações. Reforce que sinais graves não devem esperar. Oriente fluxo da rede local.",
+        busca_imagem: `${t} sinais de alarme`,
+        busca_gif: "alerta saúde"
+      },
+      {
+        titulo: "Mensagem final",
+        topicos: [
+          { titulo: "O que lembrar", resumo: "Recapitule as três mensagens mais importantes." },
+          { titulo: "Aplicação prática", resumo: "Peça que cada pessoa escolha uma mudança possível para começar hoje." },
+          { titulo: "Perguntas e próximos passos", resumo: "Abra espaço para dúvidas e reforçe o acompanhamento na unidade." }
+        ],
+        notas: "Finalize reforçando autonomia, acolhimento e acompanhamento. Oriente onde agendar retorno e como buscar ajuda.",
+        busca_imagem: `${t} comunidade saúde`,
+        busca_gif: ""
+      }
     ];
     return normalizeSlidePlan({ titulo: t || "Educação em Saúde", subtitulo: `Duração: ${d} min`, slides }, t, d);
   }
@@ -5086,30 +5173,35 @@ function addFooter(slide, text) {
 function addTitle(slide, title) {
   slide.addText(String(title || "").trim(), {
     x: 0.6,
-    y: 0.3,
+    y: 0.35,
     w: 12.1,
     h: 0.7,
-    fontSize: 34,
+    fontSize: 36,
     bold: true,
-    color: "0c5460"
+    color: "c1121f"
   });
 }
 
 function addSlideHeading(slide, heading) {
   slide.addText(String(heading || "").trim(), {
-    x: 0.6,
+    x: 0.75,
     y: 0.35,
     w: 12.1,
-    h: 0.5,
-    fontSize: 26,
+    h: 0.55,
+    fontSize: 28,
     bold: true,
-    color: "0c5460"
+    color: "c1121f"
   });
 }
 
-function safeBullets(arr) {
+function safeTopics(arr) {
   const a = Array.isArray(arr) ? arr : [];
-  return a.map(x => String(x || "").trim()).filter(Boolean).slice(0, 7);
+  const out = [];
+  for (const x of a) {
+    const t = normalizeTopicItem(x);
+    if (t && t.titulo) out.push({ titulo: t.titulo, resumo: t.resumo || "" });
+  }
+  return out.slice(0, 7);
 }
 
 async function buildEducationPptxBuffer({ tema, duracaoMin }) {
@@ -5130,141 +5222,310 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
   pptx.subject = "Educação em Saúde";
   pptx.title = plan.titulo || "Educação em Saúde";
 
-  // Slide 1 – Capa
-  {
-    const s = pptx.addSlide();
-    addTitle(s, plan.titulo || "Educação em Saúde");
-    s.addText(plan.subtitulo || "", {
-      x: 0.7,
-      y: 1.2,
-      w: 12,
-      h: 0.5,
-      fontSize: 18,
-      color: "1f2937"
-    });
-    s.addText(`Data: ${dateStr}`, {
-      x: 0.7,
-      y: 1.7,
-      w: 12,
-      h: 0.4,
-      fontSize: 14,
-      color: "555555"
-    });
-    addFooter(s, "Material de apoio para educação em saúde. Revisar e adaptar ao público-alvo.");
+  const THEME = {
+    red: "c1121f",
+    dark: "111827",
+    muted: "6b7280",
+    bg: "f8fafc",
+    panel: "ffffff",
+    line: "e5e7eb"
+  };
+
+  const FALLBACK_IMAGE = {
+    url: "https://commons.wikimedia.org/wiki/Special:FilePath/Stethoscope_A.jpg",
+    mime: "image/jpeg",
+    credit: "Wikimedia Commons",
+    license: ""
+  };
+
+  const FALLBACK_GIF = {
+    url: "https://commons.wikimedia.org/wiki/Special:FilePath/Hypertension-graphic-normal-ranges.gif",
+    mime: "image/gif",
+    credit: "Wikimedia Commons",
+    license: ""
+  };
+
+  function setSlideBackground(slide) {
+    try { slide.background = { color: THEME.bg }; } catch {}
+    try {
+      slide.addShape("rect", { x: 0, y: 0, w: 13.33, h: 0.25, fill: { color: THEME.red } });
+      slide.addShape("rect", { x: 0, y: 7.22, w: 13.33, h: 0.28, fill: { color: "eef2f7" } });
+    } catch {}
   }
 
-  // Slide 2 – Objetivos
+  function addPanels(slide) {
+    try {
+      slide.addShape("roundRect", {
+        x: 0.55, y: 1.05, w: 6.75, h: 6.05,
+        fill: { color: THEME.panel },
+        line: { color: THEME.line, width: 1 }
+      });
+      slide.addShape("roundRect", {
+        x: 7.45, y: 1.05, w: 5.33, h: 6.05,
+        fill: { color: "ffffff" },
+        line: { color: THEME.line, width: 1 }
+      });
+    } catch {}
+  }
+
+  async function pickMedia({ imgQuery, gifQuery, forceGif = false }) {
+    const qImg = String(imgQuery || "").trim();
+    const qGif = String(gifQuery || "").trim();
+    const baseTema = String(plan.titulo || tema || "").trim();
+
+    // 1) GIF (quando solicitado ou forçado)
+    if (forceGif || qGif) {
+      const q = (qGif || qImg || baseTema || "saúde") + " " + baseTema;
+      const gifs = await searchWikimediaCommonsMedia(q, { limit: 10, wantGif: true, wantPhoto: false }).catch(() => []);
+      if (gifs && gifs[0] && gifs[0].url) return gifs[0];
+      // fallback gif
+      if (forceGif || qGif) return FALLBACK_GIF;
+    }
+
+    // 2) Imagem via Wikimedia
+    {
+      const q = (qImg || baseTema || "saúde") + " " + baseTema;
+      const imgs = await searchWikimediaCommonsMedia(q, { limit: 12, wantGif: false, wantPhoto: true }).catch(() => []);
+      if (imgs && imgs[0] && imgs[0].url) return imgs[0];
+    }
+
+    // 3) Fallback Openverse
+    {
+      const q = (qImg || baseTema || "saúde") + " " + baseTema;
+      const ov = await searchOpenverseImages(q, { limit: 12 }).catch(() => []);
+      if (ov && ov[0] && ov[0].url) return ov[0];
+    }
+
+    return FALLBACK_IMAGE;
+  }
+
+  async function addMedia(slide, media, { x, y, w, h }) {
+    const candidates = [];
+    if (media && media.url) candidates.push(media);
+
+    // Garantia absoluta: sempre tenta um fallback estável
+    candidates.push(FALLBACK_IMAGE);
+    candidates.push(FALLBACK_GIF);
+
+    for (const m of candidates) {
+      try {
+        const buf = await fetchBinary(m.url, 6_000_000, 12_000);
+        const ext = extFromMimeOrUrl(m.mime, m.url);
+        const data = "data:image/" + ext + ";base64," + buf.toString("base64");
+
+        // Moldura
+        try {
+          slide.addShape("roundRect", { x, y, w, h, fill: { color: "ffffff" }, line: { color: THEME.line, width: 1 } });
+        } catch {}
+
+        slide.addImage({ data, x: x + 0.08, y: y + 0.08, w: w - 0.16, h: h - 0.16 });
+
+        const creditPieces = [];
+        if (m.credit) creditPieces.push(String(m.credit).trim());
+        if (m.license) creditPieces.push(String(m.license).trim());
+        const credit = creditPieces.length ? creditPieces.join(" | ") : "Fonte: Wikimedia/Openverse";
+
+        return { credit: credit.slice(0, 180), ext };
+      } catch {
+        // tenta o próximo
+      }
+    }
+
+    return { credit: "Mídia indisponível no momento.", ext: "" };
+  }
+
+  function renderTopicBlocks(slide, topics, { x, y, w, maxH }) {
+    const list = Array.isArray(topics) ? topics : [];
+    let yc = y;
+
+    for (const t of list.slice(0, 7)) {
+      const titulo = String(t?.titulo || "").trim();
+      const resumo = String(t?.resumo || "").trim();
+      if (!titulo) continue;
+
+      slide.addText(titulo, {
+        x,
+        y: yc,
+        w,
+        h: 0.35,
+        fontSize: 18,
+        bold: true,
+        color: THEME.red
+      });
+      yc += 0.38;
+
+      if (resumo) {
+        slide.addText(resumo, {
+          x,
+          y: yc,
+          w,
+          h: 0.65,
+          fontSize: 14,
+          color: THEME.dark,
+          valign: "top"
+        });
+        yc += 0.62;
+      } else {
+        yc += 0.18;
+      }
+
+      yc += 0.08;
+      if (yc > (y + maxH - 0.8)) break;
+    }
+  }
+
+  // =========================
+  // Slide 1 – Capa (com mídia)
+  // =========================
   {
     const s = pptx.addSlide();
-    addSlideHeading(s, "Objetivos");
-    const obj = [
-      "Informar e orientar de forma prática.",
-      "Promover prevenção e autocuidado.",
-      "Identificar sinais de alarme e quando buscar atendimento."
-    ];
-    s.addText(obj.map(x => "• " + x).join("\n"), {
-      x: 0.8,
-      y: 1.3,
-      w: 12.0,
-      h: 5.3,
-      fontSize: 22,
-      color: "1f2937"
+    setSlideBackground(s);
+
+    const coverMedia = await pickMedia({ imgQuery: `${plan.titulo || tema} educação em saúde`, gifQuery: "educação em saúde", forceGif: false });
+    const { credit } = await addMedia(s, coverMedia, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
+
+    // Painel do texto
+    try {
+      s.addShape("roundRect", { x: 0.55, y: 1.05, w: 6.75, h: 6.05, fill: { color: "ffffff" }, line: { color: THEME.line, width: 1 } });
+      s.addShape("rect", { x: 0.55, y: 1.05, w: 6.75, h: 0.18, fill: { color: THEME.red } });
+    } catch {}
+
+    addTitle(s, plan.titulo || "Educação em Saúde");
+    s.addText(plan.subtitulo || "", {
+      x: 0.75,
+      y: 1.35,
+      w: 6.4,
+      h: 0.6,
+      fontSize: 18,
+      color: THEME.dark
     });
-    addFooter(s, `Tema: ${plan.titulo || ""}`.trim());
+    s.addText(`Data: ${dateStr}`, {
+      x: 0.75,
+      y: 1.85,
+      w: 6.4,
+      h: 0.5,
+      fontSize: 14,
+      color: THEME.muted
+    });
+
+    s.addText("Prefeitura de Queimadas – Mais trabalho, mais desenvolvimento", {
+      x: 0.75,
+      y: 6.7,
+      w: 6.4,
+      h: 0.4,
+      fontSize: 12,
+      color: THEME.muted
+    });
+
+    addFooter(s, `${credit} | Revisar e adaptar ao público-alvo.`.slice(0, 180));
+  }
+
+  // =============================
+  // Slide 2 – Objetivos (com mídia)
+  // =============================
+  {
+    const s = pptx.addSlide();
+    setSlideBackground(s);
+    addPanels(s);
+    addSlideHeading(s, "Objetivos");
+
+    const objectives = [
+      { titulo: "Informar com clareza", resumo: "Explicar o tema em linguagem acessível, com exemplos práticos." },
+      { titulo: "Promover prevenção", resumo: "Orientar autocuidado e hábitos protetores no dia a dia." },
+      { titulo: "Garantir segurança", resumo: "Reforçar sinais de alarme e quando buscar atendimento." }
+    ];
+    renderTopicBlocks(s, objectives, { x: 0.85, y: 1.3, w: 6.2, maxH: 5.6 });
+
+    const media = await pickMedia({ imgQuery: "educação em saúde comunidade", gifQuery: "educação em saúde", forceGif: true });
+    const { credit } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
+
+    addFooter(s, credit);
   }
 
   const slides = Array.isArray(plan.slides) ? plan.slides : [];
   const maxSlides = Math.max(6, Math.min(42, slides.length));
   const slidesToRender = slides.slice(0, maxSlides);
 
+  let gifUsed = false;
+
+  // ==========
   // Conteúdo
+  // ==========
   for (let idx = 0; idx < slidesToRender.length; idx++) {
     const it = slidesToRender[idx];
     const s = pptx.addSlide();
 
+    setSlideBackground(s);
+    addPanels(s);
     addSlideHeading(s, it.titulo || `Slide ${idx + 1}`);
 
-    const bullets = safeBullets(it.topicos);
-    const bulletsText = bullets.length ? bullets.map(b => "• " + b).join("\n") : "";
-    s.addText(bulletsText || "Conteúdo não informado.", {
-      x: 0.8,
-      y: 1.2,
-      w: 6.4,
-      h: 5.6,
-      fontSize: 18,
-      color: "1f2937",
-      valign: "top"
-    });
-
-    // Mídia: tenta GIF (se houver), senão imagem
-    const qImg = it.busca_imagem || it.titulo || plan.titulo || "";
-    const qGif = it.busca_gif || "";
-
-    let media = null;
-
-    // 1) GIF via Wikimedia (quando solicitado)
-    if (qGif) {
-      const gifs = await searchWikimediaCommonsMedia(`${qGif} ${plan.titulo}`, { limit: 8, wantGif: true, wantPhoto: false }).catch(() => []);
-      media = gifs[0] || null;
-    }
-
-    // 2) Imagem via Wikimedia
-    if (!media) {
-      const imgs = await searchWikimediaCommonsMedia(`${qImg} ${plan.titulo}`, { limit: 10, wantGif: false, wantPhoto: true }).catch(() => []);
-      media = imgs[0] || null;
-    }
-
-    // 3) Fallback Openverse
-    if (!media) {
-      const ov = await searchOpenverseImages(`${qImg} ${plan.titulo}`, { limit: 10 }).catch(() => []);
-      media = ov[0] || null;
-    }
-
-    if (media && media.url) {
-      try {
-        const buf = await fetchBinary(media.url, 6_000_000, 12_000);
-        const ext = extFromMimeOrUrl(media.mime, media.url);
-        const data = "data:image/" + ext + ";base64," + buf.toString("base64");
-        s.addImage({ data, x: 7.4, y: 1.2, w: 5.7, h: 5.6 });
-
-        const creditPieces = [];
-        if (media.credit) creditPieces.push(media.credit);
-        if (media.license) creditPieces.push(media.license);
-        const credit = creditPieces.length ? creditPieces.join(" | ") : "Fonte: Wikimedia/Openverse";
-        addFooter(s, credit.slice(0, 180));
-      } catch (e) {
-        addFooter(s, "Imagem não disponível no momento.");
-      }
+    const topics = safeTopics(it.topicos);
+    if (topics.length) {
+      renderTopicBlocks(s, topics, { x: 0.85, y: 1.3, w: 6.2, maxH: 5.6 });
     } else {
-      addFooter(s, "Imagem não disponível no momento.");
+      s.addText("Conteúdo não informado.", {
+        x: 0.85,
+        y: 1.6,
+        w: 6.2,
+        h: 0.6,
+        fontSize: 16,
+        color: THEME.dark
+      });
     }
 
-    // Notas do apresentador
+    // Estratégia para garantir GIFs no deck: tenta GIF se solicitado; senão, tenta em 1 a cada 4 slides.
+    const qImg = it.busca_imagem || it.titulo || plan.titulo || "";
+    const wantsGif = Boolean(String(it.busca_gif || "").trim()) || (idx % 4 === 1);
+    const qGif = it.busca_gif || `${plan.titulo || tema} animação`;
+
+    const media = await pickMedia({ imgQuery: qImg, gifQuery: qGif, forceGif: wantsGif && !gifUsed });
+    const { credit, ext } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
+
+    if (String(ext || "").toLowerCase() === "gif") gifUsed = true;
+
+    addFooter(s, credit);
+
     if (it.notas) {
       try { s.addNotes(String(it.notas || "")); } catch {}
     }
   }
 
-  // Slide final – Referências
+  // ==================================
+  // Slide final – Referências (com mídia)
+  // ==================================
   {
     const s = pptx.addSlide();
+    setSlideBackground(s);
+    addPanels(s);
     addSlideHeading(s, "Referências e fontes");
+
     const refs = (Array.isArray(plan.referencias) && plan.referencias.length)
       ? plan.referencias.slice(0, 12)
-      : ["Wikimedia Commons (imagens e GIFs)", "Openverse (imagens)", "Conteúdo: revisão pelo profissional responsável"];
-    s.addText(refs.map(x => "• " + x).join("\n"), {
-      x: 0.8,
-      y: 1.2,
-      w: 12.2,
+      : ["Wikimedia Commons (imagens e GIFs)", "Openverse (imagens)", "Conteúdo: revisar pelo profissional responsável"];
+
+    const text = refs.map(x => "- " + x).join("\n");
+    s.addText(text, {
+      x: 0.85,
+      y: 1.3,
+      w: 6.2,
       h: 5.8,
-      fontSize: 16,
-      color: "1f2937"
+      fontSize: 14,
+      color: THEME.dark,
+      valign: "top"
     });
-    addFooter(s, `Gerado em ${dateStr}.`);
+
+    // Se nenhum GIF entrou no deck, força um GIF aqui para cumprir "imagens e gifs"
+    const media = await pickMedia({
+      imgQuery: "saúde pública",
+      gifQuery: gifUsed ? "" : "educação em saúde",
+      forceGif: !gifUsed
+    });
+    const { credit } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
+
+    addFooter(s, `${credit} | Gerado em ${dateStr}.`.slice(0, 180));
   }
 
   // Saída buffer
-  // Preferência: nodebuffer; fallback: arquivo temporário.
   try {
     const b = await pptx.write("nodebuffer");
     return Buffer.isBuffer(b) ? b : Buffer.from(b);

@@ -32,3 +32,9 @@ git commit -m "Add lockfile"
 
 ## Segurança
 Não versionar `.env` nem chaves. Use variáveis do ambiente no provedor.
+
+## Padrão do módulo Educação em Saúde
+- O gerador cria apresentações completas e visualmente agradáveis.
+- Cada slide contém no mínimo 1 imagem ou GIF (busca automática em Wikimedia/Openverse com fallback).
+- Títulos e tópicos em vermelho; resumos em preto.
+- Créditos da mídia inseridos no rodapé.
