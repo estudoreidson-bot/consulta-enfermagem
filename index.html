@@ -2549,8 +2549,8 @@
 
     <div class="nurse-bar" id="nurseBar">
       <div>
-        <div class="nurse-bar-line"><span class="nurse-bar-label">Usuário:</span><span id="nurseUserLabel">-</span></div>
         <div class="nurse-bar-line"><span class="nurse-bar-label">Login:</span><span id="nurseLoginLabel">-</span></div>
+        <div class="nurse-bar-line"><span class="nurse-bar-label">Nome:</span><span id="nurseUserLabel">-</span></div>
         <div class="nurse-bar-line"><span class="nurse-bar-label">Mensalidade:</span><span id="nursePaymentLabel" class="pill">-</span></div>
       </div>
       <div class="nurse-bar-actions">
@@ -4591,7 +4591,8 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
       if (lblLogin) lblLogin.textContent = login;
 
       if (pay) {
-        if (paidFlag && isTrialActive && !paidCurrentMonth) {
+        const isTrialLabel = (isTrialActive && !paidCurrentMonth);
+        if (isTrialLabel) {
           let endStr = "";
           try {
             if (trialEndsAt) endStr = formatDatePt(new Date(trialEndsAt));
@@ -4602,7 +4603,8 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
           pay.textContent = paidFlag ? ("Em dia" + (month ? " (" + month + ")" : "")) : ("Em atraso" + (month ? " (" + month + ")" : ""));
         }
         pay.classList.remove("green","red");
-        pay.classList.add(paidFlag ? "green" : "red");
+        // Durante o teste gratuito, exibir em vermelho para destacar o tempo restante.
+        pay.classList.add(isTrialLabel ? "red" : (paidFlag ? "green" : "red"));
       }
     }
 
@@ -11276,7 +11278,26 @@ if (woundCameraInput) bindImageInput(woundCameraInput, "wound", "append");
         const btnHist = document.createElement("button");
         btnHist.className = "admin-btn secondary";
         btnHist.type = "button";
-        btnHist.textContent = "Histórico";
+        // Mostrar também o período de teste gratuito diretamente no botão (controle do administrador)
+        try {
+          let trialText = "";
+          const ts = u.trialStartedAt || "";
+          const te = u.trialEndsAt || "";
+          let tsStr = "";
+          let teStr = "";
+          try { if (ts) tsStr = formatDatePt(new Date(ts)); } catch {}
+          try { if (te) teStr = formatDatePt(new Date(te)); } catch {}
+
+          if (tsStr || teStr) {
+            const daysLeft = Number(u.trialDaysLeft || 0) || 0;
+            const range = (tsStr && teStr) ? (`${tsStr} a ${teStr}`) : (teStr ? (`até ${teStr}`) : (tsStr ? (`início ${tsStr}`) : ""));
+            const extra = (u.isTrialActive && daysLeft > 0) ? (`; ${daysLeft} dias`) : "";
+            trialText = ` (Teste gratuito: ${range}${extra})`;
+          }
+          btnHist.textContent = "Histórico" + trialText;
+        } catch {
+          btnHist.textContent = "Histórico";
+        }
         btnHist.addEventListener("click", async () => {
           try {
             const data = await adminFetchJson(`/api/admin/users/${encodeURIComponent(u.id)}/payments`);

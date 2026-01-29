@@ -2016,6 +2016,7 @@ app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
       isOnline: isUserOnline(u),
       isPaidThisMonth: isUserPaidThisMonth(u.id),
       paidCurrentMonth: isUserPaidThisMonth(u.id),
+      trialStartedAt: u.trialStartedAt || "",
       trialEndsAt: u.trialEndsAt || "",
       isTrialActive: isUserTrialActive(u),
       trialDaysLeft: userTrialDaysLeft(u),
