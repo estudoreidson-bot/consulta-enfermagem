@@ -7,7 +7,12 @@ const fs = require("fs");
 const crypto = require("crypto");
 const os = require("os");
 let PptxGenJS = null;
-try { PptxGenJS = require("pptxgenjs"); } catch { PptxGenJS = null; }
+try {
+  const mod = require("pptxgenjs");
+  PptxGenJS = (mod && mod.default) ? mod.default : mod;
+} catch {
+  PptxGenJS = null;
+}
 
 const OpenAI = require("openai");
 

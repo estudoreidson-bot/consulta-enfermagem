@@ -3357,7 +3357,7 @@
           <option value="55">55 min</option>
           <option value="60">60 min</option>
         </select>
-        <button id="healthEduDownloadBtn" class="btn-print" type="button" style="white-space: nowrap;">Baixar apresentação (PPTX)</button>
+        <button id="healthEduDownloadBtn" class="btn-print" type="button" style="white-space: nowrap;">Gerar apresentação (PPTX)</button>
       </div>
 
       <div id="healthEduStatus" class="mini-status"></div>
@@ -9946,10 +9946,21 @@ updateReportActions();
         });
 
         if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (educação em saúde):", resp.status, txt);
+          let backendMsg = "Não foi possível gerar a apresentação.";
+          try {
+            const ct = (resp.headers.get("content-type") || "").toLowerCase();
+            if (ct.includes("application/json")) {
+              const j = await resp.json().catch(() => null);
+              if (j && typeof j.error === "string" && j.error.trim()) backendMsg = j.error.trim();
+            } else {
+              const txt = await resp.text().catch(() => "");
+              if (txt && txt.trim() && txt.trim().length <= 300) backendMsg = txt.trim();
+            }
+          } catch {}
+
+          console.error("Erro HTTP do backend (educação em saúde):", resp.status, backendMsg);
           if (healthEduStatus) {
-            healthEduStatus.textContent = "Não foi possível gerar a apresentação.";
+            healthEduStatus.textContent = backendMsg;
             healthEduStatus.classList.remove("loading-dot");
           }
           return;
@@ -9989,7 +10000,7 @@ updateReportActions();
       }
     }
 
-    // Educação em Saúde: Enter no tema e botão Baixar
+    // Educação em Saúde: Enter no tema e botão Gerar
     if (healthEduTheme) {
       healthEduTheme.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
