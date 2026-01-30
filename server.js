@@ -3124,7 +3124,6 @@ Contexto:
 // ROTA 4.2 – EXTRAIR DADOS DO PACIENTE (NOME / IDADE / PESO) (NOVA)
 // ======================================================================
 
-
 app.post("/api/extrair-dados-paciente", requirePaidOrAdmin, async(req, res) => {
   try {
     const { transcricao } = req.body || {};
@@ -3134,148 +3133,6 @@ app.post("/api/extrair-dados-paciente", requirePaidOrAdmin, async(req, res) => {
 
     const safeTranscricao = normalizeText(transcricao, 4000);
 
-    // Converte entradas do modelo (ou heurísticas) para número de forma robusta,
-    // aceitando: number, string com dígitos ("34"), string com unidade ("70 kg"),
-    // e número por extenso em PT-BR ("trinta e quatro").
-    function stripAccentsLocal(s) {
-      return String(s || "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-    }
-
-    function parsePtNumberWordsLocal(raw) {
-      const s0 = stripAccentsLocal(raw).toLowerCase();
-      if (!s0) return null;
-
-      // remove unidades/palavras comuns que atrapalham
-      const s = s0
-        .replace(/[\.,;:!?\(\)\[\]\{\}]/g, " ")
-        .replace(/\b(anos?|ano|kg|quilo?s?|quilograma?s?|peso|idade)\b/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-      if (!s) return null;
-
-      const units = {
-        "zero": 0,
-        "um": 1, "uma": 1,
-        "dois": 2, "duas": 2,
-        "tres": 3,
-        "quatro": 4,
-        "cinco": 5,
-        "seis": 6,
-        "sete": 7,
-        "oito": 8,
-        "nove": 9,
-        "dez": 10,
-        "onze": 11,
-        "doze": 12,
-        "treze": 13,
-        "quatorze": 14, "catorze": 14,
-        "quinze": 15,
-        "dezesseis": 16, "dezasseis": 16,
-        "dezessete": 17,
-        "dezoito": 18,
-        "dezenove": 19
-      };
-
-      const tens = {
-        "vinte": 20,
-        "trinta": 30,
-        "quarenta": 40,
-        "cinquenta": 50,
-        "sessenta": 60,
-        "setenta": 70,
-        "oitenta": 80,
-        "noventa": 90
-      };
-
-      const hundreds = {
-        "cem": 100, "cento": 100,
-        "duzentos": 200,
-        "trezentos": 300,
-        "quatrocentos": 400,
-        "quinhentos": 500,
-        "seiscentos": 600,
-        "setecentos": 700,
-        "oitocentos": 800,
-        "novecentos": 900
-      };
-
-      const tokens = s.split(" ").filter(Boolean);
-      if (!tokens.length) return null;
-
-      let total = 0;
-      let current = 0;
-      let seen = false;
-
-      for (const tok of tokens) {
-        if (tok === "e") continue;
-        if (Object.prototype.hasOwnProperty.call(units, tok)) {
-          current += units[tok];
-          seen = true;
-          continue;
-        }
-        if (Object.prototype.hasOwnProperty.call(tens, tok)) {
-          current += tens[tok];
-          seen = true;
-          continue;
-        }
-        if (Object.prototype.hasOwnProperty.call(hundreds, tok)) {
-          current += hundreds[tok];
-          seen = true;
-          continue;
-        }
-        if (tok === "mil") {
-          total += (current || 1) * 1000;
-          current = 0;
-          seen = true;
-          continue;
-        }
-        // ignora outros tokens
-      }
-
-      if (!seen) return null;
-      return total + current;
-    }
-
-    function parseNumericLoose(val) {
-      if (val === null || val === undefined) return null;
-
-      if (typeof val === "number" && Number.isFinite(val)) return val;
-
-      if (typeof val === "string") {
-        const raw = val.trim();
-        if (!raw) return null;
-
-        // 1) tenta achar número em dígitos dentro da string
-        const m = raw.replace(",", ".").match(/-?\d+(?:\.\d+)?/);
-        if (m && m[0]) {
-          const num = parseFloat(m[0]);
-          if (Number.isFinite(num)) return num;
-        }
-
-        // 2) tenta número por extenso
-        const w = parsePtNumberWordsLocal(raw);
-        if (w !== null && Number.isFinite(w)) return w;
-      }
-
-      return null;
-    }
-
-    function pickNumberNearKeywords(textIn, keywords) {
-      const t = String(textIn || "");
-      const tNorm = stripAccentsLocal(t).toLowerCase();
-      for (const kw of keywords) {
-        const kNorm = stripAccentsLocal(kw).toLowerCase();
-        const idx = tNorm.indexOf(kNorm);
-        if (idx === -1) continue;
-        const tail = t.slice(idx + kw.length, idx + kw.length + 80);
-        const n = parseNumericLoose(tail);
-        if (n !== null) return n;
-      }
-      return null;
-    }
-
     const prompt = `
 Você é um enfermeiro humano extraindo dados objetivos de uma fala curta.
 Extraia somente se estiver explícito.
@@ -3283,15 +3140,14 @@ Extraia somente se estiver explícito.
 Formato de saída: JSON estrito:
 {
   "nome": "string ou null",
-  "idade": number ou null,
-  "peso_kg": number ou null
+  "idade": "number ou null",
+  "peso_kg": "number ou null"
 }
 
 Regras:
 - Se não houver certeza, use null.
 - Idade em anos (inteiro).
 - Peso em kg (número).
-- Se a pessoa falar número por extenso, converta para número.
 - Sem texto fora do JSON.
 
 Fala:
@@ -3303,30 +3159,12 @@ Fala:
     let nome = typeof data?.nome === "string" ? data.nome.trim() : null;
     if (nome === "") nome = null;
 
-    // 1) tenta usar o retorno do modelo; 2) fallback heurístico no texto.
     let idade = null;
-    const idadeFromModel = parseNumericLoose(data?.idade);
-    const idadeFromText =
-      pickNumberNearKeywords(safeTranscricao, ["idade"]) ??
-      parseNumericLoose((stripAccentsLocal(safeTranscricao).match(/(\d+)\s*anos\b/i) || [])[1]) ??
-      null;
-
-    const idadeCand = idadeFromModel !== null ? idadeFromModel : idadeFromText;
-    if (idadeCand !== null && Number.isFinite(idadeCand)) {
-      const v = Math.round(Number(idadeCand));
-      if (v > 0 && v < 130) idade = v;
-    }
+    if (typeof data?.idade === "number" && Number.isFinite(data.idade)) idade = Math.round(data.idade);
 
     let peso_kg = null;
-    const pesoFromModel = parseNumericLoose(data?.peso_kg);
-    const pesoFromText =
-      pickNumberNearKeywords(safeTranscricao, ["peso"]) ??
-      parseNumericLoose((stripAccentsLocal(safeTranscricao).match(/(\d+(?:[.,]\d+)?)\s*(kg|quilo|quilos|quilograma|quilogramas)\b/i) || [])[1]) ??
-      null;
-
-    const pesoCand = pesoFromModel !== null ? pesoFromModel : pesoFromText;
-    if (pesoCand !== null && Number.isFinite(pesoCand)) {
-      const v = Number(pesoCand);
+    if (typeof data?.peso_kg === "number" && Number.isFinite(data.peso_kg)) {
+      const v = Number(data.peso_kg);
       if (v > 0 && v < 500) peso_kg = Math.round(v * 10) / 10;
     }
 
