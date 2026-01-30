@@ -2333,7 +2333,17 @@
         </video>
       </div>
 
-    </div>
+
+
+<div class="tutorial-module" id="tutorial5">
+  <div class="tutorial-title">Tutorial 5</div>
+  <div class="tutorial-desc">Tutorial adicional do login. Assista este vídeo para entender o fluxo completo e evitar erros comuns no primeiro acesso.</div>
+  <video class="tutorial-video" controls preload="metadata">
+    <source src="tutorial-5.mp4" type="video/mp4" />
+  </video>
+</div>
+
+      </div>
   </div>
 
 <div id="nurseSignupView" class="auth-shell hidden">
@@ -3006,7 +3016,7 @@
       <div id="patientInfoPanel" class="patientinfo-panel">
         <p class="mini-status patientinfo-hint" style="margin: 0 0 8px 0;">Use este botão para gravar rapidamente nome completo, idade e peso do paciente. Esses dados melhoram a qualidade do SOAP e das condutas geradas.</p>
         <div class="patientinfo-row">
-          <button id="patientInfoBtn" class="small-record-btn">Coletar dados essenciais</button>
+          <button id="patientInfoBtn" class="small-record-btn">Coletar Nome, Idade e Peso</button>
           <div id="patientInfoTimer" class="mini-timer">00:00</div>
           <div id="patientInfoStatus" class="mini-status"></div>
         </div>
@@ -5542,23 +5552,26 @@ function formatPatientSummary(ctx) {
     }
 
     function buildTranscriptWithPatientContext(rawTranscript) {
-      let t = String(rawTranscript || "").trim();
-      if (!t) return "";
+  let t = String(rawTranscript || "").trim();
+  if (!t) return "";
 
-      t = t.replace(/^Dados do paciente:[\s\S]*?\n{2,}/i, "").trim();
+  const hasAny = !!(patientContext?.nome || patientContext?.idade || (patientContext?.peso_kg !== null && patientContext?.peso_kg !== undefined));
+  if (!hasAny) return t;
 
-      const hasAny = !!(patientContext?.nome || patientContext?.idade || (patientContext?.peso_kg !== null && patientContext?.peso_kg !== undefined));
-      if (!hasAny) return t;
+  const headerParts = [];
+  if (patientContext.nome) headerParts.push(`Nome completo: ${patientContext.nome}.`);
+  if (patientContext.idade) headerParts.push(`Idade: ${patientContext.idade}.`);
+  if (patientContext.peso_kg !== null && patientContext.peso_kg !== undefined) headerParts.push(`Peso: ${patientContext.peso_kg} kg.`);
 
-      const headerParts = [];
-      if (patientContext.nome) headerParts.push(`Nome completo: ${patientContext.nome}.`);
-      if (patientContext.idade) headerParts.push(`Idade: ${patientContext.idade}.`);
-      if (patientContext.peso_kg !== null && patientContext.peso_kg !== undefined) headerParts.push(`Peso: ${patientContext.peso_kg} kg.`);
+  const header = `Dados do paciente: ${headerParts.join(" ")}\n\n`;
 
-      const header = `Dados do paciente: ${headerParts.join(" ")}\n\n`;
-      return header + t;
-    }
+  // Não apagar nada: apenas adicionar no topo quando necessário.
+  const start = t.slice(0, 220).toLowerCase();
+  const headerNorm = header.trim().toLowerCase();
+  if (start.startsWith(headerNorm)) return t;
 
+  return header + t;
+}
     function initPatientInfoSpeech() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) return false;
@@ -5794,19 +5807,37 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
     }
 
     async function applyPatientContextAndRefreshAll() {
-      const rawCandidate = (baseTranscriptRaw || "").trim() || (finalTranscript || "").trim() || (baseTranscript || "").trim();
-      if (!rawCandidate) {
-        patientInfoStatus.textContent = "Não há transcrição da consulta para atualizar.";
-        return;
-      }
+  // Objetivo: acrescentar nome/idade/peso aos dados já gerados, sem apagar nada.
+  const currentText = ((baseTranscript || baseTranscriptRaw || finalTranscript || "") || "").trim();
+  if (!currentText) {
+    patientInfoStatus.textContent = "Não há conteúdo para adicionar os dados do paciente.";
+    return;
+  }
 
-      const cleanedRaw = rawCandidate.replace(/^Dados do paciente:[\s\S]*?\n{2,}/i, "").trim();
-      baseTranscriptRaw = cleanedRaw;
+  const updated = buildTranscriptWithPatientContext(currentText);
 
-      const transcricaoAtualizada = buildTranscriptWithPatientContext(cleanedRaw);
-      baseTranscript = transcricaoAtualizada;
+  // Atualiza a transcrição-base (mantém tudo que já existe; apenas adiciona o cabeçalho).
+  baseTranscript = updated;
+  finalTranscript = updated;
 
-      await generateSoapAndPrescriptionFromTranscript(transcricaoAtualizada, "Atualizando SOAP e prescrição com nome/idade/peso...");
+  // Também adiciona ao SOAP (sem reprocessar/gerar novamente) para manter consistência.
+  const idParts = [];
+  if (patientContext?.nome) idParts.push(`Nome: ${patientContext.nome}`);
+  if (patientContext?.idade) idParts.push(`Idade: ${patientContext.idade}`);
+  if (patientContext?.peso_kg !== null && patientContext?.peso_kg !== undefined) idParts.push(`Peso: ${patientContext.peso_kg} kg`);
+  const idLine = idParts.length ? ("Identificação: " + idParts.join(" | ")) : "";
+
+  if (idLine && soapS) {
+    const sNow = String(soapS.value || "").trim();
+    const sLow = sNow.toLowerCase();
+    const idLow = idLine.toLowerCase();
+
+    // Evita duplicar se já existir uma identificação semelhante.
+    const already = sLow.includes("identifica") || sLow.includes("nome:") || sLow.includes(idLow);
+    if (!already) {
+      soapS.value = (idLine + (sNow ? "\n" : "")) + sNow;
+    }
+  }
 }
 
     async function startPatientInfoRecording() {
@@ -5829,7 +5860,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         if (!ok) {
           patientInfoStatus.classList.remove("loading-dot");
           patientInfoStatus.textContent = "Navegador sem suporte a reconhecimento de voz.";
-          patientInfoBtn.textContent = "Coletar dados essenciais";
+          patientInfoBtn.textContent = "Coletar Nome, Idade e Peso";
           stopPatientInfoTimer();
           return;
         }
@@ -5847,7 +5878,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       patientInfoIsRecording = false;
       stopPatientInfoTimer();
 
-      patientInfoBtn.textContent = "Coletar dados essenciais";
+      patientInfoBtn.textContent = "Coletar Nome, Idade e Peso";
 
       if (patientInfoRecognition) {
         try { patientInfoRecognition.stop(); } catch (e) {}
