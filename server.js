@@ -2809,28 +2809,48 @@ app.post("/api/atualizar-soap-perguntas", requirePaidOrAdmin, async(req, res) =>
   try {
     const { soap_atual, perguntas_e_respostas, transcricao_base } = req.body || {};
     const safeSoap = normalizeText(soap_atual || "", 12000);
-    const safeQa = Array.isArray(perguntas_e_respostas) ? perguntas_e_respostas : [];
     const safeTranscricao = normalizeText(transcricao_base || "", 20000);
 
-    const qaText = safeQa
-      .map((x, i) => {
-        const p = normalizeText(x?.pergunta || "", 300);
-        const r = normalizeText(x?.resposta || "", 600);
-        return `Pergunta ${i + 1}: ${p}\nResposta ${i + 1}: ${r}`;
-      })
-      .join("\n\n");
+    // Compatibilidade: o frontend pode enviar
+    // - string com "perguntas e respostas" (fala corrida)
+    // - array [{pergunta, resposta}, ...]
+    let qaText = "";
+    if (typeof perguntas_e_respostas === "string") {
+      qaText = normalizeText(perguntas_e_respostas || "", 12000);
+    } else if (Array.isArray(perguntas_e_respostas)) {
+      qaText = perguntas_e_respostas
+        .map((x, i) => {
+          const p = normalizeText(x?.pergunta || "", 300);
+          const r = normalizeText(x?.resposta || "", 600);
+          if (!p && !r) return "";
+          if (p && r) return `Pergunta ${i + 1}: ${p}\nResposta ${i + 1}: ${r}`;
+          if (p && !r) return `Pergunta ${i + 1}: ${p}\nResposta ${i + 1}: não informado`;
+          return `Pergunta ${i + 1}: não informado\nResposta ${i + 1}: ${r}`;
+        })
+        .filter(Boolean)
+        .join("\n\n");
+    }
+
+    if (!qaText || qaText.trim().length < 5) {
+      // Não há nada novo para atualizar
+      return res.json({ soap: safeSoap, evolucao_enfermagem: "", prescricao: "" });
+    }
 
     const prompt = `
-Você é um enfermeiro humano atualizando a documentação do atendimento após novas respostas complementares.
-Atualize:
-1) SOAP (S/O/A/P) com foco de enfermagem.
-2) Evolução de enfermagem (texto corrido) para prontuário, baseada apenas nas informações disponíveis.
-3) Plano de cuidados (prescrição de enfermagem), mantendo-o objetivo e seguro.
+Você é um enfermeiro humano atualizando a documentação do atendimento após uma rodada adicional de perguntas e/ou informações complementares.
 
-Regras:
-- Não invente dados.
+Objetivo:
+- Identificar e incorporar no registro qualquer informação NOVA presente nas falas adicionais, mesmo que não tenha sido resposta direta às perguntas sugeridas.
+- Atualizar de forma coerente e segura:
+  1) SOAP (S/O/A/P) com foco de enfermagem.
+  2) Evolução de enfermagem (texto corrido) para prontuário, baseada apenas nas informações disponíveis.
+  3) Plano de cuidados (prescrição de enfermagem), objetivo e seguro.
+
+Regras obrigatórias:
+- Não invente dados. Se não estiver presente, escreva "não informado".
 - Sem emojis e sem símbolos gráficos.
 - Não faça diagnóstico médico definitivo.
+- Se houver informação nova que contradiz informação anterior, não apague sem critério: registre a divergência de forma clara (ex.: "relata X; anteriormente Y") e priorize segurança.
 
 Formato de saída: JSON estrito:
 {
@@ -2842,10 +2862,10 @@ Formato de saída: JSON estrito:
 SOAP atual:
 """${safeSoap}"""
 
-Transcrição base (se necessário):
+Transcrição base (contexto, se necessário):
 """${safeTranscricao}"""
 
-Novas perguntas e respostas:
+Falas adicionais (perguntas, respostas e informações espontâneas):
 """${qaText}"""
 `;
 
