@@ -579,7 +579,9 @@
       border-color: #c82333;
     }
 
-    #handoffQuestionsBtn {
+    
+
+    #handoffRecommendationsBtn {
       margin-left: 0;
       padding: 8px 18px;
       border-radius: 20px;
@@ -588,14 +590,12 @@
       color: #fff;
       cursor: pointer;
       font-size: 14px;
-      display: inline-block;
     }
-    #handoffQuestionsBtn:hover {
+    #handoffRecommendationsBtn:hover {
       background: #c82333;
       border-color: #c82333;
     }
 
-    
     #sbarRecordBtn {
       border: 1px solid #dc3545;
       background: #dc3545;
@@ -1558,7 +1558,8 @@
       .prescription-actions > button,
       .report-actions > button,
       .nurse-bar-actions > button,
-      #recommendationsBtn {
+      #recommendationsBtn,
+      #handoffRecommendationsBtn {
         width: 100%;
       }
 
@@ -2697,10 +2698,6 @@
         Use este módulo para registrar de forma objetiva a passagem de plantão. Fale identificação do paciente, situação atual, principais riscos, dispositivos, medicações em uso, exames pendentes e condutas/pendências para o próximo turno. Ao encerrar, será gerado um texto pronto para repassar ao colega e colar no prontuário.
       </p>
 
-      <div style="width: 100%; display: flex; justify-content: center; margin: 0 0 10px 0;">
-        <button id="handoffQuestionsBtn" type="button">Perguntas essenciais</button>
-      </div>
-
       <button id="handoffRecordBtn" class="start" type="button">Iniciar passagem de plantão</button>
 
       <div id="handoffTimer">00:00</div>
@@ -3057,6 +3054,7 @@
         <div class="section-header-row">
           <div class="soap-title-actions">
             <h2>Passagem de plantão</h2>
+            <button id="handoffRecommendationsBtn" class="hidden">Perguntas essenciais</button>
             <button id="handoffCopyBtn" class="btn-copy" type="button">Copiar passagem</button>
             <button id="handoffPrintBtn" class="btn-print" type="button">Imprimir passagem</button>
           </div>
@@ -3925,22 +3923,22 @@
 
   </div>
 
-  <div id="handoffQuestionsPanel" class="recommendations-panel">
-    <div class="recommendations-header">
-      <h3>Perguntas essenciais para passagem de plantão</h3>
-      <button id="closeHandoffQuestionsBtn" class="close-panel-btn" aria-label="Fechar painel de perguntas essenciais">X</button>
-    </div>
-    <div id="handoffQuestionsStatus" class="recommendations-status">
-      Clique em "Perguntas essenciais" para gerar perguntas complementares essenciais para a passagem de plantão.
-    </div>
-    <div id="handoffQuestionsList" class="recommendations-list"></div>
-    <button id="handoffAskQuestionsBtn" class="ask-questions-btn" disabled>Complementar passagem</button>
-    <div id="handoffQuestionsTimer" class="questions-timer hidden">00:00</div>
-    <p class="recommendations-footer">
-      Ao clicar em "Complementar passagem", uma nova gravação será iniciada para você responder aos itens que faltaram.
-      As novas informações serão incorporadas automaticamente ao texto final da passagem de plantão.
-    </p>
+  <div id="handoffRecommendationsPanel" class="recommendations-panel">
+  <div class="recommendations-header">
+    <h3>Perguntas essenciais para passagem de plantão</h3>
+    <button id="closeHandoffRecommendationsBtn" class="close-panel-btn" aria-label="Fechar painel de perguntas essenciais">X</button>
   </div>
+  <div id="handoffRecommendationsStatus" class="recommendations-status">
+    Clique em "Perguntas essenciais" para gerar perguntas complementares essenciais.
+  </div>
+  <div id="handoffRecommendationsList" class="recommendations-list"></div>
+  <button id="handoffAskQuestionsBtn" class="ask-questions-btn" disabled>Complementar passagem</button>
+  <div id="handoffQuestionsTimer" class="questions-timer hidden">00:00</div>
+  <p class="recommendations-footer">
+    Ao clicar em "Complementar passagem", uma nova gravação será iniciada para você aplicar estas perguntas e registrar as respostas.
+    As respostas serão usadas para atualizar automaticamente a passagem de plantão gerada.
+  </p>
+</div>
 
   <div id="handoffGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
@@ -5289,14 +5287,14 @@ if (!handoffMode) {
     const recommendationsList = document.getElementById("recommendationsList");
     const askQuestionsBtn = document.getElementById("askQuestionsBtn");
     const questionsTimerEl = document.getElementById("questionsTimer");
+const handoffRecommendationsBtn = document.getElementById("handoffRecommendationsBtn");
+const handoffRecommendationsPanel = document.getElementById("handoffRecommendationsPanel");
+const closeHandoffRecommendationsBtn = document.getElementById("closeHandoffRecommendationsBtn");
+const handoffRecommendationsStatus = document.getElementById("handoffRecommendationsStatus");
+const handoffRecommendationsList = document.getElementById("handoffRecommendationsList");
+const handoffAskQuestionsBtn = document.getElementById("handoffAskQuestionsBtn");
+const handoffQuestionsTimerEl = document.getElementById("handoffQuestionsTimer");
 
-    const handoffQuestionsBtn = document.getElementById("handoffQuestionsBtn");
-    const handoffQuestionsPanel = document.getElementById("handoffQuestionsPanel");
-    const closeHandoffQuestionsBtn = document.getElementById("closeHandoffQuestionsBtn");
-    const handoffQuestionsStatus = document.getElementById("handoffQuestionsStatus");
-    const handoffQuestionsList = document.getElementById("handoffQuestionsList");
-    const handoffAskQuestionsBtn = document.getElementById("handoffAskQuestionsBtn");
-    const handoffQuestionsTimerEl = document.getElementById("handoffQuestionsTimer");
 
     const soapCopyButtons = document.querySelectorAll(".copy-soap-btn");
     const copyPrescriptionBtn = document.getElementById("copyPrescriptionBtn");
@@ -5891,13 +5889,14 @@ const reportDocTypeSelect = document.getElementById("reportDocTypeSelect");
     let questionsStartTime = null;
     let questionsAccumulatedSeconds = 0;
 
-    // Rodada adicional de perguntas (passagem de plantão)
-    let handoffQuestionsRecognition = null;
-    let handoffQuestionsIsRecording = false;
-    let handoffQuestionsFinalTranscript = "";
-    let handoffQuestionsTimerInterval = null;
-    let handoffQuestionsStartTime = null;
-    let handoffQuestionsAccumulatedSeconds = 0;
+// Rodada adicional de perguntas (Passagem de plantão)
+let handoffQuestionsRecognition = null;
+let handoffQuestionsIsRecording = false;
+let handoffQuestionsFinalTranscript = "";
+let handoffQuestionsTimerInterval = null;
+let handoffQuestionsStartTime = null;
+let handoffQuestionsAccumulatedSeconds = 0;
+
 
     function escapeHtml(text) {
       return String(text || "")
@@ -6844,10 +6843,30 @@ if (matchedItem) {
     }
 
 
-    function handoffClearUI() {
-      if (handoffOutput) handoffOutput.value = "";
-      if (handoffStatus) handoffStatus.textContent = "";
-    }
+function handoffClearUI() {
+  if (handoffOutput) handoffOutput.value = "";
+  if (handoffStatus) handoffStatus.textContent = "";
+
+  updateHandoffEssentialsButtonVisibility();
+
+  if (handoffRecommendationsPanel) handoffRecommendationsPanel.classList.remove("visible");
+  if (handoffRecommendationsList) handoffRecommendationsList.innerHTML = "";
+  if (handoffRecommendationsStatus) {
+    handoffRecommendationsStatus.textContent = "Clique em \"Perguntas essenciais\" para gerar perguntas complementares essenciais.";
+    handoffRecommendationsStatus.classList.remove("loading-dot");
+  }
+  if (handoffAskQuestionsBtn) {
+    handoffAskQuestionsBtn.textContent = "Complementar passagem";
+    handoffAskQuestionsBtn.disabled = true;
+  }
+  if (closeHandoffRecommendationsBtn) {
+    closeHandoffRecommendationsBtn.disabled = false;
+    closeHandoffRecommendationsBtn.style.opacity = "1";
+  }
+  resetHandoffQuestionsTimer();
+  if (handoffQuestionsTimerEl) handoffQuestionsTimerEl.classList.add("hidden");
+}
+
 
     function ensureHandoffRecognition() {
       if (handoffRecognition) return true;
@@ -7061,6 +7080,7 @@ if (!textoFinal) {
 
 if (handoffOutput) handoffOutput.value = textoFinal || "";
 handoffLastGeneratedText = textoFinal || "";
+updateHandoffEssentialsButtonVisibility();
 if (handoffStatus) {
   handoffStatus.textContent = textoFinal ? "Passagem de plantão gerada." : "Sem conteúdo disponível.";
   handoffStatus.classList.remove("loading-dot");
@@ -7655,41 +7675,6 @@ function initSpeech() {
       questionsTimerEl.innerText = "00:00";
     }
 
-    function updateHandoffQuestionsTimer() {
-      if (!handoffQuestionsTimerEl) return;
-      const now = Date.now();
-      const seconds = handoffQuestionsAccumulatedSeconds + Math.floor((now - handoffQuestionsStartTime) / 1000);
-      const m = ("0" + Math.floor(seconds / 60)).slice(-2);
-      const s = ("0" + (seconds % 60)).slice(-2);
-      handoffQuestionsTimerEl.innerText = `${m}:${s}`;
-    }
-
-    function startHandoffQuestionsTimer() {
-      handoffQuestionsStartTime = Date.now();
-      if (handoffQuestionsTimerInterval) clearInterval(handoffQuestionsTimerInterval);
-      handoffQuestionsTimerInterval = setInterval(updateHandoffQuestionsTimer, 500);
-    }
-
-    function pauseHandoffQuestionsTimer() {
-      if (!handoffQuestionsStartTime) return;
-      const now = Date.now();
-      handoffQuestionsAccumulatedSeconds += Math.floor((now - handoffQuestionsStartTime) / 1000);
-      if (handoffQuestionsTimerInterval) clearInterval(handoffQuestionsTimerInterval);
-      handoffQuestionsTimerInterval = null;
-    }
-
-    function resetHandoffQuestionsTimer() {
-      if (!handoffQuestionsTimerInterval) {
-        // ok
-      } else {
-        clearInterval(handoffQuestionsTimerInterval);
-      }
-      handoffQuestionsTimerInterval = null;
-      handoffQuestionsStartTime = null;
-      handoffQuestionsAccumulatedSeconds = 0;
-      if (handoffQuestionsTimerEl) handoffQuestionsTimerEl.innerText = "00:00";
-    }
-
     function initQuestionsSpeech() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) {
@@ -7723,47 +7708,6 @@ function initSpeech() {
             rec.start();
           } catch (err) {
             console.warn("Não foi possível retomar reconhecimento das perguntas:", err);
-          }
-        }
-      };
-
-      return rec;
-    }
-
-    function initHandoffQuestionsSpeech() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) {
-        return null;
-      }
-
-      const rec = new SR();
-      rec.lang = "pt-BR";
-      rec.continuous = true;
-      rec.interimResults = true;
-
-      rec.onresult = (event) => {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            handoffQuestionsFinalTranscript += transcript + " ";
-          }
-        }
-      };
-
-      rec.onerror = (event) => {
-        console.error("Erro no reconhecimento das perguntas (passagem):", event && event.error);
-        if (handoffQuestionsStatus) {
-          handoffQuestionsStatus.textContent = "Ocorreu um erro no reconhecimento de voz. Tente novamente.";
-          handoffQuestionsStatus.classList.remove("loading-dot");
-        }
-      };
-
-      rec.onend = () => {
-        if (handoffQuestionsIsRecording) {
-          try {
-            rec.start();
-          } catch (err) {
-            console.warn("Não foi possível retomar reconhecimento (passagem):", err);
           }
         }
       };
@@ -7990,266 +7934,6 @@ function initSpeech() {
       }
     }
 
-    function getHandoffBaseContextText() {
-      // Prioridade: texto já gerado; fallback: transcrição disponível (gravando ou última transcrição).
-      const fromOutput = (handoffOutput && handoffOutput.value) ? String(handoffOutput.value).trim() : "";
-      if (fromOutput) return fromOutput;
-      if (handoffLastGeneratedText && String(handoffLastGeneratedText).trim()) return String(handoffLastGeneratedText).trim();
-
-      // Se estiver gravando, usa a transcrição combinada (final + interim) para contextualizar as lacunas.
-      if (handoffIsRecording) {
-        const t = (handoffGetCombinedTranscript ? handoffGetCombinedTranscript() : "");
-        return String(t || "").trim();
-      }
-      if (handoffLastGeneratedTranscript && String(handoffLastGeneratedTranscript).trim()) return String(handoffLastGeneratedTranscript).trim();
-      return "";
-    }
-
-    async function fetchHandoffQuestions() {
-      if (!handoffQuestionsPanel || !handoffQuestionsStatus || !handoffQuestionsList) return;
-
-      // Reseta qualquer rodada anterior
-      if (handoffQuestionsIsRecording && handoffQuestionsRecognition) {
-        try {
-          handoffQuestionsIsRecording = false;
-          handoffQuestionsRecognition.stop();
-        } catch (e) {}
-      }
-      if (handoffAskQuestionsBtn) {
-        handoffAskQuestionsBtn.textContent = "Complementar passagem";
-        handoffAskQuestionsBtn.disabled = true;
-      }
-      if (closeHandoffQuestionsBtn) {
-        closeHandoffQuestionsBtn.disabled = false;
-        closeHandoffQuestionsBtn.style.opacity = "1";
-      }
-      resetHandoffQuestionsTimer();
-      if (handoffQuestionsTimerEl) handoffQuestionsTimerEl.classList.add("hidden");
-
-      handoffQuestionsPanel.classList.add("visible");
-      handoffQuestionsStatus.textContent = "Gerando perguntas essenciais para a passagem de plantão...";
-      handoffQuestionsStatus.classList.add("loading-dot");
-      handoffQuestionsList.innerHTML = "";
-
-      try {
-        const baseText = getHandoffBaseContextText();
-        const resp = await fetch(BACKEND_URL + "/api/recomendacoes-passagem-plantao", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ texto: baseText })
-        });
-
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (recomendações passagem):", resp.status, txt);
-          handoffQuestionsStatus.textContent = "Não foi possível gerar as perguntas essenciais.";
-          handoffQuestionsStatus.classList.remove("loading-dot");
-          return;
-        }
-
-        const data = await resp.json().catch(() => ({}));
-        const perguntas = Array.isArray(data.perguntas) ? data.perguntas : [];
-
-        if (!perguntas.length) {
-          handoffQuestionsStatus.textContent = "Nenhuma pergunta adicional foi sugerida.";
-          handoffQuestionsStatus.classList.remove("loading-dot");
-          return;
-        }
-
-        handoffQuestionsList.innerHTML = "";
-        perguntas.forEach((q, index) => {
-          const item = document.createElement("div");
-          item.className = "recommendation-item";
-          item.textContent = (index + 1) + ". " + q;
-          handoffQuestionsList.appendChild(item);
-        });
-
-        handoffQuestionsStatus.textContent = "Use estas perguntas para completar a passagem de plantão.";
-        handoffQuestionsStatus.classList.remove("loading-dot");
-        if (handoffAskQuestionsBtn) handoffAskQuestionsBtn.disabled = false;
-      } catch (err) {
-        console.error("Erro geral ao buscar recomendações (passagem):", err);
-        handoffQuestionsStatus.textContent = "Erro ao gerar perguntas essenciais.";
-        handoffQuestionsStatus.classList.remove("loading-dot");
-      }
-    }
-
-    function startHandoffQuestionsRecording() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) {
-        if (handoffQuestionsStatus) {
-          handoffQuestionsStatus.textContent = "Seu navegador não suporta reconhecimento de voz. Use Google Chrome.";
-        }
-        return;
-      }
-
-      const busy = !!(isRecording || triageIsRecording || handoffIsRecording || reportIsRecording || questionsIsRecording || sbarIsRecording || docsIsRecording);
-      if (busy) {
-        if (handoffQuestionsStatus) {
-          handoffQuestionsStatus.textContent = "Finalize a gravação atual antes de complementar a passagem de plantão.";
-          handoffQuestionsStatus.classList.remove("loading-dot");
-        }
-        return;
-      }
-
-      if (!handoffQuestionsRecognition) {
-        handoffQuestionsRecognition = initHandoffQuestionsSpeech();
-        if (!handoffQuestionsRecognition) return;
-      }
-
-      handoffQuestionsIsRecording = true;
-      handoffQuestionsFinalTranscript = "";
-
-      if (handoffQuestionsTimerEl) handoffQuestionsTimerEl.classList.remove("hidden");
-      resetHandoffQuestionsTimer();
-      startHandoffQuestionsTimer();
-
-      if (handoffAskQuestionsBtn) handoffAskQuestionsBtn.textContent = "Encerrar perguntas";
-      if (closeHandoffQuestionsBtn) {
-        closeHandoffQuestionsBtn.disabled = true;
-        closeHandoffQuestionsBtn.style.opacity = "0.5";
-      }
-
-      if (handoffQuestionsStatus) {
-        handoffQuestionsStatus.textContent = "Gravando complementos. Quando terminar, clique em \"Encerrar perguntas\".";
-        handoffQuestionsStatus.classList.remove("loading-dot");
-      }
-
-      try {
-        handoffQuestionsRecognition.start();
-      } catch (e) {
-        console.warn("Erro ao iniciar reconhecimento (passagem):", e);
-      }
-    }
-
-    async function stopHandoffQuestionsRecordingAndUpdateHandoff() {
-      handoffQuestionsIsRecording = false;
-
-      if (handoffQuestionsRecognition) {
-        try {
-          handoffQuestionsRecognition.stop();
-        } catch (e) {
-          console.warn("Erro ao parar reconhecimento (passagem):", e);
-        }
-      }
-
-      pauseHandoffQuestionsTimer();
-
-      const complementos = (handoffQuestionsFinalTranscript || "").trim();
-      if (!complementos) {
-        if (handoffQuestionsStatus) handoffQuestionsStatus.textContent = "Nenhuma fala foi capturada nesta rodada.";
-        if (handoffAskQuestionsBtn) handoffAskQuestionsBtn.textContent = "Complementar passagem";
-        if (closeHandoffQuestionsBtn) {
-          closeHandoffQuestionsBtn.disabled = false;
-          closeHandoffQuestionsBtn.style.opacity = "1";
-        }
-        if (handoffAskQuestionsBtn) handoffAskQuestionsBtn.disabled = false;
-        resetHandoffQuestionsTimer();
-        if (handoffQuestionsTimerEl) handoffQuestionsTimerEl.classList.add("hidden");
-        return;
-      }
-
-      if (handoffAskQuestionsBtn) handoffAskQuestionsBtn.disabled = true;
-      if (handoffQuestionsStatus) {
-        handoffQuestionsStatus.textContent = "Atualizando a passagem de plantão com os complementos...";
-        handoffQuestionsStatus.classList.add("loading-dot");
-      }
-
-      const passagemAtual = (handoffOutput && handoffOutput.value) ? String(handoffOutput.value).trim() : (String(handoffLastGeneratedText || "").trim());
-      const transcricaoBase = String(handoffLastGeneratedTranscript || "").trim();
-
-      try {
-        let textoFinal = "";
-
-        if (passagemAtual) {
-          const resp = await fetch(BACKEND_URL + "/api/atualizar-passagem-plantao", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              passagem_atual: passagemAtual,
-              complementos: complementos,
-              transcricao_base: transcricaoBase
-            })
-          });
-
-          if (resp.ok) {
-            const data = await resp.json().catch(() => ({}));
-            textoFinal = (data?.passagem_plantao || "").trim();
-          } else {
-            const t = await resp.text().catch(() => "");
-            console.error("Erro HTTP do backend (atualizar passagem):", resp.status, t);
-          }
-        } else {
-          // Se ainda não há texto gerado, gera a passagem diretamente com base na fala capturada.
-          const merged = (transcricaoBase ? (transcricaoBase + "\n\n") : "") + complementos;
-
-          let resp = await fetch(BACKEND_URL + "/api/gerar-sbar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ transcricao: merged })
-          });
-
-          if (resp.ok) {
-            const data = await resp.json().catch(() => ({}));
-            textoFinal = (data?.sbar || "").trim();
-          }
-
-          if (!textoFinal) {
-            resp = await fetch(BACKEND_URL + "/api/gerar-passagem-plantao", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ transcricao: merged })
-            });
-
-            if (resp.ok) {
-              const data2 = await resp.json().catch(() => ({}));
-              textoFinal = (data2?.passagem_plantao || "").trim();
-            }
-          }
-        }
-
-        if (textoFinal) {
-          if (handoffOutput) handoffOutput.value = textoFinal;
-          handoffLastGeneratedText = textoFinal;
-          if (handoffStatus) {
-            handoffStatus.textContent = "Passagem de plantão atualizada.";
-            handoffStatus.classList.remove("loading-dot");
-          }
-        }
-
-        if (handoffQuestionsStatus) {
-          handoffQuestionsStatus.textContent = textoFinal ? "Passagem de plantão atualizada." : "Não foi possível atualizar a passagem.";
-          handoffQuestionsStatus.classList.remove("loading-dot");
-        }
-      } catch (err) {
-        console.error("Erro geral ao atualizar passagem:", err);
-        if (handoffQuestionsStatus) {
-          handoffQuestionsStatus.textContent = "Erro ao atualizar a passagem de plantão.";
-          handoffQuestionsStatus.classList.remove("loading-dot");
-        }
-      } finally {
-        if (handoffAskQuestionsBtn) {
-          handoffAskQuestionsBtn.textContent = "Complementar passagem";
-          handoffAskQuestionsBtn.disabled = false;
-        }
-        if (closeHandoffQuestionsBtn) {
-          closeHandoffQuestionsBtn.disabled = false;
-          closeHandoffQuestionsBtn.style.opacity = "1";
-        }
-        resetHandoffQuestionsTimer();
-        if (handoffQuestionsTimerEl) handoffQuestionsTimerEl.classList.add("hidden");
-        if (handoffQuestionsPanel) handoffQuestionsPanel.classList.remove("visible");
-      }
-    }
-
-    async function handleHandoffAskQuestionsFromPanel() {
-      if (!handoffQuestionsIsRecording) {
-        startHandoffQuestionsRecording();
-      } else {
-        await stopHandoffQuestionsRecordingAndUpdateHandoff();
-      }
-    }
-
     async function handleAskQuestionsFromPanel() {
       if (!questionsIsRecording) {
         startQuestionsRecording();
@@ -8257,6 +7941,307 @@ function initSpeech() {
         await stopQuestionsRecordingAndUpdateSoap();
       }
     }
+
+function updateHandoffQuestionsTimer() {
+  const now = Date.now();
+  const seconds = handoffQuestionsAccumulatedSeconds + Math.floor((now - handoffQuestionsStartTime) / 1000);
+  const m = ("0" + Math.floor(seconds / 60)).slice(-2);
+  const s = ("0" + (seconds % 60)).slice(-2);
+  if (handoffQuestionsTimerEl) handoffQuestionsTimerEl.innerText = `${m}:${s}`;
+}
+
+function startHandoffQuestionsTimer() {
+  handoffQuestionsStartTime = Date.now();
+  if (handoffQuestionsTimerInterval) clearInterval(handoffQuestionsTimerInterval);
+  handoffQuestionsTimerInterval = setInterval(updateHandoffQuestionsTimer, 500);
+}
+
+function pauseHandoffQuestionsTimer() {
+  if (!handoffQuestionsStartTime) return;
+  const now = Date.now();
+  handoffQuestionsAccumulatedSeconds += Math.floor((now - handoffQuestionsStartTime) / 1000);
+  if (handoffQuestionsTimerInterval) clearInterval(handoffQuestionsTimerInterval);
+  handoffQuestionsTimerInterval = null;
+}
+
+function resetHandoffQuestionsTimer() {
+  if (handoffQuestionsTimerInterval) clearInterval(handoffQuestionsTimerInterval);
+  handoffQuestionsTimerInterval = null;
+  handoffQuestionsStartTime = null;
+  handoffQuestionsAccumulatedSeconds = 0;
+  if (handoffQuestionsTimerEl) handoffQuestionsTimerEl.innerText = "00:00";
+}
+
+function initHandoffQuestionsSpeech() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return null;
+
+  const rec = new SR();
+  rec.lang = "pt-BR";
+  rec.continuous = true;
+  rec.interimResults = true;
+
+  rec.onresult = (event) => {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        handoffQuestionsFinalTranscript += transcript + " ";
+      }
+    }
+  };
+
+  rec.onerror = (event) => {
+    console.error("Erro no reconhecimento (passagem):", event.error);
+    if (handoffRecommendationsStatus) {
+      handoffRecommendationsStatus.textContent = "Ocorreu um erro no reconhecimento de voz. Tente novamente.";
+      handoffRecommendationsStatus.classList.remove("loading-dot");
+    }
+  };
+
+  rec.onend = () => {
+    if (handoffQuestionsIsRecording) {
+      try { rec.start(); } catch (err) {}
+    }
+  };
+
+  return rec;
+}
+
+function startHandoffQuestionsRecording() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    if (handoffRecommendationsStatus) {
+      handoffRecommendationsStatus.textContent = "Seu navegador não suporta reconhecimento de voz. Use Google Chrome em um computador ou Android.";
+    }
+    return;
+  }
+
+  if (!handoffQuestionsRecognition) {
+    handoffQuestionsRecognition = initHandoffQuestionsSpeech();
+    if (!handoffQuestionsRecognition) return;
+  }
+
+  handoffQuestionsIsRecording = true;
+  handoffQuestionsFinalTranscript = "";
+
+  if (handoffQuestionsTimerEl) {
+    handoffQuestionsTimerEl.classList.remove("hidden");
+    resetHandoffQuestionsTimer();
+    startHandoffQuestionsTimer();
+  }
+
+  if (handoffAskQuestionsBtn) handoffAskQuestionsBtn.textContent = "Encerrar perguntas";
+  if (closeHandoffRecommendationsBtn) {
+    closeHandoffRecommendationsBtn.disabled = true;
+    closeHandoffRecommendationsBtn.style.opacity = "0.5";
+  }
+
+  if (handoffRecommendationsStatus) {
+    handoffRecommendationsStatus.textContent = "Gravando perguntas e respostas. Quando terminar, clique em "Encerrar perguntas".";
+    handoffRecommendationsStatus.classList.remove("loading-dot");
+  }
+
+  try { handoffQuestionsRecognition.start(); } catch (e) {}
+}
+
+async function stopHandoffQuestionsRecordingAndUpdatePassage() {
+  handoffQuestionsIsRecording = false;
+
+  if (handoffQuestionsRecognition) {
+    try { handoffQuestionsRecognition.stop(); } catch (e) {}
+  }
+
+  pauseHandoffQuestionsTimer();
+
+  const qa = (handoffQuestionsFinalTranscript || "").trim();
+  if (!qa) {
+    if (handoffRecommendationsStatus) handoffRecommendationsStatus.textContent = "Nenhuma fala foi capturada nesta rodada de perguntas.";
+    if (handoffAskQuestionsBtn) handoffAskQuestionsBtn.textContent = "Complementar passagem";
+    if (closeHandoffRecommendationsBtn) {
+      closeHandoffRecommendationsBtn.disabled = false;
+      closeHandoffRecommendationsBtn.style.opacity = "1";
+    }
+    if (handoffAskQuestionsBtn) handoffAskQuestionsBtn.disabled = false;
+    resetHandoffQuestionsTimer();
+    if (handoffQuestionsTimerEl) handoffQuestionsTimerEl.classList.add("hidden");
+    return;
+  }
+
+  const passagemAtual = (handoffOutput && handoffOutput.value) ? handoffOutput.value.trim() : "";
+  if (!passagemAtual) {
+    if (handoffRecommendationsStatus) handoffRecommendationsStatus.textContent = "Não há passagem de plantão disponível para atualizar.";
+    if (handoffAskQuestionsBtn) handoffAskQuestionsBtn.textContent = "Complementar passagem";
+    if (closeHandoffRecommendationsBtn) {
+      closeHandoffRecommendationsBtn.disabled = false;
+      closeHandoffRecommendationsBtn.style.opacity = "1";
+    }
+    if (handoffAskQuestionsBtn) handoffAskQuestionsBtn.disabled = false;
+    resetHandoffQuestionsTimer();
+    if (handoffQuestionsTimerEl) handoffQuestionsTimerEl.classList.add("hidden");
+    return;
+  }
+
+  if (handoffAskQuestionsBtn) handoffAskQuestionsBtn.disabled = true;
+  if (handoffRecommendationsStatus) {
+    handoffRecommendationsStatus.textContent = "Atualizando a passagem de plantão com as novas respostas...";
+    handoffRecommendationsStatus.classList.add("loading-dot");
+  }
+
+  try {
+    const resp = await fetch(BACKEND_URL + "/api/atualizar-passagem-plantao", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        passagem_plantao_atual: passagemAtual,
+        perguntas_e_respostas: qa
+      })
+    });
+
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => "");
+      console.error("Erro HTTP do backend (atualizar passagem):", resp.status, txt);
+      if (handoffRecommendationsStatus) {
+        handoffRecommendationsStatus.textContent = "Não foi possível atualizar a passagem de plantão.";
+        handoffRecommendationsStatus.classList.remove("loading-dot");
+      }
+      if (handoffAskQuestionsBtn) handoffAskQuestionsBtn.disabled = false;
+      return;
+    }
+
+    const data = await resp.json().catch(() => ({}));
+    const passagem = (data?.passagem_plantao || "").trim();
+
+    if (handoffOutput) handoffOutput.value = passagem || passagemAtual;
+    handoffLastGeneratedText = passagem || passagemAtual;
+
+    if (handoffStatus) handoffStatus.textContent = "Passagem de plantão atualizada.";
+    if (handoffRecommendationsStatus) {
+      handoffRecommendationsStatus.textContent = "Passagem atualizada com as novas respostas.";
+      handoffRecommendationsStatus.classList.remove("loading-dot");
+    }
+
+  } catch (err) {
+    console.error("Erro geral ao atualizar passagem:", err);
+    if (handoffRecommendationsStatus) {
+      handoffRecommendationsStatus.textContent = "Erro ao atualizar a passagem de plantão.";
+      handoffRecommendationsStatus.classList.remove("loading-dot");
+    }
+  } finally {
+    if (handoffAskQuestionsBtn) {
+      handoffAskQuestionsBtn.textContent = "Complementar passagem";
+      handoffAskQuestionsBtn.disabled = false;
+    }
+    if (closeHandoffRecommendationsBtn) {
+      closeHandoffRecommendationsBtn.disabled = false;
+      closeHandoffRecommendationsBtn.style.opacity = "1";
+    }
+    resetHandoffQuestionsTimer();
+    if (handoffQuestionsTimerEl) handoffQuestionsTimerEl.classList.add("hidden");
+    if (handoffRecommendationsPanel) handoffRecommendationsPanel.classList.remove("visible");
+  }
+}
+
+async function fetchHandoffRecommendations() {
+  const passagemAtual = (handoffOutput && handoffOutput.value) ? handoffOutput.value.trim() : "";
+  if (!passagemAtual) {
+    if (handoffStatus) handoffStatus.textContent = "Não há passagem de plantão gerada ainda para sugerir perguntas complementares.";
+    return;
+  }
+
+  // Reseta qualquer rodada anterior
+  if (handoffQuestionsIsRecording && handoffQuestionsRecognition) {
+    try {
+      handoffQuestionsIsRecording = false;
+      handoffQuestionsRecognition.stop();
+    } catch (e) {}
+  }
+
+  if (handoffAskQuestionsBtn) {
+    handoffAskQuestionsBtn.textContent = "Complementar passagem";
+    handoffAskQuestionsBtn.disabled = true;
+  }
+  if (closeHandoffRecommendationsBtn) {
+    closeHandoffRecommendationsBtn.disabled = false;
+    closeHandoffRecommendationsBtn.style.opacity = "1";
+  }
+  resetHandoffQuestionsTimer();
+  if (handoffQuestionsTimerEl) handoffQuestionsTimerEl.classList.add("hidden");
+
+  if (handoffRecommendationsPanel) handoffRecommendationsPanel.classList.add("visible");
+  if (handoffRecommendationsStatus) {
+    handoffRecommendationsStatus.textContent = "Gerando perguntas essenciais com base na passagem atual...";
+    handoffRecommendationsStatus.classList.add("loading-dot");
+  }
+  if (handoffRecommendationsList) handoffRecommendationsList.innerHTML = "";
+
+  try {
+    const resp = await fetch(BACKEND_URL + "/api/perguntas-essenciais-passagem-plantao", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ passagem_plantao: passagemAtual })
+    });
+
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => "");
+      console.error("Erro HTTP do backend (perguntas passagem):", resp.status, txt);
+      if (handoffRecommendationsStatus) {
+        handoffRecommendationsStatus.textContent = "Não foi possível gerar as perguntas essenciais para a passagem.";
+        handoffRecommendationsStatus.classList.remove("loading-dot");
+      }
+      return;
+    }
+
+    const data = await resp.json().catch(() => ({}));
+    const perguntas = Array.isArray(data.perguntas) ? data.perguntas : [];
+
+    if (!perguntas.length) {
+      if (handoffRecommendationsStatus) {
+        handoffRecommendationsStatus.textContent = "Nenhuma pergunta complementar foi sugerida para esta passagem.";
+        handoffRecommendationsStatus.classList.remove("loading-dot");
+      }
+      return;
+    }
+
+    if (handoffRecommendationsList) {
+      handoffRecommendationsList.innerHTML = "";
+      perguntas.forEach((q, index) => {
+        const item = document.createElement("div");
+        item.className = "recommendation-item";
+        item.textContent = (index + 1) + ". " + q;
+        handoffRecommendationsList.appendChild(item);
+      });
+    }
+
+    if (handoffRecommendationsStatus) {
+      handoffRecommendationsStatus.textContent = "Use estas perguntas para completar lacunas da passagem de plantão.";
+      handoffRecommendationsStatus.classList.remove("loading-dot");
+    }
+    if (handoffAskQuestionsBtn) handoffAskQuestionsBtn.disabled = false;
+
+  } catch (err) {
+    console.error("Erro geral ao buscar perguntas da passagem:", err);
+    if (handoffRecommendationsStatus) {
+      handoffRecommendationsStatus.textContent = "Erro ao gerar perguntas essenciais para a passagem.";
+      handoffRecommendationsStatus.classList.remove("loading-dot");
+    }
+  }
+}
+
+async function handleHandoffAskQuestionsFromPanel() {
+  if (!handoffQuestionsIsRecording) {
+    startHandoffQuestionsRecording();
+  } else {
+    await stopHandoffQuestionsRecordingAndUpdatePassage();
+  }
+}
+
+function updateHandoffEssentialsButtonVisibility() {
+  if (!handoffRecommendationsBtn) return;
+  const txt = (handoffOutput && handoffOutput.value) ? handoffOutput.value.trim() : "";
+  if (isMeaningfulText(txt)) handoffRecommendationsBtn.classList.remove("hidden");
+  else handoffRecommendationsBtn.classList.add("hidden");
+}
+
 
     function startRecording() {
       if (triageIsRecording) {
@@ -9899,11 +9884,9 @@ let interim = "";
         function hasAnyOtherRecordingActive() {
           // isRecording: consulta SOAP
           // triageIsRecording: triagem
-          // handoffIsRecording: passagem de plantão
           // reportIsRecording: relatórios
           // questionsIsRecording: perguntas adicionais
-          // handoffQuestionsIsRecording: perguntas adicionais da passagem de plantão
-          return !!(isRecording || triageIsRecording || handoffIsRecording || reportIsRecording || questionsIsRecording || handoffQuestionsIsRecording || docsIsRecording);
+          return !!(isRecording || triageIsRecording || reportIsRecording || questionsIsRecording || docsIsRecording);
         }
 
         // Guia do SBAR (inline, dentro do próprio módulo)
@@ -10737,7 +10720,7 @@ if (reportOutput) {
     }
 
     function startDocsRecording() {
-      const busy = !!(isRecording || triageIsRecording || handoffIsRecording || reportIsRecording || questionsIsRecording || handoffQuestionsIsRecording || sbarIsRecording);
+      const busy = !!(isRecording || triageIsRecording || handoffIsRecording || reportIsRecording || questionsIsRecording || sbarIsRecording);
       if (busy) {
         alert("Finalize a gravação atual antes de iniciar a geração de documentos.");
         return;
@@ -11172,30 +11155,30 @@ recordBtn.onclick = () => {
       handleAskQuestionsFromPanel();
     });
 
-    if (handoffQuestionsBtn) {
-      handoffQuestionsBtn.addEventListener("click", () => {
-        fetchHandoffQuestions();
-      });
-    }
+if (handoffRecommendationsBtn) {
+  handoffRecommendationsBtn.addEventListener("click", () => {
+    fetchHandoffRecommendations();
+  });
+}
 
-    if (closeHandoffQuestionsBtn) {
-      closeHandoffQuestionsBtn.addEventListener("click", () => {
-        if (handoffQuestionsIsRecording) {
-          if (handoffQuestionsStatus) {
-            handoffQuestionsStatus.textContent =
-              "Finalize a gravação clicando em \"Encerrar perguntas\" antes de fechar.";
-          }
-          return;
-        }
-        if (handoffQuestionsPanel) handoffQuestionsPanel.classList.remove("visible");
-      });
+if (closeHandoffRecommendationsBtn) {
+  closeHandoffRecommendationsBtn.addEventListener("click", () => {
+    if (handoffQuestionsIsRecording) {
+      if (handoffRecommendationsStatus) {
+        handoffRecommendationsStatus.textContent = "Finalize a gravação das perguntas clicando em \"Encerrar perguntas\" antes de fechar.";
+      }
+      return;
     }
+    if (handoffRecommendationsPanel) handoffRecommendationsPanel.classList.remove("visible");
+  });
+}
 
-    if (handoffAskQuestionsBtn) {
-      handoffAskQuestionsBtn.addEventListener("click", () => {
-        handleHandoffAskQuestionsFromPanel();
-      });
-    }
+if (handoffAskQuestionsBtn) {
+  handoffAskQuestionsBtn.addEventListener("click", () => {
+    handleHandoffAskQuestionsFromPanel();
+  });
+}
+
 
     soapCopyButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
