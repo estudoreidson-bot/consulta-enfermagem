@@ -3154,7 +3154,7 @@ app.post("/api/extrair-dados-paciente", requirePaidOrAdmin, async(req, res) => {
     const safeTranscricao = normalizeText(transcricao, 4000);
 
     const prompt = `
-Você é um enfermeiro humano extraindo dados objetivos de uma fala curta.
+Você é um enfermeiro humano extraindo dados objetivos de uma fala curta em português do Brasil.
 Extraia somente se estiver explícito.
 
 Formato de saída: JSON estrito:
@@ -3166,9 +3166,17 @@ Formato de saída: JSON estrito:
 
 Regras:
 - Se não houver certeza, use null.
-- Idade em anos (inteiro).
-- Peso em kg (número).
+- "idade" deve ser um número inteiro (anos). Ex.: 35
+- "peso_kg" deve ser um número em kg (aceite decimais). Ex.: 72.5
+- Não use strings para idade/peso (não escreva "35 anos" nem "72 kg" dentro do JSON).
 - Sem texto fora do JSON.
+
+Exemplos:
+Fala: "João da Silva, 35 anos, 72 quilos"
+Saída: {"nome":"João da Silva","idade":35,"peso_kg":72}
+
+Fala: "Maria Aparecida, 8 anos, pesa 23,4 quilos"
+Saída: {"nome":"Maria Aparecida","idade":8,"peso_kg":23.4}
 
 Fala:
 """${safeTranscricao}"""
@@ -3176,15 +3184,33 @@ Fala:
 
     const data = await callOpenAIJson(prompt);
 
+    // Parser robusto: aceita número OU string numérica (por segurança).
+    const parseNumberLike = (v) => {
+      if (typeof v === "number" && Number.isFinite(v)) return v;
+      if (typeof v !== "string") return null;
+      const t = v.trim().replace(",", ".");
+      const mm = t.match(/-?\d+(?:\.\d+)?/);
+      if (!mm) return null;
+      const n = Number(mm[0]);
+      return Number.isFinite(n) ? n : null;
+    };
+
     let nome = typeof data?.nome === "string" ? data.nome.trim() : null;
     if (nome === "") nome = null;
 
+    // Idade: aceitar number ou string numérica; validar faixa.
     let idade = null;
-    if (typeof data?.idade === "number" && Number.isFinite(data.idade)) idade = Math.round(data.idade);
+    const idadeN = parseNumberLike(data?.idade);
+    if (idadeN !== null) {
+      const i = Math.round(idadeN);
+      if (i > 0 && i < 130) idade = i;
+    }
 
+    // Peso: aceitar number ou string numérica; validar faixa.
     let peso_kg = null;
-    if (typeof data?.peso_kg === "number" && Number.isFinite(data.peso_kg)) {
-      const v = Number(data.peso_kg);
+    const pesoN = parseNumberLike(data?.peso_kg);
+    if (pesoN !== null) {
+      const v = Number(pesoN);
       if (v > 0 && v < 500) peso_kg = Math.round(v * 10) / 10;
     }
 
