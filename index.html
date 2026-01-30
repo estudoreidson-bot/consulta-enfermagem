@@ -7948,25 +7948,70 @@ function initSpeech() {
         }
 
         const data = await resp.json();
-        const perguntas = Array.isArray(data.perguntas) ? data.perguntas : [];
+        const itens = Array.isArray(data?.itens) ? data.itens : [];
+        const perguntas = Array.isArray(data?.perguntas) ? data.perguntas : [];
 
-        if (!perguntas.length) {
+        const normalizedItems = [];
+        if (itens.length) {
+          for (const it of itens) {
+            const secao = String(it?.secao || "G").trim().toUpperCase() || "G";
+            const pergunta = String(it?.pergunta || "").trim();
+            if (!pergunta) continue;
+            normalizedItems.push({ secao, pergunta });
+          }
+        } else {
+          for (const q of perguntas) {
+            const pergunta = String(q || "").trim();
+            if (!pergunta) continue;
+            normalizedItems.push({ secao: "G", pergunta });
+          }
+        }
+
+        if (!normalizedItems.length) {
           recommendationsStatus.textContent =
             "Nenhuma pergunta complementar foi sugerida para este caso.";
           recommendationsStatus.classList.remove("loading-dot");
           return;
         }
 
+        const secLabel = {
+          "S": "S - Subjetivo",
+          "O": "O - Objetivo",
+          "A": "A - Avaliação",
+          "P": "P - Plano",
+          "G": "G - Geral"
+        };
+        const order = ["S", "O", "A", "P", "G"];
+
+        const bySec = { S: [], O: [], A: [], P: [], G: [] };
+        for (const it of normalizedItems) {
+          const sec = order.includes(it.secao) ? it.secao : "G";
+          bySec[sec].push(it.pergunta);
+        }
+
         recommendationsList.innerHTML = "";
-        perguntas.forEach((q, index) => {
-          const item = document.createElement("div");
-          item.className = "recommendation-item";
-          item.textContent = (index + 1) + ". " + q;
-          recommendationsList.appendChild(item);
-        });
+        let idx = 0;
+        for (const sec of order) {
+          const arr = bySec[sec];
+          if (!arr || !arr.length) continue;
+
+          const header = document.createElement("div");
+          header.style.fontWeight = "700";
+          header.style.margin = "10px 0 6px 0";
+          header.textContent = secLabel[sec] || sec;
+          recommendationsList.appendChild(header);
+
+          arr.forEach((q) => {
+            idx += 1;
+            const item = document.createElement("div");
+            item.className = "recommendation-item";
+            item.textContent = idx + ". " + q;
+            recommendationsList.appendChild(item);
+          });
+        }
 
         recommendationsStatus.textContent =
-          "Use estas perguntas para aprofundar a anamnese com o paciente.";
+          "Perguntas essenciais organizadas por seção do SOAP (S/O/A/P).";
         recommendationsStatus.classList.remove("loading-dot");
         askQuestionsBtn.disabled = false;
       } catch (err) {

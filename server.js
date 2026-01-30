@@ -2745,7 +2745,7 @@ app.post("/api/recomendacoes-anamnese", requirePaidOrAdmin, async(req, res) => {
   try {
     const { soap } = req.body || {};
     if (!soap || !String(soap).trim()) {
-      return res.json({ perguntas: [] });
+      return res.json({ perguntas: [], itens: [] });
     }
 
     const safeSoap = normalizeText(soap, 10000);
@@ -2756,62 +2756,45 @@ As perguntas devem ser guiadas por cenário, priorizando segurança, sinais de a
 
 Regras:
 - Sem emojis e sem símbolos gráficos.
-- Perguntas curtas e práticas.
+- Perguntas curtas, práticas e executáveis.
 - No máximo 12 perguntas.
 - Evite perguntas redundantes.
 
+Classifique cada pergunta na seção do SOAP a que ela mais pertence: "S" (Subjetivo), "O" (Objetivo), "A" (Avaliação), "P" (Plano).
+Se não houver uma seção clara, use "G" (Geral).
+
 Formato de saída: JSON estrito:
-{ "perguntas": ["...","..."] }
+{
+  "itens": [
+    { "secao": "S", "pergunta": "..." },
+    { "secao": "O", "pergunta": "..." }
+  ]
+}
 
 SOAP:
 """${safeSoap}"""
 `;
 
     const data = await callOpenAIJson(prompt);
-    const perguntas = normalizeArrayOfStrings(data?.perguntas, 12, 180);
-    return res.json({ perguntas });
+    const rawItems = Array.isArray(data?.itens) ? data.itens : [];
+    const itens = [];
+    const secOk = new Set(["S", "O", "A", "P", "G"]);
+
+    for (const it of rawItems.slice(0, 20)) {
+      if (!it || typeof it !== "object") continue;
+      const sec = String(it.secao || "").trim().toUpperCase();
+      const pergunta = normalizeText(String(it.pergunta || "").trim(), 180);
+      if (!pergunta) continue;
+      itens.push({ secao: secOk.has(sec) ? sec : "G", pergunta });
+      if (itens.length >= 12) break;
+    }
+
+    // compatibilidade: ainda entrega "perguntas" como array simples
+    const perguntas = itens.map(x => x.pergunta);
+    return res.json({ perguntas, itens });
   } catch (e) {
     console.error(e);
-    return res.json({ perguntas: [] });
-  }
-});
-
-
-// ======================================================================
-// ROTA 2.05 – PERGUNTAS ESSENCIAIS PARA PASSAGEM DE PLANTÃO (SBAR)
-// ======================================================================
-
-app.post("/api/recomendacoes-passagem-plantao", requirePaidOrAdmin, async(req, res) => {
-  try {
-    const { texto } = req.body || {};
-    const safeTexto = normalizeText(texto || "", 10000);
-
-    const prompt = `
-Você é um enfermeiro humano e está ajudando a completar uma passagem de plantão.
-
-Objetivo:
-- Gerar perguntas/checagens essenciais para garantir que a passagem siga SBAR e não deixe lacunas de segurança.
-- Se o texto base estiver vazio, gere um checklist padrão SBAR para qualquer paciente.
-
-Regras:
-- Sem emojis e sem símbolos gráficos.
-- Perguntas curtas, práticas e diretamente aplicáveis.
-- Priorize segurança: risco imediato, sinais vitais/tendência, dispositivos, medicações críticas, exames pendentes, condutas e sinais de alarme.
-- No máximo 12 perguntas.
-
-Formato de saída: JSON estrito:
-{ "perguntas": ["...","..."] }
-
-Texto base da passagem (pode estar vazio):
-"""${safeTexto || ""}"""
-`;
-
-    const data = await callOpenAIJson(prompt);
-    const perguntas = normalizeArrayOfStrings(data?.perguntas, 12, 180);
-    return res.json({ perguntas });
-  } catch (e) {
-    console.error(e);
-    return res.json({ perguntas: [] });
+    return res.json({ perguntas: [], itens: [] });
   }
 });
 
@@ -2829,20 +2812,13 @@ app.post("/api/atualizar-soap-perguntas", requirePaidOrAdmin, async(req, res) =>
     const safeQa = Array.isArray(perguntas_e_respostas) ? perguntas_e_respostas : [];
     const safeTranscricao = normalizeText(transcricao_base || "", 20000);
 
-    let qaText = "";
-    if (typeof perguntas_e_respostas === "string") {
-      qaText = normalizeText(perguntas_e_respostas, 6000);
-    } else {
-      qaText = safeQa
-        .map((x, i) => {
-          const p = normalizeText(x?.pergunta || "", 300);
-          const r = normalizeText(x?.resposta || "", 600);
-          if (!p && !r) return "";
-          return `Pergunta ${i + 1}: ${p}\nResposta ${i + 1}: ${r}`;
-        })
-        .filter(Boolean)
-        .join("\n\n");
-    }
+    const qaText = safeQa
+      .map((x, i) => {
+        const p = normalizeText(x?.pergunta || "", 300);
+        const r = normalizeText(x?.resposta || "", 600);
+        return `Pergunta ${i + 1}: ${p}\nResposta ${i + 1}: ${r}`;
+      })
+      .join("\n\n");
 
     const prompt = `
 Você é um enfermeiro humano atualizando a documentação do atendimento após novas respostas complementares.
