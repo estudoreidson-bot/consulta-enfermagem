@@ -5543,6 +5543,57 @@ const patientInfoTimerEl = document.getElementById("patientInfoTimer");
 
     
 
+
+function parseNumberFromText(val) {
+  if (val === null || val === undefined) return null;
+  if (typeof val === "number" && Number.isFinite(val)) return val;
+  const t = String(val).toLowerCase().replace(",", ".").trim();
+  const m = t.match(/(\d+(?:\.\d+)?)/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n : null;
+}
+
+function cleanExtractedName(name) {
+  let s = String(name || "").trim();
+  if (!s) return "";
+  s = s.replace(/\s+/g, " ").trim();
+  // remove common leading phrases
+  s = s.replace(/^(seu|o|a)?\s*nome(\s+completo)?\s*(é|eh)\s+/i, "");
+  // remove repeated occurrences inside the string
+  s = s.replace(/\bseu\s+nome\s+(é|eh)\b/gi, "");
+  s = s.replace(/\s+/g, " ").trim();
+  return s;
+}
+
+// Dedupe: keep the most informative segments when the browser repeats partial finals
+function pushFinalSegment(segments, txt) {
+  const s = String(txt || "").replace(/\s+/g, " ").trim();
+  if (!s) return;
+
+  if (!segments.length) {
+    segments.push(s);
+    return;
+  }
+
+  const last = segments[segments.length - 1];
+
+  // If same, ignore
+  if (s === last) return;
+
+  // If new segment contains the last one, replace last with new (more complete)
+  if (s.includes(last)) {
+    segments[segments.length - 1] = s;
+    return;
+  }
+
+  // If last contains new, ignore (new is less complete)
+  if (last.includes(s)) return;
+
+  segments.push(s);
+}
+
+
 function formatPatientSummary(ctx) {
       const parts = [];
       if (ctx?.nome) parts.push(`Nome: ${ctx.nome}`);
@@ -5582,12 +5633,19 @@ function formatPatientSummary(ctx) {
       patientInfoRecognition.interimResults = true;
 
       patientInfoRecognition.onresult = (event) => {
+        // Alguns navegadores repetem trechos nos resultados finais.
+        // Guardamos segmentos finais e mantemos o mais completo.
+        if (!window.__patientInfoFinalSegments) window.__patientInfoFinalSegments = [];
+        const segs = window.__patientInfoFinalSegments;
+
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const txt = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            patientInfoFinalTranscript += txt + " ";
+            pushFinalSegment(segs, txt);
           }
         }
+
+        patientInfoFinalTranscript = segs.join(" ").trim() + " ";
       };
 
       patientInfoRecognition.onerror = (e) => {
@@ -5848,6 +5906,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       patientInfoBtn.textContent = "Finalizar nome/idade/peso";
 
       patientInfoFinalTranscript = "";
+      window.__patientInfoFinalSegments = [];
       resetPatientInfoTimer();
       startPatientInfoTimer();
 
@@ -5910,33 +5969,21 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         }
 
         const data = await resp.json();
-        patientContext = {
-          nome: (typeof data?.nome === "string" && data.nome.trim()) ? data.nome.trim() : null,
-          idade: (() => {
-            if (typeof data?.idade === "number" && Number.isFinite(data.idade)) return Math.round(data.idade);
-            if (typeof data?.idade === "string") {
-              const t = data.idade.trim();
-              const mm = t.match(/\d+/);
-              if (mm) {
-                const n = parseInt(mm[0], 10);
-                return Number.isFinite(n) ? n : null;
-              }
-            }
-            return null;
-          })(),
-          peso_kg: (() => {
-            if (typeof data?.peso_kg === "number" && Number.isFinite(data.peso_kg)) return Math.round(data.peso_kg * 10) / 10;
-            if (typeof data?.peso_kg === "string") {
-              const t = data.peso_kg.trim().replace(",", ".");
-              const mm = t.match(/\d+(?:\.\d+)?/);
-              if (mm) {
-                const n = parseFloat(mm[0]);
-                return Number.isFinite(n) ? (Math.round(n * 10) / 10) : null;
-              }
-            }
-            return null;
-          })()
-        };
+        patientContext = (() => {
+          const nomeRaw = (data?.nome ?? null);
+          const idadeRaw = (data?.idade ?? null);
+          const pesoRaw = (data?.peso_kg ?? null);
+
+          const nome = nomeRaw ? cleanExtractedName(nomeRaw) : null;
+
+          const idadeNum = parseNumberFromText(idadeRaw);
+          const idade = (idadeNum !== null) ? `${Math.round(idadeNum)} anos` : (idadeRaw ? String(idadeRaw).trim() : null);
+
+          const pesoNum = parseNumberFromText(pesoRaw);
+          const peso_kg = (pesoNum !== null) ? pesoNum : null;
+
+          return { nome, idade, peso_kg };
+        })();
 
         const resumo = formatPatientSummary(patientContext);
         patientInfoSummary.textContent = resumo ? resumo : "Dados do paciente não identificados com segurança.";
