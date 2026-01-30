@@ -5912,8 +5912,28 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         const data = await resp.json();
         patientContext = {
           nome: (data?.nome || null),
-          idade: (data?.idade || null),
-          peso_kg: (typeof data?.peso_kg === "number" && Number.isFinite(data.peso_kg)) ? data.peso_kg : null
+          idade: (() => {
+            if (typeof data?.idade === "number" && Number.isFinite(data.idade)) return Math.round(data.idade);
+            if (typeof data?.idade === "string") {
+              const digits = data.idade.replace(/\D+/g, "");
+              if (digits) {
+                const v = parseInt(digits, 10);
+                if (!Number.isNaN(v) && v > 0 && v < 130) return v;
+              }
+            }
+            return null;
+          })(),
+          peso_kg: (() => {
+            if (typeof data?.peso_kg === "number" && Number.isFinite(data.peso_kg)) return data.peso_kg;
+            if (typeof data?.peso_kg === "string") {
+              const m = data.peso_kg.replace(",", ".").match(/-?\d+(?:\.\d+)?/);
+              if (m && m[0]) {
+                const v = parseFloat(m[0]);
+                if (Number.isFinite(v) && v > 0 && v < 500) return Math.round(v * 10) / 10;
+              }
+            }
+            return null;
+          })()
         };
 
         const resumo = formatPatientSummary(patientContext);
