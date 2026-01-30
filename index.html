@@ -845,8 +845,44 @@
       margin: 0 0 6px 0;
     }
     .formatted-output .topic {
-      color: #b00020;
+      color: #dc3545;
       font-weight: bold;
+    }
+
+    /* Botões "Perguntas essenciais": explicação acima do botão */
+    .essential-btn-block {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      max-width: 360px;
+      text-align: right;
+    }
+    .essential-btn-inline-block {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      max-width: 360px;
+      text-align: left;
+    }
+    .essential-btn-help {
+      font-size: 12px;
+      color: #374151;
+      line-height: 1.25;
+      max-width: 360px;
+    }
+
+    @media (max-width: 520px) {
+      .essential-btn-block,
+      .essential-btn-inline-block {
+        max-width: 100%;
+        text-align: left;
+        align-items: flex-start;
+      }
+      .essential-btn-help {
+        max-width: 100%;
+      }
     }
 .small-record-btn {
       padding: 10px 16px;
@@ -3054,7 +3090,10 @@
         <div class="section-header-row">
           <div class="soap-title-actions">
             <h2>Passagem de plantão</h2>
-            <button id="handoffRecommendationsBtn" class="hidden">Perguntas essenciais</button>
+            <div class="essential-btn-inline-block">
+              <div id="handoffEssentialsHelp" class="essential-btn-help hidden">Gera perguntas complementares com base no texto atual da passagem. Use para checar pendências, riscos e informações críticas antes de entregar o plantão.</div>
+              <button id="handoffRecommendationsBtn" class="hidden">Perguntas essenciais</button>
+            </div>
             <button id="handoffCopyBtn" class="btn-copy" type="button">Copiar passagem</button>
             <button id="handoffPrintBtn" class="btn-print" type="button">Imprimir passagem</button>
           </div>
@@ -3071,7 +3110,10 @@
         <div class="soap-title-actions">
           <h2>SOAP</h2>
         </div>
-        <button id="recommendationsBtn">Perguntas essenciais</button>
+        <div class="essential-btn-block">
+          <div id="soapEssentialsHelp" class="essential-btn-help">Gera perguntas complementares essenciais com base no motivo da consulta e no SOAP já registrado. Clique, leia e faça uma pergunta por vez para completar lacunas.</div>
+          <button id="recommendationsBtn">Perguntas essenciais</button>
+        </div>
       </div>
 
       <div class="prescription-actions" style="justify-content: flex-start; gap: 10px; margin-top: 8px;">
@@ -5288,6 +5330,7 @@ if (!handoffMode) {
     const askQuestionsBtn = document.getElementById("askQuestionsBtn");
     const questionsTimerEl = document.getElementById("questionsTimer");
 const handoffRecommendationsBtn = document.getElementById("handoffRecommendationsBtn");
+const handoffEssentialsHelp = document.getElementById("handoffEssentialsHelp");
 const handoffRecommendationsPanel = document.getElementById("handoffRecommendationsPanel");
 const closeHandoffRecommendationsBtn = document.getElementById("closeHandoffRecommendationsBtn");
 const handoffRecommendationsStatus = document.getElementById("handoffRecommendationsStatus");
@@ -8238,8 +8281,13 @@ async function handleHandoffAskQuestionsFromPanel() {
 function updateHandoffEssentialsButtonVisibility() {
   if (!handoffRecommendationsBtn) return;
   const txt = (handoffOutput && handoffOutput.value) ? handoffOutput.value.trim() : "";
-  if (isMeaningfulText(txt)) handoffRecommendationsBtn.classList.remove("hidden");
-  else handoffRecommendationsBtn.classList.add("hidden");
+  if (isMeaningfulText(txt)) {
+    handoffRecommendationsBtn.classList.remove("hidden");
+    if (handoffEssentialsHelp) handoffEssentialsHelp.classList.remove("hidden");
+  } else {
+    handoffRecommendationsBtn.classList.add("hidden");
+    if (handoffEssentialsHelp) handoffEssentialsHelp.classList.add("hidden");
+  }
 }
 
 
