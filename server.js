@@ -3141,239 +3141,162 @@ Contexto:
 
 
 // ======================================================================
-// EXTRAÇÃO DETERMINÍSTICA DE DADOS DO PACIENTE (NOME / IDADE / PESO)
-// Objetivo: reduzir falhas do modelo e capturar idade/peso mesmo quando
-// o modelo devolve strings (ex.: "35 anos", "70 kg").
+// ROTA 4.2 – EXTRAIR DADOS DO PACIENTE (NOME / IDADE / PESO) (NOVA)
 // ======================================================================
 
-function normPt(s) {
-  return String(s || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^\w\s.,-]/g, " ")
+// Extrator determinístico (reduz falhas do modelo e evita repetição do ASR).
+function ptNumberWordsToInt(input) {
+  const raw = String(input || "").toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-}
+  if (!raw) return null;
 
-// Parser simples de números por extenso em português (0–1999 aprox.)
-const PT_NUM_UNITS = {
-  "zero": 0, "um": 1, "uma": 1, "dois": 2, "duas": 2, "tres": 3, "três": 3,
-  "quatro": 4, "cinco": 5, "seis": 6, "sete": 7, "oito": 8, "nove": 9
-};
-const PT_NUM_TEENS = {
-  "dez": 10, "onze": 11, "doze": 12, "treze": 13, "catorze": 14, "quatorze": 14,
-  "quinze": 15, "dezesseis": 16, "dezessete": 17, "dezoito": 18, "dezenove": 19
-};
-const PT_NUM_TENS = {
-  "vinte": 20, "trinta": 30, "quarenta": 40, "cinquenta": 50, "sessenta": 60,
-  "setenta": 70, "oitenta": 80, "noventa": 90
-};
-const PT_NUM_HUNDREDS = {
-  "cem": 100, "cento": 100, "duzentos": 200, "trezentos": 300, "quatrocentos": 400,
-  "quinhentos": 500, "seiscentos": 600, "setecentos": 700, "oitocentos": 800, "novecentos": 900
-};
+  // Se já tiver dígito, retorna o primeiro número inteiro encontrado.
+  const mDigit = raw.match(/\b(\d{1,4})\b/);
+  if (mDigit) {
+    const n = parseInt(mDigit[1], 10);
+    return Number.isFinite(n) ? n : null;
+  }
 
-function ptWordsToInt(words) {
-  const toks = String(words || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (!toks.length) return null;
+  const units = {
+    "zero": 0, "um": 1, "uma": 1, "dois": 2, "duas": 2, "tres": 3, "quatro": 4,
+    "cinco": 5, "seis": 6, "sete": 7, "oito": 8, "nove": 9,
+    "dez": 10, "onze": 11, "doze": 12, "treze": 13, "catorze": 14, "quatorze": 14,
+    "quinze": 15, "dezesseis": 16, "dezessete": 17, "dezoito": 18, "dezenove": 19
+  };
+  const tens = {
+    "vinte": 20, "trinta": 30, "quarenta": 40, "cinquenta": 50,
+    "sessenta": 60, "setenta": 70, "oitenta": 80, "noventa": 90
+  };
+  const hundreds = {
+    "cem": 100, "cento": 100, "duzentos": 200, "trezentos": 300, "quatrocentos": 400,
+    "quinhentos": 500, "seiscentos": 600, "setecentos": 700, "oitocentos": 800, "novecentos": 900
+  };
 
+  const tokens = raw.split(/\s+/).map(t => t.replace(/-/g, "")).filter(Boolean);
   let total = 0;
   let current = 0;
-  for (const w0 of toks) {
-    const w = w0.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (w === "e") continue;
 
-    if (w === "mil") {
-      const mult = current > 0 ? current : 1;
-      total += mult * 1000;
+  for (const t of tokens) {
+    if (t === "e") continue;
+
+    if (t === "mil") {
+      total += (current || 1) * 1000;
       current = 0;
       continue;
     }
-    if (PT_NUM_HUNDREDS[w] !== undefined) { current += PT_NUM_HUNDREDS[w]; continue; }
-    if (PT_NUM_TENS[w] !== undefined) { current += PT_NUM_TENS[w]; continue; }
-    if (PT_NUM_TEENS[w] !== undefined) { current += PT_NUM_TEENS[w]; continue; }
-    if (PT_NUM_UNITS[w] !== undefined) { current += PT_NUM_UNITS[w]; continue; }
-
-    // palavra desconhecida: aborta
-    return null;
-  }
-  const v = total + current;
-  if (!Number.isFinite(v)) return null;
-  return v;
-}
-
-// Aceita: "70", "70 kg", "70,5", "setenta e cinco", "setenta e cinco virgula cinco", "setenta e meio"
-function ptParseNumber(text) {
-  const raw = String(text || "").trim();
-  if (!raw) return null;
-
-  // 1) tenta número direto
-  const m = raw.match(/-?\d{1,4}(?:[.,]\d{1,2})?/);
-  if (m && m[0]) {
-    const num = Number(m[0].replace(",", "."));
-    if (Number.isFinite(num)) return num;
-  }
-
-  const t = normPt(raw);
-
-  if (t.includes("meio")) {
-    // tenta "X e meio"
-    const base = t.replace(/\bmeio\b/g, "").trim();
-    const baseInt = ptWordsToInt(base);
-    if (baseInt !== null) return baseInt + 0.5;
-    const only = ptWordsToInt("um");
-    if (only !== null && base === "") return 0.5;
-  }
-
-  // decimal por "virgula" ou "ponto"
-  const split = t.split(/\b(virgula|ponto)\b/);
-  if (split.length >= 3) {
-    const intPart = split[0].trim();
-    const fracPart = split.slice(2).join(" ").trim();
-
-    const iv = ptWordsToInt(intPart);
-    if (iv === null) return null;
-
-    // fração: se vierem unidades ("cinco" -> 5) tratamos como um dígito
-    const fracTokens = fracPart.split(/\s+/).filter(Boolean).slice(0, 4);
-    if (!fracTokens.length) return iv;
-
-    const digits = [];
-    for (const tok of fracTokens) {
-      const v = ptWordsToInt(tok);
-      if (v === null) return null;
-      if (v >= 0 && v <= 9) digits.push(String(v));
-      else return null;
+    if (hundreds[t] != null) {
+      current += hundreds[t];
+      continue;
     }
-    const frac = Number("0." + digits.join(""));
-    if (!Number.isFinite(frac)) return null;
-    return iv + frac;
-  }
-
-  // inteiro por extenso
-  const iv = ptWordsToInt(t);
-  if (iv !== null) return iv;
-
-  return null;
-}
-
-function extractNameDeterministic(transcricao) {
-  const original = String(transcricao || "").trim();
-  if (!original) return null;
-
-  // prioriza padrões explícitos
-  const t = original.replace(/\s+/g, " ").trim();
-
-  const patterns = [
-    /(?:nome\s*(?:completo)?\s*(?:e|:)?\s*)([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ\s.'-]{3,})/i,
-    /(?:meu\s+nome\s+(?:e|é)\s+)([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ\s.'-]{3,})/i,
-    /(?:chama[- ]se\s+)([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ\s.'-]{3,})/i
-  ];
-
-  for (const re of patterns) {
-    const m = t.match(re);
-    if (m && m[1]) {
-      let name = m[1].trim();
-      // corta antes de idade/peso se colar junto
-      name = name.split(/\b(idade|anos|peso|kg|quilo|quilos)\b/i)[0].trim();
-      // remove duplos espaços
-      name = name.replace(/\s+/g, " ").trim();
-      if (name.length >= 4) return name;
+    if (tens[t] != null) {
+      current += tens[t];
+      continue;
+    }
+    if (units[t] != null) {
+      current += units[t];
+      continue;
     }
   }
 
-  return null;
-}
-
-function extractAgeDeterministic(transcricao) {
-  const t = normPt(transcricao);
-
-  // 1) dígitos
-  let m = t.match(/\b(\d{1,3})\s*(?:anos|ano)\b/);
-  if (m && m[1]) {
-    const v = parseInt(m[1], 10);
-    if (Number.isFinite(v) && v >= 0 && v <= 130) return v;
-  }
-  m = t.match(/\bidade\s*(?:e|é|:|de)?\s*(\d{1,3})\b/);
-  if (m && m[1]) {
-    const v = parseInt(m[1], 10);
-    if (Number.isFinite(v) && v >= 0 && v <= 130) return v;
-  }
-
-  // 2) por extenso antes de "anos"/"ano"
-  // captura até 6 palavras antes de "anos"
-  m = t.match(/\b([a-z\s]{2,60})\s*(?:anos|ano)\b/);
-  if (m && m[1]) {
-    const seg = m[1].trim().split(/\s+/).slice(-6).join(" ");
-    const v2 = ptParseNumber(seg);
-    if (Number.isFinite(v2)) {
-      const v = Math.round(v2);
-      if (v >= 0 && v <= 130) return v;
-    }
-  }
-
-  return null;
-}
-
-function extractWeightDeterministic(transcricao) {
-  const t = normPt(transcricao);
-
-  // 1) dígitos com unidade
-  let m = t.match(/\b(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:kg|quilo|quilos|kilo|kilos)\b/);
-  if (m && m[1]) {
-    const v = Number(m[1].replace(",", "."));
-    if (Number.isFinite(v) && v > 0 && v < 500) return Math.round(v * 10) / 10;
-  }
-
-  // 2) "peso X"
-  m = t.match(/\bpeso\s*(?:e|é|:|de)?\s*(\d{1,3}(?:[.,]\d{1,2})?)(?:\s*(?:kg|quilo|quilos|kilo|kilos))?\b/);
-  if (m && m[1]) {
-    const v = Number(m[1].replace(",", "."));
-    if (Number.isFinite(v) && v > 0 && v < 500) return Math.round(v * 10) / 10;
-  }
-
-  // 3) por extenso antes de "quilos"
-  m = t.match(/\b([a-z\s]{2,80})\s*(?:kg|quilo|quilos|kilo|kilos)\b/);
-  if (m && m[1]) {
-    const seg = m[1].trim().split(/\s+/).slice(-8).join(" ");
-    const v2 = ptParseNumber(seg);
-    if (Number.isFinite(v2) && v2 > 0 && v2 < 500) return Math.round(v2 * 10) / 10;
-  }
-
-  return null;
+  const out = total + current;
+  return Number.isFinite(out) && out > 0 ? out : null;
 }
 
 function extractPatientDataDeterministic(transcricao) {
-  const nome = extractNameDeterministic(transcricao);
-  const idade = extractAgeDeterministic(transcricao);
-  const peso_kg = extractWeightDeterministic(transcricao);
-  return { nome: nome || null, idade: (Number.isFinite(idade) ? idade : null), peso_kg: (Number.isFinite(peso_kg) ? peso_kg : null) };
-}
+  const t = String(transcricao || "").trim();
+  if (!t) return { nome: null, idade: null, peso_kg: null };
 
-function coerceAge(value) {
-  if (typeof value === "number" && Number.isFinite(value)) return Math.round(value);
-  if (typeof value !== "string") return null;
-  const t = value.trim();
-  if (!t) return null;
-  const n = ptParseNumber(t);
-  if (Number.isFinite(n)) return Math.round(n);
-  return null;
-}
+  // NOME: pega o ÚLTIMO match, pois o ASR costuma repetir a frase até completar.
+  const nameRegexes = [
+    /(?:\bnome(?:\s+completo)?\s*(?:e|eh|é|:)?\s*)([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s'.-]{2,120})/gi,
+    /(?:\bchamo[- ]?me\s*)([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s'.-]{2,120})/gi,
+    /(?:\beu\s+sou\s*)([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s'.-]{2,120})/gi
+  ];
 
-function coerceWeight(value) {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value !== "string") return null;
-  const t = value.trim();
-  if (!t) return null;
-  const n = ptParseNumber(t);
-  if (Number.isFinite(n)) return Math.round(n * 10) / 10;
-  return null;
-}
+  let nome = null;
+  for (const rx of nameRegexes) {
+    let m;
+    while ((m = rx.exec(t)) !== null) {
+      let cand = String(m[1] || "").trim();
 
-// ======================================================================
-// ROTA 4.2 – EXTRAIR DADOS DO PACIENTE (NOME / IDADE / PESO) (NOVA)
-// ======================================================================
+      // corta se emendar com idade/peso e remove "seu nome e" repetido
+      cand = cand
+        .replace(/\b(seu|a|o)\s+nome\s+(e|eh|é)\b/gi, " ")
+        .replace(/\bidade\b.*$/i, "")
+        .replace(/\banos?\b.*$/i, "")
+        .replace(/\bpeso\b.*$/i, "")
+        .replace(/\bkg\b.*$/i, "")
+        .replace(/\bquilos?\b.*$/i, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      const parts = cand.split(" ").filter(Boolean);
+      if (parts.length >= 2 && /[A-Za-zÀ-ÿ]/.test(cand)) {
+        nome = cand;
+      }
+    }
+  }
+
+  // IDADE (anos)
+  let idade = null;
+  const idadeMatches = [];
+
+  for (const rx of [
+    /(?:\bidade\s*(?:e|eh|é|:)?\s*)(\d{1,3})\b/gi,
+    /\b(\d{1,3})\s*(?:anos?|ano)\b/gi
+  ]) {
+    let m;
+    while ((m = rx.exec(t)) !== null) {
+      const n = parseInt(m[1], 10);
+      if (Number.isFinite(n)) idadeMatches.push(n);
+    }
+  }
+
+  const idadeWordsRx = /([A-Za-zÀ-ÿ\s-]{2,50})\s*(?:anos?|ano)\b/gi;
+  let mw;
+  while ((mw = idadeWordsRx.exec(t)) !== null) {
+    const n = ptNumberWordsToInt(mw[1]);
+    if (Number.isFinite(n)) idadeMatches.push(n);
+  }
+
+  if (idadeMatches.length) {
+    const cand = idadeMatches[idadeMatches.length - 1];
+    if (cand >= 0 && cand <= 130) idade = cand;
+  }
+
+  // PESO (kg)
+  let peso_kg = null;
+  const pesoMatches = [];
+
+  const pesoDigitRx = /\b(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:kg|quilo|quilos)\b/gi;
+  let mp;
+  while ((mp = pesoDigitRx.exec(t)) !== null) {
+    const n = parseFloat(String(mp[1]).replace(",", "."));
+    if (Number.isFinite(n)) pesoMatches.push(n);
+  }
+
+  const pesoAfterWordRx = /\bpeso\s*(?:e|eh|é|:)?\s*(\d{1,3}(?:[.,]\d{1,2})?)\b/gi;
+  while ((mp = pesoAfterWordRx.exec(t)) !== null) {
+    const n = parseFloat(String(mp[1]).replace(",", "."));
+    if (Number.isFinite(n)) pesoMatches.push(n);
+  }
+
+  const pesoWordsRx = /([A-Za-zÀ-ÿ\s-]{2,60})\s*(?:kg|quilo|quilos)\b/gi;
+  while ((mp = pesoWordsRx.exec(t)) !== null) {
+    const n = ptNumberWordsToInt(mp[1]);
+    if (Number.isFinite(n)) pesoMatches.push(n);
+  }
+
+  if (pesoMatches.length) {
+    const cand = pesoMatches[pesoMatches.length - 1];
+    if (cand > 0 && cand < 500) peso_kg = Math.round(cand * 10) / 10;
+  }
+
+  return { nome: nome || null, idade, peso_kg };
+}
 
 app.post("/api/extrair-dados-paciente", requirePaidOrAdmin, async(req, res) => {
   try {
@@ -3384,20 +3307,18 @@ app.post("/api/extrair-dados-paciente", requirePaidOrAdmin, async(req, res) => {
 
     const safeTranscricao = normalizeText(transcricao, 4000);
 
-    // 1) Tenta extração determinística (regex + números por extenso)
+    // 1) Tentativa determinística (mais confiável com fala real e ASR repetindo)
     const det = extractPatientDataDeterministic(safeTranscricao);
-    let nome = det?.nome || null;
-    let idade = (typeof det?.idade === "number" && Number.isFinite(det.idade)) ? Math.round(det.idade) : null;
-    let peso_kg = (typeof det?.peso_kg === "number" && Number.isFinite(det.peso_kg)) ? (Math.round(det.peso_kg * 10) / 10) : null;
 
-    // 2) Se faltar algo, faz fallback com o modelo, mas sem confiar cegamente:
-    //    - aceita números como string e reconverte
-    //    - valida faixas plausíveis
-    const needFallback = (!nome || idade === null || peso_kg === null);
+    // Se conseguiu os 3 campos, retorna já.
+    if (det.nome && det.idade != null && det.peso_kg != null) {
+      return res.json(det);
+    }
 
-    if (needFallback) {
-      const prompt = `
-Você é um enfermeiro humano extraindo dados objetivos de uma fala curta.
+    // 2) Fallback para o modelo somente para preencher lacunas.
+    // Importante: aceitar idade/peso como string e converter.
+    const prompt = `
+Você é um profissional de saúde humano extraindo dados objetivos de uma fala curta.
 Extraia somente se estiver explícito.
 
 Formato de saída: JSON estrito:
@@ -3410,72 +3331,52 @@ Formato de saída: JSON estrito:
 Regras:
 - Se não houver certeza, use null.
 - Idade em anos (inteiro).
-- Peso em kg (número).
+- Peso em kg (número, pode ter decimal).
 - Sem texto fora do JSON.
 
-Fala (texto bruto):
-<<<
-${safeTranscricao}
->>>
+Fala:
+"""${safeTranscricao}"""
 `;
 
-      let data = null;
-      try {
-        data = await callOpenAIJson(prompt);
-      } catch (e) {
-        data = null;
-      }
+    let data = null;
+    try { data = await callOpenAIJson(prompt); } catch { data = null; }
 
-      if (data && typeof data === "object") {
-        if (!nome && typeof data?.nome === "string") {
-          const n = String(data.nome || "").trim();
-          if (n) nome = n;
-        }
-
-        if (idade === null) {
-          const v = coerceAge(data?.idade);
-          if (typeof v === "number" && Number.isFinite(v)) idade = v;
-        }
-
-        if (peso_kg === null) {
-          const v = coerceWeight(data?.peso_kg);
-          if (typeof v === "number" && Number.isFinite(v)) peso_kg = v;
-        }
-      }
-    }
-
-    // 3) Sanitização e validações finais
-    if (typeof nome === "string") {
-      nome = nome.replace(/\s+/g, " ").trim();
+    // Nome: prioriza determinístico; senão tenta do modelo e limpa.
+    let nome = det.nome;
+    if (!nome && typeof data?.nome === "string") {
+      const fromModel = String(data.nome).trim();
+      const det2 = extractPatientDataDeterministic(fromModel);
+      nome = det2.nome || (fromModel ? fromModel.replace(/\s+/g, " ").trim() : null);
       if (nome === "") nome = null;
-      // corta caso tenha "idade/peso" grudados
-      if (nome) {
-        const cut = nome.split(/\b(idade|anos|peso|kg|quilo|quilos|kilo|kilos)\b/i)[0].trim();
-        nome = cut || nome;
+    }
+
+    // Idade: prioriza determinístico; senão converte
+    let idade = det.idade;
+    if (idade == null) {
+      if (typeof data?.idade === "number" && Number.isFinite(data.idade)) {
+        idade = Math.round(data.idade);
+      } else if (typeof data?.idade === "string") {
+        const n = ptNumberWordsToInt(data.idade);
+        if (Number.isFinite(n)) idade = n;
       }
-    } else {
-      nome = null;
+      if (idade != null && !(idade >= 0 && idade <= 130)) idade = null;
     }
 
-    if (typeof idade === "number" && Number.isFinite(idade)) {
-      idade = Math.round(idade);
-      if (idade < 0 || idade > 130) idade = null;
-    } else {
-      idade = null;
-    }
-
-    if (typeof peso_kg === "number" && Number.isFinite(peso_kg)) {
-      const v = Number(peso_kg);
-      if (v <= 0 || v >= 500) {
-        peso_kg = null;
-      } else {
-        peso_kg = Math.round(v * 10) / 10;
+    // Peso: prioriza determinístico; senão converte
+    let peso_kg = det.peso_kg;
+    if (peso_kg == null) {
+      if (typeof data?.peso_kg === "number" && Number.isFinite(data.peso_kg)) {
+        const v = Number(data.peso_kg);
+        if (v > 0 && v < 500) peso_kg = Math.round(v * 10) / 10;
+      } else if (typeof data?.peso_kg === "string") {
+        const s = String(data.peso_kg);
+        const m = s.match(/(\d{1,3}(?:[.,]\d{1,2})?)/);
+        const v = m ? parseFloat(m[1].replace(",", ".")) : ptNumberWordsToInt(s);
+        if (Number.isFinite(v) && v > 0 && v < 500) peso_kg = Math.round(v * 10) / 10;
       }
-    } else {
-      peso_kg = null;
     }
 
-    return res.json({ nome, idade, peso_kg });
+    return res.json({ nome: nome || null, idade: idade ?? null, peso_kg: peso_kg ?? null });
   } catch (e) {
     console.error(e);
     return res.json({ nome: null, idade: null, peso_kg: null });
