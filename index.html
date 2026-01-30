@@ -3035,7 +3035,7 @@
           </div>
         </div>
 
-        <div id="handoffEssentialRow" class="patientinfo-row hidden" style="margin-top: 10px;">
+        <div id="handoffEssentialRow" class="patientinfo-row" style="margin-top: 10px;">
           <button id="handoffEssentialBtn" class="small-record-btn" type="button">Perguntas essenciais para a passagem de plantão</button>
           <div id="handoffEssentialTimer" class="mini-timer">00:00</div>
           <div id="handoffEssentialStatus" class="mini-status"></div>
@@ -5498,7 +5498,6 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
     // ============================
     const patientInfoBtn = document.getElementById("patientInfoBtn");
     const handoffEssentialBtn = document.getElementById("handoffEssentialBtn");
-    const handoffEssentialRow = document.getElementById("handoffEssentialRow");
     const handoffEssentialPanel = document.getElementById("handoffEssentialPanel");
     const handoffEssentialQuestionsList = document.getElementById("handoffEssentialQuestionsList");
     const handoffEssentialCustomQA = document.getElementById("handoffEssentialCustomQA");
@@ -5507,24 +5506,6 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
     const patientInfoTimerEl = document.getElementById("patientInfoTimer");
     const patientInfoStatus = document.getElementById("patientInfoStatus");
     const patientInfoSummary = document.getElementById("patientInfoSummary");
-
-    function updateHandoffEssentialRowVisibility() {
-      const hasPassagem = isMeaningfulText(handoffOutput ? handoffOutput.value : "");
-      setVisible(handoffEssentialRow, hasPassagem);
-
-      if (!hasPassagem) {
-        // Garante estado inicial quando ainda não há passagem gerada
-        handoffEssentialActive = false;
-        handoffEssentialClearUI();
-        handoffEssentialResetTimer();
-        if (handoffEssentialPanel) handoffEssentialPanel.classList.add("hidden");
-        if (handoffEssentialBtn) handoffEssentialBtn.textContent = "Perguntas essenciais para a passagem de plantão";
-        if (handoffEssentialStatus) {
-          handoffEssentialStatus.classList.remove("loading-dot");
-          handoffEssentialStatus.textContent = "";
-        }
-      }
-    }
 
     let patientContext = { nome: null, idade: null, peso_kg: null };
 
@@ -5714,7 +5695,6 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       // Primeiro clique: abre, inicia timer e sugere perguntas
       if (!handoffEssentialActive) {
         handoffEssentialActive = true;
-        if (handoffEssentialBtn) handoffEssentialBtn.textContent = "Encerrar e atualizar passagem";
         handoffEssentialClearUI();
         handoffEssentialResetTimer();
         handoffEssentialStartTimer();
@@ -5755,15 +5735,12 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
           handoffOutput.value = updated;
           handoffLastGeneratedText = updated;
         }
-        updateHandoffEssentialRowVisibility();
 
         handoffEssentialStopTimer();
         handoffEssentialResetTimer();
         handoffEssentialActive = false;
         handoffEssentialClearUI();
         if (handoffEssentialPanel) handoffEssentialPanel.classList.add("hidden");
-        if (handoffEssentialBtn) handoffEssentialBtn.textContent = "Perguntas essenciais para a passagem de plantão";
-        if (handoffEssentialBtn) handoffEssentialBtn.textContent = "Perguntas essenciais para a passagem de plantão";
 
         if (handoffEssentialStatus) {
           handoffEssentialStatus.textContent = updated ? "Passagem de plantão atualizada." : "Sem atualização disponível.";
@@ -6152,16 +6129,14 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
           await startPatientInfoRecording();
         }
       });
-    }
+    
 
     if (handoffEssentialBtn) {
-      handoffEssentialBtn.addEventListener("click", async () => {
-        await onHandoffEssentialBtnClick();
+      handoffEssentialBtn.addEventListener("click", () => {
+        onHandoffEssentialBtnClick();
       });
     }
-
-    // Inicialmente, o botão de perguntas essenciais da passagem só deve aparecer após gerar a passagem
-    updateHandoffEssentialRowVisibility();
+}
 
     const reportRecordBtn = document.getElementById("reportRecordBtn");
     const reportStatus = document.getElementById("reportStatus");
@@ -7142,7 +7117,6 @@ if (matchedItem) {
       if (handoffEssentialStatus) {
         handoffEssentialStatus.classList.remove("loading-dot");
         handoffEssentialStatus.textContent = "";
-      updateHandoffEssentialRowVisibility();
       }
     }
 
@@ -7358,7 +7332,6 @@ if (!textoFinal) {
 
 if (handoffOutput) handoffOutput.value = textoFinal || "";
 handoffLastGeneratedText = textoFinal || "";
-updateHandoffEssentialRowVisibility();
 if (handoffStatus) {
   handoffStatus.textContent = textoFinal ? "Passagem de plantão gerada." : "Sem conteúdo disponível.";
   handoffStatus.classList.remove("loading-dot");
