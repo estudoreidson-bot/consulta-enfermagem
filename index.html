@@ -5506,6 +5506,39 @@ const patientInfoTimerEl = document.getElementById("patientInfoTimer");
     let patientInfoRecognition = null;
     let patientInfoIsRecording = false;
     let patientInfoFinalTranscript = "";
+    let patientInfoFinalSegmentsSeen = new Set();
+    let patientInfoLastInterim = "";
+    let patientInfoIsStarting = false;
+    let patientInfoIsStopping = false;
+
+    function waitMs(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function stopSpeechRecognitionSafely(rec) {
+      if (!rec) return;
+      return new Promise((resolve) => {
+        const prevEnd = rec.onend;
+        let done = false;
+
+        const cleanup = () => {
+          if (done) return;
+          done = true;
+          try { rec.onend = prevEnd; } catch (e) {}
+          resolve();
+        };
+
+        try {
+          rec.onend = (ev) => {
+            try { if (typeof prevEnd === "function") prevEnd(ev); } finally { cleanup(); }
+          };
+        } catch (e) {}
+
+        try { rec.stop(); } catch (e) { cleanup(); }
+        setTimeout(cleanup, 700);
+      });
+    }
+
     let patientInfoTimerInterval = null;
     let patientInfoStartTime = null;
     let patientInfoAccumulatedSeconds = 0;
@@ -5542,57 +5575,6 @@ const patientInfoTimerEl = document.getElementById("patientInfoTimer");
     }
 
     
-
-
-function parseNumberFromText(val) {
-  if (val === null || val === undefined) return null;
-  if (typeof val === "number" && Number.isFinite(val)) return val;
-  const t = String(val).toLowerCase().replace(",", ".").trim();
-  const m = t.match(/(\d+(?:\.\d+)?)/);
-  if (!m) return null;
-  const n = Number(m[1]);
-  return Number.isFinite(n) ? n : null;
-}
-
-function cleanExtractedName(name) {
-  let s = String(name || "").trim();
-  if (!s) return "";
-  s = s.replace(/\s+/g, " ").trim();
-  // remove common leading phrases
-  s = s.replace(/^(seu|o|a)?\s*nome(\s+completo)?\s*(é|eh)\s+/i, "");
-  // remove repeated occurrences inside the string
-  s = s.replace(/\bseu\s+nome\s+(é|eh)\b/gi, "");
-  s = s.replace(/\s+/g, " ").trim();
-  return s;
-}
-
-// Dedupe: keep the most informative segments when the browser repeats partial finals
-function pushFinalSegment(segments, txt) {
-  const s = String(txt || "").replace(/\s+/g, " ").trim();
-  if (!s) return;
-
-  if (!segments.length) {
-    segments.push(s);
-    return;
-  }
-
-  const last = segments[segments.length - 1];
-
-  // If same, ignore
-  if (s === last) return;
-
-  // If new segment contains the last one, replace last with new (more complete)
-  if (s.includes(last)) {
-    segments[segments.length - 1] = s;
-    return;
-  }
-
-  // If last contains new, ignore (new is less complete)
-  if (last.includes(s)) return;
-
-  segments.push(s);
-}
-
 
 function formatPatientSummary(ctx) {
       const parts = [];
@@ -5631,25 +5613,63 @@ function formatPatientSummary(ctx) {
       patientInfoRecognition.lang = "pt-BR";
       patientInfoRecognition.continuous = true;
       patientInfoRecognition.interimResults = true;
+      patientInfoRecognition.maxAlternatives = 1;
+
+      patientInfoRecognition.onstart = () => {
+        patientInfoLastInterim = "";
+      };
 
       patientInfoRecognition.onresult = (event) => {
-        // Alguns navegadores repetem trechos nos resultados finais.
-        // Guardamos segmentos finais e mantemos o mais completo.
-        if (!window.__patientInfoFinalSegments) window.__patientInfoFinalSegments = [];
-        const segs = window.__patientInfoFinalSegments;
+        let interim = "";
+        try {
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const res = event.results[i];
+            const txt = (res && res[0] && res[0].transcript) ? String(res[0].transcript) : "";
+            if (!txt) continue;
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const txt = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            pushFinalSegment(segs, txt);
+            if (res.isFinal) {
+              const clean = txt.replace(/\s+/g, " ").trim();
+              if (!clean) continue;
+              const key = clean.toLowerCase();
+              if (patientInfoFinalSegmentsSeen.has(key)) continue;
+              patientInfoFinalSegmentsSeen.add(key);
+              patientInfoFinalTranscript += clean + " ";
+            } else {
+              interim += txt;
+            }
+          }
+        } catch (e) {}
+
+        patientInfoLastInterim = String(interim || "").replace(/\s+/g, " ").trim();
+
+        if (patientInfoIsRecording && patientInfoStatus) {
+          const preview = (patientInfoFinalTranscript + " " + patientInfoLastInterim).trim();
+          if (preview) {
+            const tail = preview.length > 140 ? ("..." + preview.slice(-140)) : preview;
+            patientInfoStatus.textContent = "Gravando... " + tail;
           }
         }
-
-        patientInfoFinalTranscript = segs.join(" ").trim() + " ";
       };
 
       patientInfoRecognition.onerror = (e) => {
         console.warn("Erro no reconhecimento (dados do paciente):", e);
+        const err = (e && e.error) ? String(e.error) : "erro";
+        patientInfoIsRecording = false;
+        patientInfoIsStopping = false;
+        stopPatientInfoTimer();
+        if (patientInfoBtn) patientInfoBtn.textContent = "Coletar Nome, Idade e Peso";
+        if (patientInfoStatus) {
+          patientInfoStatus.classList.remove("loading-dot");
+          patientInfoStatus.textContent = "Falha no reconhecimento de voz (" + err + "). Verifique permissão do microfone e tente novamente.";
+        }
+      };
+
+      // Alguns celulares encerram o reconhecimento automaticamente após silêncio.
+      // Se isso acontecer durante a coleta, processa automaticamente o que já foi capturado.
+      patientInfoRecognition.onend = () => {
+        if (patientInfoIsStopping) return;
+        if (!patientInfoIsRecording) return;
+        stopPatientInfoRecordingAndApply();
       };
 
       return true;
@@ -5900,19 +5920,27 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
 
     async function startPatientInfoRecording() {
       if (!patientInfoBtn) return;
+      if (patientInfoIsStarting) return;
+      patientInfoIsStarting = true;
 
       patientInfoStatus.textContent = "Gravando... Dite nome completo, idade e peso.";
       patientInfoStatus.classList.add("loading-dot");
       patientInfoBtn.textContent = "Finalizar nome/idade/peso";
 
       patientInfoFinalTranscript = "";
-      window.__patientInfoFinalSegments = [];
+      patientInfoFinalSegmentsSeen = new Set();
+      patientInfoLastInterim = "";
+      patientInfoIsStopping = false;
+
       resetPatientInfoTimer();
       startPatientInfoTimer();
 
-      try { if (recognition) recognition.stop(); } catch (e) {}
-      try { if (questionsRecognition) questionsRecognition.stop(); } catch (e) {}
-      try { if (reportRecognition) reportRecognition.stop(); } catch (e) {}
+      try { await stopSpeechRecognitionSafely(recognition); } catch (e) {}
+      try { await stopSpeechRecognitionSafely(questionsRecognition); } catch (e) {}
+      try { await stopSpeechRecognitionSafely(reportRecognition); } catch (e) {}
+
+      // Evita conflito de estado entre instâncias do SpeechRecognition em alguns navegadores móveis
+      await waitMs(250);
 
       if (!patientInfoRecognition) {
         const ok = initPatientInfoSpeech();
@@ -5921,6 +5949,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
           patientInfoStatus.textContent = "Navegador sem suporte a reconhecimento de voz.";
           patientInfoBtn.textContent = "Coletar Nome, Idade e Peso";
           stopPatientInfoTimer();
+          patientInfoIsStarting = false;
           return;
         }
       }
@@ -5930,10 +5959,20 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         patientInfoRecognition.start();
       } catch (e) {
         console.warn("Erro ao iniciar reconhecimento (dados do paciente):", e);
+        patientInfoIsRecording = false;
+        patientInfoStatus.classList.remove("loading-dot");
+        patientInfoStatus.textContent = "Não foi possível iniciar o reconhecimento de voz. Verifique permissão do microfone e tente novamente.";
+        patientInfoBtn.textContent = "Coletar Nome, Idade e Peso";
+        stopPatientInfoTimer();
+      } finally {
+        patientInfoIsStarting = false;
       }
     }
 
     async function stopPatientInfoRecordingAndApply() {
+      if (patientInfoIsStopping) return;
+      patientInfoIsStopping = true;
+
       patientInfoIsRecording = false;
       stopPatientInfoTimer();
 
@@ -5947,6 +5986,7 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
       if (!transcricaoCurta) {
         patientInfoStatus.classList.remove("loading-dot");
         patientInfoStatus.textContent = "Nenhuma fala foi capturada.";
+        patientInfoIsStopping = false;
         return;
       }
 
@@ -5965,25 +6005,16 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
           console.error("Erro HTTP do backend (dados do paciente):", resp.status, txt);
           patientInfoStatus.classList.remove("loading-dot");
           patientInfoStatus.textContent = "Não foi possível extrair os dados do paciente.";
+          patientInfoIsStopping = false;
           return;
         }
 
         const data = await resp.json();
-        patientContext = (() => {
-          const nomeRaw = (data?.nome ?? null);
-          const idadeRaw = (data?.idade ?? null);
-          const pesoRaw = (data?.peso_kg ?? null);
-
-          const nome = nomeRaw ? cleanExtractedName(nomeRaw) : null;
-
-          const idadeNum = parseNumberFromText(idadeRaw);
-          const idade = (idadeNum !== null) ? `${Math.round(idadeNum)} anos` : (idadeRaw ? String(idadeRaw).trim() : null);
-
-          const pesoNum = parseNumberFromText(pesoRaw);
-          const peso_kg = (pesoNum !== null) ? pesoNum : null;
-
-          return { nome, idade, peso_kg };
-        })();
+        patientContext = {
+          nome: (data?.nome || null),
+          idade: (data?.idade || null),
+          peso_kg: (typeof data?.peso_kg === "number" && Number.isFinite(data.peso_kg)) ? data.peso_kg : null
+        };
 
         const resumo = formatPatientSummary(patientContext);
         patientInfoSummary.textContent = resumo ? resumo : "Dados do paciente não identificados com segurança.";
@@ -5995,6 +6026,8 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         console.error(e);
         patientInfoStatus.classList.remove("loading-dot");
         patientInfoStatus.textContent = "Falha de rede ou backend ao extrair dados do paciente.";
+      } finally {
+        patientInfoIsStopping = false;
       }
     }
 
