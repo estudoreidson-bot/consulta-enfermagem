@@ -929,74 +929,6 @@
       color: #333;
       white-space: pre-wrap;
     }
-    .handoff-essential-panel {
-      margin-top: 12px;
-      padding: 12px;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 12px;
-      background: rgba(0,0,0,0.10);
-    }
-
-    .handoff-essential-title {
-      font-weight: 700;
-      margin-bottom: 10px;
-    }
-
-    .handoff-essential-questions {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .handoff-essential-q {
-      padding: 10px;
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 10px;
-      background: rgba(0,0,0,0.12);
-    }
-
-    .handoff-essential-qtext {
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .handoff-essential-ans {
-      width: 100%;
-      min-height: 52px;
-      resize: vertical;
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.12);
-      padding: 10px;
-      background: rgba(0,0,0,0.20);
-      color: inherit;
-      font-family: inherit;
-      font-size: 14px;
-      line-height: 1.3;
-    }
-
-    .handoff-essential-custom-label {
-      font-weight: 600;
-      margin: 6px 0 6px 0;
-    }
-
-    .handoff-essential-custom-text {
-      width: 100%;
-      min-height: 80px;
-      resize: vertical;
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.12);
-      padding: 10px;
-      background: rgba(0,0,0,0.20);
-      color: inherit;
-      font-family: inherit;
-      font-size: 14px;
-      line-height: 1.3;
-    }
-
-
-
-  
     #patientInfoBtn {
       background: #b00020;
       border-color: #b00020;
@@ -3026,20 +2958,7 @@
           <div id="patientInfoStatus" class="mini-status"></div>
         </div>
         <div id="patientInfoSummary" class="patient-summary"></div>
-        <div id="handoffEssentialPanel" class="handoff-essential-panel hidden">
-          <div class="handoff-essential-title">Perguntas essenciais para a passagem de plantão</div>
-          <div id="handoffEssentialQuestionsList" class="handoff-essential-questions"></div>
-          <div class="handoff-essential-custom">
-            <div class="handoff-essential-custom-label">Perguntas e respostas adicionais (opcional)</div>
-            <textarea id="handoffEssentialCustomQA" class="handoff-essential-custom-text" placeholder="Digite aqui perguntas e respostas adicionais que desejar registrar (uma por linha, se preferir)."></textarea>
-          </div>
-        </div>
-
-        <div id="handoffEssentialRow" class="patientinfo-row" style="margin-top: 10px;">
-          <button id="handoffEssentialBtn" class="small-record-btn" type="button">Perguntas essenciais para a passagem de plantão</button>
-          <div id="handoffEssentialTimer" class="mini-timer">00:00</div>
-          <div id="handoffEssentialStatus" class="mini-status"></div>
-        </div>
+        
 
       </div>
 
@@ -5030,11 +4949,6 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     let handoffGuidanceSilenceTimer = null;
     let handoffGuidanceLastChunkTs = 0;
 
-    // Perguntas essenciais para a passagem de plantão (após geração)
-    let handoffEssentialActive = false;
-    let handoffEssentialStartTime = null;
-    let handoffEssentialAccumulatedSeconds = 0;
-    let handoffEssentialTimerInterval = null;
     let handoffLastGeneratedText = "";
     let handoffLastGeneratedTranscript = "";
 
@@ -5092,19 +5006,9 @@ const recordBtn = document.getElementById("recordBtn");
       const triageReportPanelEl = document.getElementById("triageReportPanel");
       const handoffPanelEl = document.getElementById("handoffPanel");
       const soapNursingPanelEl = document.getElementById("soapNursingResultsPanel");
-      const handoffEssentialRowEl = document.getElementById("handoffEssentialRow");
-      const handoffEssentialPanelEl2 = document.getElementById("handoffEssentialPanel");
-
-      if (patientInfoPanelEl) patientInfoPanelEl.classList.toggle("hidden", triageMode || docsMode);
-      if (handoffEssentialRowEl) handoffEssentialRowEl.classList.toggle("hidden", !handoffMode);
-      if (!handoffMode && handoffEssentialPanelEl2) handoffEssentialPanelEl2.classList.add("hidden");
-      if (!handoffMode) {
-        handoffEssentialActive = false;
-        handoffEssentialStartTime = null;
-        handoffEssentialAccumulatedSeconds = 0;
-        if (handoffEssentialTimerInterval) clearInterval(handoffEssentialTimerInterval);
-        handoffEssentialTimerInterval = null;
-      }
+if (patientInfoPanelEl) patientInfoPanelEl.classList.toggle("hidden", triageMode || docsMode);
+if (!handoffMode) {
+}
 
       if (triageReportPanelEl) triageReportPanelEl.classList.toggle("hidden", !triageMode);
       if (handoffPanelEl) handoffPanelEl.classList.toggle("hidden", !handoffMode);
@@ -5497,13 +5401,7 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
     // MÓDULO: Coletar dados essenciais (NOVO)
     // ============================
     const patientInfoBtn = document.getElementById("patientInfoBtn");
-    const handoffEssentialBtn = document.getElementById("handoffEssentialBtn");
-    const handoffEssentialPanel = document.getElementById("handoffEssentialPanel");
-    const handoffEssentialQuestionsList = document.getElementById("handoffEssentialQuestionsList");
-    const handoffEssentialCustomQA = document.getElementById("handoffEssentialCustomQA");
-    const handoffEssentialTimerEl = document.getElementById("handoffEssentialTimer");
-    const handoffEssentialStatus = document.getElementById("handoffEssentialStatus");
-    const patientInfoTimerEl = document.getElementById("patientInfoTimer");
+const patientInfoTimerEl = document.getElementById("patientInfoTimer");
     const patientInfoStatus = document.getElementById("patientInfoStatus");
     const patientInfoSummary = document.getElementById("patientInfoSummary");
 
@@ -5547,216 +5445,9 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       patientInfoTimerInterval = null;
     }
 
-    function handoffEssentialResetTimer() {
-      handoffEssentialAccumulatedSeconds = 0;
-      handoffEssentialStartTime = null;
-      if (handoffEssentialTimerInterval) clearInterval(handoffEssentialTimerInterval);
-      handoffEssentialTimerInterval = null;
-      if (handoffEssentialTimerEl) handoffEssentialTimerEl.textContent = "00:00";
-    }
+    
 
-    function handoffEssentialUpdateTimer() {
-      if (!handoffEssentialStartTime) return;
-      const now = Date.now();
-      const seconds = handoffEssentialAccumulatedSeconds + Math.floor((now - handoffEssentialStartTime) / 1000);
-      const m = ("0" + Math.floor(seconds / 60)).slice(-2);
-      const s = ("0" + (seconds % 60)).slice(-2);
-      if (handoffEssentialTimerEl) handoffEssentialTimerEl.textContent = `${m}:${s}`;
-    }
-
-    function handoffEssentialStartTimer() {
-      handoffEssentialStartTime = Date.now();
-      if (handoffEssentialTimerInterval) clearInterval(handoffEssentialTimerInterval);
-      handoffEssentialTimerInterval = setInterval(handoffEssentialUpdateTimer, 250);
-    }
-
-    function handoffEssentialStopTimer() {
-      if (!handoffEssentialStartTime) return;
-      const now = Date.now();
-      handoffEssentialAccumulatedSeconds += Math.floor((now - handoffEssentialStartTime) / 1000);
-      handoffEssentialStartTime = null;
-      if (handoffEssentialTimerInterval) clearInterval(handoffEssentialTimerInterval);
-      handoffEssentialTimerInterval = null;
-    }
-
-    function handoffEssentialClearUI() {
-      if (handoffEssentialQuestionsList) handoffEssentialQuestionsList.innerHTML = "";
-      if (handoffEssentialCustomQA) handoffEssentialCustomQA.value = "";
-    }
-
-    function handoffEssentialRenderQuestions(perguntas) {
-      if (!handoffEssentialQuestionsList) return;
-      handoffEssentialQuestionsList.innerHTML = "";
-
-      const arr = Array.isArray(perguntas) ? perguntas : [];
-      if (!arr.length) {
-        const empty = document.createElement("div");
-        empty.className = "mini-status";
-        empty.textContent = "Nenhuma pergunta sugerida no momento.";
-        handoffEssentialQuestionsList.appendChild(empty);
-        return;
-      }
-
-      arr.slice(0, 8).forEach((q, idx) => {
-        const wrap = document.createElement("div");
-        wrap.className = "handoff-essential-q";
-
-        const qt = document.createElement("div");
-        qt.className = "handoff-essential-qtext";
-        qt.textContent = String(q || "").trim() || `Pergunta ${idx + 1}`;
-
-        const ans = document.createElement("textarea");
-        ans.className = "handoff-essential-ans";
-        ans.placeholder = "Resposta (se disponível)";
-        ans.dataset.question = String(q || "").trim();
-
-        wrap.appendChild(qt);
-        wrap.appendChild(ans);
-        handoffEssentialQuestionsList.appendChild(wrap);
-      });
-    }
-
-    function handoffEssentialCollectQA() {
-      const lines = [];
-
-      if (handoffEssentialQuestionsList) {
-        const answers = handoffEssentialQuestionsList.querySelectorAll("textarea.handoff-essential-ans");
-        if (answers && answers.length) {
-          answers.forEach((ta) => {
-            const q = String(ta?.dataset?.question || "").trim();
-            const a = String(ta?.value || "").trim();
-            if (q && a) {
-              lines.push(`Pergunta: ${q}`);
-              lines.push(`Resposta: ${a}`);
-            }
-          });
-        }
-      }
-
-      const custom = String(handoffEssentialCustomQA?.value || "").trim();
-      if (custom) {
-        lines.push("");
-        lines.push("Perguntas e respostas adicionais:");
-        lines.push(custom);
-      }
-
-      return lines.join("\n").trim();
-    }
-
-    async function handoffEssentialFetchQuestions() {
-      const passagem = String(handoffOutput?.value || "").trim();
-      if (!passagem) return [];
-
-      const resp = await fetch(BACKEND_URL + "/api/perguntas-essenciais-passagem-plantao", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ passagem_plantao: passagem })
-      });
-
-      if (!resp.ok) return [];
-      const data = await resp.json().catch(() => ({}));
-      return Array.isArray(data?.perguntas) ? data.perguntas : [];
-    }
-
-    async function handoffEssentialUpdatePassagem() {
-      const passagemAtual = String(handoffOutput?.value || "").trim();
-      const qa = handoffEssentialCollectQA();
-
-      const resp = await fetch(BACKEND_URL + "/api/atualizar-passagem-plantao", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          passagem_plantao_atual: passagemAtual,
-          complementos: qa,
-          transcricao_base: handoffLastGeneratedTranscript || ""
-        })
-      });
-
-      if (!resp.ok) {
-        const t = await resp.text().catch(() => "");
-        console.error("Erro HTTP do backend (atualizar passagem):", resp.status, t);
-        return "";
-      }
-
-      const data = await resp.json().catch(() => ({}));
-      const updated = String(data?.passagem_plantao || data?.passagem_plantao_atualizada || "").trim();
-      return updated;
-    }
-
-    async function onHandoffEssentialBtnClick() {
-      if (!handoffEssentialBtn) return;
-
-      const passagem = String(handoffOutput?.value || "").trim();
-      if (!passagem) {
-        if (handoffEssentialStatus) handoffEssentialStatus.textContent = "Gere uma passagem de plantão antes de usar as perguntas essenciais.";
-        return;
-      }
-
-      // Primeiro clique: abre, inicia timer e sugere perguntas
-      if (!handoffEssentialActive) {
-        handoffEssentialActive = true;
-        handoffEssentialClearUI();
-        handoffEssentialResetTimer();
-        handoffEssentialStartTimer();
-
-        if (handoffEssentialPanel) handoffEssentialPanel.classList.remove("hidden");
-        if (handoffEssentialStatus) {
-          handoffEssentialStatus.textContent = "Gerando perguntas essenciais...";
-          handoffEssentialStatus.classList.add("loading-dot");
-        }
-
-        try {
-          const perguntas = await handoffEssentialFetchQuestions();
-          handoffEssentialRenderQuestions(perguntas);
-          if (handoffEssentialStatus) {
-            handoffEssentialStatus.textContent = "Responda o que souber e clique novamente no botão para atualizar a passagem.";
-            handoffEssentialStatus.classList.remove("loading-dot");
-          }
-        } catch (e) {
-          console.error(e);
-          if (handoffEssentialStatus) {
-            handoffEssentialStatus.textContent = "Não foi possível gerar perguntas essenciais.";
-            handoffEssentialStatus.classList.remove("loading-dot");
-          }
-        }
-
-        return;
-      }
-
-      // Segundo clique: atualiza a passagem com base nas respostas
-      if (handoffEssentialStatus) {
-        handoffEssentialStatus.textContent = "Atualizando passagem de plantão...";
-        handoffEssentialStatus.classList.add("loading-dot");
-      }
-
-      try {
-        const updated = await handoffEssentialUpdatePassagem();
-        if (updated && handoffOutput) {
-          handoffOutput.value = updated;
-          handoffLastGeneratedText = updated;
-        }
-
-        handoffEssentialStopTimer();
-        handoffEssentialResetTimer();
-        handoffEssentialActive = false;
-        handoffEssentialClearUI();
-        if (handoffEssentialPanel) handoffEssentialPanel.classList.add("hidden");
-
-        if (handoffEssentialStatus) {
-          handoffEssentialStatus.textContent = updated ? "Passagem de plantão atualizada." : "Sem atualização disponível.";
-          handoffEssentialStatus.classList.remove("loading-dot");
-        }
-      } catch (e) {
-        console.error(e);
-        if (handoffEssentialStatus) {
-          handoffEssentialStatus.textContent = "Falha ao atualizar a passagem de plantão.";
-          handoffEssentialStatus.classList.remove("loading-dot");
-        }
-      }
-    }
-
-
-    function formatPatientSummary(ctx) {
+function formatPatientSummary(ctx) {
       const parts = [];
       if (ctx?.nome) parts.push(`Nome: ${ctx.nome}`);
       if (ctx?.idade) parts.push(`Idade: ${ctx.idade}`);
@@ -6129,13 +5820,6 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
           await startPatientInfoRecording();
         }
       });
-    
-
-    if (handoffEssentialBtn) {
-      handoffEssentialBtn.addEventListener("click", () => {
-        onHandoffEssentialBtnClick();
-      });
-    }
 }
 
     const reportRecordBtn = document.getElementById("reportRecordBtn");
@@ -7110,14 +6794,6 @@ if (matchedItem) {
     function handoffClearUI() {
       if (handoffOutput) handoffOutput.value = "";
       if (handoffStatus) handoffStatus.textContent = "";
-      handoffEssentialActive = false;
-      handoffEssentialClearUI();
-      if (handoffEssentialPanel) handoffEssentialPanel.classList.add("hidden");
-      handoffEssentialResetTimer();
-      if (handoffEssentialStatus) {
-        handoffEssentialStatus.classList.remove("loading-dot");
-        handoffEssentialStatus.textContent = "";
-      }
     }
 
     function ensureHandoffRecognition() {
