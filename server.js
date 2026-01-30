@@ -3141,6 +3141,237 @@ Contexto:
 
 
 // ======================================================================
+// EXTRAÇÃO DETERMINÍSTICA DE DADOS DO PACIENTE (NOME / IDADE / PESO)
+// Objetivo: reduzir falhas do modelo e capturar idade/peso mesmo quando
+// o modelo devolve strings (ex.: "35 anos", "70 kg").
+// ======================================================================
+
+function normPt(s) {
+  return String(s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s.,-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Parser simples de números por extenso em português (0–1999 aprox.)
+const PT_NUM_UNITS = {
+  "zero": 0, "um": 1, "uma": 1, "dois": 2, "duas": 2, "tres": 3, "três": 3,
+  "quatro": 4, "cinco": 5, "seis": 6, "sete": 7, "oito": 8, "nove": 9
+};
+const PT_NUM_TEENS = {
+  "dez": 10, "onze": 11, "doze": 12, "treze": 13, "catorze": 14, "quatorze": 14,
+  "quinze": 15, "dezesseis": 16, "dezessete": 17, "dezoito": 18, "dezenove": 19
+};
+const PT_NUM_TENS = {
+  "vinte": 20, "trinta": 30, "quarenta": 40, "cinquenta": 50, "sessenta": 60,
+  "setenta": 70, "oitenta": 80, "noventa": 90
+};
+const PT_NUM_HUNDREDS = {
+  "cem": 100, "cento": 100, "duzentos": 200, "trezentos": 300, "quatrocentos": 400,
+  "quinhentos": 500, "seiscentos": 600, "setecentos": 700, "oitocentos": 800, "novecentos": 900
+};
+
+function ptWordsToInt(words) {
+  const toks = String(words || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!toks.length) return null;
+
+  let total = 0;
+  let current = 0;
+  for (const w0 of toks) {
+    const w = w0.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (w === "e") continue;
+
+    if (w === "mil") {
+      const mult = current > 0 ? current : 1;
+      total += mult * 1000;
+      current = 0;
+      continue;
+    }
+    if (PT_NUM_HUNDREDS[w] !== undefined) { current += PT_NUM_HUNDREDS[w]; continue; }
+    if (PT_NUM_TENS[w] !== undefined) { current += PT_NUM_TENS[w]; continue; }
+    if (PT_NUM_TEENS[w] !== undefined) { current += PT_NUM_TEENS[w]; continue; }
+    if (PT_NUM_UNITS[w] !== undefined) { current += PT_NUM_UNITS[w]; continue; }
+
+    // palavra desconhecida: aborta
+    return null;
+  }
+  const v = total + current;
+  if (!Number.isFinite(v)) return null;
+  return v;
+}
+
+// Aceita: "70", "70 kg", "70,5", "setenta e cinco", "setenta e cinco virgula cinco", "setenta e meio"
+function ptParseNumber(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return null;
+
+  // 1) tenta número direto
+  const m = raw.match(/-?\d{1,4}(?:[.,]\d{1,2})?/);
+  if (m && m[0]) {
+    const num = Number(m[0].replace(",", "."));
+    if (Number.isFinite(num)) return num;
+  }
+
+  const t = normPt(raw);
+
+  if (t.includes("meio")) {
+    // tenta "X e meio"
+    const base = t.replace(/\bmeio\b/g, "").trim();
+    const baseInt = ptWordsToInt(base);
+    if (baseInt !== null) return baseInt + 0.5;
+    const only = ptWordsToInt("um");
+    if (only !== null && base === "") return 0.5;
+  }
+
+  // decimal por "virgula" ou "ponto"
+  const split = t.split(/\b(virgula|ponto)\b/);
+  if (split.length >= 3) {
+    const intPart = split[0].trim();
+    const fracPart = split.slice(2).join(" ").trim();
+
+    const iv = ptWordsToInt(intPart);
+    if (iv === null) return null;
+
+    // fração: se vierem unidades ("cinco" -> 5) tratamos como um dígito
+    const fracTokens = fracPart.split(/\s+/).filter(Boolean).slice(0, 4);
+    if (!fracTokens.length) return iv;
+
+    const digits = [];
+    for (const tok of fracTokens) {
+      const v = ptWordsToInt(tok);
+      if (v === null) return null;
+      if (v >= 0 && v <= 9) digits.push(String(v));
+      else return null;
+    }
+    const frac = Number("0." + digits.join(""));
+    if (!Number.isFinite(frac)) return null;
+    return iv + frac;
+  }
+
+  // inteiro por extenso
+  const iv = ptWordsToInt(t);
+  if (iv !== null) return iv;
+
+  return null;
+}
+
+function extractNameDeterministic(transcricao) {
+  const original = String(transcricao || "").trim();
+  if (!original) return null;
+
+  // prioriza padrões explícitos
+  const t = original.replace(/\s+/g, " ").trim();
+
+  const patterns = [
+    /(?:nome\s*(?:completo)?\s*(?:e|:)?\s*)([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ\s.'-]{3,})/i,
+    /(?:meu\s+nome\s+(?:e|é)\s+)([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ\s.'-]{3,})/i,
+    /(?:chama[- ]se\s+)([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ\s.'-]{3,})/i
+  ];
+
+  for (const re of patterns) {
+    const m = t.match(re);
+    if (m && m[1]) {
+      let name = m[1].trim();
+      // corta antes de idade/peso se colar junto
+      name = name.split(/\b(idade|anos|peso|kg|quilo|quilos)\b/i)[0].trim();
+      // remove duplos espaços
+      name = name.replace(/\s+/g, " ").trim();
+      if (name.length >= 4) return name;
+    }
+  }
+
+  return null;
+}
+
+function extractAgeDeterministic(transcricao) {
+  const t = normPt(transcricao);
+
+  // 1) dígitos
+  let m = t.match(/\b(\d{1,3})\s*(?:anos|ano)\b/);
+  if (m && m[1]) {
+    const v = parseInt(m[1], 10);
+    if (Number.isFinite(v) && v >= 0 && v <= 130) return v;
+  }
+  m = t.match(/\bidade\s*(?:e|é|:|de)?\s*(\d{1,3})\b/);
+  if (m && m[1]) {
+    const v = parseInt(m[1], 10);
+    if (Number.isFinite(v) && v >= 0 && v <= 130) return v;
+  }
+
+  // 2) por extenso antes de "anos"/"ano"
+  // captura até 6 palavras antes de "anos"
+  m = t.match(/\b([a-z\s]{2,60})\s*(?:anos|ano)\b/);
+  if (m && m[1]) {
+    const seg = m[1].trim().split(/\s+/).slice(-6).join(" ");
+    const v2 = ptParseNumber(seg);
+    if (Number.isFinite(v2)) {
+      const v = Math.round(v2);
+      if (v >= 0 && v <= 130) return v;
+    }
+  }
+
+  return null;
+}
+
+function extractWeightDeterministic(transcricao) {
+  const t = normPt(transcricao);
+
+  // 1) dígitos com unidade
+  let m = t.match(/\b(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:kg|quilo|quilos|kilo|kilos)\b/);
+  if (m && m[1]) {
+    const v = Number(m[1].replace(",", "."));
+    if (Number.isFinite(v) && v > 0 && v < 500) return Math.round(v * 10) / 10;
+  }
+
+  // 2) "peso X"
+  m = t.match(/\bpeso\s*(?:e|é|:|de)?\s*(\d{1,3}(?:[.,]\d{1,2})?)(?:\s*(?:kg|quilo|quilos|kilo|kilos))?\b/);
+  if (m && m[1]) {
+    const v = Number(m[1].replace(",", "."));
+    if (Number.isFinite(v) && v > 0 && v < 500) return Math.round(v * 10) / 10;
+  }
+
+  // 3) por extenso antes de "quilos"
+  m = t.match(/\b([a-z\s]{2,80})\s*(?:kg|quilo|quilos|kilo|kilos)\b/);
+  if (m && m[1]) {
+    const seg = m[1].trim().split(/\s+/).slice(-8).join(" ");
+    const v2 = ptParseNumber(seg);
+    if (Number.isFinite(v2) && v2 > 0 && v2 < 500) return Math.round(v2 * 10) / 10;
+  }
+
+  return null;
+}
+
+function extractPatientDataDeterministic(transcricao) {
+  const nome = extractNameDeterministic(transcricao);
+  const idade = extractAgeDeterministic(transcricao);
+  const peso_kg = extractWeightDeterministic(transcricao);
+  return { nome: nome || null, idade: (Number.isFinite(idade) ? idade : null), peso_kg: (Number.isFinite(peso_kg) ? peso_kg : null) };
+}
+
+function coerceAge(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.round(value);
+  if (typeof value !== "string") return null;
+  const t = value.trim();
+  if (!t) return null;
+  const n = ptParseNumber(t);
+  if (Number.isFinite(n)) return Math.round(n);
+  return null;
+}
+
+function coerceWeight(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string") return null;
+  const t = value.trim();
+  if (!t) return null;
+  const n = ptParseNumber(t);
+  if (Number.isFinite(n)) return Math.round(n * 10) / 10;
+  return null;
+}
+
+// ======================================================================
 // ROTA 4.2 – EXTRAIR DADOS DO PACIENTE (NOME / IDADE / PESO) (NOVA)
 // ======================================================================
 
@@ -3153,65 +3384,95 @@ app.post("/api/extrair-dados-paciente", requirePaidOrAdmin, async(req, res) => {
 
     const safeTranscricao = normalizeText(transcricao, 4000);
 
-    const prompt = `
-Você é um enfermeiro humano extraindo dados objetivos de uma fala curta em português do Brasil.
+    // 1) Tenta extração determinística (regex + números por extenso)
+    const det = extractPatientDataDeterministic(safeTranscricao);
+    let nome = det?.nome || null;
+    let idade = (typeof det?.idade === "number" && Number.isFinite(det.idade)) ? Math.round(det.idade) : null;
+    let peso_kg = (typeof det?.peso_kg === "number" && Number.isFinite(det.peso_kg)) ? (Math.round(det.peso_kg * 10) / 10) : null;
+
+    // 2) Se faltar algo, faz fallback com o modelo, mas sem confiar cegamente:
+    //    - aceita números como string e reconverte
+    //    - valida faixas plausíveis
+    const needFallback = (!nome || idade === null || peso_kg === null);
+
+    if (needFallback) {
+      const prompt = `
+Você é um enfermeiro humano extraindo dados objetivos de uma fala curta.
 Extraia somente se estiver explícito.
 
 Formato de saída: JSON estrito:
 {
   "nome": "string ou null",
-  "idade": "number ou null",
-  "peso_kg": "number ou null"
+  "idade": "number ou string ou null",
+  "peso_kg": "number ou string ou null"
 }
 
 Regras:
 - Se não houver certeza, use null.
-- "idade" deve ser um número inteiro (anos). Ex.: 35
-- "peso_kg" deve ser um número em kg (aceite decimais). Ex.: 72.5
-- Não use strings para idade/peso (não escreva "35 anos" nem "72 kg" dentro do JSON).
+- Idade em anos (inteiro).
+- Peso em kg (número).
 - Sem texto fora do JSON.
 
-Exemplos:
-Fala: "João da Silva, 35 anos, 72 quilos"
-Saída: {"nome":"João da Silva","idade":35,"peso_kg":72}
-
-Fala: "Maria Aparecida, 8 anos, pesa 23,4 quilos"
-Saída: {"nome":"Maria Aparecida","idade":8,"peso_kg":23.4}
-
-Fala:
-"""${safeTranscricao}"""
+Fala (texto bruto):
+<<<
+${safeTranscricao}
+>>>
 `;
 
-    const data = await callOpenAIJson(prompt);
+      let data = null;
+      try {
+        data = await callOpenAIJson(prompt);
+      } catch (e) {
+        data = null;
+      }
 
-    // Parser robusto: aceita número OU string numérica (por segurança).
-    const parseNumberLike = (v) => {
-      if (typeof v === "number" && Number.isFinite(v)) return v;
-      if (typeof v !== "string") return null;
-      const t = v.trim().replace(",", ".");
-      const mm = t.match(/-?\d+(?:\.\d+)?/);
-      if (!mm) return null;
-      const n = Number(mm[0]);
-      return Number.isFinite(n) ? n : null;
-    };
+      if (data && typeof data === "object") {
+        if (!nome && typeof data?.nome === "string") {
+          const n = String(data.nome || "").trim();
+          if (n) nome = n;
+        }
 
-    let nome = typeof data?.nome === "string" ? data.nome.trim() : null;
-    if (nome === "") nome = null;
+        if (idade === null) {
+          const v = coerceAge(data?.idade);
+          if (typeof v === "number" && Number.isFinite(v)) idade = v;
+        }
 
-    // Idade: aceitar number ou string numérica; validar faixa.
-    let idade = null;
-    const idadeN = parseNumberLike(data?.idade);
-    if (idadeN !== null) {
-      const i = Math.round(idadeN);
-      if (i > 0 && i < 130) idade = i;
+        if (peso_kg === null) {
+          const v = coerceWeight(data?.peso_kg);
+          if (typeof v === "number" && Number.isFinite(v)) peso_kg = v;
+        }
+      }
     }
 
-    // Peso: aceitar number ou string numérica; validar faixa.
-    let peso_kg = null;
-    const pesoN = parseNumberLike(data?.peso_kg);
-    if (pesoN !== null) {
-      const v = Number(pesoN);
-      if (v > 0 && v < 500) peso_kg = Math.round(v * 10) / 10;
+    // 3) Sanitização e validações finais
+    if (typeof nome === "string") {
+      nome = nome.replace(/\s+/g, " ").trim();
+      if (nome === "") nome = null;
+      // corta caso tenha "idade/peso" grudados
+      if (nome) {
+        const cut = nome.split(/\b(idade|anos|peso|kg|quilo|quilos|kilo|kilos)\b/i)[0].trim();
+        nome = cut || nome;
+      }
+    } else {
+      nome = null;
+    }
+
+    if (typeof idade === "number" && Number.isFinite(idade)) {
+      idade = Math.round(idade);
+      if (idade < 0 || idade > 130) idade = null;
+    } else {
+      idade = null;
+    }
+
+    if (typeof peso_kg === "number" && Number.isFinite(peso_kg)) {
+      const v = Number(peso_kg);
+      if (v <= 0 || v >= 500) {
+        peso_kg = null;
+      } else {
+        peso_kg = Math.round(v * 10) / 10;
+      }
+    } else {
+      peso_kg = null;
     }
 
     return res.json({ nome, idade, peso_kg });
