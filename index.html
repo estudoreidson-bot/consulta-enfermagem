@@ -5658,8 +5658,9 @@ async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText
         micStatus.innerText = "Atualização concluída.";
         micStatus.classList.remove("loading-dot");
 
-        await updateClassifications();
-        await updateRiskTriage();
+        // Atualizações auxiliares não devem derrubar a geração do SOAP
+        try { await updateClassifications(); } catch (e) { console.error(e); }
+        try { await updateRiskTriage(); } catch (e) { console.error(e); }
         } catch (e) {
         console.error(e);
         soapError.textContent = "Erro ao gerar evolução e plano de cuidados (falha de rede ou backend).";
@@ -5726,6 +5727,42 @@ let handoffQuestionsAccumulatedSeconds = 0;
     // Mantém compatibilidade: a geração usa apenas a transcrição atual.
     function buildTranscriptWithPatientContext(rawTranscript) {
       return String(rawTranscript || "").trim();
+    }
+
+    // Contexto mínimo para módulos que dependem do conteúdo clínico (SAE, orientações, classificação de risco etc.)
+    // Mantém funcionamento mesmo sem o submódulo removido.
+    function getNursingContext() {
+      const parts = [];
+
+      const s = (document.getElementById("soapS")?.value || "").trim();
+      const o = (document.getElementById("soapO")?.value || "").trim();
+      const a = (document.getElementById("soapA")?.value || "").trim();
+      const p = (document.getElementById("soapP")?.value || "").trim();
+
+      if (s || o || a || p) {
+        parts.push("SOAP");
+        parts.push("S: " + (s || "não informado."));
+        parts.push("O: " + (o || "não informado."));
+        parts.push("A: " + (a || "não informado."));
+        parts.push("P: " + (p || "não informado."));
+      }
+
+      const evol = (document.getElementById("nursingEvolutionOutput")?.value || "").trim();
+      if (evol) {
+        parts.push("");
+        parts.push("Evolução de enfermagem: " + evol);
+      }
+
+      const plano = (document.getElementById("prescriptionOutput")?.value || "").trim();
+      if (plano) {
+        parts.push("");
+        parts.push("Plano de cuidados: " + plano);
+      }
+
+      const ctx = parts.join("\n").trim();
+      // Se estiver vazio ou muito curto, evita acionar o backend sem dados.
+      if (!ctx || ctx.replace(/\s/g, "").length < 40) return "";
+      return ctx;
     }
 
     // ============================
@@ -5993,9 +6030,11 @@ let handoffQuestionsAccumulatedSeconds = 0;
       if (triageGuidanceStage !== "aguardando_motivo") return;
 
       const combined = triageGetCombinedTranscript();
-      if (!combined || combined.length < 80) return;
+      if (!combined || combined.length < 50) return;
 
-      if (!force && !hasLikelyChiefComplaint(combined)) return;
+      if (!force && !hasLikelyChiefComplaint(combined)) {
+        if (combined.length < 160) return;
+      }
 
       triageGuidanceStage = "perguntas";
       triageGuidanceTurnState = "aguardando_pergunta";
@@ -6024,7 +6063,7 @@ let handoffQuestionsAccumulatedSeconds = 0;
       if (triageGuidanceSilenceTimer) clearTimeout(triageGuidanceSilenceTimer);
       triageGuidanceSilenceTimer = setTimeout(() => {
         triageFinalizeGuidanceChunk();
-      }, 900);
+      }, 500);
     }
 
     function triageFinalizeGuidanceChunk() {
@@ -6044,7 +6083,7 @@ let handoffQuestionsAccumulatedSeconds = 0;
       if (!chunk || chunk.length < 10) return;
 
       const now = Date.now();
-      if (triageGuidanceLastChunkTs && (now - triageGuidanceLastChunkTs) < 600) return;
+      if (triageGuidanceLastChunkTs && (now - triageGuidanceLastChunkTs) < 400) return;
       triageGuidanceLastChunkTs = now;
 
       triageHandleGuidanceUtteranceChunk(chunk);
@@ -6924,10 +6963,12 @@ if (handoffStatus) {
       if (guidanceStage !== "aguardando_motivo") return;
 
       const combined = getCombinedTranscript();
-      if (!combined || combined.length < 80) return;
+      if (!combined || combined.length < 50) return;
 
-      // Evita iniciar antes do paciente realmente falar algo clínico
-      if (!force && !hasLikelyChiefComplaint(combined)) return;
+      // Evita iniciar cedo demais, mas não trava quando o motivo já está claro pelo volume de fala.
+      if (!force && !hasLikelyChiefComplaint(combined)) {
+        if (combined.length < 160) return;
+      }
 
       guidanceStage = "perguntas";
       guidanceTurnState = "aguardando_pergunta";
@@ -6958,7 +6999,7 @@ if (handoffStatus) {
       if (guidanceSilenceTimer) clearTimeout(guidanceSilenceTimer);
       guidanceSilenceTimer = setTimeout(() => {
         finalizeGuidanceChunk();
-      }, 900);
+      }, 500);
     }
 
     function finalizeGuidanceChunk() {
@@ -6980,7 +7021,7 @@ if (handoffStatus) {
 
       // Evita processar chunks colados em sequência que são só repetição do reconhecimento
       const now = Date.now();
-      if (guidanceLastChunkTs && (now - guidanceLastChunkTs) < 600) return;
+      if (guidanceLastChunkTs && (now - guidanceLastChunkTs) < 400) return;
       guidanceLastChunkTs = now;
 
       handleGuidanceUtteranceChunk(chunk);
