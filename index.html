@@ -2671,7 +2671,7 @@
       <div id="micStatus">Clique em "Iniciar atendimento" para começar.</div>
       <div id="liveGuidance" class="live-guidance">
         <div class="live-guidance-header">
-          <div class="live-guidance-title">Perguntas e procedimentos essenciais (tempo real)</div>
+          <div class="live-guidance-title">Gerador perguntas essenciais em tempo real</div>
           <div id="liveGuidanceContext" class="live-guidance-context"></div>
         </div>
         <div id="liveGuidanceStatus" class="live-guidance-status">Inicie o atendimento para receber perguntas e procedimentos necessários em tempo real.</div>
@@ -2706,7 +2706,7 @@
       <div id="triageMicStatus">Clique em "Iniciar triagem hospitalar" para começar.</div>
       <div id="triageLiveGuidance" class="live-guidance">
         <div class="live-guidance-header">
-          <div class="live-guidance-title">Perguntas e procedimentos essenciais (tempo real)</div>
+          <div class="live-guidance-title">Gerador perguntas essenciais em tempo real</div>
           <div id="triageLiveGuidanceContext" class="live-guidance-context"></div>
         </div>
         <div id="triageLiveGuidanceStatus" class="live-guidance-status">Inicie a triagem para receber perguntas e procedimentos necessários em tempo real.</div>
@@ -3012,6 +3012,7 @@
     </div>
 
     <div id="resultsCard" class="results-card hidden">
+
       <div id="triageReportPanel" class="triage-report-panel hidden">
         <div class="section-header-row">
           <div class="soap-title-actions">
@@ -5074,9 +5075,11 @@ const recordBtn = document.getElementById("recordBtn");
       const docsMode = (v === "docs" || v === "documentos");
       const consultMode = (!triageMode && !handoffMode && !docsMode);
 
+      const patientInfoPanelEl = document.getElementById("patientInfoPanel");
       const triageReportPanelEl = document.getElementById("triageReportPanel");
       const handoffPanelEl = document.getElementById("handoffPanel");
       const soapNursingPanelEl = document.getElementById("soapNursingResultsPanel");
+if (patientInfoPanelEl) patientInfoPanelEl.classList.toggle("hidden", triageMode || docsMode);
 if (!handoffMode) {
 }
 
@@ -5473,25 +5476,6 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       setVisible(printReportBtn, has);
     }
 
-
-
-
-    function getNursingContext() {
-      const t = (baseTranscriptRaw || baseTranscript || finalTranscript || "").trim();
-      const s = (soapS?.value || "").trim();
-      const o = (soapO?.value || "").trim();
-      const a = (soapA?.value || "").trim();
-      const p = (soapP?.value || "").trim();
-      const plano = (prescriptionOutput?.value || "").trim();
-      const sbar = (sbarOutput?.value || "").trim();
-      const parts = [];
-      if (t) parts.push("TRANSCRIÇÃO:\n" + t);
-      if (s || o || a || p) parts.push("EVOLUÇÃO (SOAP):\nS: " + s + "\nO: " + o + "\nA: " + a + "\nP: " + p);
-      if (plano) parts.push("PLANO DE CUIDADOS:\n" + plano);
-      if (sbar) parts.push("SBAR:\n" + sbar);
-      return parts.join("\n\n").trim();
-    }
-
     // ============================
     // MÓDULO: Classificação de risco por cores (NOVO)
     // ============================
@@ -5637,7 +5621,7 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
     }
 
 
-	async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText) {
+async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText) {
       const t = String(transcricao || "").trim();
       if (!t) return;
 
@@ -5684,8 +5668,9 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
       }
     }
 
+    
 
-    const reportRecordBtn = document.getElementById("reportRecordBtn");
+const reportRecordBtn = document.getElementById("reportRecordBtn");
     const reportStatus = document.getElementById("reportStatus");
     const reportOutput = document.getElementById("reportOutput");
     
@@ -5735,6 +5720,13 @@ let handoffQuestionsAccumulatedSeconds = 0;
       return t.trim();
     }
 
+
+
+    // Adaptação: módulo de coleta de dados do paciente foi removido.
+    // Mantém compatibilidade: a geração usa apenas a transcrição atual.
+    function buildTranscriptWithPatientContext(rawTranscript) {
+      return String(rawTranscript || "").trim();
+    }
 
     // ============================
     // ============================
@@ -5817,7 +5809,7 @@ let handoffQuestionsAccumulatedSeconds = 0;
     function getCombinedTranscript() {
       const combined = ((finalTranscript || "") + " " + (interimTranscript || "")).trim();
       if (!combined) return "";
-      const MAX = 8000;
+      const MAX = 3500;
       return combined.length > MAX ? combined.slice(combined.length - MAX) : combined;
     }
 
@@ -6001,7 +5993,7 @@ let handoffQuestionsAccumulatedSeconds = 0;
       if (triageGuidanceStage !== "aguardando_motivo") return;
 
       const combined = triageGetCombinedTranscript();
-      if (!combined || combined.length < 120) return;
+      if (!combined || combined.length < 80) return;
 
       if (!force && !hasLikelyChiefComplaint(combined)) return;
 
@@ -6032,7 +6024,7 @@ let handoffQuestionsAccumulatedSeconds = 0;
       if (triageGuidanceSilenceTimer) clearTimeout(triageGuidanceSilenceTimer);
       triageGuidanceSilenceTimer = setTimeout(() => {
         triageFinalizeGuidanceChunk();
-      }, 1400);
+      }, 900);
     }
 
     function triageFinalizeGuidanceChunk() {
@@ -6052,7 +6044,7 @@ let handoffQuestionsAccumulatedSeconds = 0;
       if (!chunk || chunk.length < 10) return;
 
       const now = Date.now();
-      if (triageGuidanceLastChunkTs && (now - triageGuidanceLastChunkTs) < 900) return;
+      if (triageGuidanceLastChunkTs && (now - triageGuidanceLastChunkTs) < 600) return;
       triageGuidanceLastChunkTs = now;
 
       triageHandleGuidanceUtteranceChunk(chunk);
@@ -6077,7 +6069,7 @@ let handoffQuestionsAccumulatedSeconds = 0;
 
       if (triageGuidanceTurnState === "aguardando_resposta") {
         const dt = Date.now() - (triageGuidanceAskedAtTs || 0);
-        if (dt < 900) return;
+        if (dt < 600) return;
 
         triageRequestGuidanceFromBackend({ evento: "resposta", ultima_fala: chunkText });
         return;
@@ -6577,7 +6569,7 @@ let handoffQuestionsAccumulatedSeconds = 0;
       if (handoffGuidanceSilenceTimer) clearTimeout(handoffGuidanceSilenceTimer);
       handoffGuidanceSilenceTimer = setTimeout(() => {
         handoffFinalizeGuidanceChunk();
-      }, 1400);
+      }, 900);
     }
 
     function handoffFinalizeGuidanceChunk() {
@@ -6597,7 +6589,7 @@ let handoffQuestionsAccumulatedSeconds = 0;
       if (!chunk || chunk.length < 10) return;
 
       const now = Date.now();
-      if (handoffGuidanceLastChunkTs && (now - handoffGuidanceLastChunkTs) < 900) return;
+      if (handoffGuidanceLastChunkTs && (now - handoffGuidanceLastChunkTs) < 600) return;
       handoffGuidanceLastChunkTs = now;
 
       const matchedItem = matchQuestionFromUtterance(chunk, handoffGuidancePending);
@@ -6932,7 +6924,7 @@ if (handoffStatus) {
       if (guidanceStage !== "aguardando_motivo") return;
 
       const combined = getCombinedTranscript();
-      if (!combined || combined.length < 120) return;
+      if (!combined || combined.length < 80) return;
 
       // Evita iniciar antes do paciente realmente falar algo clínico
       if (!force && !hasLikelyChiefComplaint(combined)) return;
@@ -6966,7 +6958,7 @@ if (handoffStatus) {
       if (guidanceSilenceTimer) clearTimeout(guidanceSilenceTimer);
       guidanceSilenceTimer = setTimeout(() => {
         finalizeGuidanceChunk();
-      }, 1400);
+      }, 900);
     }
 
     function finalizeGuidanceChunk() {
@@ -6988,7 +6980,7 @@ if (handoffStatus) {
 
       // Evita processar chunks colados em sequência que são só repetição do reconhecimento
       const now = Date.now();
-      if (guidanceLastChunkTs && (now - guidanceLastChunkTs) < 900) return;
+      if (guidanceLastChunkTs && (now - guidanceLastChunkTs) < 600) return;
       guidanceLastChunkTs = now;
 
       handleGuidanceUtteranceChunk(chunk);
@@ -7072,7 +7064,7 @@ if (handoffStatus) {
       // Turno 2: o paciente responde -> atualiza as perguntas
       if (guidanceTurnState === "aguardando_resposta") {
         const dt = Date.now() - (guidanceAskedAtTs || 0);
-        if (dt < 900) return; // evita disparo imediato
+        if (dt < 600) return; // evita disparo imediato
 
         // Atualiza com base no diálogo novo
         requestGuidanceFromBackend({ evento: "resposta", ultima_fala: chunkText });
