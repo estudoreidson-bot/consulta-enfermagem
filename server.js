@@ -2443,6 +2443,9 @@ PLANO DE CUIDADOS (prescrição de enfermagem):
 - Retorno/reavaliação (quando e com quais critérios).
 - Critérios objetivos para escalar ao médico.
 
+Anexos (exames/documentos enviados em imagem; transcrição automática pode conter erros):
+"""${safeAnexos || "nenhum"}"""
+
 Transcrição:
 """${safeTranscricao}"""
 `;
@@ -2889,6 +2892,7 @@ Falas adicionais (perguntas, respostas e informações espontâneas):
 
 async function generateSbarTextFromTranscript(transcricao) {
   const safeTranscricao = normalizeText(transcricao || "", 25000);
+  const safeAnexos = normalizeText(anexosTexto || "", 12000);
   if (!safeTranscricao || safeTranscricao.length < 30) return "";
 
   const prompt = `
@@ -3134,6 +3138,69 @@ Contexto:
     return res.status(500).json({ error: "Falha interna ao gerar curativos." });
   }
 });
+
+
+
+
+
+
+// ======================================================================
+// ROTA 4.2 – EXTRAIR DADOS DO PACIENTE (NOME / IDADE / PESO) (NOVA)
+// ======================================================================
+
+app.post("/api/extrair-dados-paciente", requirePaidOrAdmin, async(req, res) => {
+  try {
+    const { transcricao } = req.body || {};
+    if (!transcricao || !String(transcricao).trim()) {
+      return res.json({ nome: null, idade: null, peso_kg: null });
+    }
+
+    const safeTranscricao = normalizeText(transcricao, 4000);
+
+    const prompt = `
+Você é um enfermeiro humano extraindo dados objetivos de uma fala curta.
+Extraia somente se estiver explícito.
+
+Formato de saída: JSON estrito:
+{
+  "nome": "string ou null",
+  "idade": "number ou null",
+  "peso_kg": "number ou null"
+}
+
+Regras:
+- Se não houver certeza, use null.
+- Idade em anos (inteiro).
+- Peso em kg (número).
+- Sem texto fora do JSON.
+
+Fala:
+"""${safeTranscricao}"""
+`;
+
+    const data = await callOpenAIJson(prompt);
+
+    let nome = typeof data?.nome === "string" ? data.nome.trim() : null;
+    if (nome === "") nome = null;
+
+    let idade = null;
+    if (typeof data?.idade === "number" && Number.isFinite(data.idade)) idade = Math.round(data.idade);
+
+    let peso_kg = null;
+    if (typeof data?.peso_kg === "number" && Number.isFinite(data.peso_kg)) {
+      const v = Number(data.peso_kg);
+      if (v > 0 && v < 500) peso_kg = Math.round(v * 10) / 10;
+    }
+
+    return res.json({ nome, idade, peso_kg });
+  } catch (e) {
+    console.error(e);
+    return res.json({ nome: null, idade: null, peso_kg: null });
+  }
+});
+
+
+
 
 
 
@@ -3470,6 +3537,48 @@ Responda EXCLUSIVAMENTE em JSON, sem markdown, neste formato:
     limitacoes: limitacoes || "não informado"
   };
 }
+
+
+async function buildAttachmentsTextForMedicalDocs(imagesDataUrl) {
+  const arr = Array.isArray(imagesDataUrl) ? imagesDataUrl : [];
+  const safeArr = arr
+    .map(x => normalizeImageDataUrl(x, 900000))
+    .filter(Boolean)
+    .slice(0, 4);
+
+  if (!safeArr.length) return "";
+
+  const parts = [];
+
+  for (let i = 0; i < safeArr.length; i++) {
+    const img = safeArr[i];
+    try {
+      const r = await transcreverDocumentoPorImagem(img);
+
+      const tipo = normalizeText(r?.tipo_documento || "", 80) || "não informado";
+      const ident = normalizeText(r?.identificacao || "", 600) || "não informado";
+      const trans = normalizeText(r?.transcricao_organizada || "", 3500) || "não informado";
+      const itens = normalizeText(r?.itens_prescricao || "", 2000) || "não informado";
+      const pend = normalizeText(r?.campos_pendentes || "", 900) || "não informado";
+      const lim = normalizeText(r?.limitacoes || "", 900) || "não informado";
+
+      parts.push(
+        "ANEXO " + (i + 1) + "\n" +
+        "Tipo: " + tipo + "\n" +
+        "Identificação: " + ident + "\n" +
+        "Transcrição organizada: " + trans + "\n" +
+        "Itens de prescrição (se houver): " + itens + "\n" +
+        "Campos pendentes no anexo: " + pend + "\n" +
+        "Limitações: " + lim
+      );
+    } catch (e) {
+      parts.push("ANEXO " + (i + 1) + "\nFalha ao transcrever anexo. " + (e && e.message ? e.message : ""));
+    }
+  }
+
+  return normalizeText(parts.join("\n\n"), 12000);
+}
+
 async function avaliarReceitaPorImagem(imagensDataUrl) {
   const prompt = `
 Você é um profissional de saúde avaliando uma receita/prescrição fotografada.
@@ -4057,8 +4166,9 @@ function suggestMedicalDocumentQuestionsHeuristic(transcricao, tipo) {
   return q.slice(0, 5);
 }
 
-async function generateMedicalDocumentFromTranscript(transcricao, tipoSelecionado) {
+async function generateMedicalDocumentFromTranscript(transcricao, tipoSelecionado, anexosTexto) {
   const safeTranscricao = normalizeText(transcricao || "", 25000);
+  const safeAnexos = normalizeText(anexosTexto || "", 12000);
   if (!safeTranscricao || safeTranscricao.length < 30) {
     return {
       tipo_documento: tipoSelecionado || "",
@@ -4193,7 +4303,14 @@ app.post("/api/gerar-documento-medico", requirePaidOrAdmin, async (req, res) => 
       });
     }
 
-    const out = await generateMedicalDocumentFromTranscript(transcricao, tipoSelecionado);
+    const imgs = getImagesDataUrlFromBody(req.body || {})
+      .map(x => normalizeImageDataUrl(x, 900000))
+      .filter(Boolean)
+      .slice(0, 4);
+
+    const anexosTexto = (imgs && imgs.length) ? await buildAttachmentsTextForMedicalDocs(imgs) : "";
+
+    const out = await generateMedicalDocumentFromTranscript(transcricao, tipoSelecionado, anexosTexto);
     return res.json(out);
   } catch (e) {
     console.error(e);
