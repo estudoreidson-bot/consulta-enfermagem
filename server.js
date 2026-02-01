@@ -3140,6 +3140,65 @@ Contexto:
 
 
 
+// ======================================================================
+// ROTA 4.2 – EXTRAIR DADOS DO PACIENTE (NOME / IDADE / PESO) (NOVA)
+// ======================================================================
+
+app.post("/api/extrair-dados-paciente", requirePaidOrAdmin, async(req, res) => {
+  try {
+    const { transcricao } = req.body || {};
+    if (!transcricao || !String(transcricao).trim()) {
+      return res.json({ nome: null, idade: null, peso_kg: null });
+    }
+
+    const safeTranscricao = normalizeText(transcricao, 4000);
+
+    const prompt = `
+Você é um enfermeiro humano extraindo dados objetivos de uma fala curta.
+Extraia somente se estiver explícito.
+
+Formato de saída: JSON estrito:
+{
+  "nome": "string ou null",
+  "idade": "number ou null",
+  "peso_kg": "number ou null"
+}
+
+Regras:
+- Se não houver certeza, use null.
+- Idade em anos (inteiro).
+- Peso em kg (número).
+- Sem texto fora do JSON.
+
+Fala:
+"""${safeTranscricao}"""
+`;
+
+    const data = await callOpenAIJson(prompt);
+
+    let nome = typeof data?.nome === "string" ? data.nome.trim() : null;
+    if (nome === "") nome = null;
+
+    let idade = null;
+    if (typeof data?.idade === "number" && Number.isFinite(data.idade)) idade = Math.round(data.idade);
+
+    let peso_kg = null;
+    if (typeof data?.peso_kg === "number" && Number.isFinite(data.peso_kg)) {
+      const v = Number(data.peso_kg);
+      if (v > 0 && v < 500) peso_kg = Math.round(v * 10) / 10;
+    }
+
+    return res.json({ nome, idade, peso_kg });
+  } catch (e) {
+    console.error(e);
+    return res.json({ nome: null, idade: null, peso_kg: null });
+  }
+});
+
+
+
+
+
 
 // ======================================================================
 // ROTA 4.3 – CLASSIFICAÇÃO DE RISCO POR CORES (NOVA)

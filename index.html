@@ -957,7 +957,39 @@
     }
   
 
+    .patientinfo-panel {
+      border: 1px solid #e6e6e6;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: #fafafa;
+    }
+    .patientinfo-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .mini-timer {
+      font-size: 16px;
+      font-weight: bold;
+      min-width: 64px;
+    }
+    .patient-summary {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #333;
+      white-space: pre-wrap;
+    }
+    #patientInfoBtn {
+      background: #b00020;
+      border-color: #b00020;
+    }
+    #patientInfoBtn:hover {
+      filter: brightness(0.95);
+    }
 
+  
     .photo-btn {
       background: #dc3545;
       border: none;
@@ -2980,6 +3012,20 @@
     </div>
 
     <div id="resultsCard" class="results-card hidden">
+
+      <div id="patientInfoPanel" class="patientinfo-panel">
+        <p class="mini-status patientinfo-hint" style="margin: 0 0 8px 0;">Use este botão para gravar rapidamente nome completo, idade e peso do paciente. Esses dados melhoram a qualidade do SOAP e das condutas geradas.</p>
+        <div class="patientinfo-row">
+          <button id="patientInfoBtn" class="small-record-btn">Coletar Nome, Idade e Peso</button>
+          <div id="patientInfoTimer" class="mini-timer">00:00</div>
+          <div id="patientInfoStatus" class="mini-status"></div>
+        </div>
+        <div id="patientInfoSummary" class="patient-summary"></div>
+        
+
+      </div>
+
+
 
       <div id="triageReportPanel" class="triage-report-panel hidden">
         <div class="section-header-row">
@@ -5042,9 +5088,12 @@ const recordBtn = document.getElementById("recordBtn");
       const handoffMode = (v === "handoff" || v === "passagem" || v === "sbar");
       const docsMode = (v === "docs" || v === "documentos");
       const consultMode = (!triageMode && !handoffMode && !docsMode);
+
+      const patientInfoPanelEl = document.getElementById("patientInfoPanel");
       const triageReportPanelEl = document.getElementById("triageReportPanel");
       const handoffPanelEl = document.getElementById("handoffPanel");
       const soapNursingPanelEl = document.getElementById("soapNursingResultsPanel");
+if (patientInfoPanelEl) patientInfoPanelEl.classList.toggle("hidden", triageMode || docsMode);
 if (!handoffMode) {
 }
 
@@ -5445,7 +5494,450 @@ const imageChoiceOverlay = document.getElementById("imageChoiceOverlay");
 
 
     // ============================
+    // MÓDULO: Coletar dados essenciais (NOVO)
+    // ============================
+    const patientInfoBtn = document.getElementById("patientInfoBtn");
+const patientInfoTimerEl = document.getElementById("patientInfoTimer");
+    const patientInfoStatus = document.getElementById("patientInfoStatus");
+    const patientInfoSummary = document.getElementById("patientInfoSummary");
+
+    let patientContext = { nome: null, idade: null, peso_kg: null };
+
+    let patientInfoRecognition = null;
+    let patientInfoIsRecording = false;
+    let patientInfoFinalTranscript = "";
+    let patientInfoTimerInterval = null;
+    let patientInfoStartTime = null;
+    let patientInfoAccumulatedSeconds = 0;
+
+    function resetPatientInfoTimer() {
+      patientInfoAccumulatedSeconds = 0;
+      patientInfoStartTime = null;
+      if (patientInfoTimerInterval) clearInterval(patientInfoTimerInterval);
+      patientInfoTimerInterval = null;
+      if (patientInfoTimerEl) patientInfoTimerEl.textContent = "00:00";
+    }
+
+    function updatePatientInfoTimer() {
+      const now = Date.now();
+      const seconds = patientInfoAccumulatedSeconds + Math.floor((now - patientInfoStartTime) / 1000);
+      const m = ("0" + Math.floor(seconds / 60)).slice(-2);
+      const s = ("0" + (seconds % 60)).slice(-2);
+      if (patientInfoTimerEl) patientInfoTimerEl.textContent = `${m}:${s}`;
+    }
+
+    function startPatientInfoTimer() {
+      patientInfoStartTime = Date.now();
+      if (patientInfoTimerInterval) clearInterval(patientInfoTimerInterval);
+      patientInfoTimerInterval = setInterval(updatePatientInfoTimer, 200);
+    }
+
+    function stopPatientInfoTimer() {
+      if (!patientInfoStartTime) return;
+      const now = Date.now();
+      patientInfoAccumulatedSeconds += Math.floor((now - patientInfoStartTime) / 1000);
+      patientInfoStartTime = null;
+      if (patientInfoTimerInterval) clearInterval(patientInfoTimerInterval);
+      patientInfoTimerInterval = null;
+    }
+
     
+
+function formatPatientSummary(ctx) {
+      const parts = [];
+      if (ctx?.nome) parts.push(`Nome: ${ctx.nome}`);
+      if (ctx?.idade) parts.push(`Idade: ${ctx.idade}`);
+      if (ctx?.peso_kg !== null && ctx?.peso_kg !== undefined) parts.push(`Peso: ${ctx.peso_kg} kg`);
+      return parts.length ? parts.join(" | ") : "";
+    }
+
+    function buildTranscriptWithPatientContext(rawTranscript) {
+  let t = String(rawTranscript || "").trim();
+  if (!t) return "";
+
+  const hasAny = !!(patientContext?.nome || patientContext?.idade || (patientContext?.peso_kg !== null && patientContext?.peso_kg !== undefined));
+  if (!hasAny) return t;
+
+  const headerParts = [];
+  if (patientContext.nome) headerParts.push(`Nome completo: ${patientContext.nome}.`);
+  if (patientContext.idade) headerParts.push(`Idade: ${patientContext.idade}.`);
+  if (patientContext.peso_kg !== null && patientContext.peso_kg !== undefined) headerParts.push(`Peso: ${patientContext.peso_kg} kg.`);
+
+  const header = `Dados do paciente: ${headerParts.join(" ")}\n\n`;
+
+  // Não apagar nada: apenas adicionar no topo quando necessário.
+  const start = t.slice(0, 220).toLowerCase();
+  const headerNorm = header.trim().toLowerCase();
+  if (start.startsWith(headerNorm)) return t;
+
+  return header + t;
+}
+    function initPatientInfoSpeech() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) return false;
+
+      patientInfoRecognition = new SR();
+      patientInfoRecognition.lang = "pt-BR";
+      patientInfoRecognition.continuous = true;
+      patientInfoRecognition.interimResults = true;
+
+      patientInfoRecognition.onresult = (event) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const txt = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            patientInfoFinalTranscript += txt + " ";
+          }
+        }
+      };
+
+      patientInfoRecognition.onerror = (e) => {
+        console.warn("Erro no reconhecimento (dados do paciente):", e);
+      };
+
+      return true;
+    }
+
+    
+    function getNursingContext() {
+      const t = (baseTranscriptRaw || baseTranscript || finalTranscript || "").trim();
+      const s = (soapS?.value || "").trim();
+      const o = (soapO?.value || "").trim();
+      const a = (soapA?.value || "").trim();
+      const p = (soapP?.value || "").trim();
+      const plano = (prescriptionOutput?.value || "").trim();
+      const sbar = (sbarOutput?.value || "").trim();
+      const parts = [];
+      if (t) parts.push("TRANSCRIÇÃO:\n" + t);
+      if (s || o || a || p) parts.push("EVOLUÇÃO (SOAP):\nS: " + s + "\nO: " + o + "\nA: " + a + "\nP: " + p);
+      if (plano) parts.push("PLANO DE CUIDADOS:\n" + plano);
+      if (sbar) parts.push("SBAR:\n" + sbar);
+      return parts.join("\n\n").trim();
+    }
+
+    // ============================
+    // MÓDULO: Classificação de risco por cores (NOVO)
+    // ============================
+    const RISK_LEGEND_DEFAULT = [
+      { cor: "Vermelho", significado: "Emergência. Atendimento imediato." },
+      { cor: "Laranja", significado: "Muito urgente. Prioridade alta de atendimento." },
+      { cor: "Amarelo", significado: "Urgente. Necessita avaliação em curto prazo." },
+      { cor: "Verde", significado: "Pouco urgente. Pode aguardar com segurança, mantendo reavaliação se piora." },
+      { cor: "Azul", significado: "Não urgente. Caso de baixa gravidade, orientar e agendar conforme necessidade." }
+    ];
+
+    function normalizeRiskColorLabel(label) {
+      const t = String(label || "").trim().toLowerCase();
+      if (!t) return "Não informado";
+      if (t.includes("vermelh")) return "Vermelho";
+      if (t.includes("laranj")) return "Laranja";
+      if (t.includes("amarel")) return "Amarelo";
+      if (t.includes("verd")) return "Verde";
+      if (t.includes("azul")) return "Azul";
+      if (t.includes("nao informado") || t.includes("não informado") || t.includes("indefin")) return "Não informado";
+      return label.trim();
+    }
+
+    function applyRiskBadgeColor(cor) {
+      if (!riskTriageBadge) return;
+      riskTriageBadge.classList.remove("risk-none", "risk-vermelho", "risk-laranja", "risk-amarelo", "risk-verde", "risk-azul");
+      const c = normalizeRiskColorLabel(cor);
+      if (c === "Vermelho") riskTriageBadge.classList.add("risk-vermelho");
+      else if (c === "Laranja") riskTriageBadge.classList.add("risk-laranja");
+      else if (c === "Amarelo") riskTriageBadge.classList.add("risk-amarelo");
+      else if (c === "Verde") riskTriageBadge.classList.add("risk-verde");
+      else if (c === "Azul") riskTriageBadge.classList.add("risk-azul");
+      else riskTriageBadge.classList.add("risk-none");
+    }
+
+    function renderRiskLegend(legendArr) {
+      if (!riskTriageLegend) return;
+      const legend = Array.isArray(legendArr) && legendArr.length ? legendArr : RISK_LEGEND_DEFAULT;
+
+      riskTriageLegend.innerHTML = "";
+      legend.forEach((item) => {
+        const cor = normalizeRiskColorLabel(item?.cor || "");
+        const significado = String(item?.significado || "").trim();
+
+        const row = document.createElement("div");
+        row.className = "risk-legend-row";
+
+        const swatch = document.createElement("div");
+        swatch.className = "risk-legend-swatch " + (
+          cor === "Vermelho" ? "swatch-vermelho" :
+          cor === "Laranja" ? "swatch-laranja" :
+          cor === "Amarelo" ? "swatch-amarelo" :
+          cor === "Verde" ? "swatch-verde" :
+          cor === "Azul" ? "swatch-azul" : ""
+        );
+
+        const txt = document.createElement("div");
+        txt.style.flex = "1";
+        txt.textContent = cor + (significado ? (": " + significado) : "");
+
+        row.appendChild(swatch);
+        row.appendChild(txt);
+        riskTriageLegend.appendChild(row);
+      });
+    }
+
+    function buildRiskPrintText(cor, significado, legendArr) {
+      const c = normalizeRiskColorLabel(cor);
+      const s = String(significado || "").trim();
+      const legend = Array.isArray(legendArr) && legendArr.length ? legendArr : RISK_LEGEND_DEFAULT;
+
+      const lines = [];
+      lines.push("Classificação de risco: " + c);
+      if (s) lines.push("Significado: " + s);
+      lines.push("");
+      lines.push("Legenda:");
+      legend.forEach((it) => {
+        const lc = normalizeRiskColorLabel(it?.cor || "");
+        const ls = String(it?.significado || "").trim();
+        lines.push(lc + ": " + ls);
+      });
+      return lines.join("\n");
+    }
+
+    async function updateRiskTriage() {
+      if (!riskTriageStatus) return;
+
+      const contexto = getNursingContext();
+      if (!contexto) {
+        if (riskTriageBadge) {
+          riskTriageBadge.textContent = "Não informado";
+          applyRiskBadgeColor("Não informado");
+        }
+        if (riskTriageMeaning) riskTriageMeaning.textContent = "Nenhum conteúdo disponível.";
+        renderRiskLegend(RISK_LEGEND_DEFAULT);
+        riskTriageStatus.textContent = "Sem conteúdo suficiente para classificar.";
+        return;
+      }
+
+      riskTriageStatus.textContent = "Gerando classificação de risco...";
+      riskTriageStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/classificacao-risco", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contexto })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (classificação de risco):", resp.status, txt);
+          riskTriageStatus.classList.remove("loading-dot");
+          riskTriageStatus.textContent = "Não foi possível gerar a classificação de risco.";
+          return;
+        }
+
+        const data = await resp.json();
+
+        const cor = normalizeRiskColorLabel(data?.cor || "Não informado");
+        const significado = String(data?.significado || "").trim();
+        const legenda = Array.isArray(data?.legenda) ? data.legenda : RISK_LEGEND_DEFAULT;
+
+        if (riskTriageBadge) {
+          riskTriageBadge.textContent = cor;
+          applyRiskBadgeColor(cor);
+        }
+        if (riskTriageMeaning) {
+          riskTriageMeaning.textContent = significado ? significado : "Sem significado disponível.";
+        }
+        renderRiskLegend(legenda);
+
+        // Guarda texto para impressão
+        riskTriageMeaning.dataset.printText = buildRiskPrintText(cor, significado, legenda);
+
+        riskTriageStatus.classList.remove("loading-dot");
+        riskTriageStatus.textContent = "Classificação atualizada.";
+      } catch (e) {
+        console.error(e);
+        riskTriageStatus.classList.remove("loading-dot");
+        riskTriageStatus.textContent = "Falha de rede ou backend ao gerar a classificação de risco.";
+      }
+    }
+
+
+async function generateSoapAndPrescriptionFromTranscript(transcricao, statusText) {
+      const t = String(transcricao || "").trim();
+      if (!t) return;
+
+      soapError.textContent = "";
+      micStatus.innerText = statusText || "Atualizando SOAP e prescrição...";
+      micStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/gerar-soap", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcricao: t })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend:", resp.status, txt);
+          soapError.textContent = "Erro ao gerar evolução/plano de cuidados. Verifique o backend e tente novamente.";
+          micStatus.innerText = "Falha ao gerar o resumo.";
+          micStatus.classList.remove("loading-dot");
+          return;
+        }
+
+        const data = await resp.json();
+        const soap = data.soap || "";
+        const evolucao_enfermagem = data.evolucao_enfermagem || "";
+        const prescricao = data.prescricao || "";
+
+        updateSoapFromString(soap);
+        if (nursingEvolutionOutput) nursingEvolutionOutput.value = evolucao_enfermagem;
+        prescriptionOutput.value = normalizeNumberedParagraphs(prescricao);
+        printBtn.style.display = prescricao ? "inline-block" : "none";
+
+        micStatus.innerText = "Atualização concluída.";
+        micStatus.classList.remove("loading-dot");
+
+        await updateClassifications();
+        await updateRiskTriage();
+        } catch (e) {
+        console.error(e);
+        soapError.textContent = "Erro ao gerar evolução e plano de cuidados (falha de rede ou backend).";
+        micStatus.innerText = "Falha ao gerar o resumo.";
+        micStatus.classList.remove("loading-dot");
+      }
+    }
+
+    async function applyPatientContextAndRefreshAll() {
+  // Objetivo: acrescentar nome/idade/peso aos dados já gerados, sem apagar nada.
+  const currentText = ((baseTranscript || baseTranscriptRaw || finalTranscript || "") || "").trim();
+  if (!currentText) {
+    patientInfoStatus.textContent = "Não há conteúdo para adicionar os dados do paciente.";
+    return;
+  }
+
+  const updated = buildTranscriptWithPatientContext(currentText);
+
+  // Atualiza a transcrição-base (mantém tudo que já existe; apenas adiciona o cabeçalho).
+  baseTranscript = updated;
+  finalTranscript = updated;
+
+  // Também adiciona ao SOAP (sem reprocessar/gerar novamente) para manter consistência.
+  const idParts = [];
+  if (patientContext?.nome) idParts.push(`Nome: ${patientContext.nome}`);
+  if (patientContext?.idade) idParts.push(`Idade: ${patientContext.idade}`);
+  if (patientContext?.peso_kg !== null && patientContext?.peso_kg !== undefined) idParts.push(`Peso: ${patientContext.peso_kg} kg`);
+  const idLine = idParts.length ? ("Identificação: " + idParts.join(" | ")) : "";
+
+  if (idLine && soapS) {
+    const sNow = String(soapS.value || "").trim();
+    const sLow = sNow.toLowerCase();
+    const idLow = idLine.toLowerCase();
+
+    // Evita duplicar se já existir uma identificação semelhante.
+    const already = sLow.includes("identifica") || sLow.includes("nome:") || sLow.includes(idLow);
+    if (!already) {
+      soapS.value = (idLine + (sNow ? "\n" : "")) + sNow;
+    }
+  }
+}
+
+    async function startPatientInfoRecording() {
+      if (!patientInfoBtn) return;
+
+      patientInfoStatus.textContent = "Gravando... Dite nome completo, idade e peso.";
+      patientInfoStatus.classList.add("loading-dot");
+      patientInfoBtn.textContent = "Finalizar nome/idade/peso";
+
+      patientInfoFinalTranscript = "";
+      resetPatientInfoTimer();
+      startPatientInfoTimer();
+
+      try { if (recognition) recognition.stop(); } catch (e) {}
+      try { if (questionsRecognition) questionsRecognition.stop(); } catch (e) {}
+      try { if (reportRecognition) reportRecognition.stop(); } catch (e) {}
+
+      if (!patientInfoRecognition) {
+        const ok = initPatientInfoSpeech();
+        if (!ok) {
+          patientInfoStatus.classList.remove("loading-dot");
+          patientInfoStatus.textContent = "Navegador sem suporte a reconhecimento de voz.";
+          patientInfoBtn.textContent = "Coletar Nome, Idade e Peso";
+          stopPatientInfoTimer();
+          return;
+        }
+      }
+
+      patientInfoIsRecording = true;
+      try {
+        patientInfoRecognition.start();
+      } catch (e) {
+        console.warn("Erro ao iniciar reconhecimento (dados do paciente):", e);
+      }
+    }
+
+    async function stopPatientInfoRecordingAndApply() {
+      patientInfoIsRecording = false;
+      stopPatientInfoTimer();
+
+      patientInfoBtn.textContent = "Coletar Nome, Idade e Peso";
+
+      if (patientInfoRecognition) {
+        try { patientInfoRecognition.stop(); } catch (e) {}
+      }
+
+      const transcricaoCurta = patientInfoFinalTranscript.trim();
+      if (!transcricaoCurta) {
+        patientInfoStatus.classList.remove("loading-dot");
+        patientInfoStatus.textContent = "Nenhuma fala foi capturada.";
+        return;
+      }
+
+      patientInfoStatus.textContent = "Processando nome/idade/peso...";
+      patientInfoStatus.classList.add("loading-dot");
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/extrair-dados-paciente", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcricao: transcricaoCurta })
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (dados do paciente):", resp.status, txt);
+          patientInfoStatus.classList.remove("loading-dot");
+          patientInfoStatus.textContent = "Não foi possível extrair os dados do paciente.";
+          return;
+        }
+
+        const data = await resp.json();
+        patientContext = {
+          nome: (data?.nome || null),
+          idade: (data?.idade || null),
+          peso_kg: (typeof data?.peso_kg === "number" && Number.isFinite(data.peso_kg)) ? data.peso_kg : null
+        };
+
+        const resumo = formatPatientSummary(patientContext);
+        patientInfoSummary.textContent = resumo ? resumo : "Dados do paciente não identificados com segurança.";
+        patientInfoStatus.classList.remove("loading-dot");
+        patientInfoStatus.textContent = resumo ? "Dados do paciente atualizados." : "Sem dados suficientes para atualizar.";
+
+        await applyPatientContextAndRefreshAll();
+      } catch (e) {
+        console.error(e);
+        patientInfoStatus.classList.remove("loading-dot");
+        patientInfoStatus.textContent = "Falha de rede ou backend ao extrair dados do paciente.";
+      }
+    }
+
+    if (patientInfoBtn) {
+      patientInfoBtn.addEventListener("click", async () => {
+        if (patientInfoIsRecording) {
+          await stopPatientInfoRecordingAndApply();
+        } else {
+          await startPatientInfoRecording();
+        }
+      });
+}
 
     const reportRecordBtn = document.getElementById("reportRecordBtn");
     const reportStatus = document.getElementById("reportStatus");
