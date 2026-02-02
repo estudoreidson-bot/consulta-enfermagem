@@ -8454,7 +8454,7 @@ async function addFilesToTarget(files, targetKey, mode) {
   const list = Array.from(files || []);
   if (!list.length) return;
 
-  const key = (targetKey === "wound" || targetKey === "med" || targetKey === "exam" || targetKey === "transcription" || targetKey === "apraz" || targetKey === "rxEval" || targetKey === "medicalDocs") ? targetKey : "med";
+  const key = (targetKey === "wound" || targetKey === "med" || targetKey === "exam" || targetKey === "transcription" || targetKey === "apraz" || targetKey === "rxEval") ? targetKey : "med";
 
   const cfg = key === "wound"
     ? { arr: woundImages, statusEl: presentationsMaxDoseStatus, boxEl: presentationsMaxDoseBox, update: updateWoundActions, schedule: scheduleWoundAnalysis }
@@ -8466,9 +8466,7 @@ async function addFilesToTarget(files, targetKey, mode) {
           ? { arr: rxEvalImages, statusEl: rxEvalStatus, boxEl: rxEvalTranscription, update: updateRxEvalActions, schedule: scheduleRxEvalAnalysis }
         : key === "apraz"
           ? { arr: aprazImages, statusEl: aprazamentoStatus, boxEl: aprazamentoSheetWrapper, update: updateAprazamentoActions, schedule: scheduleAprazAnalysis }
-          : key === "medicalDocs"
-            ? { arr: medicalDocsImages, statusEl: medicalDocsAttachmentsStatus, boxEl: null, update: medicalDocsUpdateAttachmentsUI, schedule: null, noAnalyze: true }
-            : { arr: [], statusEl: null, boxEl: null, update: null, schedule: null };
+          : { arr: [], statusEl: null, boxEl: null, update: null, schedule: null };
 
   const arr = cfg.arr;
   const statusEl = cfg.statusEl;
@@ -8511,14 +8509,6 @@ async function addFilesToTarget(files, targetKey, mode) {
     const msg = "Não foi possível ler a imagem selecionada neste aparelho. Tente usar JPG/PNG (ou ajuste a câmera para modo mais compatível).";
     if (statusEl) statusEl.textContent = msg;
     if (boxEl) boxEl.textContent = "Nenhum conteúdo disponível.";
-    if (cfg && cfg.update) cfg.update();
-    return;
-  }
-
-  // Modo "somente anexos" (sem análise automática)
-  if (cfg && cfg.noAnalyze) {
-    const msg = arr.length + " anexo(s) carregado(s).";
-    if (statusEl) statusEl.textContent = msg;
     if (cfg && cfg.update) cfg.update();
     return;
   }
@@ -14522,34 +14512,96 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     let copyMedicalDocsBtn = null;
     let printMedicalDocsBtn = null;
 
-    
+    let medicalDocsAttachPhotoBtn = null;
+    let medicalDocsAttachFileBtn = null;
+    let medicalDocsClearAttachmentsBtn = null;
     let medicalDocsCameraInput = null;
     let medicalDocsFileInput = null;
     let medicalDocsAttachmentsStatus = null;
-    let medicalDocsClearAttachmentsBtn = null;
-
+    let medicalDocsRequestText = null;
     let medicalDocsImages = [];
-function medicalDocsUpdateCopyPrintVisibility() {
+
+    function medicalDocsUpdateCopyPrintVisibility() {
       const hasText = !!(medicalDocsOutput && String(medicalDocsOutput.value || "").trim());
       if (copyMedicalDocsBtn) copyMedicalDocsBtn.classList.toggle("hidden", !hasText);
       if (printMedicalDocsBtn) printMedicalDocsBtn.classList.toggle("hidden", !hasText);
     }
 
-    function medicalDocsUpdateAttachmentsUI() {
+    function updateMedicalDocsAttachmentsStatus() {
+      if (!medicalDocsAttachmentsStatus) return;
       const n = Array.isArray(medicalDocsImages) ? medicalDocsImages.length : 0;
-      if (medicalDocsAttachmentsStatus) {
-        medicalDocsAttachmentsStatus.textContent = n ? (n + " anexo(s) carregado(s).") : "Nenhum anexo enviado.";
-      }
-      if (medicalDocsClearAttachmentsBtn) {
-        medicalDocsClearAttachmentsBtn.disabled = !n;
-      }
+      medicalDocsAttachmentsStatus.textContent = n + " anexo(s) carregado(s).";
     }
 
-    function medicalDocsClearAttachments() {
-      if (Array.isArray(medicalDocsImages)) medicalDocsImages.length = 0;
-      medicalDocsUpdateAttachmentsUI();
+    async function addMedicalDocsFiles(fileList) {
+      const list = Array.from(fileList || []);
+      if (!list.length) return;
+
+      const remaining = Math.max(0, 4 - medicalDocsImages.length);
+      const slice = list.slice(0, remaining);
+
+      if (medicalDocsAttachmentsStatus) medicalDocsAttachmentsStatus.textContent = "Carregando anexo(s).";
+
+      for (const file of slice) {
+        try {
+          let dataUrl = await fileToCompressedDataUrl(file);
+          if (!dataUrl) dataUrl = await fileToDataUrl(file);
+          if (dataUrl && dataUrl.startsWith("data:image/")) {
+            medicalDocsImages.push(dataUrl);
+          }
+        } catch {}
+      }
+
+      updateMedicalDocsAttachmentsStatus();
     }
 
+    async function generateMedicalDocsNow(voiceTranscript) {
+      const extra = medicalDocsRequestText ? String(medicalDocsRequestText.value || "").trim() : "";
+      const vt = String(voiceTranscript || "").trim();
+      const combined = [extra, vt].filter(Boolean).join("\n\n").trim();
+
+      if (!combined && (!medicalDocsImages || !medicalDocsImages.length)) {
+        if (medicalDocsError) medicalDocsError.textContent = "Informe o pedido do documento (texto ou voz) ou anexe uma imagem.";
+        return;
+      }
+
+      if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Gerando documento médico...";
+      if (medicalDocsRecordBtn) medicalDocsRecordBtn.disabled = true;
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/gerar-documento-medico", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcricao: combined, images_data_url: medicalDocsImages })
+        });
+
+        if (!resp.ok) {
+          const raw = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (documento médico):", resp.status, raw);
+          if (medicalDocsError) medicalDocsError.textContent = "Não foi possível gerar o documento médico.";
+          if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Pronto.";
+          return;
+        }
+
+        const data = await resp.json().catch(() => ({}));
+        const tipo = data?.tipo_documento ? String(data.tipo_documento) : "";
+        const campos = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : [];
+        const documento = data?.documento ? String(data.documento) : "";
+
+        if (medicalDocsTypeDetected) medicalDocsTypeDetected.textContent = tipo || "não informado";
+        if (medicalDocsMissingFields) medicalDocsMissingFields.textContent = (campos && campos.length) ? campos.join("\n") : "Sem pendências.";
+        if (medicalDocsOutput) medicalDocsOutput.value = normalizeNumberedParagraphs(documento || "");
+        medicalDocsUpdateCopyPrintVisibility();
+
+        if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Documento médico gerado.";
+      } catch (err) {
+        console.error("Erro ao gerar documento médico:", err);
+        if (medicalDocsError) medicalDocsError.textContent = "Erro ao gerar documento médico.";
+        if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Pronto.";
+      } finally {
+        if (medicalDocsRecordBtn) medicalDocsRecordBtn.disabled = false;
+      }
+    }
 
     function medicalDocsBindElementsAndWire() {
       medicalDocsRecordBtn = document.getElementById("medicalDocsRecordBtn");
@@ -14563,34 +14615,40 @@ function medicalDocsUpdateCopyPrintVisibility() {
       copyMedicalDocsBtn = document.getElementById("copyMedicalDocsBtn");
       printMedicalDocsBtn = document.getElementById("printMedicalDocsBtn");
 
+      medicalDocsAttachPhotoBtn = document.getElementById("medicalDocsAttachPhotoBtn");
+      medicalDocsAttachFileBtn = document.getElementById("medicalDocsAttachFileBtn");
+      medicalDocsClearAttachmentsBtn = document.getElementById("medicalDocsClearAttachmentsBtn");
       medicalDocsCameraInput = document.getElementById("medicalDocsCameraInput");
       medicalDocsFileInput = document.getElementById("medicalDocsFileInput");
       medicalDocsAttachmentsStatus = document.getElementById("medicalDocsAttachmentsStatus");
-      medicalDocsClearAttachmentsBtn = document.getElementById("medicalDocsClearAttachmentsBtn");
+      medicalDocsRequestText = document.getElementById("medicalDocsRequestText");
 
-      if (medicalDocsCameraInput) {
+      updateMedicalDocsAttachmentsStatus();
+
+      if (medicalDocsAttachPhotoBtn && medicalDocsCameraInput) {
+        medicalDocsAttachPhotoBtn.addEventListener("click", () => medicalDocsCameraInput.click());
         medicalDocsCameraInput.addEventListener("change", async (e) => {
           const files = e && e.target ? e.target.files : null;
-          await addFilesToTarget(files, "medicalDocs");
-          medicalDocsCameraInput.value = "";
+          await addMedicalDocsFiles(files);
+          try { medicalDocsCameraInput.value = ""; } catch {}
         });
       }
 
-      if (medicalDocsFileInput) {
+      if (medicalDocsAttachFileBtn && medicalDocsFileInput) {
+        medicalDocsAttachFileBtn.addEventListener("click", () => medicalDocsFileInput.click());
         medicalDocsFileInput.addEventListener("change", async (e) => {
           const files = e && e.target ? e.target.files : null;
-          await addFilesToTarget(files, "medicalDocs");
-          medicalDocsFileInput.value = "";
+          await addMedicalDocsFiles(files);
+          try { medicalDocsFileInput.value = ""; } catch {}
         });
       }
 
       if (medicalDocsClearAttachmentsBtn) {
         medicalDocsClearAttachmentsBtn.addEventListener("click", () => {
-          medicalDocsClearAttachments();
+          medicalDocsImages = [];
+          updateMedicalDocsAttachmentsStatus();
         });
       }
-
-      medicalDocsUpdateAttachmentsUI();
 
       medicalDocsUpdateCopyPrintVisibility();
       if (medicalDocsOutput) medicalDocsOutput.addEventListener("input", medicalDocsUpdateCopyPrintVisibility);
@@ -14610,11 +14668,18 @@ function medicalDocsUpdateCopyPrintVisibility() {
         });
       }
 
-
       if (medicalDocsRecordBtn) {
         medicalDocsRecordBtn.addEventListener("click", () => {
-          if (!medicalDocsIsRecording) startMedicalDocsRecording();
-          else stopMedicalDocsRecordingAndGenerate();
+          if (!medicalDocsIsRecording) {
+            const extra = medicalDocsRequestText ? String(medicalDocsRequestText.value || "").trim() : "";
+            if ((extra && extra.length >= 20) || (medicalDocsImages && medicalDocsImages.length)) {
+              generateMedicalDocsNow("");
+              return;
+            }
+            startMedicalDocsRecording();
+          } else {
+            stopMedicalDocsRecordingAndGenerate();
+          }
         });
       }
 
@@ -14869,78 +14934,9 @@ function medicalDocsUpdateCopyPrintVisibility() {
       if (reportRecordBtn) reportRecordBtn.disabled = false;
 
       const txt = (medicalDocsFinalTranscript || "").trim();
-      if (!txt || txt.length < 40) {
-        if (medicalDocsError) medicalDocsError.textContent = "A transcrição ficou muito curta. Tente novamente, falando mais próximo ao microfone.";
-        if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Pronto.";
-        return;
-      }
-
-      if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Gerando documento médico...";
-      if (medicalDocsRecordBtn) medicalDocsRecordBtn.disabled = true;
-
-      try {
-        const payload = { transcricao: txt };
-        if (Array.isArray(medicalDocsImages) && medicalDocsImages.length) {
-          payload.images_data_url = medicalDocsImages.slice(0, 4);
-          payload.image_data_url = payload.images_data_url[0];
-        }
-
-        const resp = await fetch(BACKEND_URL + "/api/gerar-documento-medico", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (!resp.ok) {
-          const raw = await resp.text().catch(() => "");
-          console.error("Erro HTTP do backend (documento médico):", resp.status, raw);
-          if (medicalDocsError) medicalDocsError.textContent = "Não foi possível gerar o documento médico.";
-          if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Pronto.";
-          return;
-        }
-
-        const data = await resp.json();
-        const tipo = data?.tipo_documento ? String(data.tipo_documento) : "";
-        const campos = Array.isArray(data?.campos_pendentes) ? data.campos_pendentes : [];
-        const documento = data?.documento ? String(data.documento) : "";
-
-        if (medicalDocsTypeDetected) medicalDocsTypeDetected.textContent = tipo || "não informado";
-        if (medicalDocsMissingFields) medicalDocsMissingFields.textContent = (campos && campos.length) ? campos.join("\n") : "Sem pendências.";
-        if (medicalDocsOutput) medicalDocsOutput.value = normalizeNumberedParagraphs(documento || "");
-        medicalDocsUpdateCopyPrintVisibility();
-
-        if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Documento médico gerado.";
-      } catch (err) {
-        console.error("Erro ao gerar documento médico:", err);
-        if (medicalDocsError) medicalDocsError.textContent = "Erro ao gerar documento médico.";
-        if (medicalDocsMicStatus) medicalDocsMicStatus.textContent = "Pronto.";
-      } finally {
-        if (medicalDocsRecordBtn) medicalDocsRecordBtn.disabled = false;
-      }
+      await generateMedicalDocsNow(txt);
     }
 
-    if (medicalDocsRecordBtn) {
-      medicalDocsRecordBtn.addEventListener("click", () => {
-        if (!medicalDocsIsRecording) startMedicalDocsRecording();
-        else stopMedicalDocsRecordingAndGenerate();
-      });
-    }
-
-    if (medicalDocsPauseBtn) {
-      medicalDocsPauseBtn.addEventListener("click", () => {
-        if (!medicalDocsIsRecording) return;
-        if (!medicalDocsIsPaused) pauseMedicalDocsRecording();
-        else resumeMedicalDocsRecording();
-      });
-    }
-
-    if (copyMedicalDocsBtn) {
-      copyMedicalDocsBtn.addEventListener("click", () => {
-        const txt = medicalDocsOutput ? String(medicalDocsOutput.value || "").trim() : "";
-        if (!txt) return;
-        copyToClipboard(txt);
-      });
-    }
 
     function printTextBlock(title, text) {
       const t = String(text || "").trim();
@@ -14953,14 +14949,6 @@ function medicalDocsUpdateCopyPrintVisibility() {
       w.document.close();
       w.focus();
       w.print();
-    }
-
-    if (printMedicalDocsBtn) {
-      printMedicalDocsBtn.addEventListener("click", () => {
-        const txt = medicalDocsOutput ? String(medicalDocsOutput.value || "").trim() : "";
-        const title = medicalDocsTypeDetected ? String(medicalDocsTypeDetected.textContent || "").trim() : "Documento";
-        printTextBlock(title || "Documento", txt);
-      });
     }
 
 </script>
@@ -14980,24 +14968,19 @@ function medicalDocsUpdateCopyPrintVisibility() {
       <button id="medicalDocsPauseBtn" class="pause-btn" type="button" style="display:none;">Pausar</button>
     </div>
 
+    <div class="module-subtitle" style="margin-top: 10px; margin-bottom: 8px;">Anexos para enriquecer o documento (exames, laudos, fotos clínicas).</div>
 
-    <div class="inline-input-row" style="margin-top: 10px;">
-      <div style="flex: 1; min-width: 240px;">
-        <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Anexos (exames, laudos ou foto clínica)</div>
-        <div class="inline-input-row" style="margin-top: 6px;">
-          <label class="photo-btn" style="position: relative;">
-            Tirar foto
-            <input id="medicalDocsCameraInput" class="hidden-input" type="file" accept="image/*" capture="environment" multiple />
-          </label>
-          <label class="photo-btn" style="position: relative;">
-            Escolher arquivo
-            <input id="medicalDocsFileInput" class="hidden-input" type="file" accept="image/*" multiple />
-          </label>
-          <button id="medicalDocsClearAttachmentsBtn" class="btn-print guide-main-btn" type="button" style="background:#6c757d;border-color:#6c757d;">Limpar anexos</button>
-        </div>
-        <div id="medicalDocsAttachmentsStatus" class="mini-status">Nenhum anexo enviado.</div>
-      </div>
+    <div class="inline-input-row" style="margin-top: 4px; flex-wrap: wrap;">
+      <button id="medicalDocsAttachPhotoBtn" class="btn-print" type="button">Tirar foto</button>
+      <button id="medicalDocsAttachFileBtn" class="btn-print" type="button">Escolher arquivo</button>
+      <button id="medicalDocsClearAttachmentsBtn" class="btn-print" type="button">Limpar anexos</button>
+      <input id="medicalDocsCameraInput" type="file" accept="image/*" capture="environment" multiple style="display:none;" />
+      <input id="medicalDocsFileInput" type="file" accept="image/*" multiple style="display:none;" />
     </div>
+
+    <div id="medicalDocsAttachmentsStatus" class="mini-status" style="margin-top: 6px;">0 anexo(s) carregado(s).</div>
+
+    <textarea id="medicalDocsRequestText" class="prescription-textarea" placeholder="Descreva o que deve constar no documento. Se houver anexos, eles serão usados para complementar (por exemplo: atestado de 3 dias por lesão; sintomas, tempo de evolução, local, limitações)." style="margin-top: 10px; min-height: 110px;"></textarea>
 
     <div id="medicalDocsTimer" class="mini-timer hidden">00:00</div>
     <div id="medicalDocsMicStatus" class="mini-status">Clique em "Gerar documentos" para começar.</div>

@@ -570,6 +570,72 @@ async function callOpenAIVisionJsonMulti(prompt, imagensDataUrl) {
 
 
 
+async function extractMedicalContextFromImages(imagensDataUrl) {
+  const rawArr = Array.isArray(imagensDataUrl) ? imagensDataUrl : [];
+  const imgs = rawArr
+    .map(u => normalizeImageDataUrl(u, 2_400_000))
+    .filter(Boolean)
+    .slice(0, 4);
+
+  if (!imgs.length) return null;
+
+  const prompt = `
+Você está auxiliando na elaboração de documentos clínicos e administrativos com base em anexos.
+Os anexos podem ser foto clínica de lesão/ferida/pele e/ou documentos de exames/resultados.
+Tarefa: extrair informações objetivas dos anexos, sem inventar e sem afirmar diagnóstico definitivo.
+
+Regras:
+- Foto clínica: descreva apenas achados visuais objetivos (morfologia, bordas, cor, sinais de inflamação, presença de exsudato/secreção, tecido de granulação/necrose se visível, pele perilesional, edema). Não estime medidas se não for claramente possível.
+- Documento de exame: transcreva e organize o essencial (nome do exame, data se houver, valores/achados, conclusão).
+- Se houver incerteza, liste em "limitacoes".
+- Não use emojis e não use símbolos gráficos.
+- Retorne JSON estrito, sem texto fora do JSON.
+
+Formato obrigatório:
+{
+  "tipo_anexo": "foto_clinica" | "documento" | "misto" | "indefinido",
+  "resumo_objetivo": "string",
+  "achados_exame_fisico": "string",
+  "impressao_hipotese": "string",
+  "exames_e_resultados": ["..."],
+  "dados_identificacao": { "nome": "string", "cpf": "string", "cns": "string", "data_documento": "string" },
+  "limitacoes": ["..."]
+}
+`;
+
+  const data = await callOpenAIVisionJsonMulti(prompt, imgs);
+
+  const tipo_anexo = (typeof data?.tipo_anexo === "string" ? data.tipo_anexo.trim() : "") || "indefinido";
+  const resumo_objetivo = (typeof data?.resumo_objetivo === "string" ? data.resumo_objetivo.trim() : "");
+  const achados_exame_fisico = (typeof data?.achados_exame_fisico === "string" ? data.achados_exame_fisico.trim() : "");
+  const impressao_hipotese = (typeof data?.impressao_hipotese === "string" ? data.impressao_hipotese.trim() : "");
+  const exames_e_resultados = normalizeArrayOfStrings(data?.exames_e_resultados, 40, 240);
+
+  const di = (data?.dados_identificacao && typeof data.dados_identificacao === "object") ? data.dados_identificacao : {};
+  const dados_identificacao = {
+    nome: (typeof di.nome === "string" ? di.nome.trim() : ""),
+    cpf: (typeof di.cpf === "string" ? di.cpf.trim() : ""),
+    cns: (typeof di.cns === "string" ? di.cns.trim() : ""),
+    data_documento: (typeof di.data_documento === "string" ? di.data_documento.trim() : "")
+  };
+
+  const limitacoes = normalizeArrayOfStrings(data?.limitacoes, 20, 220);
+
+  return {
+    tipo_anexo,
+    resumo_objetivo,
+    achados_exame_fisico,
+    impressao_hipotese,
+    exames_e_resultados,
+    dados_identificacao,
+    limitacoes
+  };
+}
+
+
+
+
+
 // Pequena validação para limitar tamanho e evitar abusos
 function normalizeText(input, maxLen) {
   const s = (typeof input === "string" ? input : "").trim();
@@ -2393,7 +2459,7 @@ app.post("/api/gerar-soap", requirePaidOrAdmin, async(req, res) => {
   try {
     const { transcricao } = req.body || {};
 
-    if (!transcricao || !String(transcricao).trim()) {
+    if ((!transcricao || !String(transcricao).trim()) && (!imagens || !imagens.length)) {
       return res.status(400).json({ error: "O campo 'transcricao' é obrigatório." });
     }
 
@@ -2442,9 +2508,6 @@ PLANO DE CUIDADOS (prescrição de enfermagem):
 - Educação em saúde (orientações e checagem de compreensão).
 - Retorno/reavaliação (quando e com quais critérios).
 - Critérios objetivos para escalar ao médico.
-
-Anexos (exames/documentos enviados em imagem; transcrição automática pode conter erros):
-"""${safeAnexos || "nenhum"}"""
 
 Transcrição:
 """${safeTranscricao}"""
@@ -2892,7 +2955,6 @@ Falas adicionais (perguntas, respostas e informações espontâneas):
 
 async function generateSbarTextFromTranscript(transcricao) {
   const safeTranscricao = normalizeText(transcricao || "", 25000);
-  const safeAnexos = normalizeText(anexosTexto || "", 12000);
   if (!safeTranscricao || safeTranscricao.length < 30) return "";
 
   const prompt = `
@@ -3537,110 +3599,6 @@ Responda EXCLUSIVAMENTE em JSON, sem markdown, neste formato:
     limitacoes: limitacoes || "não informado"
   };
 }
-
-
-
-async function analisarAnexoParaDocumentoMedico(safeImage) {
-  const prompt = `
-Você é um médico analisando um anexo enviado para ajudar na elaboração de um documento médico (atestado, relatório, encaminhamento, etc.).
-
-O anexo pode ser:
-- Documento/exame/laudo fotografado (texto)
-- Foto clínica (ex.: lesão de pele, ferida, curativo)
-- Outro tipo de imagem
-
-Tarefa:
-1) Classifique o tipo de anexo com uma das opções: "documento", "exame/laudo", "foto clínica", "outros".
-2) Se for "documento" ou "exame/laudo": transcreva e organize somente o que estiver legível (sem inventar). Se houver trechos ilegíveis, marque como "não informado".
-3) Se for "foto clínica": descreva achados objetivos visíveis, de forma técnica e neutra, sem inventar (ex.: localização aparente, morfologia, bordas, coloração, sinais inflamatórios, presença de exsudato, necrose, sangramento, edema, extensão aproximada quando possível). Se não for possível estimar tamanho/localização, use "não informado".
-4) Para "foto clínica", inclua uma "impressão/hipótese" apenas em linguagem de probabilidade ("compatível com", "sugere", "hipótese"), sem diagnóstico definitivo e sem afirmar etiologia não visível.
-5) Não prescreva tratamento. Não faça conduta. Não use emojis e não use símbolos gráficos.
-
-Responda EXCLUSIVAMENTE em JSON, sem markdown, neste formato:
-{
-  "tipo_anexo": "documento|exame/laudo|foto clínica|outros",
-  "transcricao_organizada": "string",
-  "achados_visuais": "string",
-  "impressao_hipotese": "string",
-  "limitacoes": "string"
-}
-`;
-
-  const data = await callOpenAIVisionJson(prompt, safeImage);
-
-  const tipo_anexo = typeof data?.tipo_anexo === "string" ? data.tipo_anexo.trim() : "";
-  const transcricao_organizada = typeof data?.transcricao_organizada === "string" ? data.transcricao_organizada.trim() : "";
-  const achados_visuais = typeof data?.achados_visuais === "string" ? data.achados_visuais.trim() : "";
-  const impressao_hipotese = typeof data?.impressao_hipotese === "string" ? data.impressao_hipotese.trim() : "";
-  const limitacoes = typeof data?.limitacoes === "string" ? data.limitacoes.trim() : "";
-
-  const tipoNorm = (tipo_anexo || "").toLowerCase();
-  const tipoFinal = (
-    (tipoNorm.includes("foto") && "foto clínica") ||
-    (tipoNorm.includes("exame") && "exame/laudo") ||
-    (tipoNorm.includes("laudo") && "exame/laudo") ||
-    (tipoNorm.includes("document") && "documento") ||
-    (tipoNorm.includes("doc") && "documento") ||
-    (tipoNorm.includes("out") && "outros") ||
-    ""
-  ) || "outros";
-
-  return {
-    tipo_anexo: tipoFinal,
-    transcricao_organizada: transcricao_organizada || "não informado",
-    achados_visuais: achados_visuais || "não informado",
-    impressao_hipotese: impressao_hipotese || "não informado",
-    limitacoes: limitacoes || "não informado"
-  };
-}
-
-
-async function buildAttachmentsTextForMedicalDocs(imagesDataUrl) {
-  const arr = Array.isArray(imagesDataUrl) ? imagesDataUrl : [];
-  const safeArr = arr
-    .map(x => normalizeImageDataUrl(x, 900000))
-    .filter(Boolean)
-    .slice(0, 4);
-
-  if (!safeArr.length) return "";
-
-  const parts = [];
-
-  for (let i = 0; i < safeArr.length; i++) {
-    const img = safeArr[i];
-    try {
-      const r = await analisarAnexoParaDocumentoMedico(img);
-
-      const tipo = normalizeText(r?.tipo_anexo || "", 40) || "outros";
-      const trans = normalizeText(r?.transcricao_organizada || "", 5000) || "não informado";
-      const ach = normalizeText(r?.achados_visuais || "", 3000) || "não informado";
-      const hip = normalizeText(r?.impressao_hipotese || "", 1200) || "não informado";
-      const lim = normalizeText(r?.limitacoes || "", 900) || "não informado";
-
-      parts.push(
-        "ANEXO " + (i + 1) + "
-" +
-        "Tipo: " + tipo + "
-" +
-        "Transcrição (quando aplicável): " + trans + "
-" +
-        "Achados visuais (quando aplicável): " + ach + "
-" +
-        "Impressão/hipótese (quando aplicável): " + hip + "
-" +
-        "Limitações: " + lim
-      );
-    } catch (e) {
-      parts.push("ANEXO " + (i + 1) + "
-Falha ao analisar anexo. " + (e && e.message ? e.message : ""));
-    }
-  }
-
-  return normalizeText(parts.join("
-
-"), 12000);
-}
-
 async function avaliarReceitaPorImagem(imagensDataUrl) {
   const prompt = `
 Você é um profissional de saúde avaliando uma receita/prescrição fotografada.
@@ -4007,7 +3965,10 @@ app.post("/api/duvidas-enfermagem", requirePaidOrAdmin, async(req, res) => {
 
 app.post("/api/gerar-relatorio", requirePaidOrAdmin, async(req, res) => {
   try {
-    const { transcricao, tipo_documento } = req.body || {};
+    const body = req.body || {};
+    const transcricao = (typeof body.transcricao === "string" ? body.transcricao : (typeof body.texto === "string" ? body.texto : (typeof body.pedido === "string" ? body.pedido : "")));
+    const tipo_documento = body.tipo_documento;
+    const imagens = getImagesDataUrlFromBody(body).map(u => normalizeImageDataUrl(u, 2_400_000)).filter(Boolean).slice(0, 4);
 
     if (!transcricao || !String(transcricao).trim()) {
       return res.json({
@@ -4228,9 +4189,8 @@ function suggestMedicalDocumentQuestionsHeuristic(transcricao, tipo) {
   return q.slice(0, 5);
 }
 
-async function generateMedicalDocumentFromTranscript(transcricao, tipoSelecionado, anexosTexto) {
+async function generateMedicalDocumentFromTranscript(transcricao, tipoSelecionado, anexos) {
   const safeTranscricao = normalizeText(transcricao || "", 25000);
-  const safeAnexos = normalizeText(anexosTexto || "", 12000);
   if (!safeTranscricao || safeTranscricao.length < 30) {
     return {
       tipo_documento: tipoSelecionado || "",
@@ -4260,16 +4220,13 @@ async function generateMedicalDocumentFromTranscript(transcricao, tipoSelecionad
 
   const prompt = `
 Você é um médico humano redigindo documentação clínica e administrativa para uso real (prontuário, empresas, escolas, perícia previdenciária).
-Tarefa: a partir da transcrição integral de uma consulta (perguntas e respostas) e de anexos (exames, laudos, documentos e/ou foto clínica), identifique o tipo de documento solicitado e gere o documento completo, formal e coerente com as informações disponíveis.
+Tarefa: a partir da transcrição integral de uma consulta (perguntas e respostas), identifique o tipo de documento solicitado e gere o documento completo, formal e compatível com avaliação pericial quando aplicável.
 
 Regras obrigatórias:
-- Não invente dados. Use somente o que estiver na transcrição e nos anexos analisados. Se faltar informação, escreva "não informado" ou deixe campo em branco com sublinhado (ex.: "CPF: __________").
-- Use os ANEXOS para complementar e não deixe campos como "não informado" quando os anexos trouxerem achados relevantes.
+- Não invente dados. Se faltar informação, escreva "não informado" ou deixe campo em branco com sublinhado (ex.: "CPF: __________").
 - Não use emojis e não use símbolos gráficos.
 - Não faça diagnóstico definitivo além do que estiver explicitamente descrito. Se houver hipótese, escreva como hipótese/compatível.
 - Extraia e liste exames mencionados (tipo, data se houver, principais achados citados).
-- Para anexos do tipo "foto clínica": descreva em "Exame físico" os achados objetivos (lesão/ferida), e em "Impressão diagnóstica/hipótese" descreva hipóteses apenas em linguagem de probabilidade ("compatível com", "sugere"), sem afirmar etiologia não visível.
-- Em "Atestado médico": o texto deve conter o motivo do afastamento (condição/queixa) em linguagem técnica e compatível com a transcrição/anexos, e o período de afastamento quando informado (ex.: "03 dias"). Se o período não estiver claro, deixe em branco com sublinhado e inclua isso em "campos_pendentes".
 - Em "Relatório médico para INSS": descreva queixa, exame físico, achados complementares, limitação funcional referida, conduta e necessidade de avaliação médico-pericial; evite linguagem exagerada; não determine incapacidade definitiva.
 - Linguagem: objetiva, técnica e formal, em português.
 
@@ -4315,8 +4272,16 @@ Estrutura mínima do documento (adapte conforme o tipo):
    CRM: ______________________
    Assinatura e carimbo: ______________________
 
-Anexos analisados (podem estar vazios):
-"""${safeAnexos}"""
+Informações extraídas de anexos (exames, laudos, fotos clínicas):
+${anexos ? JSON.stringify(anexos) : "Nenhum anexo informado."}
+
+Regras específicas (quando houver anexos):
+- Se houver descrição de lesão/ferida em "achados_exame_fisico" ou em "resumo_objetivo", preencher obrigatoriamente "Exame físico" e mencionar na "Queixa/História" quando pertinente.
+- Em "Impressão diagnóstica/hipótese", usar "impressao_hipotese" como hipótese (não diagnóstico definitivo).
+- Se o tipo for "Atestado médico" e houver achados em anexos compatíveis com lesão/condição, incluir motivo do afastamento de forma objetiva e coerente.
+- Se houver exames em "exames_e_resultados", preencher "Exames complementares" com base neles.
+- Nunca mencionar inteligência artificial, ferramentas, sistemas ou modelos.
+
 
 Transcrição:
 """${safeTranscricao}"""
@@ -4344,8 +4309,11 @@ Transcrição:
 
 app.post("/api/gerar-documento-medico", requirePaidOrAdmin, async (req, res) => {
   try {
-    const { transcricao, tipo_documento } = req.body || {};
-    if (!transcricao || !String(transcricao).trim()) {
+    const body = req.body || {};
+    const transcricao = (typeof body.transcricao === "string" ? body.transcricao : (typeof body.texto === "string" ? body.texto : (typeof body.pedido === "string" ? body.pedido : "")));
+    const tipo_documento = body.tipo_documento;
+    const imagens = getImagesDataUrlFromBody(body).map(u => normalizeImageDataUrl(u, 2_400_000)).filter(Boolean).slice(0, 4);
+    if ((!transcricao || !String(transcricao).trim()) && (!imagens || !imagens.length)) {
       return res.json({
         tipo_documento: "",
         doenca_ou_queixa_principal: "não informado",
@@ -4365,20 +4333,31 @@ app.post("/api/gerar-documento-medico", requirePaidOrAdmin, async (req, res) => 
         exames_mencionados: [],
         campos_pendentes: [
           "Sem chave OPENAI_API_KEY configurada no servidor.",
+          "Os anexos enviados não puderam ser analisados sem a chave configurada.",
           ...suggestMedicalDocumentQuestionsHeuristic(transcricao, tipoFallback)
         ].slice(0, 8),
         documento: ""
       });
     }
 
-    const imgs = getImagesDataUrlFromBody(req.body || {})
-      .map(x => normalizeImageDataUrl(x, 900000))
-      .filter(Boolean)
-      .slice(0, 4);
+    let anexos = null;
+    if (imagens && imagens.length) {
+      try {
+        anexos = await extractMedicalContextFromImages(imagens);
+      } catch (e) {
+        anexos = {
+          tipo_anexo: "indefinido",
+          resumo_objetivo: "",
+          achados_exame_fisico: "",
+          impressao_hipotese: "",
+          exames_e_resultados: [],
+          dados_identificacao: { nome: "", cpf: "", cns: "", data_documento: "" },
+          limitacoes: ["Falha ao analisar anexos."]
+        };
+      }
+    }
 
-    const anexosTexto = (imgs && imgs.length) ? await buildAttachmentsTextForMedicalDocs(imgs) : "";
-
-    const out = await generateMedicalDocumentFromTranscript(transcricao, tipoSelecionado, anexosTexto);
+    const out = await generateMedicalDocumentFromTranscript(transcricao, tipoSelecionado, anexos);
     return res.json(out);
   } catch (e) {
     console.error(e);
