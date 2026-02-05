@@ -6,9 +6,6 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const os = require("os");
-const https = require("https");
-const http = require("http");
-const zlib = require("zlib");
 let PptxGenJS = null;
 try {
   const mod = require("pptxgenjs");
@@ -5178,14 +5175,61 @@ function pickFirstNonEmpty(arr) {
   return "";
 }
 
+const http = require("http");
+const https = require("https");
+
+function httpGetBuffer(url, { timeoutMs = 12_000, maxBytes = 6_000_000, redirects = 3 } = {}) {
+  return new Promise((resolve, reject) => {
+    let u;
+    try { u = new URL(String(url)); } catch { return reject(new Error("URL inválida.")); }
+
+    const lib = u.protocol === "https:" ? https : http;
+    const req = lib.request(u, { method: "GET", headers: { "User-Agent": "Mozilla/5.0" } }, (res) => {
+      const status = res.statusCode || 0;
+      const loc = res.headers.location;
+
+      if ([301, 302, 303, 307, 308].includes(status) && loc && redirects > 0) {
+        res.resume();
+        const nextUrl = new URL(loc, u).toString();
+        return resolve(httpGetBuffer(nextUrl, { timeoutMs, maxBytes, redirects: redirects - 1 }));
+      }
+
+      if (status < 200 || status >= 300) {
+        res.resume();
+        return reject(new Error("Falha ao baixar mídia."));
+      }
+
+      const chunks = [];
+      let total = 0;
+
+      res.on("data", (d) => {
+        total += d.length;
+        if (total > maxBytes) {
+          try { req.destroy(); } catch {}
+          return reject(new Error("Mídia muito grande."));
+        }
+        chunks.push(d);
+      });
+
+      res.on("end", () => resolve(Buffer.concat(chunks)));
+      res.on("error", reject);
+    });
+
+    req.on("error", reject);
+    req.setTimeout(timeoutMs, () => {
+      try { req.destroy(new Error("Timeout")); } catch {}
+      reject(new Error("Timeout ao baixar mídia."));
+    });
+    req.end();
+  });
+}
+
 async function fetchBinary(url, maxBytes = 6_000_000, timeoutMs = 12_000) {
   const u = String(url || "").trim();
   if (!u) throw new Error("URL vazia.");
-  // Render/Node podem não expor fetch global em versões antigas.
-  // Implementação: usa fetch quando disponível; caso contrário, fallback via http/https.
-  const hasFetch = (typeof fetch === "function");
 
-  if (hasFetch) {
+  // Node 18+ tem fetch nativo; em Node 16 (Render antigo) não.
+  if (typeof fetch === "function") {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -5199,47 +5243,29 @@ async function fetchBinary(url, maxBytes = 6_000_000, timeoutMs = 12_000) {
     }
   }
 
-  // Fallback sem fetch
-  return await new Promise((resolve, reject) => {
-    let done = false;
-    const lib = u.startsWith("https:") ? https : http;
-    const req = lib.get(u, { timeout: timeoutMs, headers: { "User-Agent": "QueimadasTelemedicina/1.0" } }, (res) => {
-      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        // redirecionamento
-        res.resume();
-        if (!done) {
-          done = true;
-          fetchBinary(res.headers.location, maxBytes, timeoutMs).then(resolve).catch(reject);
-        }
-        return;
-      }
-      if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
-        res.resume();
-        return reject(new Error("Falha ao baixar mídia."));
-      }
-      const chunks = [];
-      let total = 0;
-      res.on("data", (c) => {
-        total += c.length;
-        if (total > maxBytes) {
-          try { req.destroy(); } catch {}
-          return reject(new Error("Mídia muito grande."));
-        }
-        chunks.push(c);
-      });
-      res.on("end", () => {
-        if (done) return;
-        done = true;
-        resolve(Buffer.concat(chunks));
-      });
-    });
-    req.on("timeout", () => {
-      try { req.destroy(); } catch {}
-      reject(new Error("Timeout ao baixar mídia."));
-    });
-    req.on("error", reject);
-  });
+  return httpGetBuffer(u, { timeoutMs, maxBytes });
 }
+
+async function fetchJson(url, timeoutMs = 12_000) {
+  const u = String(url || "").trim();
+  if (!u) throw new Error("URL vazia.");
+
+  if (typeof fetch === "function") {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch(u, { signal: controller.signal, redirect: "follow" });
+      if (!resp.ok) throw new Error("Falha ao buscar JSON.");
+      return await resp.json();
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  const buf = await httpGetBuffer(u, { timeoutMs, maxBytes: 2_500_000 });
+  try { return JSON.parse(buf.toString("utf-8")); } catch { return {}; }
+}
+
 
 function extFromMimeOrUrl(mime, url) {
   const m = String(mime || "").toLowerCase();
@@ -5247,95 +5273,11 @@ function extFromMimeOrUrl(mime, url) {
   if (m.includes("jpeg") || m.includes("jpg")) return "jpg";
   if (m.includes("gif")) return "gif";
   if (m.includes("webp")) return "webp";
-  if (m.includes("svg")) return "svg";
 
   const u = String(url || "").toLowerCase();
-  const m2 = u.match(/\.(png|jpg|jpeg|gif|webp|svg)(\?|#|$)/i);
+  const m2 = u.match(/\.(png|jpg|jpeg|gif|webp)(\?|#|$)/i);
   if (m2 && m2[1]) return m2[1].toLowerCase() === "jpeg" ? "jpg" : m2[1].toLowerCase();
   return "png";
-}
-
-function mimeFromExt(ext) {
-  const e = String(ext || "").toLowerCase();
-  if (e === "jpg" || e === "jpeg") return "image/jpeg";
-  if (e === "png") return "image/png";
-  if (e === "gif") return "image/gif";
-  if (e === "webp") return "image/webp";
-  return "image/png";
-}
-
-function crc32(buf) {
-  // CRC32 para PNG
-  let crc = 0 ^ (-1);
-  for (let i = 0; i < buf.length; i++) {
-    crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ buf[i]) & 0xff];
-  }
-  return (crc ^ (-1)) >>> 0;
-}
-
-const CRC_TABLE = (() => {
-  const table = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) {
-      c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
-    }
-    table[n] = c >>> 0;
-  }
-  return table;
-})();
-
-function pngChunk(type, data) {
-  const t = Buffer.from(type, "ascii");
-  const d = Buffer.isBuffer(data) ? data : Buffer.from(data || []);
-  const len = Buffer.alloc(4);
-  len.writeUInt32BE(d.length, 0);
-  const crcBuf = Buffer.concat([t, d]);
-  const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(crcBuf), 0);
-  return Buffer.concat([len, t, d, crc]);
-}
-
-function makeSolidPngDataUri({ w = 800, h = 450, hex = "#c1121f" } = {}) {
-  // PNG simples (cor sólida) para fallback. Garante compatibilidade com pptxgenjs.
-  const W = Math.max(8, Math.min(1600, parseInt(w, 10) || 800));
-  const H = Math.max(8, Math.min(900, parseInt(h, 10) || 450));
-  const m = String(hex || "").replace(/[^0-9a-fA-F]/g, "").padEnd(6, "0").slice(0, 6);
-  const r = parseInt(m.slice(0, 2), 16) || 0;
-  const g = parseInt(m.slice(2, 4), 16) || 0;
-  const b = parseInt(m.slice(4, 6), 16) || 0;
-
-  // cada linha: 1 byte filtro + RGB*W
-  const raw = Buffer.alloc((1 + 3 * W) * H);
-  for (let y = 0; y < H; y++) {
-    const rowStart = y * (1 + 3 * W);
-    raw[rowStart] = 0; // filtro 0
-    for (let x = 0; x < W; x++) {
-      const p = rowStart + 1 + x * 3;
-      raw[p] = r;
-      raw[p + 1] = g;
-      raw[p + 2] = b;
-    }
-  }
-  const idat = zlib.deflateSync(raw, { level: 6 });
-
-  const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(W, 0);
-  ihdr.writeUInt32BE(H, 4);
-  ihdr[8] = 8;  // bit depth
-  ihdr[9] = 2;  // color type truecolor
-  ihdr[10] = 0; // compression
-  ihdr[11] = 0; // filter
-  ihdr[12] = 0; // interlace
-
-  const png = Buffer.concat([
-    signature,
-    pngChunk("IHDR", ihdr),
-    pngChunk("IDAT", idat),
-    pngChunk("IEND", Buffer.alloc(0))
-  ]);
-  return "data:image/png;base64," + png.toString("base64");
 }
 
 function cleanHtmlToText(v) {
@@ -5368,9 +5310,8 @@ async function searchWikimediaCommonsMedia(query, { limit = 10, wantGif = false,
 
   const url = "https://commons.wikimedia.org/w/api.php?" + params.toString();
 
-  const resp = await fetch(url);
-  if (!resp.ok) return [];
-  const data = await resp.json().catch(() => ({}));
+  const data = await fetchJson(url).catch(() => ({}));
+  if (!data || typeof data !== "object") return [];
   const pages = data?.query?.pages ? Object.values(data.query.pages) : [];
 
   const out = [];
@@ -5425,9 +5366,8 @@ async function searchOpenverseImages(query, { limit = 8 } = {}) {
   params.set("license_type", "all");
   const url = "https://api.openverse.engineering/v1/images/?" + params.toString();
 
-  const resp = await fetch(url);
-  if (!resp.ok) return [];
-  const data = await resp.json().catch(() => ({}));
+  const data = await fetchJson(url).catch(() => ({}));
+  if (!data || typeof data !== "object") return [];
   const results = Array.isArray(data?.results) ? data.results : [];
 
   const out = [];
@@ -5723,105 +5663,6 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
     license: ""
   };
 
-  // Regra crítica: todo slide deve ter UMA mídia (GIF preferencialmente) e NUNCA repetir.
-  // Para garantir isso mesmo quando repositórios externos falham, geramos placeholders PNG
-  // únicos por slide (imagem local), usados apenas como último recurso.
-  const usedMediaKeys = new Set();
-
-  function stableHash(str) {
-    try {
-      return crypto.createHash("sha1").update(String(str || "")).digest("hex");
-    } catch {
-      // fallback simples
-      let h = 0;
-      const s = String(str || "");
-      for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i);
-      return String(h >>> 0);
-    }
-  }
-
-  function makeSolidPngBase64(width, height, rgb) {
-    // PNG minimalista (RGB, sem texto) para máxima compatibilidade com PPTX.
-    const w = Math.max(32, Math.min(2000, parseInt(width, 10) || 1600));
-    const h = Math.max(32, Math.min(2000, parseInt(height, 10) || 900));
-    const r = Math.max(0, Math.min(255, rgb?.r ?? 30));
-    const g = Math.max(0, Math.min(255, rgb?.g ?? 30));
-    const b = Math.max(0, Math.min(255, rgb?.b ?? 30));
-
-    // Cada linha: [filtro=0][RGB * w]
-    const row = Buffer.alloc(1 + 3 * w);
-    row[0] = 0;
-    for (let x = 0; x < w; x++) {
-      const off = 1 + x * 3;
-      row[off] = r;
-      row[off + 1] = g;
-      row[off + 2] = b;
-    }
-    const raw = Buffer.alloc((1 + 3 * w) * h);
-    for (let y = 0; y < h; y++) {
-      row.copy(raw, y * row.length);
-    }
-    const idat = zlib.deflateSync(raw);
-
-    function crc32(buf) {
-      let c = 0xffffffff;
-      for (let i = 0; i < buf.length; i++) {
-        c ^= buf[i];
-        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
-      }
-      return (c ^ 0xffffffff) >>> 0;
-    }
-    function chunk(type, data) {
-      const t = Buffer.from(type, "ascii");
-      const d = data || Buffer.alloc(0);
-      const len = Buffer.alloc(4);
-      len.writeUInt32BE(d.length, 0);
-      const crcBuf = Buffer.concat([t, d]);
-      const crc = Buffer.alloc(4);
-      crc.writeUInt32BE(crc32(crcBuf), 0);
-      return Buffer.concat([len, t, d, crc]);
-    }
-
-    const sig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-    const ihdr = Buffer.alloc(13);
-    ihdr.writeUInt32BE(w, 0);
-    ihdr.writeUInt32BE(h, 4);
-    ihdr[8] = 8; // bit depth
-    ihdr[9] = 2; // color type: truecolor
-    ihdr[10] = 0; // compression
-    ihdr[11] = 0; // filter
-    ihdr[12] = 0; // interlace
-
-    const png = Buffer.concat([
-      sig,
-      chunk("IHDR", ihdr),
-      chunk("IDAT", idat),
-      chunk("IEND", Buffer.alloc(0))
-    ]);
-    return png.toString("base64");
-  }
-
-  function makeUniquePlaceholderMedia(label, uniqueSeed) {
-    const seed = `${label || ""}::${uniqueSeed || ""}`;
-    const key = "ph-" + stableHash(seed).slice(0, 16);
-
-    // Cor baseada no hash
-    const hex = stableHash(seed).slice(0, 6);
-    const r = parseInt(hex.slice(0, 2), 16);
-    const g = parseInt(hex.slice(2, 4), 16);
-    const b = parseInt(hex.slice(4, 6), 16);
-
-    const b64 = makeSolidPngBase64(1600, 900, { r, g, b });
-    const data = `data:image/png;base64,${b64}`;
-    return {
-      key,
-      data,
-      mime: "image/png",
-      credit: "Fallback local",
-      license: ""
-    };
-  }
-
   function setSlideBackground(slide) {
     try { slide.background = { color: THEME.bg }; } catch {}
     try {
@@ -5845,104 +5686,52 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
     } catch {}
   }
 
-  function mediaKey(m) {
-    if (!m || typeof m !== "object") return "";
-    if (typeof m.key === "string" && m.key.trim()) return m.key.trim();
-    if (typeof m.url === "string" && m.url.trim()) return m.url.trim();
-    return "";
-  }
-
-  function pickFirstUnused(list) {
-    const arr = Array.isArray(list) ? list : [];
-    for (const m of arr) {
-      const k = mediaKey(m);
-      if (!k) continue;
-      if (usedMediaKeys.has(k)) continue;
-      return m;
-    }
-    return null;
-  }
-
   async function pickMedia({ imgQuery, gifQuery, forceGif = false }) {
     const qImg = String(imgQuery || "").trim();
     const qGif = String(gifQuery || "").trim();
     const baseTema = String(plan.titulo || tema || "").trim();
 
-    // Política: sempre tentar GIF primeiro (preferência), depois imagem.
-    // O parâmetro forceGif apenas reforça que não devemos "desistir" do GIF rápido.
-
-    // 1) GIF via Wikimedia (sempre tenta; se não tiver query, cria uma)
-    {
-      const q = ((qGif || qImg || baseTema || "saúde") + " " + baseTema + " gif").trim();
-      const gifs = await searchWikimediaCommonsMedia(q, { limit: 15, wantGif: true, wantPhoto: false }).catch(() => []);
-      const chosen = pickFirstUnused(gifs);
-      if (chosen) return chosen;
-      if (forceGif) {
-        // tenta um fallback de GIF, mas sem repetir
-        if (!usedMediaKeys.has(FALLBACK_GIF.url)) return FALLBACK_GIF;
-      }
+    // 1) GIF (quando solicitado ou forçado)
+    if (forceGif || qGif) {
+      const q = (qGif || qImg || baseTema || "saúde") + " " + baseTema;
+      const gifs = await searchWikimediaCommonsMedia(q, { limit: 10, wantGif: true, wantPhoto: false }).catch(() => []);
+      if (gifs && gifs[0] && gifs[0].url) return gifs[0];
+      // fallback gif
+      if (forceGif || qGif) return FALLBACK_GIF;
     }
 
     // 2) Imagem via Wikimedia
     {
-      const q = ((qImg || baseTema || "saúde") + " " + baseTema).trim();
-      const imgs = await searchWikimediaCommonsMedia(q, { limit: 18, wantGif: false, wantPhoto: true }).catch(() => []);
-      const chosen = pickFirstUnused(imgs);
-      if (chosen) return chosen;
+      const q = (qImg || baseTema || "saúde") + " " + baseTema;
+      const imgs = await searchWikimediaCommonsMedia(q, { limit: 12, wantGif: false, wantPhoto: true }).catch(() => []);
+      if (imgs && imgs[0] && imgs[0].url) return imgs[0];
     }
 
-    // 3) Openverse (fallback para imagem)
+    // 3) Fallback Openverse
     {
-      const q = ((qImg || baseTema || "saúde") + " " + baseTema).trim();
-      const ov = await searchOpenverseImages(q, { limit: 18 }).catch(() => []);
-      const chosen = pickFirstUnused(ov);
-      if (chosen) return chosen;
+      const q = (qImg || baseTema || "saúde") + " " + baseTema;
+      const ov = await searchOpenverseImages(q, { limit: 12 }).catch(() => []);
+      if (ov && ov[0] && ov[0].url) return ov[0];
     }
 
-    // 4) Fallbacks estáveis (somente se não tiver sido usado ainda)
-    if (!usedMediaKeys.has(FALLBACK_IMAGE.url)) return FALLBACK_IMAGE;
-    if (!usedMediaKeys.has(FALLBACK_GIF.url)) return FALLBACK_GIF;
-
-    // 5) Último recurso: placeholder local será gerado em addMedia
-    return null;
+    return FALLBACK_IMAGE;
   }
 
-  async function addMedia(slide, media, { x, y, w, h, label, seed }) {
+  async function addMedia(slide, media, { x, y, w, h }) {
     const candidates = [];
+    if (media && media.url) candidates.push(media);
 
-    // 1) mídia escolhida (se houver e se ainda não tiver sido usada)
-    if (media && typeof media === "object") {
-      const k = mediaKey(media);
-      if (k && !usedMediaKeys.has(k)) candidates.push(media);
-    }
-
-    // 2) fallbacks estáveis, mas sem repetir
-    if (!usedMediaKeys.has(FALLBACK_IMAGE.url)) candidates.push(FALLBACK_IMAGE);
-    if (!usedMediaKeys.has(FALLBACK_GIF.url)) candidates.push(FALLBACK_GIF);
-
-    // 3) placeholders locais únicos (garantia absoluta)
-    const ph = makeUniquePlaceholderMedia(label || "Educação em Saúde", seed || Date.now());
-    if (!usedMediaKeys.has(ph.key)) candidates.push(ph);
+    // Garantia absoluta: sempre tenta um fallback estável
+    candidates.push(FALLBACK_IMAGE);
+    candidates.push(FALLBACK_GIF);
 
     for (const m of candidates) {
       try {
-        let data = "";
-        let ext = "";
-        let key = mediaKey(m);
-
-        if (typeof m.data === "string" && m.data.startsWith("data:image/")) {
-          data = m.data;
-          ext = extFromMimeOrUrl(m.mime, "");
-        } else if (m.url) {
-          const buf = await fetchBinary(m.url, 6_000_000, 12_000);
-          ext = extFromMimeOrUrl(m.mime, m.url);
-          const mime = mimeFromExt(ext);
-          data = "data:" + mime + ";base64," + buf.toString("base64");
-        } else {
-          continue;
-        }
-
-        if (key) usedMediaKeys.add(key);
+        const buf = await fetchBinary(m.url, 6_000_000, 12_000);
+        const ext = extFromMimeOrUrl(m.mime, m.url);
+        const mimeMap = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp" };
+        const mimeType = mimeMap[ext] || "application/octet-stream";
+        const data = "data:" + mimeType + ";base64," + buf.toString("base64");
 
         // Moldura
         try {
@@ -5956,13 +5745,13 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
         if (m.license) creditPieces.push(String(m.license).trim());
         const credit = creditPieces.length ? creditPieces.join(" | ") : "Fonte: Wikimedia/Openverse";
 
-        return { credit: credit.slice(0, 180), ext, key: key || "" };
+        return { credit: credit.slice(0, 180), ext };
       } catch {
         // tenta o próximo
       }
     }
 
-    return { credit: "Mídia indisponível no momento.", ext: "", key: "" };
+    return { credit: "Mídia indisponível no momento.", ext: "" };
   }
 
   function renderTopicBlocks(slide, topics, { x, y, w, maxH }) {
@@ -6012,8 +5801,8 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
     const s = pptx.addSlide();
     setSlideBackground(s);
 
-    const coverMedia = await pickMedia({ imgQuery: `${plan.titulo || tema} educação em saúde`, gifQuery: "educação em saúde", forceGif: true });
-    const { credit } = await addMedia(s, coverMedia, { x: 7.45, y: 1.05, w: 5.33, h: 6.05, label: plan.titulo || tema || "Capa", seed: "cover" });
+    const coverMedia = await pickMedia({ imgQuery: `${plan.titulo || tema} educação em saúde`, gifQuery: "educação em saúde", forceGif: false });
+    const { credit } = await addMedia(s, coverMedia, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
 
     // Painel do texto
     try {
@@ -6068,7 +5857,7 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
     renderTopicBlocks(s, objectives, { x: 0.85, y: 1.3, w: 6.2, maxH: 5.6 });
 
     const media = await pickMedia({ imgQuery: "educação em saúde comunidade", gifQuery: "educação em saúde", forceGif: true });
-    const { credit } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05, label: "Objetivos", seed: "objectives" });
+    const { credit } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
 
     addFooter(s, credit);
   }
@@ -6076,6 +5865,8 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
   const slides = Array.isArray(plan.slides) ? plan.slides : [];
   const maxSlides = Math.max(6, Math.min(42, slides.length));
   const slidesToRender = slides.slice(0, maxSlides);
+
+  let gifUsed = false;
 
   // ==========
   // Conteúdo
@@ -6102,13 +5893,15 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
       });
     }
 
-    // Regra crítica: cada slide deve ter mídia e não pode repetir.
-    // Preferência: sempre tentar GIF primeiro; se não houver GIF único disponível, usa imagem.
-    const qImg = it.busca_imagem || it.titulo || plan.titulo || "saúde";
-    const qGif = it.busca_gif || `${it.titulo || plan.titulo || tema} gif animado`;
+    // Estratégia para garantir GIFs no deck: tenta GIF se solicitado; senão, tenta em 1 a cada 4 slides.
+    const qImg = it.busca_imagem || it.titulo || plan.titulo || "";
+    const wantsGif = Boolean(String(it.busca_gif || "").trim()) || (idx % 4 === 1);
+    const qGif = it.busca_gif || `${plan.titulo || tema} animação`;
 
-    const media = await pickMedia({ imgQuery: qImg, gifQuery: qGif, forceGif: true });
-    const { credit } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05, label: it.titulo || `Slide ${idx + 1}`, seed: `content-${idx}` });
+    const media = await pickMedia({ imgQuery: qImg, gifQuery: qGif, forceGif: wantsGif && !gifUsed });
+    const { credit, ext } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
+
+    if (String(ext || "").toLowerCase() === "gif") gifUsed = true;
 
     addFooter(s, credit);
 
@@ -6141,8 +5934,13 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
       valign: "top"
     });
 
-    const media = await pickMedia({ imgQuery: "saúde pública", gifQuery: "educação em saúde", forceGif: true });
-    const { credit } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05, label: "Referências", seed: "refs" });
+    // Se nenhum GIF entrou no deck, força um GIF aqui para cumprir "imagens e gifs"
+    const media = await pickMedia({
+      imgQuery: "saúde pública",
+      gifQuery: gifUsed ? "" : "educação em saúde",
+      forceGif: !gifUsed
+    });
+    const { credit } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
 
     addFooter(s, `${credit} | Gerado em ${dateStr}.`.slice(0, 180));
   }
