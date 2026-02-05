@@ -5175,97 +5175,22 @@ function pickFirstNonEmpty(arr) {
   return "";
 }
 
-const http = require("http");
-const https = require("https");
-
-function httpGetBuffer(url, { timeoutMs = 12_000, maxBytes = 6_000_000, redirects = 3 } = {}) {
-  return new Promise((resolve, reject) => {
-    let u;
-    try { u = new URL(String(url)); } catch { return reject(new Error("URL inválida.")); }
-
-    const lib = u.protocol === "https:" ? https : http;
-    const req = lib.request(u, { method: "GET", headers: { "User-Agent": "Mozilla/5.0" } }, (res) => {
-      const status = res.statusCode || 0;
-      const loc = res.headers.location;
-
-      if ([301, 302, 303, 307, 308].includes(status) && loc && redirects > 0) {
-        res.resume();
-        const nextUrl = new URL(loc, u).toString();
-        return resolve(httpGetBuffer(nextUrl, { timeoutMs, maxBytes, redirects: redirects - 1 }));
-      }
-
-      if (status < 200 || status >= 300) {
-        res.resume();
-        return reject(new Error("Falha ao baixar mídia."));
-      }
-
-      const chunks = [];
-      let total = 0;
-
-      res.on("data", (d) => {
-        total += d.length;
-        if (total > maxBytes) {
-          try { req.destroy(); } catch {}
-          return reject(new Error("Mídia muito grande."));
-        }
-        chunks.push(d);
-      });
-
-      res.on("end", () => resolve(Buffer.concat(chunks)));
-      res.on("error", reject);
-    });
-
-    req.on("error", reject);
-    req.setTimeout(timeoutMs, () => {
-      try { req.destroy(new Error("Timeout")); } catch {}
-      reject(new Error("Timeout ao baixar mídia."));
-    });
-    req.end();
-  });
-}
-
 async function fetchBinary(url, maxBytes = 6_000_000, timeoutMs = 12_000) {
   const u = String(url || "").trim();
   if (!u) throw new Error("URL vazia.");
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
 
-  // Node 18+ tem fetch nativo; em Node 16 (Render antigo) não.
-  if (typeof fetch === "function") {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const resp = await fetch(u, { signal: controller.signal, redirect: "follow" });
-      if (!resp.ok) throw new Error("Falha ao baixar mídia.");
-      const ab = await resp.arrayBuffer();
-      if (ab.byteLength > maxBytes) throw new Error("Mídia muito grande.");
-      return Buffer.from(ab);
-    } finally {
-      clearTimeout(t);
-    }
+  try {
+    const resp = await fetch(u, { signal: controller.signal, redirect: "follow" });
+    if (!resp.ok) throw new Error("Falha ao baixar mídia.");
+    const ab = await resp.arrayBuffer();
+    if (ab.byteLength > maxBytes) throw new Error("Mídia muito grande.");
+    return Buffer.from(ab);
+  } finally {
+    clearTimeout(t);
   }
-
-  return httpGetBuffer(u, { timeoutMs, maxBytes });
 }
-
-async function fetchJson(url, timeoutMs = 12_000) {
-  const u = String(url || "").trim();
-  if (!u) throw new Error("URL vazia.");
-
-  if (typeof fetch === "function") {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const resp = await fetch(u, { signal: controller.signal, redirect: "follow" });
-      if (!resp.ok) throw new Error("Falha ao buscar JSON.");
-      return await resp.json();
-    } finally {
-      clearTimeout(t);
-    }
-  }
-
-  const buf = await httpGetBuffer(u, { timeoutMs, maxBytes: 2_500_000 });
-  try { return JSON.parse(buf.toString("utf-8")); } catch { return {}; }
-}
-
 
 function extFromMimeOrUrl(mime, url) {
   const m = String(mime || "").toLowerCase();
@@ -5310,8 +5235,9 @@ async function searchWikimediaCommonsMedia(query, { limit = 10, wantGif = false,
 
   const url = "https://commons.wikimedia.org/w/api.php?" + params.toString();
 
-  const data = await fetchJson(url).catch(() => ({}));
-  if (!data || typeof data !== "object") return [];
+  const resp = await fetch(url);
+  if (!resp.ok) return [];
+  const data = await resp.json().catch(() => ({}));
   const pages = data?.query?.pages ? Object.values(data.query.pages) : [];
 
   const out = [];
@@ -5366,8 +5292,9 @@ async function searchOpenverseImages(query, { limit = 8 } = {}) {
   params.set("license_type", "all");
   const url = "https://api.openverse.engineering/v1/images/?" + params.toString();
 
-  const data = await fetchJson(url).catch(() => ({}));
-  if (!data || typeof data !== "object") return [];
+  const resp = await fetch(url);
+  if (!resp.ok) return [];
+  const data = await resp.json().catch(() => ({}));
   const results = Array.isArray(data?.results) ? data.results : [];
 
   const out = [];
@@ -5729,9 +5656,7 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
       try {
         const buf = await fetchBinary(m.url, 6_000_000, 12_000);
         const ext = extFromMimeOrUrl(m.mime, m.url);
-        const mimeMap = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp" };
-        const mimeType = mimeMap[ext] || "application/octet-stream";
-        const data = "data:" + mimeType + ";base64," + buf.toString("base64");
+        const data = "data:image/" + ext + ";base64," + buf.toString("base64");
 
         // Moldura
         try {
@@ -5963,6 +5888,8 @@ app.post("/api/educacao-saude-pptx", requirePaidOrAdmin, async (req, res) => {
     const { tema, duracao_minutos } = req.body || {};
     const t = normalizeText(tema || "", 160);
     const d = clampInt(duracao_minutos, 10, 60);
+
+    console.log("[educacao-saude-pptx] tema recebido =", tema, "| tema normalizado =", t, "| duracao_minutos =", duracao_minutos, "| duracao clamp =", d);
 
     if (!t) {
       return res.status(400).json({ error: "Informe o tema para gerar a apresentação." });
