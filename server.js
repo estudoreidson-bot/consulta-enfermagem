@@ -5198,9 +5198,10 @@ function extFromMimeOrUrl(mime, url) {
   if (m.includes("jpeg") || m.includes("jpg")) return "jpg";
   if (m.includes("gif")) return "gif";
   if (m.includes("webp")) return "webp";
+  if (m.includes("svg")) return "svg";
 
   const u = String(url || "").toLowerCase();
-  const m2 = u.match(/\.(png|jpg|jpeg|gif|webp)(\?|#|$)/i);
+  const m2 = u.match(/\.(png|jpg|jpeg|gif|webp|svg)(\?|#|$)/i);
   if (m2 && m2[1]) return m2[1].toLowerCase() === "jpeg" ? "jpg" : m2[1].toLowerCase();
   return "png";
 }
@@ -5590,6 +5591,48 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
     license: ""
   };
 
+  // Regra crítica: todo slide deve ter UMA mídia (GIF preferencialmente) e NUNCA repetir.
+  // Para garantir isso mesmo quando repositórios externos falham, geramos placeholders SVG
+  // únicos por slide (imagem local), usados apenas como último recurso.
+  const usedMediaKeys = new Set();
+
+  function stableHash(str) {
+    try {
+      return crypto.createHash("sha1").update(String(str || "")).digest("hex");
+    } catch {
+      // fallback simples
+      let h = 0;
+      const s = String(str || "");
+      for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i);
+      return String(h >>> 0);
+    }
+  }
+
+  function makeUniquePlaceholderMedia(label, uniqueSeed) {
+    const seed = `${label || ""}::${uniqueSeed || ""}`;
+    const key = "ph-" + stableHash(seed).slice(0, 16);
+    // Cor baseada no hash (não importa estética perfeita; importa ser sempre diferente e válido)
+    const hex = stableHash(seed).slice(0, 6);
+    const bg = `#${hex}`;
+    const title = String(label || "Educação em Saúde").slice(0, 60);
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <rect width="1600" height="900" fill="${bg}"/>
+  <rect x="90" y="90" width="1420" height="720" rx="42" fill="#ffffff" opacity="0.88"/>
+  <text x="130" y="180" font-family="Arial" font-size="54" font-weight="700" fill="#111827">${title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</text>
+  <text x="130" y="250" font-family="Arial" font-size="28" fill="#374151">Imagem gerada localmente (fallback)</text>
+  <text x="130" y="300" font-family="Arial" font-size="22" fill="#6b7280">${key}</text>
+</svg>`;
+    const data = "data:image/svg+xml;base64," + Buffer.from(svg, "utf-8").toString("base64");
+    return {
+      key,
+      data,
+      mime: "image/svg+xml",
+      credit: "Fallback local",
+      license: ""
+    };
+  }
+
   function setSlideBackground(slide) {
     try { slide.background = { color: THEME.bg }; } catch {}
     try {
@@ -5613,50 +5656,103 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
     } catch {}
   }
 
+  function mediaKey(m) {
+    if (!m || typeof m !== "object") return "";
+    if (typeof m.key === "string" && m.key.trim()) return m.key.trim();
+    if (typeof m.url === "string" && m.url.trim()) return m.url.trim();
+    return "";
+  }
+
+  function pickFirstUnused(list) {
+    const arr = Array.isArray(list) ? list : [];
+    for (const m of arr) {
+      const k = mediaKey(m);
+      if (!k) continue;
+      if (usedMediaKeys.has(k)) continue;
+      return m;
+    }
+    return null;
+  }
+
   async function pickMedia({ imgQuery, gifQuery, forceGif = false }) {
     const qImg = String(imgQuery || "").trim();
     const qGif = String(gifQuery || "").trim();
     const baseTema = String(plan.titulo || tema || "").trim();
 
-    // 1) GIF (quando solicitado ou forçado)
-    if (forceGif || qGif) {
-      const q = (qGif || qImg || baseTema || "saúde") + " " + baseTema;
-      const gifs = await searchWikimediaCommonsMedia(q, { limit: 10, wantGif: true, wantPhoto: false }).catch(() => []);
-      if (gifs && gifs[0] && gifs[0].url) return gifs[0];
-      // fallback gif
-      if (forceGif || qGif) return FALLBACK_GIF;
+    // Política: sempre tentar GIF primeiro (preferência), depois imagem.
+    // O parâmetro forceGif apenas reforça que não devemos "desistir" do GIF rápido.
+
+    // 1) GIF via Wikimedia (sempre tenta; se não tiver query, cria uma)
+    {
+      const q = ((qGif || qImg || baseTema || "saúde") + " " + baseTema + " gif").trim();
+      const gifs = await searchWikimediaCommonsMedia(q, { limit: 15, wantGif: true, wantPhoto: false }).catch(() => []);
+      const chosen = pickFirstUnused(gifs);
+      if (chosen) return chosen;
+      if (forceGif) {
+        // tenta um fallback de GIF, mas sem repetir
+        if (!usedMediaKeys.has(FALLBACK_GIF.url)) return FALLBACK_GIF;
+      }
     }
 
     // 2) Imagem via Wikimedia
     {
-      const q = (qImg || baseTema || "saúde") + " " + baseTema;
-      const imgs = await searchWikimediaCommonsMedia(q, { limit: 12, wantGif: false, wantPhoto: true }).catch(() => []);
-      if (imgs && imgs[0] && imgs[0].url) return imgs[0];
+      const q = ((qImg || baseTema || "saúde") + " " + baseTema).trim();
+      const imgs = await searchWikimediaCommonsMedia(q, { limit: 18, wantGif: false, wantPhoto: true }).catch(() => []);
+      const chosen = pickFirstUnused(imgs);
+      if (chosen) return chosen;
     }
 
-    // 3) Fallback Openverse
+    // 3) Openverse (fallback para imagem)
     {
-      const q = (qImg || baseTema || "saúde") + " " + baseTema;
-      const ov = await searchOpenverseImages(q, { limit: 12 }).catch(() => []);
-      if (ov && ov[0] && ov[0].url) return ov[0];
+      const q = ((qImg || baseTema || "saúde") + " " + baseTema).trim();
+      const ov = await searchOpenverseImages(q, { limit: 18 }).catch(() => []);
+      const chosen = pickFirstUnused(ov);
+      if (chosen) return chosen;
     }
 
-    return FALLBACK_IMAGE;
+    // 4) Fallbacks estáveis (somente se não tiver sido usado ainda)
+    if (!usedMediaKeys.has(FALLBACK_IMAGE.url)) return FALLBACK_IMAGE;
+    if (!usedMediaKeys.has(FALLBACK_GIF.url)) return FALLBACK_GIF;
+
+    // 5) Último recurso: placeholder local será gerado em addMedia
+    return null;
   }
 
-  async function addMedia(slide, media, { x, y, w, h }) {
+  async function addMedia(slide, media, { x, y, w, h, label, seed }) {
     const candidates = [];
-    if (media && media.url) candidates.push(media);
 
-    // Garantia absoluta: sempre tenta um fallback estável
-    candidates.push(FALLBACK_IMAGE);
-    candidates.push(FALLBACK_GIF);
+    // 1) mídia escolhida (se houver e se ainda não tiver sido usada)
+    if (media && typeof media === "object") {
+      const k = mediaKey(media);
+      if (k && !usedMediaKeys.has(k)) candidates.push(media);
+    }
+
+    // 2) fallbacks estáveis, mas sem repetir
+    if (!usedMediaKeys.has(FALLBACK_IMAGE.url)) candidates.push(FALLBACK_IMAGE);
+    if (!usedMediaKeys.has(FALLBACK_GIF.url)) candidates.push(FALLBACK_GIF);
+
+    // 3) placeholders locais únicos (garantia absoluta)
+    const ph = makeUniquePlaceholderMedia(label || "Educação em Saúde", seed || Date.now());
+    if (!usedMediaKeys.has(ph.key)) candidates.push(ph);
 
     for (const m of candidates) {
       try {
-        const buf = await fetchBinary(m.url, 6_000_000, 12_000);
-        const ext = extFromMimeOrUrl(m.mime, m.url);
-        const data = "data:image/" + ext + ";base64," + buf.toString("base64");
+        let data = "";
+        let ext = "";
+        let key = mediaKey(m);
+
+        if (typeof m.data === "string" && m.data.startsWith("data:image/")) {
+          data = m.data;
+          ext = extFromMimeOrUrl(m.mime, "");
+        } else if (m.url) {
+          const buf = await fetchBinary(m.url, 6_000_000, 12_000);
+          ext = extFromMimeOrUrl(m.mime, m.url);
+          data = "data:image/" + ext + ";base64," + buf.toString("base64");
+        } else {
+          continue;
+        }
+
+        if (key) usedMediaKeys.add(key);
 
         // Moldura
         try {
@@ -5670,13 +5766,13 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
         if (m.license) creditPieces.push(String(m.license).trim());
         const credit = creditPieces.length ? creditPieces.join(" | ") : "Fonte: Wikimedia/Openverse";
 
-        return { credit: credit.slice(0, 180), ext };
+        return { credit: credit.slice(0, 180), ext, key: key || "" };
       } catch {
         // tenta o próximo
       }
     }
 
-    return { credit: "Mídia indisponível no momento.", ext: "" };
+    return { credit: "Mídia indisponível no momento.", ext: "", key: "" };
   }
 
   function renderTopicBlocks(slide, topics, { x, y, w, maxH }) {
@@ -5726,8 +5822,8 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
     const s = pptx.addSlide();
     setSlideBackground(s);
 
-    const coverMedia = await pickMedia({ imgQuery: `${plan.titulo || tema} educação em saúde`, gifQuery: "educação em saúde", forceGif: false });
-    const { credit } = await addMedia(s, coverMedia, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
+    const coverMedia = await pickMedia({ imgQuery: `${plan.titulo || tema} educação em saúde`, gifQuery: "educação em saúde", forceGif: true });
+    const { credit } = await addMedia(s, coverMedia, { x: 7.45, y: 1.05, w: 5.33, h: 6.05, label: plan.titulo || tema || "Capa", seed: "cover" });
 
     // Painel do texto
     try {
@@ -5782,7 +5878,7 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
     renderTopicBlocks(s, objectives, { x: 0.85, y: 1.3, w: 6.2, maxH: 5.6 });
 
     const media = await pickMedia({ imgQuery: "educação em saúde comunidade", gifQuery: "educação em saúde", forceGif: true });
-    const { credit } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
+    const { credit } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05, label: "Objetivos", seed: "objectives" });
 
     addFooter(s, credit);
   }
@@ -5790,8 +5886,6 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
   const slides = Array.isArray(plan.slides) ? plan.slides : [];
   const maxSlides = Math.max(6, Math.min(42, slides.length));
   const slidesToRender = slides.slice(0, maxSlides);
-
-  let gifUsed = false;
 
   // ==========
   // Conteúdo
@@ -5818,15 +5912,13 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
       });
     }
 
-    // Estratégia para garantir GIFs no deck: tenta GIF se solicitado; senão, tenta em 1 a cada 4 slides.
-    const qImg = it.busca_imagem || it.titulo || plan.titulo || "";
-    const wantsGif = Boolean(String(it.busca_gif || "").trim()) || (idx % 4 === 1);
-    const qGif = it.busca_gif || `${plan.titulo || tema} animação`;
+    // Regra crítica: cada slide deve ter mídia e não pode repetir.
+    // Preferência: sempre tentar GIF primeiro; se não houver GIF único disponível, usa imagem.
+    const qImg = it.busca_imagem || it.titulo || plan.titulo || "saúde";
+    const qGif = it.busca_gif || `${it.titulo || plan.titulo || tema} gif animado`;
 
-    const media = await pickMedia({ imgQuery: qImg, gifQuery: qGif, forceGif: wantsGif && !gifUsed });
-    const { credit, ext } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
-
-    if (String(ext || "").toLowerCase() === "gif") gifUsed = true;
+    const media = await pickMedia({ imgQuery: qImg, gifQuery: qGif, forceGif: true });
+    const { credit } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05, label: it.titulo || `Slide ${idx + 1}`, seed: `content-${idx}` });
 
     addFooter(s, credit);
 
@@ -5859,13 +5951,8 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
       valign: "top"
     });
 
-    // Se nenhum GIF entrou no deck, força um GIF aqui para cumprir "imagens e gifs"
-    const media = await pickMedia({
-      imgQuery: "saúde pública",
-      gifQuery: gifUsed ? "" : "educação em saúde",
-      forceGif: !gifUsed
-    });
-    const { credit } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
+    const media = await pickMedia({ imgQuery: "saúde pública", gifQuery: "educação em saúde", forceGif: true });
+    const { credit } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05, label: "Referências", seed: "refs" });
 
     addFooter(s, `${credit} | Gerado em ${dateStr}.`.slice(0, 180));
   }
