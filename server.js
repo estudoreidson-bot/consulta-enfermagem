@@ -6,6 +6,9 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const os = require("os");
+const https = require("https");
+const http = require("http");
+const zlib = require("zlib");
 let PptxGenJS = null;
 try {
   const mod = require("pptxgenjs");
@@ -5178,18 +5181,64 @@ function pickFirstNonEmpty(arr) {
 async function fetchBinary(url, maxBytes = 6_000_000, timeoutMs = 12_000) {
   const u = String(url || "").trim();
   if (!u) throw new Error("URL vazia.");
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
+  // Render/Node podem não expor fetch global em versões antigas.
+  // Implementação: usa fetch quando disponível; caso contrário, fallback via http/https.
+  const hasFetch = (typeof fetch === "function");
 
-  try {
-    const resp = await fetch(u, { signal: controller.signal, redirect: "follow" });
-    if (!resp.ok) throw new Error("Falha ao baixar mídia.");
-    const ab = await resp.arrayBuffer();
-    if (ab.byteLength > maxBytes) throw new Error("Mídia muito grande.");
-    return Buffer.from(ab);
-  } finally {
-    clearTimeout(t);
+  if (hasFetch) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch(u, { signal: controller.signal, redirect: "follow" });
+      if (!resp.ok) throw new Error("Falha ao baixar mídia.");
+      const ab = await resp.arrayBuffer();
+      if (ab.byteLength > maxBytes) throw new Error("Mídia muito grande.");
+      return Buffer.from(ab);
+    } finally {
+      clearTimeout(t);
+    }
   }
+
+  // Fallback sem fetch
+  return await new Promise((resolve, reject) => {
+    let done = false;
+    const lib = u.startsWith("https:") ? https : http;
+    const req = lib.get(u, { timeout: timeoutMs, headers: { "User-Agent": "QueimadasTelemedicina/1.0" } }, (res) => {
+      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        // redirecionamento
+        res.resume();
+        if (!done) {
+          done = true;
+          fetchBinary(res.headers.location, maxBytes, timeoutMs).then(resolve).catch(reject);
+        }
+        return;
+      }
+      if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+        res.resume();
+        return reject(new Error("Falha ao baixar mídia."));
+      }
+      const chunks = [];
+      let total = 0;
+      res.on("data", (c) => {
+        total += c.length;
+        if (total > maxBytes) {
+          try { req.destroy(); } catch {}
+          return reject(new Error("Mídia muito grande."));
+        }
+        chunks.push(c);
+      });
+      res.on("end", () => {
+        if (done) return;
+        done = true;
+        resolve(Buffer.concat(chunks));
+      });
+    });
+    req.on("timeout", () => {
+      try { req.destroy(); } catch {}
+      reject(new Error("Timeout ao baixar mídia."));
+    });
+    req.on("error", reject);
+  });
 }
 
 function extFromMimeOrUrl(mime, url) {
@@ -5204,6 +5253,89 @@ function extFromMimeOrUrl(mime, url) {
   const m2 = u.match(/\.(png|jpg|jpeg|gif|webp|svg)(\?|#|$)/i);
   if (m2 && m2[1]) return m2[1].toLowerCase() === "jpeg" ? "jpg" : m2[1].toLowerCase();
   return "png";
+}
+
+function mimeFromExt(ext) {
+  const e = String(ext || "").toLowerCase();
+  if (e === "jpg" || e === "jpeg") return "image/jpeg";
+  if (e === "png") return "image/png";
+  if (e === "gif") return "image/gif";
+  if (e === "webp") return "image/webp";
+  return "image/png";
+}
+
+function crc32(buf) {
+  // CRC32 para PNG
+  let crc = 0 ^ (-1);
+  for (let i = 0; i < buf.length; i++) {
+    crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ buf[i]) & 0xff];
+  }
+  return (crc ^ (-1)) >>> 0;
+}
+
+const CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) {
+      c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function pngChunk(type, data) {
+  const t = Buffer.from(type, "ascii");
+  const d = Buffer.isBuffer(data) ? data : Buffer.from(data || []);
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(d.length, 0);
+  const crcBuf = Buffer.concat([t, d]);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(crcBuf), 0);
+  return Buffer.concat([len, t, d, crc]);
+}
+
+function makeSolidPngDataUri({ w = 800, h = 450, hex = "#c1121f" } = {}) {
+  // PNG simples (cor sólida) para fallback. Garante compatibilidade com pptxgenjs.
+  const W = Math.max(8, Math.min(1600, parseInt(w, 10) || 800));
+  const H = Math.max(8, Math.min(900, parseInt(h, 10) || 450));
+  const m = String(hex || "").replace(/[^0-9a-fA-F]/g, "").padEnd(6, "0").slice(0, 6);
+  const r = parseInt(m.slice(0, 2), 16) || 0;
+  const g = parseInt(m.slice(2, 4), 16) || 0;
+  const b = parseInt(m.slice(4, 6), 16) || 0;
+
+  // cada linha: 1 byte filtro + RGB*W
+  const raw = Buffer.alloc((1 + 3 * W) * H);
+  for (let y = 0; y < H; y++) {
+    const rowStart = y * (1 + 3 * W);
+    raw[rowStart] = 0; // filtro 0
+    for (let x = 0; x < W; x++) {
+      const p = rowStart + 1 + x * 3;
+      raw[p] = r;
+      raw[p + 1] = g;
+      raw[p + 2] = b;
+    }
+  }
+  const idat = zlib.deflateSync(raw, { level: 6 });
+
+  const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(W, 0);
+  ihdr.writeUInt32BE(H, 4);
+  ihdr[8] = 8;  // bit depth
+  ihdr[9] = 2;  // color type truecolor
+  ihdr[10] = 0; // compression
+  ihdr[11] = 0; // filter
+  ihdr[12] = 0; // interlace
+
+  const png = Buffer.concat([
+    signature,
+    pngChunk("IHDR", ihdr),
+    pngChunk("IDAT", idat),
+    pngChunk("IEND", Buffer.alloc(0))
+  ]);
+  return "data:image/png;base64," + png.toString("base64");
 }
 
 function cleanHtmlToText(v) {
@@ -5592,7 +5724,7 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
   };
 
   // Regra crítica: todo slide deve ter UMA mídia (GIF preferencialmente) e NUNCA repetir.
-  // Para garantir isso mesmo quando repositórios externos falham, geramos placeholders SVG
+  // Para garantir isso mesmo quando repositórios externos falham, geramos placeholders PNG
   // únicos por slide (imagem local), usados apenas como último recurso.
   const usedMediaKeys = new Set();
 
@@ -5608,26 +5740,83 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
     }
   }
 
+  function makeSolidPngBase64(width, height, rgb) {
+    // PNG minimalista (RGB, sem texto) para máxima compatibilidade com PPTX.
+    const w = Math.max(32, Math.min(2000, parseInt(width, 10) || 1600));
+    const h = Math.max(32, Math.min(2000, parseInt(height, 10) || 900));
+    const r = Math.max(0, Math.min(255, rgb?.r ?? 30));
+    const g = Math.max(0, Math.min(255, rgb?.g ?? 30));
+    const b = Math.max(0, Math.min(255, rgb?.b ?? 30));
+
+    // Cada linha: [filtro=0][RGB * w]
+    const row = Buffer.alloc(1 + 3 * w);
+    row[0] = 0;
+    for (let x = 0; x < w; x++) {
+      const off = 1 + x * 3;
+      row[off] = r;
+      row[off + 1] = g;
+      row[off + 2] = b;
+    }
+    const raw = Buffer.alloc((1 + 3 * w) * h);
+    for (let y = 0; y < h; y++) {
+      row.copy(raw, y * row.length);
+    }
+    const idat = zlib.deflateSync(raw);
+
+    function crc32(buf) {
+      let c = 0xffffffff;
+      for (let i = 0; i < buf.length; i++) {
+        c ^= buf[i];
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      }
+      return (c ^ 0xffffffff) >>> 0;
+    }
+    function chunk(type, data) {
+      const t = Buffer.from(type, "ascii");
+      const d = data || Buffer.alloc(0);
+      const len = Buffer.alloc(4);
+      len.writeUInt32BE(d.length, 0);
+      const crcBuf = Buffer.concat([t, d]);
+      const crc = Buffer.alloc(4);
+      crc.writeUInt32BE(crc32(crcBuf), 0);
+      return Buffer.concat([len, t, d, crc]);
+    }
+
+    const sig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(w, 0);
+    ihdr.writeUInt32BE(h, 4);
+    ihdr[8] = 8; // bit depth
+    ihdr[9] = 2; // color type: truecolor
+    ihdr[10] = 0; // compression
+    ihdr[11] = 0; // filter
+    ihdr[12] = 0; // interlace
+
+    const png = Buffer.concat([
+      sig,
+      chunk("IHDR", ihdr),
+      chunk("IDAT", idat),
+      chunk("IEND", Buffer.alloc(0))
+    ]);
+    return png.toString("base64");
+  }
+
   function makeUniquePlaceholderMedia(label, uniqueSeed) {
     const seed = `${label || ""}::${uniqueSeed || ""}`;
     const key = "ph-" + stableHash(seed).slice(0, 16);
-    // Cor baseada no hash (não importa estética perfeita; importa ser sempre diferente e válido)
+
+    // Cor baseada no hash
     const hex = stableHash(seed).slice(0, 6);
-    const bg = `#${hex}`;
-    const title = String(label || "Educação em Saúde").slice(0, 60);
-    const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
-  <rect width="1600" height="900" fill="${bg}"/>
-  <rect x="90" y="90" width="1420" height="720" rx="42" fill="#ffffff" opacity="0.88"/>
-  <text x="130" y="180" font-family="Arial" font-size="54" font-weight="700" fill="#111827">${title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</text>
-  <text x="130" y="250" font-family="Arial" font-size="28" fill="#374151">Imagem gerada localmente (fallback)</text>
-  <text x="130" y="300" font-family="Arial" font-size="22" fill="#6b7280">${key}</text>
-</svg>`;
-    const data = "data:image/svg+xml;base64," + Buffer.from(svg, "utf-8").toString("base64");
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+
+    const b64 = makeSolidPngBase64(1600, 900, { r, g, b });
+    const data = `data:image/png;base64,${b64}`;
     return {
       key,
       data,
-      mime: "image/svg+xml",
+      mime: "image/png",
       credit: "Fallback local",
       license: ""
     };
@@ -5747,7 +5936,8 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
         } else if (m.url) {
           const buf = await fetchBinary(m.url, 6_000_000, 12_000);
           ext = extFromMimeOrUrl(m.mime, m.url);
-          data = "data:image/" + ext + ";base64," + buf.toString("base64");
+          const mime = mimeFromExt(ext);
+          data = "data:" + mime + ";base64," + buf.toString("base64");
         } else {
           continue;
         }
