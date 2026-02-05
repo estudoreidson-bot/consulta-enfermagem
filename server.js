@@ -209,132 +209,207 @@ function pgPoolOrNull() {
 
 async function gerarMonografiaMedicamento(medicamento, fontesSugeridas) {
   const nome = normalizeText(medicamento, 140);
-  if (!nome) {
+
+  // Estrutura padrão (garante previsibilidade no frontend)
+  function emptyOut() {
     return {
-      medicamento: "",
+      medicamento: nome || "",
       classe: "",
       mecanismo_acao: "",
-      apresentacoes: { oral: "", gotas: "", xarope: "", comprimido_capsula: "", injetavel: "" },
+      apresentacoes: {
+        solucao_oral: "",
+        gotas: "",
+        suspensao: "",
+        xarope: "",
+        comprimidos: "",
+        capsulas: "",
+        injetavel: "",
+        supositorio: "",
+        topicos: "",
+        inalatorio: "",
+        outros: ""
+      },
       uso_clinico: [],
       tipo_receituario: "",
-      posologia_adulto: { oral: {}, gotas: {}, xarope: {}, comprimido_capsula: {}, injetavel: {} },
+      posologia_adulto: {
+        oral: { dose_usual: "", dose_maxima: "", observacoes: "" },
+        injetavel: { dose_usual: "", dose_maxima: "", observacoes: "" },
+        ajustes: ""
+      },
       categoria_gravidez: "",
       uso_lactacao: "",
       uso_geriatrico: "",
-      posologia_pediatrica: { oral: {}, gotas: {}, xarope: {}, comprimido_capsula: {}, injetavel: {} },
+      posologia_pediatrica: {
+        oral: { dose_mgkg: "", dose_maxima: "", idade_minima: "", observacoes: "" },
+        gotas: { dose_mgkg: "", dose_maxima: "", idade_minima: "", observacoes: "" },
+        suspensao: { dose_mgkg: "", dose_maxima: "", idade_minima: "", observacoes: "" },
+        injetavel: { dose_mgkg: "", dose_maxima: "", idade_minima: "", observacoes: "" },
+        observacoes: ""
+      },
       interacoes_medicamentosas: [],
       pontos_enfermagem: [],
       fontes_sugeridas: Array.isArray(fontesSugeridas) ? fontesSugeridas : []
     };
   }
 
+  if (!nome) return emptyOut();
+
+  // Se não houver chave, retorna estrutura padrão com aviso (sem quebrar o clique no frontend)
+  if (!process.env.OPENAI_API_KEY) {
+    const out = emptyOut();
+    out.pontos_enfermagem = [
+      "Sem chave OPENAI_API_KEY configurada no servidor. Configure a variável de ambiente para habilitar a monografia automática."
+    ];
+    return out;
+  }
+
   const safety = getDrugSafetyInfo(nome);
 
   const prompt = `
-Você é um médico no Brasil preparando um material de EDUCAÇÃO EM SAÚDE para uma roda de conversa/aula.
-Seu objetivo é gerar o roteiro COMPLETO de uma apresentação em PPTX (não crie o arquivo, apenas o plano em JSON).
-Tema: "${t}"
-Duração: ${d} minutos
-
+Você é um médico no Brasil. Gere uma MONOGRAFIA CLÍNICA segura e prática do medicamento informado, voltada para APS e pronto atendimento.
 Regras obrigatórias:
 - Português do Brasil.
-- Sem emojis.
-- Linguagem clara, prática e segura.
-- Não invente dados epidemiológicos ou percentuais; se precisar, use termos qualitativos (ex.: "frequente", "comum").
-- Inclua sinais de alarme e encaminhamento quando pertinente ao tema.
-- Estruture para APS: prevenção, autocuidado, adesão, barreiras, comunicação com paciente.
-- Quantidade alvo de slides: aproximadamente ${targetSlides} slides (pode variar em +- 3).
-- Em cada slide, gere de 3 a 6 tópicos. Cada tópico deve ter:
-  - "titulo": uma frase bem curta (até 7 palavras).
-  - "resumo": 1 a 2 frases em português claro, sem números inventados.
-- "busca_imagem": 3 a 6 palavras (ou frase curta) para buscar imagem em repositórios abertos (ex.: Wikimedia).
-- "busca_gif": opcional, 2 a 5 palavras para buscar um GIF animado educativo (se fizer sentido); senão deixe vazio.
-- "notas": 2 a 5 linhas com orientação de fala (speaker notes), sem mencionar ferramenta, sistema ou tecnologia.
+- Sem emojis e sem símbolos gráficos.
+- Se não souber um item com segurança, use "não informado" (não invente).
+- Não orientar uso off-label. Não prescrever; apenas informar.
+- Seja conciso, mas completo nos campos exigidos.
 
-Formato: responda SOMENTE com um JSON válido, sem texto fora do JSON:
+Medicamento solicitado: "${nome}"
+
+Informações de segurança já conhecidas (use como base, sem inventar além):
+${JSON.stringify(safety)}
+
+Responda EXCLUSIVAMENTE em JSON estrito (sem markdown), neste formato:
 {
-  "titulo": "string",
-  "subtitulo": "string",
-  "slides": [
-    {
-      "titulo": "string",
-      "topicos": [
-        { "titulo": "string", "resumo": "string" }
-      ],
-      "notas": "string",
-      "busca_imagem": "string",
-      "busca_gif": "string"
-    }
-  ],
-  "referencias": ["string"]
+  "medicamento": "string",
+  "classe": "string",
+  "mecanismo_acao": "string",
+  "apresentacoes": {
+    "solucao_oral": "string",
+    "gotas": "string",
+    "suspensao": "string",
+    "xarope": "string",
+    "comprimidos": "string",
+    "capsulas": "string",
+    "injetavel": "string",
+    "supositorio": "string",
+    "topicos": "string",
+    "inalatorio": "string",
+    "outros": "string"
+  },
+  "uso_clinico": ["string"],
+  "tipo_receituario": "string",
+  "posologia_adulto": {
+    "oral": { "dose_usual": "string", "dose_maxima": "string", "observacoes": "string" },
+    "injetavel": { "dose_usual": "string", "dose_maxima": "string", "observacoes": "string" },
+    "ajustes": "string"
+  },
+  "categoria_gravidez": "string",
+  "uso_lactacao": "string",
+  "uso_geriatrico": "string",
+  "posologia_pediatrica": {
+    "oral": { "dose_mgkg": "string", "dose_maxima": "string", "idade_minima": "string", "observacoes": "string" },
+    "gotas": { "dose_mgkg": "string", "dose_maxima": "string", "idade_minima": "string", "observacoes": "string" },
+    "suspensao": { "dose_mgkg": "string", "dose_maxima": "string", "idade_minima": "string", "observacoes": "string" },
+    "injetavel": { "dose_mgkg": "string", "dose_maxima": "string", "idade_minima": "string", "observacoes": "string" },
+    "observacoes": "string"
+  },
+  "interacoes_medicamentosas": ["string"],
+  "pontos_enfermagem": ["string"],
+  "fontes_sugeridas": [{"nome":"string","url":"string"}]
 }
-  `;
+`;
 
-  const data = await callOpenAIJson(prompt.replace("{MED}", nome) + `
+  let data = null;
+  try {
+    data = await callOpenAIJson(prompt);
+  } catch (e) {
+    // fallback seguro
+    const out = emptyOut();
+    out.pontos_enfermagem = [
+      "Falha ao gerar monografia automaticamente. Verifique logs do servidor e a chave OPENAI_API_KEY."
+    ];
+    return out;
+  }
 
-Medicamento: ${nome}
-`);
+  const out = emptyOut();
+  const obj = (data && typeof data === "object") ? data : {};
 
-  const out = {
-    medicamento: (typeof data?.medicamento === "string" ? data.medicamento.trim() : nome) || nome,
-    classe: (typeof data?.classe === "string" ? data.classe.trim() : "") || "",
-    mecanismo_acao: (typeof data?.mecanismo_acao === "string" ? data.mecanismo_acao.trim() : "") || "",
-    apresentacoes: {
-      oral: (typeof data?.apresentacoes?.oral === "string" ? data.apresentacoes.oral.trim() : "") || "",
-      gotas: (typeof data?.apresentacoes?.gotas === "string" ? data.apresentacoes.gotas.trim() : "") || "",
-      xarope: (typeof data?.apresentacoes?.xarope === "string" ? data.apresentacoes.xarope.trim() : "") || "",
-      comprimido_capsula: (typeof data?.apresentacoes?.comprimido_capsula === "string" ? data.apresentacoes.comprimido_capsula.trim() : "") || "",
-      injetavel: (typeof data?.apresentacoes?.injetavel === "string" ? data.apresentacoes.injetavel.trim() : "") || ""
-    },
-    uso_clinico: Array.isArray(data?.uso_clinico) ? data.uso_clinico.map(x => String(x || "").trim()).filter(Boolean).slice(0, 25) : [],
-    tipo_receituario: (typeof data?.tipo_receituario === "string" ? data.tipo_receituario.trim() : "") || "",
-    posologia_adulto: (typeof data?.posologia_adulto === "object" && data.posologia_adulto) ? data.posologia_adulto : {},
-    categoria_gravidez: (typeof data?.categoria_gravidez === "string" ? data.categoria_gravidez.trim() : "") || "",
-    uso_lactacao: (typeof data?.uso_lactacao === "string" ? data.uso_lactacao.trim() : "") || "",
-    uso_geriatrico: (typeof data?.uso_geriatrico === "string" ? data.uso_geriatrico.trim() : "") || "",
-    posologia_pediatrica: (typeof data?.posologia_pediatrica === "object" && data.posologia_pediatrica) ? data.posologia_pediatrica : {},
-    interacoes_medicamentosas: Array.isArray(data?.interacoes_medicamentosas) ? data.interacoes_medicamentosas.map(x => String(x || "").trim()).filter(Boolean).slice(0, 30) : [],
-    pontos_enfermagem: Array.isArray(data?.pontos_enfermagem) ? data.pontos_enfermagem.map(x => String(x || "").trim()).filter(Boolean).slice(0, 30) : [],
-    fontes_sugeridas: Array.isArray(fontesSugeridas) ? fontesSugeridas : []
-  };
+  function asStr(v, maxLen) {
+    const s = (v === null || v === undefined) ? "" : String(v).trim();
+    if (!s) return "";
+    return s.slice(0, maxLen || 2000);
+  }
+  function asArr(v, maxItems) {
+    const arr = Array.isArray(v) ? v : [];
+    const outArr = [];
+    for (const it of arr.slice(0, maxItems || 30)) {
+      const s = asStr(it, 240);
+      if (!s) continue;
+      if (outArr.some(x => x.toLowerCase() === s.toLowerCase())) continue;
+      outArr.push(s);
+    }
+    return outArr;
+  }
+  function asObj(v) {
+    return (v && typeof v === "object" && !Array.isArray(v)) ? v : {};
+  }
 
-  // Override/Enriquecimento com bases internas (receituário/gravidez/lactação)
-  if (safety?.tipo_receituario) out.tipo_receituario = safety.tipo_receituario;
-  if (safety?.gravidez_categoria) out.categoria_gravidez = safety.gravidez_categoria;
-  if (safety?.lactacao_risco) out.uso_lactacao = safety.lactacao_risco;
+  out.medicamento = asStr(obj.medicamento || obj.nome || obj.principio_ativo || nome, 180) || nome;
+  out.classe = asStr(obj.classe, 220) || "";
+  out.mecanismo_acao = asStr(obj.mecanismo_acao, 800) || "";
 
-  // Normaliza estruturas para evitar quebra no frontend
-  const normPosAdult = (obj) => ({
-    dose_usual: (typeof obj?.dose_usual === "string" ? obj.dose_usual.trim() : "") || "",
-    dose_maxima: (typeof obj?.dose_maxima === "string" ? obj.dose_maxima.trim() : "") || "",
-    modo_uso: (typeof obj?.modo_uso === "string" ? obj.modo_uso.trim() : "") || ""
-  });
+  const ap = asObj(obj.apresentacoes);
+  for (const k of Object.keys(out.apresentacoes)) {
+    out.apresentacoes[k] = asStr(ap[k], 600) || "";
+  }
 
-  const normPosPed = (obj) => ({
-    dose_mgkg: (typeof obj?.dose_mgkg === "string" ? obj.dose_mgkg.trim() : "") || "",
-    intervalo: (typeof obj?.intervalo === "string" ? obj.intervalo.trim() : "") || "",
-    dose_maxima: (typeof obj?.dose_maxima === "string" ? obj.dose_maxima.trim() : "") || "",
-    restricoes_etarias: (typeof obj?.restricoes_etarias === "string" ? obj.restricoes_etarias.trim() : "") || "",
-    modo_uso: (typeof obj?.modo_uso === "string" ? obj.modo_uso.trim() : "") || ""
-  });
+  out.uso_clinico = asArr(obj.uso_clinico, 25);
+  out.tipo_receituario = asStr(obj.tipo_receituario, 220) || "";
 
-  const pa = out.posologia_adulto || {};
-  out.posologia_adulto = {
-    oral: normPosAdult(pa.oral),
-    gotas: normPosAdult(pa.gotas),
-    xarope: normPosAdult(pa.xarope),
-    comprimido_capsula: normPosAdult(pa.comprimido_capsula),
-    injetavel: normPosAdult(pa.injetavel)
-  };
+  const pa = asObj(obj.posologia_adulto);
+  const paOral = asObj(pa.oral);
+  const paInj = asObj(pa.injetavel);
+  out.posologia_adulto.oral.dose_usual = asStr(paOral.dose_usual, 220) || "";
+  out.posologia_adulto.oral.dose_maxima = asStr(paOral.dose_maxima, 220) || "";
+  out.posologia_adulto.oral.observacoes = asStr(paOral.observacoes, 600) || "";
+  out.posologia_adulto.injetavel.dose_usual = asStr(paInj.dose_usual, 220) || "";
+  out.posologia_adulto.injetavel.dose_maxima = asStr(paInj.dose_maxima, 220) || "";
+  out.posologia_adulto.injetavel.observacoes = asStr(paInj.observacoes, 600) || "";
+  out.posologia_adulto.ajustes = asStr(pa.ajustes, 600) || "";
 
-  const pp = out.posologia_pediatrica || {};
-  out.posologia_pediatrica = {
-    oral: normPosPed(pp.oral),
-    gotas: normPosPed(pp.gotas),
-    xarope: normPosPed(pp.xarope),
-    comprimido_capsula: normPosPed(pp.comprimido_capsula),
-    injetavel: normPosPed(pp.injetavel)
-  };
+  out.categoria_gravidez = asStr(obj.categoria_gravidez, 120) || "";
+  out.uso_lactacao = asStr(obj.uso_lactacao, 600) || "";
+  out.uso_geriatrico = asStr(obj.uso_geriatrico, 600) || "";
+
+  const pp = asObj(obj.posologia_pediatrica);
+  for (const sec of ["oral", "gotas", "suspensao", "injetavel"]) {
+    const s = asObj(pp[sec]);
+    out.posologia_pediatrica[sec].dose_mgkg = asStr(s.dose_mgkg, 220) || "";
+    out.posologia_pediatrica[sec].dose_maxima = asStr(s.dose_maxima, 220) || "";
+    out.posologia_pediatrica[sec].idade_minima = asStr(s.idade_minima, 120) || "";
+    out.posologia_pediatrica[sec].observacoes = asStr(s.observacoes, 600) || "";
+  }
+  out.posologia_pediatrica.observacoes = asStr(pp.observacoes, 600) || "";
+
+  out.interacoes_medicamentosas = asArr(obj.interacoes_medicamentosas, 25);
+  out.pontos_enfermagem = asArr(obj.pontos_enfermagem, 25);
+
+  const fs = Array.isArray(obj.fontes_sugeridas) ? obj.fontes_sugeridas : [];
+  out.fontes_sugeridas = [];
+  for (const it of fs.slice(0, 12)) {
+    const n = asStr(it?.nome, 140);
+    const u = asStr(it?.url, 600);
+    if (!n && !u) continue;
+    out.fontes_sugeridas.push({ nome: n || "Fonte", url: u || "" });
+  }
+  // garante fontes sugeridas passadas pelo frontend
+  if ((!out.fontes_sugeridas.length) && Array.isArray(fontesSugeridas) && fontesSugeridas.length) {
+    out.fontes_sugeridas = fontesSugeridas.slice(0, 12).map(x => ({
+      nome: asStr(x?.nome, 140) || "Fonte",
+      url: asStr(x?.url, 600) || ""
+    }));
+  }
 
   return out;
 }
