@@ -5889,8 +5889,6 @@ app.post("/api/educacao-saude-pptx", requirePaidOrAdmin, async (req, res) => {
     const t = normalizeText(tema || "", 160);
     const d = clampInt(duracao_minutos, 10, 60);
 
-    console.log("[educacao-saude-pptx] tema recebido =", tema, "| tema normalizado =", t, "| duracao_minutos =", duracao_minutos, "| duracao clamp =", d);
-
     if (!t) {
       return res.status(400).json({ error: "Informe o tema para gerar a apresentação." });
     }

@@ -4252,20 +4252,8 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
 
 <script>
 
-    const DEFAULT_BACKEND_URL = (() => {
-      // Prefer calling the backend on the SAME origin as the frontend (Cloudflare/Netlify),
-      // so you never accidentally hit an old Render service with hardcoded behavior.
-      // You can still override with ?backend=... or localStorage backend_url.
-      try {
-        if (typeof location !== "undefined" && location.protocol && location.protocol.startsWith("http")) {
-          return location.origin;
-        }
-      } catch (e) {}
-      // Fallback (used only if opened as file:// or in a sandbox without location.origin)
-      return "https://consulta-enfermagem-1.onrender.com";
-    })();
-
-// Backend principal (Render). Pode ser sobrescrito por:
+    const DEFAULT_BACKEND_URL = "https://consulta-enfermagem-1.onrender.com";
+    // Backend principal (Render). Pode ser sobrescrito por:
     // 1) Querystring ?backend=https://...  (útil para testes)
     // 2) localStorage BACKEND_URL_OVERRIDE
     // Se estiver rodando localmente, usa http://localhost:3000
@@ -10337,9 +10325,6 @@ updateReportActions();
 
       const tema = (healthEduTheme.value || "").trim();
       const duracao = parseInt(String(healthEduDuration.value || ""), 10);
-
-      console.log("[Educação em Saúde] Tema enviado =", tema, "| Duração(min) =", duracao);
-      console.log("[Educação em Saúde] Backend em uso =", BACKEND_URL);
 
       if (!tema) {
         if (healthEduStatus) healthEduStatus.textContent = "Informe o tema para gerar a apresentação.";
