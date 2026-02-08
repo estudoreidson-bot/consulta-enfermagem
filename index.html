@@ -14978,6 +14978,8 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       let deck = null;
       let idx = 0;
 
+      const EDU_FALLBACK_MEDIA_URL = 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Red_Cross.svg/1024px-Red_Cross.svg.png';
+
       function setStatus(msg, isErr) {
         st.textContent = String(msg || '');
         st.style.color = isErr ? '#b00020' : '#333';
@@ -14998,14 +15000,15 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
         return deck.slides[i];
       }
 
-      function renderSlide(targetEl, slide) {
+            function renderSlide(targetEl, slide) {
         if (!targetEl) return;
         if (!slide) {
           targetEl.innerHTML = '';
           return;
         }
 
-        const mediaUrl = slide?.midia?.url || '';
+        const mid = slide?.midia || {};
+        const chosen = (mid.url || mid.thumb_url || EDU_FALLBACK_MEDIA_URL || '');
         const topicos = Array.isArray(slide?.topicos) ? slide.topicos : [];
 
         const items = topicos.map(t => {
@@ -15019,6 +15022,9 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
           return '';
         }).filter(Boolean).join('');
 
+        const safeMedia = escapeHtml(chosen);
+        const safeFallback = escapeHtml(EDU_FALLBACK_MEDIA_URL);
+
         targetEl.innerHTML = `
           <div class="education-slide">
             <div>
@@ -15026,13 +15032,14 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
               <ul>${items}</ul>
             </div>
             <div class="education-media">
-              ${mediaUrl ? `<img src="${escapeHtml(mediaUrl)}" alt="mídia do slide" loading="lazy" />` : ''}
+              <img src="${safeMedia}" alt="mídia do slide" loading="lazy"
+                   onerror="this.onerror=null; this.src='${safeFallback}';" />
             </div>
           </div>
         `;
       }
 
-      function renderThumbs() {
+      function renderThumbs()() {
         if (!deck || !Array.isArray(deck.slides)) {
           thumbs.innerHTML = '';
           return;
@@ -15157,15 +15164,23 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
             color: 'B00020', bold: true
           });
 
-          // Mídia (direita)
-          const mediaUrl = s?.midia?.url || '';
-          if (mediaUrl) {
+                    // Mídia (direita) - garante pelo menos 1 imagem por slide no PPTX
+          const mid = s?.midia || {};
+          const candidates = [
+            mid.url,
+            mid.thumb_url,
+            EDU_FALLBACK_MEDIA_URL
+          ].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
+
+          for (const candidate of candidates) {
             try {
-              const dataUrl = await fetchMediaAsDataUrl(mediaUrl);
+              const dataUrl = await fetchMediaAsDataUrl(candidate);
               slide.addImage({ data: dataUrl, x: 8.2, y: 1.2, w: 4.7, h: 5.9 });
+              break;
             } catch {
-              // se falhar, segue sem travar o PPTX
+              // tenta o próximo candidato
             }
+          }
           }
 
           // Tópicos (título em vermelho, resumo em preto)
