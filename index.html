@@ -2322,14 +2322,16 @@
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Ferramenta para auxiliar os profissionais de enfermagem.<br>Acesso restrito para profissionais cadastrados.</p>
 
+      <form id="loginForm" class="auth-form" autocomplete="on">
       <label class="auth-label" for="loginField">CPF (Login)</label>
       <input id="loginField" class="auth-input" autocomplete="username" inputmode="numeric" />
 
       <label class="auth-label" for="passwordField">Senha</label>
-      <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
+      <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" enterkeyhint="done" />
 
-      <button id="loginBtn" class="auth-btn" type="button">Entrar</button>
+      <button id="loginBtn" class="auth-btn" type="submit">Entrar</button>
       <div id="loginError" class="auth-error"></div>
+      </form>
 
       <button id="openSignupBtn" class="auth-btn outline" type="button">Cadastrar enfermeiro(a)</button>
 
@@ -4805,9 +4807,35 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     }
 
     // Eventos de login/logout
-    document.getElementById("loginBtn")?.addEventListener("click", doLogin);
-    document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
-    document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    const loginForm = document.getElementById("loginForm");
+    if (loginForm) {
+      loginForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        doLogin();
+      });
+    }
+
+    // Clique no botão (mantém compatibilidade com navegadores antigos)
+    document.getElementById("loginBtn")?.addEventListener("click", (e) => {
+      try { if (e) e.preventDefault(); } catch {}
+      const f = document.getElementById("loginForm");
+      // Se requestSubmit existir, garante comportamento idêntico ao Enter do teclado virtual
+      if (f && typeof f.requestSubmit === "function") {
+        f.requestSubmit();
+        return;
+      }
+      doLogin();
+    });
+
+    // Enter em desktop (fallback)
+    document.getElementById("loginField")?.addEventListener("keydown", (e) => {
+      const k = e && (e.key || "");
+      if (k === "Enter" || k === "NumpadEnter" || (e && e.keyCode === 13)) doLogin();
+    });
+    document.getElementById("passwordField")?.addEventListener("keydown", (e) => {
+      const k = e && (e.key || "");
+      if (k === "Enter" || k === "NumpadEnter" || (e && e.keyCode === 13)) doLogin();
+    });
     document.getElementById("openSignupBtn")?.addEventListener("click", () => {
       resetSignupForm();
       showSignup();
