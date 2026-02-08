@@ -711,6 +711,180 @@ function normalizeText(input, maxLen) {
   return s.length > maxLen ? s.slice(0, maxLen) : s;
 }
 
+
+// ============================
+// EDUCAÇÃO EM SAÚDE – ICONSCOUT (Lottie/GIF) helpers
+// ============================
+// Observação: este módulo tenta buscar GIFs/imagens pela API do IconScout (Lottie Animations).
+// Para funcionar em produção, configure as variáveis de ambiente:
+// ICONSCOUT_CLIENT_ID e ICONSCOUT_CLIENT_SECRET.
+//
+// Referência de alto nível: IconScout API (Client-ID/Client-Secret) e endpoints de busca/itens.
+// (Sem credenciais, o servidor retorna placeholders visuais e o cliente ainda consegue gerar o .pptx.)
+
+function buildSvgPlaceholderDataUrl(label) {
+  const safe = String(label || "Educação em Saúde").slice(0, 60).replace(/[<>]/g, "");
+  const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <rect x="20" y="20" width="920" height="680" rx="24" ry="24" fill="#f7f7f7" stroke="#dddddd" stroke-width="4"/>
+  <rect x="20" y="20" width="920" height="80" fill="#C00000"/>
+  <text x="60" y="75" font-family="Arial" font-size="36" fill="#ffffff">Educação em Saúde</text>
+  <text x="60" y="220" font-family="Arial" font-size="44" fill="#000000">${safe}</text>
+  <text x="60" y="280" font-family="Arial" font-size="24" fill="#444444">Mídia indisponível no momento</text>
+</svg>`.trim();
+  const b64 = Buffer.from(svg, "utf8").toString("base64");
+  return "data:image/svg+xml;base64," + b64;
+}
+
+function collectUrlsDeep(obj, exts, out) {
+  const extsArr = Array.isArray(exts) ? exts : [];
+  const pushIf = (v) => {
+    if (typeof v !== "string") return;
+    const s = v.trim();
+    if (!s) return;
+    const low = s.toLowerCase();
+    for (const ext of extsArr) {
+      if (low.includes(ext)) {
+        out.push(s);
+        return;
+      }
+    }
+  };
+
+  if (!obj) return;
+  if (typeof obj === "string") {
+    pushIf(obj);
+    return;
+  }
+  if (Array.isArray(obj)) {
+    for (const it of obj) collectUrlsDeep(it, extsArr, out);
+    return;
+  }
+  if (typeof obj === "object") {
+    for (const k of Object.keys(obj)) {
+      collectUrlsDeep(obj[k], extsArr, out);
+    }
+  }
+}
+
+async function iconscoutRequestJson(url) {
+  const cid = process.env.ICONSCOUT_CLIENT_ID || process.env.ICONSCOUT_CLIENT_ID;
+  const csec = process.env.ICONSCOUT_CLIENT_SECRET || process.env.ICONSCOUT_CLIENT_SECRET;
+
+  if (!cid || !csec) {
+    const err = new Error("ICONSCOUT_CREDENTIALS_MISSING");
+    err.code = "ICONSCOUT_CREDENTIALS_MISSING";
+    throw err;
+  }
+
+  const resp = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Client-ID": cid,
+      "Client-Secret": csec,
+      "Accept": "application/json"
+    }
+  });
+
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => "");
+    const err = new Error("ICONSCOUT_API_ERROR: " + resp.status + " " + (txt || ""));
+    err.code = "ICONSCOUT_API_ERROR";
+    throw err;
+  }
+  return await resp.json();
+}
+
+async function iconscoutSearchLottie(keyword) {
+  const q = encodeURIComponent(String(keyword || "").trim());
+  const url = `https://api.iconscout.com/v3/search?asset=lottie&query=${q}&per_page=5`;
+  const data = await iconscoutRequestJson(url);
+
+  // Variações de payload possíveis; normaliza para lista de itens
+  const items =
+    (Array.isArray(data?.items) ? data.items :
+    Array.isArray(data?.response?.items) ? data.response.items :
+    Array.isArray(data?.response?.results) ? data.response.results :
+    Array.isArray(data?.results) ? data.results : []);
+
+  return items;
+}
+
+async function iconscoutGetItemDetails(uuid) {
+  const id = encodeURIComponent(String(uuid || "").trim());
+  const url = `https://api.iconscout.com/v3/items/${id}`;
+  return await iconscoutRequestJson(url);
+}
+
+async function fetchBinaryAsDataUrl(mediaUrl, maxBytes) {
+  const u = String(mediaUrl || "").trim();
+  if (!u) return null;
+
+  const resp = await fetch(u, { method: "GET" });
+  if (!resp.ok) return null;
+
+  const len = parseInt(resp.headers.get("content-length") || "0", 10);
+  if (Number.isFinite(len) && len > 0 && maxBytes && len > maxBytes) return null;
+
+  const buf = Buffer.from(await resp.arrayBuffer());
+  if (maxBytes && buf.length > maxBytes) return null;
+
+  const low = u.toLowerCase();
+  let mime = "image/png";
+  if (low.includes(".gif")) mime = "image/gif";
+  else if (low.includes(".jpg") || low.includes(".jpeg")) mime = "image/jpeg";
+  else if (low.includes(".webp")) mime = "image/webp";
+  else if (low.includes(".svg")) mime = "image/svg+xml";
+  else if (low.includes(".mp4")) mime = "video/mp4";
+
+  return { data_url: `data:${mime};base64,${buf.toString("base64")}`, mime, source_url: u };
+}
+
+async function iconscoutPickBestMediaDataUrl(keyword) {
+  // Retorna sempre um data URL (placeholder como fallback)
+  const fallback = { data_url: buildSvgPlaceholderDataUrl(keyword), mime: "image/svg+xml", source_url: "" };
+
+  try {
+    const items = await iconscoutSearchLottie(keyword);
+    const first = items && items.length ? items[0] : null;
+    const uuid =
+      (typeof first?.uuid === "string" ? first.uuid :
+      typeof first?.id === "string" ? first.id :
+      typeof first?.item_uuid === "string" ? first.item_uuid :
+      typeof first?._id === "string" ? first._id : "");
+
+    if (!uuid) return fallback;
+
+    const details = await iconscoutGetItemDetails(uuid);
+
+    // Tenta achar URL de transparent GIF (preferência), depois GIF comum, depois PNG/JPG, depois MP4.
+    const urls = [];
+    collectUrlsDeep(details, [".gif", ".png", ".jpg", ".jpeg", ".webp", ".mp4"], urls);
+
+    const uniq = Array.from(new Set(urls));
+    const prefer = (arr, ext) => arr.find(u => String(u).toLowerCase().includes(ext)) || null;
+
+    const best =
+      prefer(uniq, ".gif") ||
+      prefer(uniq, ".png") ||
+      prefer(uniq, ".jpg") ||
+      prefer(uniq, ".jpeg") ||
+      prefer(uniq, ".webp") ||
+      prefer(uniq, ".mp4");
+
+    if (!best) return fallback;
+
+    // Limita o tamanho do arquivo para não estourar payload (base64 é pesado)
+    const bin = await fetchBinaryAsDataUrl(best, 2_000_000);
+    return bin || fallback;
+  } catch (e) {
+    // Sem credenciais ou falha de API: usa placeholder
+    return fallback;
+  }
+}
+
+
 function normalizeImageDataUrl(input, maxLen) {
   const s = (typeof input === "string" ? input : "").trim();
   if (!s) return "";
@@ -4375,6 +4549,166 @@ Transcrição:
   };
 }
 
+
+// ======================================================================
+// ROTA – EDUCAÇÃO EM SAÚDE (GERAR APRESENTAÇÃO .PPTX NO FRONTEND)
+// ======================================================================
+// Retorna roteiro estruturado + 1 mídia (GIF/imagem) por slide em data URL.
+// O arquivo .pptx é montado no navegador (PptxGenJS) para evitar dependências no servidor.
+app.post("/api/educacao-em-saude/gerar-apresentacao", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const tema = normalizeText(body.tema || body.topic || "", 120);
+    const publico_alvo = normalizeText(body.publico_alvo || body.audience || "comunidade", 60);
+    const observacoes = normalizeText(body.observacoes || body.notes || "", 600);
+    const nSlidesRaw = parseInt(String(body.n_slides || body.slides || 8), 10);
+    const n_slides = Number.isFinite(nSlidesRaw) ? Math.max(4, Math.min(20, nSlidesRaw)) : 8;
+
+    if (!tema || tema.length < 3) {
+      return res.status(400).json({ error: "Tema inválido." });
+    }
+
+    // Sem OpenAI configurada: retorna um roteiro mínimo (permite testar o fluxo local)
+    if (!process.env.OPENAI_API_KEY) {
+      const slides = Array.from({ length: n_slides }, (_, i) => {
+        const titulo = `${tema} – Parte ${i + 1}`;
+        const topicos = [
+          "Conceito e importância",
+          "Fatores de risco e proteção",
+          "Sinais e sintomas relevantes",
+          "Prevenção e autocuidado",
+          "Quando procurar atendimento"
+        ];
+        const media = { data_url: buildSvgPlaceholderDataUrl(tema), mime: "image/svg+xml", source_url: "" };
+        return {
+          titulo,
+          topicos,
+          pesquisa_gif: tema,
+          media_data_url: media.data_url,
+          media_mime: media.mime,
+          media_fonte: media.source_url
+        };
+      });
+
+      const outline_text = [
+        `Título: ${tema}`,
+        `Público-alvo: ${publico_alvo}`,
+        "",
+        ...slides.map((s, idx) => {
+          const b = (Array.isArray(s.topicos) ? s.topicos : []).map(x => `- ${x}`).join("\n");
+          return `${idx + 1}. ${s.titulo}\n${b}`;
+        })
+      ].join("\n\n");
+
+      return res.json({
+        titulo_apresentacao: tema,
+        publico_alvo,
+        n_slides,
+        slides,
+        outline_text,
+        filename: `educacao-em-saude-${tema}`.replace(/[^a-z0-9\-\_\s]/gi, "").trim().replace(/\s+/g, "-").slice(0, 60)
+      });
+    }
+
+    // Prompt para gerar roteiro estruturado
+    const prompt = `
+Você está criando uma apresentação de Educação em Saúde para uso em UBS.
+Gere um roteiro de slides, em português, com linguagem adequada ao público-alvo.
+Não use emojis e não use símbolos gráficos especiais.
+
+Tema: ${JSON.stringify(tema)}
+Público-alvo: ${JSON.stringify(publico_alvo)}
+Quantidade de slides (conteúdo): ${n_slides}
+
+Observações (se houver): ${observacoes ? JSON.stringify(observacoes) : "null"}
+
+Regras de formatação dos slides:
+- Cada slide deve ter: título curto + 3 a 6 tópicos curtos.
+- Títulos e tópicos devem ser clínicos, didáticos e objetivos.
+- Não invente dados epidemiológicos locais. Evite números específicos se não forem essenciais.
+- Retorne JSON estrito, sem texto fora do JSON.
+
+Formato obrigatório:
+{
+  "titulo_apresentacao": "string",
+  "slides": [
+    {
+      "titulo": "string",
+      "topicos": ["..."],
+      "pesquisa_gif": "termo simples para buscar mídia coerente no IconScout"
+    }
+  ]
+}
+
+Importante:
+- O array "slides" deve ter exatamente ${n_slides} itens.
+`;
+
+    const plan = await callOpenAIJson(prompt, 3);
+
+    const titulo_apresentacao = normalizeText(plan?.titulo_apresentacao || tema, 140) || tema;
+    const rawSlides = Array.isArray(plan?.slides) ? plan.slides : [];
+
+    // Ajusta quantidade
+    const slidesFixed = rawSlides.slice(0, n_slides);
+    while (slidesFixed.length < n_slides) {
+      slidesFixed.push({
+        titulo: `${titulo_apresentacao} – Parte ${slidesFixed.length + 1}`,
+        topicos: ["Conceito", "Prevenção", "Cuidados", "Sinais de alerta"],
+        pesquisa_gif: tema
+      });
+    }
+
+    // Baixa 1 mídia por slide (GIF ou imagem) via IconScout, retornando data URL.
+    const slidesEnriched = [];
+    for (const s of slidesFixed) {
+      const titulo = normalizeText(s?.titulo || "", 120) || "Tópico";
+      const topicos = normalizeArrayOfStrings(s?.topicos, 12, 140).slice(0, 6);
+      const pesquisa_gif = normalizeText(s?.pesquisa_gif || tema, 80) || tema;
+
+      const media = await iconscoutPickBestMediaDataUrl(pesquisa_gif);
+
+      slidesEnriched.push({
+        titulo,
+        topicos,
+        pesquisa_gif,
+        media_data_url: media?.data_url || buildSvgPlaceholderDataUrl(pesquisa_gif),
+        media_mime: media?.mime || "image/svg+xml",
+        media_fonte: media?.source_url || ""
+      });
+    }
+
+    const outline_text = [
+      `Título: ${titulo_apresentacao}`,
+      `Público-alvo: ${publico_alvo}`,
+      "",
+      ...slidesEnriched.map((s, idx) => {
+        const b = (Array.isArray(s.topicos) ? s.topicos : []).map(x => `- ${x}`).join("\n");
+        return `${idx + 1}. ${s.titulo}\n${b}`;
+      })
+    ].join("\n\n");
+
+    const filename = `educacao-em-saude-${titulo_apresentacao}`
+      .replace(/[^a-z0-9\-\_\s]/gi, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .slice(0, 60);
+
+    return res.json({
+      titulo_apresentacao,
+      publico_alvo,
+      n_slides,
+      slides: slidesEnriched,
+      outline_text,
+      filename
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao gerar apresentação de Educação em Saúde." });
+  }
+});
+
+
 app.post("/api/gerar-documento-medico", requirePaidOrAdmin, async (req, res) => {
   try {
     const body = req.body || {};
@@ -4434,184 +4768,6 @@ app.post("/api/gerar-documento-medico", requirePaidOrAdmin, async (req, res) => 
 });
 
 // Guia em tempo real (tipo + até 5 perguntas) para documento médico durante a gravação
-
-// ============================
-// Educação em Saúde (Slides) - gera conteúdo e busca animações no IconScout
-// ============================
-
-function slugifyIconscoutTerm(term) {
-  let s = String(term || "").trim().toLowerCase();
-  try {
-    s = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  } catch {}
-  s = s.replace(/[^a-z0-9]+/g, "-").replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "");
-  return s || "saude";
-}
-
-async function fetchTextWithTimeout(url, timeoutMs = 12000) {
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), Math.max(2000, timeoutMs | 0));
-  try {
-    const resp = await fetch(url, {
-      method: "GET",
-      redirect: "follow",
-      headers: {
-        "user-agent": "Mozilla/5.0 (compatible; QueimadasTelemedicina/1.0; +https://reimed.netlify.app/)",
-        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
-      },
-      signal: controller.signal,
-    });
-    if (!resp.ok) return null;
-    const text = await resp.text();
-    return text || null;
-  } catch (e) {
-    return null;
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-function extractUniqueMatches(text, regex, limit = 20) {
-  const out = [];
-  const seen = new Set();
-  if (!text) return out;
-  let m;
-  while ((m = regex.exec(text)) !== null) {
-    const v = String(m[0] || "").trim();
-    if (!v) continue;
-    if (seen.has(v)) continue;
-    seen.add(v);
-    out.push(v);
-    if (out.length >= limit) break;
-  }
-  return out;
-}
-
-async function iconscoutPickMediaForQuery(query, want = 2) {
-  const q = String(query || "").trim();
-  const slug = slugifyIconscoutTerm(q);
-
-  const listingUrls = [
-    "https://iconscout.com/pt/lottie-animations/" + slug,
-    "https://iconscout.com/lottie-animations/" + slug,
-  ];
-
-  let listingHtml = null;
-  for (const u of listingUrls) {
-    listingHtml = await fetchTextWithTimeout(u, 12000);
-    if (listingHtml) break;
-  }
-  if (!listingHtml) return [];
-
-  const linkRe = /\/(?:pt\/)?lottie-animation\/[a-z0-9\-_]+/gi;
-  const links = Array.from(new Set(extractUniqueMatches(listingHtml, linkRe, 10)))
-    .map((p) => (p.startsWith("http") ? p : "https://iconscout.com" + p))
-    .slice(0, 6);
-
-  const results = [];
-
-  for (const pageUrl of links) {
-    if (results.length >= want) break;
-
-    const pageHtml = await fetchTextWithTimeout(pageUrl, 12000);
-    if (!pageHtml) continue;
-
-    const mediaRe = /https?:\/\/[^"' \n\r\t\\]+?\.(?:gif|mp4|json|lottie|dotlottie)(?:\?[^"' \n\r\t\\]+)?/gi;
-    const candidates = extractUniqueMatches(pageHtml, mediaRe, 80)
-      .filter((u) => /iconscout|cdn/i.test(u));
-
-    if (!candidates.length) continue;
-
-    const pickGif = candidates.find((u) => /\.gif(\?|$)/i.test(u));
-    const pickMp4 = candidates.find((u) => /\.mp4(\?|$)/i.test(u));
-    const pickJson = candidates.find((u) => /\.json(\?|$)/i.test(u)) || candidates.find((u) => /\.(?:lottie|dotlottie)(\?|$)/i.test(u));
-    const chosen = pickGif || pickMp4 || pickJson;
-
-    if (!chosen) continue;
-
-    const lower = chosen.toLowerCase();
-    const media_type = lower.includes(".gif") ? "gif" : (lower.includes(".mp4") ? "mp4" : (lower.includes(".json") ? "json" : "lottie"));
-
-    results.push({ source_page: pageUrl, media_url: chosen, media_type });
-  }
-
-  return results.slice(0, want);
-}
-
-app.post("/api/educacao-saude-slides", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const tema = normalizeText(req.body?.tema || req.body?.tema_principal || "", 120);
-    const nSlidesRaw = parseInt(String(req.body?.nSlides || req.body?.numSlides || 6), 10);
-    const nSlides = Math.max(3, Math.min(12, isNaN(nSlidesRaw) ? 6 : nSlidesRaw));
-
-    if (!tema) {
-      return res.status(400).json({ error: "Tema inválido." });
-    }
-
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(400).json({ error: "Sem chave OPENAI_API_KEY configurada no servidor." });
-    }
-
-    const prompt = `
-Você é um médico e educador clínico.
-Crie uma apresentação de educação em saúde para pacientes e acompanhantes.
-
-Tema: "${tema}"
-Número de slides: ${nSlides}
-
-Regras:
-- Retorne somente JSON estrito, sem markdown e sem texto fora do JSON.
-- Não use emojis e não use símbolos gráficos.
-- Linguagem clara, objetiva, adequada para público leigo, sem perder precisão.
-- Cada slide deve ter:
-  - titulo (curto, forte)
-  - topicos (3 a 5 tópicos curtos e práticos)
-  - resumo (1 parágrafo curto)
-  - termo_busca (1 termo curto para buscar animação no IconScout; exemplo: "pressao arterial", "medicacao", "exercicio", "alimentacao", "vacina", "mosquito", etc.)
-
-Formato esperado:
-{
-  "slides": [
-    {
-      "titulo": "",
-      "topicos": ["", "", ""],
-      "resumo": "",
-      "termo_busca": ""
-    }
-  ]
-}
-`;
-
-    const data = await callOpenAIJson(prompt);
-
-    const slidesIn = Array.isArray(data?.slides) ? data.slides : [];
-    const slidesNorm = slidesIn.slice(0, nSlides).map((s) => {
-      const titulo = normalizeText(s?.titulo || "", 90);
-      const resumo = normalizeText(s?.resumo || "", 600);
-      const termo_busca = normalizeText(s?.termo_busca || "", 60);
-      const topicos = normalizeArrayOfStrings(s?.topicos, 50, 120).slice(0, 7);
-      return { titulo, topicos, resumo, termo_busca };
-    }).filter((s) => s.titulo && s.topicos && s.topicos.length);
-
-    for (const slide of slidesNorm) {
-      const q1 = slide.termo_busca ? (tema + " " + slide.termo_busca) : (tema + " " + slide.titulo);
-      const q2 = slide.titulo ? (tema + " " + slide.titulo) : tema;
-
-      let midias = await iconscoutPickMediaForQuery(q1, 2);
-      if (!midias || !midias.length) midias = await iconscoutPickMediaForQuery(q2, 2);
-      if (!midias || !midias.length) midias = await iconscoutPickMediaForQuery(tema, 1);
-
-      slide.midias = Array.isArray(midias) ? midias.slice(0, 2) : [];
-    }
-
-    return res.json({ tema, slides: slidesNorm });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar slides de educação em saúde." });
-  }
-});
-
 app.post("/api/documento-medico-tempo-real", requirePaidOrAdmin, async (req, res) => {
   try {
     const { transcricao } = req.body || {};
