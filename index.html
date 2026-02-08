@@ -2776,6 +2776,34 @@
       <div class="module-divider"></div>
 
       <div class="section-header-row" style="justify-content: center;">
+        <p class="module-title" style="margin: 0;">Educação em saúde</p>
+      </div>
+
+      <p class="module-subtitle">
+        Digite o tema e o tempo da apresentação. Ao gerar, será baixado um arquivo PPTX com slides prontos e mídia em todos os slides.
+      </p>
+
+      <div class="inline-input-row">
+        <input id="healthEduTopic" class="text-input" type="text" placeholder="Tema da apresentação" />
+        <select id="healthEduDuration" class="text-input" style="max-width: 180px; flex: 0 0 180px;">
+          <option value="5">5 min</option>
+          <option value="10" selected>10 min</option>
+          <option value="15">15 min</option>
+          <option value="20">20 min</option>
+          <option value="30">30 min</option>
+          <option value="45">45 min</option>
+          <option value="60">60 min</option>
+        </select>
+      </div>
+
+      <div class="report-actions" style="justify-content: center;">
+        <button id="healthEduGenerateBtn" class="btn-print" type="button">Gerar apresentação</button>
+      </div>
+      <div id="healthEduStatus" class="mini-status" style="text-align: center;"></div>
+
+      <div class="module-divider"></div>
+
+      <div class="section-header-row" style="justify-content: center;">
         <div class="soap-title-actions" style="justify-content: center;">
           <button id="rosterHelpBtn" class="btn-print guide-main-btn" type="button">Guia Escala</button>
           <p class="module-title" style="margin: 0;">Escala de plantão</p>
@@ -5199,6 +5227,11 @@ if (!handoffMode) {
     const docsTimerEl = document.getElementById("docsTimer");
     const docsMicStatus = document.getElementById("docsMicStatus");
     const docsError = document.getElementById("docsError");
+
+	    const healthEduTopicEl = document.getElementById("healthEduTopic");
+	    const healthEduDurationEl = document.getElementById("healthEduDuration");
+	    const healthEduGenerateBtn = document.getElementById("healthEduGenerateBtn");
+	    const healthEduStatusEl = document.getElementById("healthEduStatus");
 
     const docsGuideBtn = document.getElementById("docsGuideBtn");
     const docsGuidePanel = document.getElementById("docsGuidePanel");
@@ -10679,6 +10712,88 @@ if (reportOutput) {
       const combined = docsGetCombinedTranscript();
       await generateDocumentFromTranscript(combined);
     }
+
+	    function healthEduSetStatus(text) {
+	      if (!healthEduStatusEl) return;
+	      healthEduStatusEl.textContent = String(text || "");
+	    }
+
+	    function healthEduSafeFileName(topic, minutes) {
+	      const base = String(topic || "apresentacao").trim().toLowerCase();
+	      const cleaned = base
+	        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+	        .replace(/[^a-z0-9]+/g, "_")
+	        .replace(/_+/g, "_")
+	        .replace(/^_+|_+$/g, "")
+	        .slice(0, 60) || "apresentacao";
+	      const m = Number(minutes) || 0;
+	      return `educacao_saude_${cleaned}_${m || ""}min.pptx`;
+	    }
+
+	    function healthEduParseFilenameFromHeaders(resp) {
+	      try {
+	        const cd = resp && resp.headers ? resp.headers.get("Content-Disposition") : "";
+	        if (!cd) return "";
+	        const m = cd.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i);
+	        const raw = (m && (m[1] || m[2])) ? String(m[1] || m[2]) : "";
+	        return decodeURIComponent(raw).trim();
+	      } catch {
+	        return "";
+	      }
+	    }
+
+	    async function healthEduGenerate() {
+	      const topic = (healthEduTopicEl && healthEduTopicEl.value) ? healthEduTopicEl.value.trim() : "";
+	      const minutes = (healthEduDurationEl && healthEduDurationEl.value) ? parseInt(String(healthEduDurationEl.value), 10) : 10;
+
+	      if (!topic || topic.length < 3) {
+	        alert("Digite um tema com pelo menos 3 caracteres.");
+	        return;
+	      }
+
+	      const dur = Number.isFinite(minutes) ? Math.max(5, Math.min(120, minutes)) : 10;
+	      try {
+	        if (healthEduGenerateBtn) healthEduGenerateBtn.disabled = true;
+	        healthEduSetStatus("Gerando apresentação. Isso pode levar alguns instantes.");
+
+	        const resp = await fetch(BACKEND_URL + "/api/educacao-saude/apresentacao", {
+	          method: "POST",
+	          headers: { "Content-Type": "application/json" },
+	          body: JSON.stringify({ tema: topic, duracao_min: dur })
+	        });
+
+	        if (!resp.ok) {
+	          let msg = "Não foi possível gerar a apresentação.";
+	          try {
+	            const data = await resp.json();
+	            if (data && data.error) msg = String(data.error);
+	          } catch {}
+	          throw new Error(msg);
+	        }
+
+	        const blob = await resp.blob();
+	        const url = URL.createObjectURL(blob);
+	        const a = document.createElement("a");
+	        a.href = url;
+	        a.download = healthEduParseFilenameFromHeaders(resp) || healthEduSafeFileName(topic, dur);
+	        document.body.appendChild(a);
+	        a.click();
+	        document.body.removeChild(a);
+	        setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+	        healthEduSetStatus("Apresentação gerada e baixada.");
+	      } catch (e) {
+	        healthEduSetStatus(String(e?.message || e || "Falha ao gerar."));
+	      } finally {
+	        if (healthEduGenerateBtn) healthEduGenerateBtn.disabled = false;
+	      }
+	    }
+
+	    if (healthEduGenerateBtn) {
+	      healthEduGenerateBtn.onclick = () => {
+	        healthEduGenerate();
+	      };
+	    }
 
 
 
