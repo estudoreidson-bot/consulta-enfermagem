@@ -5148,6 +5148,82 @@ Transcrição (trecho):
 // ======================================================================
 
 const EDU_FALLBACK_MEDIA_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Red_Cross.svg/1024px-Red_Cross.svg.png";
+// Mídia gerada via OpenAI (cache local temporário)
+const EDU_MEDIA_DIR = path.join(os.tmpdir(), "qt_edu_media");
+try { fs.mkdirSync(EDU_MEDIA_DIR, { recursive: true }); } catch {}
+
+const EDU_MIDIA_MODE = String(process.env.EDU_MIDIA_MODE || "openai").toLowerCase(); // "openai" | "commons"
+const EDU_IMAGE_MODEL = String(process.env.EDU_IMAGE_MODEL || "gpt-image-1-mini");
+const EDU_IMAGE_SIZE = String(process.env.EDU_IMAGE_SIZE || "1536x1024"); // landscape
+
+function sha1Hex(input) {
+  return crypto.createHash("sha1").update(String(input || ""), "utf8").digest("hex");
+}
+
+function buildEduImagePrompt(tema, publico, slide) {
+  const tTema = normalizeText(String(tema || ""), 180);
+  const tPublico = normalizeText(String(publico || ""), 180);
+  const titulo = normalizeText(String(slide?.titulo || ""), 120);
+  const topicos = Array.isArray(slide?.topicos) ? slide.topicos.slice(0, 5) : [];
+  const bullets = topicos.map(x => normalizeText(String(x?.titulo || x?.resumo || ""), 140)).filter(Boolean);
+
+  const base = [
+    "Crie uma imagem para um slide de Educação em Saúde na Atenção Primária.",
+    "Estilo: ilustração simples, flat, limpa, com fundo branco, sem texto na imagem.",
+    "Sem marcas/logos, sem números, sem escrita.",
+    `Tema geral: ${tTema}.`,
+    tPublico ? `Público-alvo: ${tPublico}.` : "",
+    titulo ? `Título do slide: ${titulo}.` : "",
+    bullets.length ? ("Elementos a representar: " + bullets.join("; ") + ".") : "",
+    "Composição horizontal (paisagem), boa para slide, com elementos claros e didáticos."
+  ].filter(Boolean).join(" ");
+
+  return normalizeText(base, 900);
+}
+
+async function gerarMidiaOpenAIParaSlide(tema, publico, slide) {
+  if (!process.env.OPENAI_API_KEY) {
+    const err = new Error("OPENAI_API_KEY_MISSING");
+    err.code = "OPENAI_API_KEY_MISSING";
+    throw err;
+  }
+
+  const prompt = buildEduImagePrompt(tema, publico, slide);
+  const id = sha1Hex(prompt).slice(0, 24);
+  const filename = id + ".png";
+  const filepath = path.join(EDU_MEDIA_DIR, filename);
+
+  if (!fs.existsSync(filepath)) {
+    const img = await openai.images.generate({
+      model: EDU_IMAGE_MODEL,
+      prompt,
+      n: 1,
+      size: EDU_IMAGE_SIZE,
+      output_format: "png",
+      background: "opaque",
+      quality: "low",
+    });
+
+    const b64 = img?.data?.[0]?.b64_json || "";
+    if (!b64) throw new Error("Falha ao gerar imagem do slide.");
+    const buf = Buffer.from(b64, "base64");
+    fs.writeFileSync(filepath, buf);
+  }
+
+  return { url: `/api/educacao-saude/midia/${filename}`, mime: "image/png", title: slide?.titulo || "slide", source: "OpenAI" };
+}
+
+async function gerarMidiaEducacaoSaude(tema, publico, slide, buscaFallback) {
+  const mode = (EDU_MIDIA_MODE === "commons") ? "commons" : "openai";
+  if (mode === "openai") {
+    try {
+      return await gerarMidiaOpenAIParaSlide(tema, publico, slide);
+    } catch (e) {
+      // fallback silencioso para commons
+    }
+  }
+  return await buscarMidiaInternetCommons(buscaFallback);
+}
 
 function clampInt(n, min, max) {
   const v = parseInt(String(n ?? ""), 10);
@@ -5189,8 +5265,7 @@ async function commonsImageInfo(title) {
     + "&titles=" + encodeURIComponent(t)
     + "&prop=imageinfo"
     + "&iiprop=url|mime"
-    // Mantém a mídia mais leve para reduzir falhas no download/exportação.
-    + "&iiurlwidth=900"
+    + "&iiurlwidth=1400"
     + "&format=json"
     + "&origin=*";
 
@@ -5214,25 +5289,25 @@ async function commonsImageInfo(title) {
 async function buscarMidiaInternetCommons(busca) {
   const q = normalizeText(String(busca || ""), 180);
   const queries = [
-    q ? (q + " animated gif") : "",
-    q ? (q + " gif") : "",
-    q
+    q,
+    q ? (q + " illustration") : "",
+    q ? (q + " infographic") : "",
   ].filter(Boolean);
 
   for (const term of queries) {
     try {
-      const titles = await commonsSearchTitles(term, 12);
+      const titles = await commonsSearchTitles(term, 14);
       if (!titles.length) continue;
 
-      // 1) tenta GIF primeiro
-      const gifTitle = titles.find(t => /(\.gif)$/i.test(t) || /File:.*gif/i.test(t));
-      if (gifTitle) {
-        const info = await commonsImageInfo(gifTitle);
+      // Preferir arquivos raster (PNG/JPG/JPEG). SVG também costuma ter thumb em PNG.
+      const preferred = titles.find(t => /\.(png|jpe?g|svg)$/i.test(t));
+      if (preferred) {
+        const info = await commonsImageInfo(preferred);
         if (info?.url) return info;
       }
 
-      // 2) fallback: primeiro resultado que tenha URL
-      for (const t of titles.slice(0, 6)) {
+      for (const t of titles.slice(0, 8)) {
+        if (/\.gif$/i.test(t)) continue; // evita GIF (PPTX não suporta bem)
         const info = await commonsImageInfo(t);
         if (info?.url) return info;
       }
@@ -5290,14 +5365,14 @@ Responda SOMENTE com JSON no formato exato:
   const finalSlides = [];
   for (const s of cleanedSlides.slice(0, n)) {
     const busca = s.busca_midia || `${temaNorm} ${s.titulo}`;
-    const midia = await buscarMidiaInternetCommons(busca);
+    const midia = await gerarMidiaEducacaoSaude(temaNorm, publicoNorm, s, busca);
     finalSlides.push({ ...s, midia });
   }
 
   while (finalSlides.length < n) {
     const i = finalSlides.length + 1;
     const titulo = `Slide ${i}`;
-    const midia = await buscarMidiaInternetCommons(`${temaNorm} ${titulo}`);
+    const midia = await gerarMidiaEducacaoSaude(temaNorm, publicoNorm, { titulo, topicos: [] }, `${temaNorm} ${titulo}`);
     finalSlides.push({
       titulo,
       topicos: [{ titulo: "Ponto principal", resumo: "Ajuste este slide conforme a necessidade do público-alvo." }],
@@ -5335,6 +5410,24 @@ app.post("/api/educacao-saude/apresentacao", requirePaidOrAdmin, async (req, res
   }
 });
 
+// Servir mídia gerada (OpenAI) para os slides de Educação em Saúde
+app.get("/api/educacao-saude/midia/:file", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const file = String(req.params.file || "").trim();
+    if (!/^[a-f0-9]{24}\.png$/i.test(file)) return res.status(400).send("invalid file");
+    const fp = path.join(EDU_MEDIA_DIR, file);
+    if (!fs.existsSync(fp)) return res.status(404).send("not found");
+
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    return res.sendFile(fp);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).send("media error");
+  }
+});
+
+
 // Proxy seguro para baixar mídia (evita CORS no frontend e reduz SSRF)
 app.get("/api/proxy", requirePaidOrAdmin, async (req, res) => {
   try {
@@ -5361,8 +5454,7 @@ app.get("/api/proxy", requirePaidOrAdmin, async (req, res) => {
     res.setHeader("Cache-Control", "public, max-age=86400");
 
     const ab = await r.arrayBuffer();
-    // Evita estourar memória, mas permite imagens/GIFs razoáveis para PPTX.
-    if (ab.byteLength > 12 * 1024 * 1024) return res.status(413).send("payload too large");
+    if (ab.byteLength > 5 * 1024 * 1024) return res.status(413).send("payload too large");
 
     return res.status(200).send(Buffer.from(ab));
   } catch (e) {

@@ -14992,6 +14992,17 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
           .replaceAll("'", '&#039;');
       }
 
+
+function resolveMediaUrl(url) {
+  const u = String(url || '').trim();
+  if (!u) return '';
+  if (u.startsWith('data:')) return u;
+  if (/^https?:\/\//i.test(u)) return u;
+  if (u.startsWith('/')) return BACKEND_URL + u;
+  // fallback: trata como caminho relativo do backend
+  return BACKEND_URL + '/' + u.replace(/^\/+/, '');
+}
+
       function getSlide(i) {
         if (!deck || !Array.isArray(deck.slides)) return null;
         if (i < 0 || i >= deck.slides.length) return null;
@@ -15005,10 +15016,7 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
           return;
         }
 
-        const mediaUrl = slide?.midia?.url || '';
-        const proxiedMediaUrl = mediaUrl
-          ? (BACKEND_URL + '/api/proxy?url=' + encodeURIComponent(String(mediaUrl)))
-          : '';
+        const mediaUrl = resolveMediaUrl(slide?.midia?.url || '');
         const topicos = Array.isArray(slide?.topicos) ? slide.topicos : [];
 
         const items = topicos.map(t => {
@@ -15029,27 +15037,10 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
               <ul>${items}</ul>
             </div>
             <div class="education-media">
-              ${proxiedMediaUrl ? `<img src="${escapeHtml(proxiedMediaUrl)}" alt="mídia do slide" loading="lazy" />` : ''}
+              ${mediaUrl ? `<img src="${escapeHtml(mediaUrl)}" alt="mídia do slide" loading="lazy" />` : ''}
             </div>
           </div>
         `;
-
-        // Fallback silencioso: se a mídia não carregar via proxy, tenta URL direta; se falhar, usa imagem padrão.
-        const img = targetEl.querySelector('.education-media img');
-        if (img) {
-          const direct = String(mediaUrl || '');
-          const fallback = 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Red_Cross.svg/1024px-Red_Cross.svg.png';
-          img.onerror = () => {
-            // 1) tenta URL direta (útil se o proxy foi bloqueado por tamanho).
-            if (direct && img.src !== direct) {
-              img.src = direct;
-              return;
-            }
-            // 2) fallback final.
-            img.onerror = null;
-            img.src = BACKEND_URL + '/api/proxy?url=' + encodeURIComponent(fallback);
-          };
-        }
       }
 
       function renderThumbs() {
@@ -15144,12 +15135,20 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       }
 
       async function fetchMediaAsDataUrl(url) {
-        const prox = BACKEND_URL + '/api/proxy?url=' + encodeURIComponent(String(url || ''));
-        const resp = await fetch(prox);
-        if (!resp.ok) throw new Error('Falha ao baixar mídia do slide.');
-        const blob = await resp.blob();
-        return await blobToDataUrl(blob);
-      }
+  const resolved = resolveMediaUrl(url);
+  if (!resolved) throw new Error('URL de mídia vazia.');
+  if (resolved.startsWith('data:')) return resolved;
+
+  const isCommons = /https?:\/\/(upload\.wikimedia\.org|commons\.wikimedia\.org)\//i.test(resolved);
+  const fetchUrl = isCommons
+    ? (BACKEND_URL + '/api/proxy?url=' + encodeURIComponent(resolved))
+    : resolved;
+
+  const resp = await fetch(fetchUrl);
+  if (!resp.ok) throw new Error('Falha ao baixar mídia do slide.');
+  const blob = await resp.blob();
+  return await blobToDataUrl(blob);
+}
 
       async function exportPptx() {
         if (!deck || !Array.isArray(deck.slides) || !deck.slides.length) return;
@@ -15179,17 +15178,13 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
           // Mídia (direita)
           const mediaUrl = s?.midia?.url || '';
-          const fallback = 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Red_Cross.svg/1024px-Red_Cross.svg.png';
-          try {
-            const preferred = mediaUrl || fallback;
-            const dataUrl = await fetchMediaAsDataUrl(preferred);
-            slide.addImage({ data: dataUrl, x: 8.2, y: 1.2, w: 4.7, h: 5.9 });
-          } catch {
-            // Último fallback (se a mídia do slide for grande ou indisponível).
+          if (mediaUrl) {
             try {
-              const fbDataUrl = await fetchMediaAsDataUrl(fallback);
-              slide.addImage({ data: fbDataUrl, x: 8.2, y: 1.2, w: 4.7, h: 5.9 });
-            } catch {}
+              const dataUrl = await fetchMediaAsDataUrl(mediaUrl);
+              slide.addImage({ data: dataUrl, x: 8.2, y: 1.2, w: 4.7, h: 5.9 });
+            } catch {
+              // se falhar, segue sem travar o PPTX
+            }
           }
 
           // Tópicos (título em vermelho, resumo em preto)
