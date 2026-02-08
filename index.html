@@ -2776,34 +2776,6 @@
       <div class="module-divider"></div>
 
       <div class="section-header-row" style="justify-content: center;">
-        <p class="module-title" style="margin: 0;">Educação em saúde</p>
-      </div>
-
-      <p class="module-subtitle">
-        Digite o tema e o tempo da apresentação. Ao gerar, será baixado um arquivo PPTX com slides prontos e mídia em todos os slides.
-      </p>
-
-      <div class="inline-input-row">
-        <input id="healthEduTopic" class="text-input" type="text" placeholder="Tema da apresentação" />
-        <select id="healthEduDuration" class="text-input" style="max-width: 180px; flex: 0 0 180px;">
-          <option value="5">5 min</option>
-          <option value="10" selected>10 min</option>
-          <option value="15">15 min</option>
-          <option value="20">20 min</option>
-          <option value="30">30 min</option>
-          <option value="45">45 min</option>
-          <option value="60">60 min</option>
-        </select>
-      </div>
-
-      <div class="report-actions" style="justify-content: center;">
-        <button id="healthEduGenerateBtn" class="btn-print" type="button">Gerar apresentação</button>
-      </div>
-      <div id="healthEduStatus" class="mini-status" style="text-align: center;"></div>
-
-      <div class="module-divider"></div>
-
-      <div class="section-header-row" style="justify-content: center;">
         <div class="soap-title-actions" style="justify-content: center;">
           <button id="rosterHelpBtn" class="btn-print guide-main-btn" type="button">Guia Escala</button>
           <p class="module-title" style="margin: 0;">Escala de plantão</p>
@@ -5232,6 +5204,10 @@ if (!handoffMode) {
 	    const healthEduDurationEl = document.getElementById("healthEduDuration");
 	    const healthEduGenerateBtn = document.getElementById("healthEduGenerateBtn");
 	    const healthEduStatusEl = document.getElementById("healthEduStatus");
+
+        const healthEduGuideBtn = document.getElementById("healthEduGuideBtn");
+        const healthEduGuidePanel = document.getElementById("healthEduGuidePanel");
+        const closeHealthEduGuideBtn = document.getElementById("closeHealthEduGuideBtn");
 
     const docsGuideBtn = document.getElementById("docsGuideBtn");
     const docsGuidePanel = document.getElementById("docsGuidePanel");
@@ -10944,6 +10920,18 @@ if (closeCalculatorsGuideBtn) {
   });
 }
 
+
+if (healthEduGuideBtn) {
+  healthEduGuideBtn.addEventListener("click", () => {
+    setPanelVisible(healthEduGuidePanel, true);
+  });
+}
+if (closeHealthEduGuideBtn) {
+  closeHealthEduGuideBtn.addEventListener("click", () => {
+    setPanelVisible(healthEduGuidePanel, false);
+  });
+}
+
 if (closeHandoffGuideBtn) {
   closeHandoffGuideBtn.addEventListener("click", () => {
     setPanelVisible(handoffGuidePanel, false);
@@ -15023,6 +15011,58 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     <div class="prescription-actions">
       <button id="copyMedicalDocsBtn" class="btn-copy hidden" type="button">Copiar</button>
       <button id="printMedicalDocsBtn" class="btn-print hidden" type="button">Imprimir</button>
+    </div>
+  </div>
+
+  <div id="healthEduCard" class="module-card">
+    <div class="section-header-row">
+      <h2>Educação em saúde</h2>
+      <button id="healthEduGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
+    </div>
+
+    <p class="mini-status" style="margin-top: 0;">
+      Digite o tema e o tempo da apresentação. Ao gerar, será baixado um arquivo PPTX com slides visualmente atraentes e mídia em todos os slides, conforme o tema.
+    </p>
+
+    <div class="inline-input-row">
+      <input id="healthEduTopic" class="text-input" type="text" placeholder="Tema da apresentação" />
+      <select id="healthEduDuration" class="text-input" style="max-width: 180px; flex: 0 0 180px;">
+        <option value="5">5 min</option>
+        <option value="10" selected>10 min</option>
+        <option value="15">15 min</option>
+        <option value="20">20 min</option>
+        <option value="30">30 min</option>
+        <option value="45">45 min</option>
+        <option value="60">60 min</option>
+      </select>
+    </div>
+
+    <div class="prescription-actions" style="justify-content: flex-start; gap: 10px; margin-top: 10px;">
+      <button id="healthEduGenerateBtn" class="btn-print" type="button">Gerar apresentação</button>
+    </div>
+
+    <div id="healthEduStatus" class="mini-status"></div>
+  </div>
+
+  <div id="healthEduGuidePanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Guia de Educação em saúde</h3>
+      <button id="closeHealthEduGuideBtn" class="close-panel-btn" aria-label="Fechar guia de educação em saúde">X</button>
+    </div>
+
+    <div class="recommendations-status">
+      Este módulo gera um arquivo PPTX com uma apresentação completa sobre o tema informado. Cada slide tem título e tópicos, com mídia relacionada ao conteúdo.
+    </div>
+
+    <div class="recommendations-list">
+      <div class="recommendation-item"><strong>1) Tema específico</strong> Prefira um tema objetivo (ex.: "Hipertensão arterial: adesão ao tratamento", "Prevenção de dengue", "Aleitamento materno: pega e manejo").</div>
+      <div class="recommendation-item"><strong>2) Duração</strong> Selecione 5 a 15 minutos para uma apresentação rápida. Para 20 a 60 minutos, use um tema mais amplo ou uma população-alvo bem definida.</div>
+      <div class="recommendation-item"><strong>3) Público-alvo</strong> Se necessário, inclua no tema o público (ex.: "para gestantes", "para adolescentes", "para idosos"). Isso melhora a linguagem e os exemplos.</div>
+      <div class="recommendation-item"><strong>4) Conferência final</strong> Revise o conteúdo antes de apresentar. Ajuste termos, exemplos locais e orientações conforme o protocolo da unidade.</div>
+    </div>
+
+    <div class="recommendations-footer">
+      Ao gerar, o arquivo será baixado automaticamente pelo navegador.
     </div>
   </div>
 </div>

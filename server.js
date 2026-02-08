@@ -860,6 +860,9 @@ async function buildPptxFromHealthEducationPlan(plan) {
 
   const fallbackNoImageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/640px-No_image_available.svg.png";
 
+  const embeddedFallbackPngDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAf0lEQVR4nO2YQQrAMAgE3eKP+v8n5E32UAg9NFRS0Eh2rwlMVhMxwswkQyoiDQimnmZHMLJLn6cI4PXopjkmuAa4AdNPsaZjggkmmOAU6WjBX4Q/d762GOs59nRCt9e5nmm/y0UwwQTXBw9Lpkd/Ppj7hXqBHAdPQtIcI2vcdAGYfhnzz4VNLQAAAABJRU5ErkJggg==';
+
+
   const usedMedia = new Set();
 
   for (let i = 0; i < (plan?.slides?.length || 0); i++) {
@@ -958,10 +961,20 @@ async function buildPptxFromHealthEducationPlan(plan) {
           h: mediaH
         });
       } catch {
-        // se mesmo assim falhar, mantém slide sem mídia (evita crash)
+        // fallback embutido: garante que sempre exista uma imagem no slide
+        try {
+          slide.addImage({
+            data: embeddedFallbackPngDataUri,
+            x: rightX,
+            y: mediaY,
+            w: rightW,
+            h: mediaH
+          });
+        } catch {
+          // se falhar, não interrompe a geração
+        }
       }
     }
-
     const notes = safeText(s?.notas_orador, 800);
     if (notes) slide.addNotes(notes);
   }
