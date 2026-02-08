@@ -2338,47 +2338,52 @@
       </div>
 
       <div class="tutorial-module" id="tutorial1">
-        <div class="tutorial-title">Tutorial 1</div>
-        <div class="tutorial-desc">Assista este vídeo antes de fazer login para entender o fluxo da plataforma e evitar dúvidas no primeiro acesso.</div>
+        <div class="tutorial-title">Tutorial: Iniciar atendimento</div>
+        <div class="tutorial-desc">Como iniciar um atendimento na plataforma, do primeiro clique até o fechamento do registro.</div>
         <video class="tutorial-video" controls preload="metadata">
-          <source src="tutorial-1.mp4" type="video/mp4" />
+          <source src="tutorial%20iniciar%20atendimento.mp4" type="video/mp4" />
         </video>
       </div>
 
       <div class="tutorial-module" id="tutorial2">
-        <div class="tutorial-title">Tutorial 2</div>
-        <div class="tutorial-desc">Continuação do treinamento inicial. Se o Tutorial 1 terminar e você ainda tiver dúvidas, assista este segundo vídeo.</div>
+        <div class="tutorial-title">Tutorial: Pagamento</div>
+        <div class="tutorial-desc">Como realizar e conferir o pagamento, liberar acesso e evitar erros comuns.</div>
         <video class="tutorial-video" controls preload="metadata">
-          <source src="tutorial-2.mp4" type="video/mp4" />
+          <source src="tutorial%20pagamento.mp4" type="video/mp4" />
         </video>
       </div>
 
       <div class="tutorial-module" id="tutorial3">
-        <div class="tutorial-title">Tutorial 3</div>
-        <div class="tutorial-desc">Parte final do treinamento. Assista este vídeo para tirar dúvidas comuns e aprender boas práticas no uso diário da plataforma.</div>
+        <div class="tutorial-title">Tutorial: Aprazamento, exames e transcrição</div>
+        <div class="tutorial-desc">Como aprazar prescrições, organizar exames e usar o módulo de transcrição com segurança.</div>
         <video class="tutorial-video" controls preload="metadata">
-          <source src="tutorial-3.mp4" type="video/mp4" />
+          <source src="tutorial%20aprazamento,%20exames,%20transcricao.mp4" type="video/mp4" />
         </video>
       </div>
-
 
       <div class="tutorial-module" id="tutorial4">
-        <div class="tutorial-title">Tutorial 4</div>
-        <div class="tutorial-desc">Tutorial complementar do login. Assista este vídeo para aprender o passo a passo do primeiro acesso e o uso correto do login/senha.</div>
+        <div class="tutorial-title">Tutorial: Avaliar receita e dúvidas em saúde</div>
+        <div class="tutorial-desc">Como avaliar receitas e orientar dúvidas em saúde, com foco em segurança e boas práticas.</div>
         <video class="tutorial-video" controls preload="metadata">
-          <source src="tutorial-4.mp4" type="video/mp4" />
+          <source src="tutorial%20avaliar%20receita%20e%20duvidas%20em%20saude.mp4" type="video/mp4" />
         </video>
       </div>
 
+      <div class="tutorial-module" id="tutorial5">
+        <div class="tutorial-title">Tutorial: Calculadoras clínicas</div>
+        <div class="tutorial-desc">Como usar as calculadoras clínicas para apoiar decisões e registros do dia a dia.</div>
+        <video class="tutorial-video" controls preload="metadata">
+          <source src="tutorial%20calculadoras%20clinicas.mp4" type="video/mp4" />
+        </video>
+      </div>
 
-
-<div class="tutorial-module" id="tutorial5">
-  <div class="tutorial-title">Tutorial 5</div>
-  <div class="tutorial-desc">Tutorial adicional do login. Assista este vídeo para entender o fluxo completo e evitar erros comuns no primeiro acesso.</div>
-  <video class="tutorial-video" controls preload="metadata">
-    <source src="tutorial-5.mp4" type="video/mp4" />
-  </video>
-</div>
+      <div class="tutorial-module" id="tutorial6">
+        <div class="tutorial-title">Tutorial: Gerar documentos</div>
+        <div class="tutorial-desc">Como gerar documentos, revisar o conteúdo e copiar/imprimir para prontuário.</div>
+        <video class="tutorial-video" controls preload="metadata">
+          <source src="tutorial%20gerar%20documentos.mp4" type="video/mp4" />
+        </video>
+      </div>
 
       </div>
   </div>
@@ -14992,17 +14997,6 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
           .replaceAll("'", '&#039;');
       }
 
-
-function resolveMediaUrl(url) {
-  const u = String(url || '').trim();
-  if (!u) return '';
-  if (u.startsWith('data:')) return u;
-  if (/^https?:\/\//i.test(u)) return u;
-  if (u.startsWith('/')) return BACKEND_URL + u;
-  // fallback: trata como caminho relativo do backend
-  return BACKEND_URL + '/' + u.replace(/^\/+/, '');
-}
-
       function getSlide(i) {
         if (!deck || !Array.isArray(deck.slides)) return null;
         if (i < 0 || i >= deck.slides.length) return null;
@@ -15016,7 +15010,7 @@ function resolveMediaUrl(url) {
           return;
         }
 
-        const mediaUrl = resolveMediaUrl(slide?.midia?.url || '');
+        const mediaUrl = slide?.midia?.url || '';
         const topicos = Array.isArray(slide?.topicos) ? slide.topicos : [];
 
         const items = topicos.map(t => {
@@ -15135,20 +15129,12 @@ function resolveMediaUrl(url) {
       }
 
       async function fetchMediaAsDataUrl(url) {
-  const resolved = resolveMediaUrl(url);
-  if (!resolved) throw new Error('URL de mídia vazia.');
-  if (resolved.startsWith('data:')) return resolved;
-
-  const isCommons = /https?:\/\/(upload\.wikimedia\.org|commons\.wikimedia\.org)\//i.test(resolved);
-  const fetchUrl = isCommons
-    ? (BACKEND_URL + '/api/proxy?url=' + encodeURIComponent(resolved))
-    : resolved;
-
-  const resp = await fetch(fetchUrl);
-  if (!resp.ok) throw new Error('Falha ao baixar mídia do slide.');
-  const blob = await resp.blob();
-  return await blobToDataUrl(blob);
-}
+        const prox = BACKEND_URL + '/api/proxy?url=' + encodeURIComponent(String(url || ''));
+        const resp = await fetch(prox);
+        if (!resp.ok) throw new Error('Falha ao baixar mídia do slide.');
+        const blob = await resp.blob();
+        return await blobToDataUrl(blob);
+      }
 
       async function exportPptx() {
         if (!deck || !Array.isArray(deck.slides) || !deck.slides.length) return;
