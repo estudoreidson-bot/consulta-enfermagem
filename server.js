@@ -4,8 +4,6 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const path = require("path");
 const fs = require("fs");
-const https = require("https");
-const http = require("http");
 const crypto = require("crypto");
 const os = require("os");
 
@@ -572,176 +570,6 @@ async function callOpenAIJson(prompt, maxAttempts = 3) {
   }
 
   throw lastErr || new Error("Falha ao obter JSON do modelo.");
-}
-
-// =========================
-// EDUCAÇÃO EM SAÚDE (PPTX) - Planejamento + Imagens
-// =========================
-
-function stripDiacritics(v) {
-  return String(v || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
-function slugifyPt(v) {
-  const s = stripDiacritics(v)
-    .toLowerCase()
-    .replace(/&/g, " e ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, "-");
-  return s || "saude";
-}
-
-function guessMimeFromUrl(url) {
-  const u = String(url || "").toLowerCase();
-  if (u.endsWith(".png")) return "image/png";
-  if (u.endsWith(".jpg") || u.endsWith(".jpeg")) return "image/jpeg";
-  if (u.endsWith(".webp")) return "image/webp";
-  return "application/octet-stream";
-}
-
-function httpGetBuffer(url, redirectsLeft = 5) {
-  return new Promise((resolve, reject) => {
-    try {
-      const u = new URL(url);
-      const lib = u.protocol === "http:" ? http : https;
-      const req = lib.request(
-        {
-          method: "GET",
-          hostname: u.hostname,
-          path: u.pathname + (u.search || ""),
-          headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; HealthEduPPTX/1.0)",
-            "Accept": "*/*",
-          },
-        },
-        (res) => {
-          const status = res.statusCode || 0;
-          const loc = res.headers?.location;
-
-          if ([301, 302, 303, 307, 308].includes(status) && loc && redirectsLeft > 0) {
-            const next = loc.startsWith("http") ? loc : (u.origin + loc);
-            res.resume();
-            return resolve(httpGetBuffer(next, redirectsLeft - 1));
-          }
-
-          if (status >= 400) {
-            res.resume();
-            return reject(new Error("HTTP_" + status));
-          }
-
-          const chunks = [];
-          res.on("data", (d) => chunks.push(d));
-          res.on("end", () => resolve(Buffer.concat(chunks)));
-        }
-      );
-      req.on("error", reject);
-      req.end();
-    } catch (e) {
-      reject(e);
-    }
-  });
-}
-
-async function httpGetText(url) {
-  const buf = await httpGetBuffer(url);
-  return buf.toString("utf-8");
-}
-
-function svgFallbackDataUri(text) {
-  const safe = String(text || "Saúde").slice(0, 60).replace(/[<>&]/g, "");
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
-  <rect width="1024" height="1024" fill="#ffffff"/>
-  <rect x="40" y="40" width="944" height="944" rx="48" ry="48" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="6"/>
-  <text x="512" y="520" font-family="Calibri, Arial, sans-serif" font-size="64" text-anchor="middle" fill="#111827">${safe}</text>
-  <text x="512" y="610" font-family="Calibri, Arial, sans-serif" font-size="28" text-anchor="middle" fill="#6b7280">Educação em saúde</text>
-</svg>`;
-  const b64 = Buffer.from(svg, "utf-8").toString("base64");
-  return "data:image/svg+xml;base64," + b64;
-}
-
-function pickBestImageUrl(urls) {
-  const list = (urls || []).map(String).filter(Boolean);
-  if (!list.length) return "";
-
-  const bad = (u) => {
-    const x = u.toLowerCase();
-    return (
-      x.includes("logo") ||
-      x.includes("stripe") ||
-      x.includes("favicon") ||
-      x.includes("avatar") ||
-      x.includes("sprite")
-    );
-  };
-
-  const goodHost = (u) => {
-    const x = u.toLowerCase();
-    return x.includes("cdn.iconscout.com") || x.includes("cdnl.iconscout.com") || x.includes("iconscout.com");
-  };
-
-  const filtered = list.filter((u) => !bad(u));
-  const preferred = filtered.filter(goodHost);
-  return (preferred[0] || filtered[0] || list[0] || "");
-}
-
-async function fetchIconScoutImageDataUri(query) {
-  const term = String(query || "").trim() || "saude";
-  const slug = slugifyPt(term);
-  const listingUrl = `https://iconscout.com/pt/lottie-animations/${slug}`;
-
-  try {
-    const listingHtml = await httpGetText(listingUrl);
-
-    const linkMatch = listingHtml.match(/href="(\/pt\/lottie-animation\/[^"]+)"/i);
-    const animationUrl = linkMatch ? ("https://iconscout.com" + linkMatch[1]) : listingUrl;
-
-    const animHtml = await httpGetText(animationUrl);
-
-    const imgUrls = [];
-    const reImg = /(https?:\/\/[^"' ]+\.(?:png|jpg|jpeg|webp))/gi;
-    let m;
-    while ((m = reImg.exec(animHtml)) !== null) {
-      const u = m[1];
-      if (u && u.toLowerCase().includes("iconscout")) imgUrls.push(u);
-      if (imgUrls.length >= 40) break;
-    }
-
-    const best = pickBestImageUrl(imgUrls);
-    if (!best) {
-      return { image_data_uri: svgFallbackDataUri(term), fonte_url: animationUrl };
-    }
-
-    const buf = await httpGetBuffer(best);
-    const mime = guessMimeFromUrl(best);
-    const b64 = buf.toString("base64");
-    return { image_data_uri: `data:${mime};base64,${b64}`, fonte_url: animationUrl };
-  } catch (e) {
-    return { image_data_uri: svgFallbackDataUri(term), fonte_url: listingUrl };
-  }
-}
-
-function buildHealthEducationFallback(tema, publico, quantidade) {
-  const t = String(tema || "Saúde").trim();
-  const p = String(publico || "adultos").trim();
-
-  const base = [
-    { titulo: `O que é ${t}`, topicos: ["Definição simples", "Por que é importante", "Como afeta o dia a dia"] },
-    { titulo: "Fatores de risco", topicos: ["Principais fatores", "O que é modificável", "O que não é modificável"] },
-    { titulo: "Sinais e sintomas", topicos: ["Sinais iniciais", "Sinais de alerta", "Quando pode piorar"] },
-    { titulo: "Prevenção", topicos: ["Hábitos de vida", "Vacinas e prevenção específica (se aplicável)", "Redução de riscos"] },
-    { titulo: "Diagnóstico e acompanhamento", topicos: ["Como é avaliado", "Exames mais comuns (quando necessário)", "Acompanhamento na atenção básica"] },
-    { titulo: "Tratamento e condutas", topicos: ["Medidas não medicamentosas", "Tratamentos possíveis", "Adesão e metas práticas"] },
-    { titulo: "Quando procurar atendimento", topicos: ["Sinais de gravidade", "Retorno programado", "Encaminhamento quando indicado"] },
-    { titulo: "Mensagem final", topicos: ["Resumo em 3 pontos", "Plano prático para 7 dias", "Reforço de autocuidado"] }
-  ];
-
-  const slides = base.slice(0, Math.max(4, Math.min(12, parseInt(String(quantidade || 8), 10) || 8)));
-  const titulo_apresentacao = `Educação em saúde: ${t}`;
-  return { titulo_apresentacao, publico: p, slides };
 }
 
 // Função para chamar o modelo com imagem (data URL) e retornar JSON
@@ -4547,6 +4375,525 @@ Transcrição:
   };
 }
 
+// ======================================================================
+// EDUCAÇÃO EM SAÚDE (SLIDES .pptx)
+// Regras críticas:
+// - Cada slide deve conter mídia (GIF/MP4) obtida no IconScout
+// - Lottie (JSON) não deve ser inserido como JSON; deve ser baixado em GIF/MP4
+// - Antes de liberar o download, o backend valida o .pptx (estrutura + mídia por slide)
+// ======================================================================
+
+const HEALTH_EDU_STORE = new Map();
+
+function healthEduMakeId() {
+  if (crypto && typeof crypto.randomUUID === "function") return healthEduMakeId();
+  return crypto.randomBytes(16).toString("hex");
+}
+ // id -> { filePath, createdAt, tema, slides }
+
+function healthEduCleanupStore() {
+  const now = Date.now();
+  const ttlMs = 30 * 60 * 1000; // 30 min
+  for (const [id, rec] of HEALTH_EDU_STORE.entries()) {
+    if (!rec || !rec.filePath || !rec.createdAt || (now - rec.createdAt) > ttlMs) {
+      try { if (rec && rec.filePath && fs.existsSync(rec.filePath)) fs.unlinkSync(rec.filePath); } catch {}
+      HEALTH_EDU_STORE.delete(id);
+    }
+  }
+}
+
+setInterval(healthEduCleanupStore, 60 * 1000).unref();
+
+function healthEduHasIconScoutCreds() {
+  return Boolean(process.env.ICONSCOUT_CLIENT_ID && process.env.ICONSCOUT_CLIENT_SECRET);
+}
+
+function healthEduGetIconScoutHeadersSearch() {
+  return {
+    "Client-ID": String(process.env.ICONSCOUT_CLIENT_ID || "").trim()
+  };
+}
+
+function healthEduGetIconScoutHeadersDownload() {
+  return {
+    "Client-ID": String(process.env.ICONSCOUT_CLIENT_ID || "").trim(),
+    "Client-Secret": String(process.env.ICONSCOUT_CLIENT_SECRET || "").trim(),
+    "Content-Type": "application/json"
+  };
+}
+
+async function healthEduIconScoutSearchLotties(query, perPage = 10) {
+  const q = String(query || "").trim();
+  if (!q) return [];
+
+  if (!process.env.ICONSCOUT_CLIENT_ID) return [];
+
+  const url = new URL("https://api.iconscout.com/v3/search");
+  url.searchParams.set("asset", "lottie");
+  url.searchParams.set("query", q);
+  url.searchParams.set("per_page", String(Math.max(1, Math.min(50, perPage))));
+
+  const resp = await fetch(url.toString(), { headers: healthEduGetIconScoutHeadersSearch() });
+  if (!resp.ok) return [];
+  const data = await resp.json().catch(() => null);
+
+  // Estrutura pode variar; tentamos caminhos comuns.
+  const results = (data && (data.response || data)) || {};
+  const items = Array.isArray(results.items) ? results.items : (Array.isArray(results.results) ? results.results : []);
+  return items.filter(Boolean);
+}
+
+function healthEduPickBestIconScoutItem(items) {
+  const arr = Array.isArray(items) ? items : [];
+  if (!arr.length) return null;
+
+  // Prioriza itens com UUID e (quando disponível) "is_free" true
+  const free = arr.find(it => it && it.uuid && (it.is_free === true || it.price === 0));
+  if (free) return free;
+
+  const any = arr.find(it => it && it.uuid);
+  return any || null;
+}
+
+async function healthEduIconScoutDownload(itemUuid, format) {
+  const uuid = String(itemUuid || "").trim();
+  const fmt = String(format || "").trim().toLowerCase();
+  if (!uuid || !fmt) return null;
+
+  if (!healthEduHasIconScoutCreds()) return null;
+
+  const url = `https://api.iconscout.com/v3/items/${encodeURIComponent(uuid)}/api-download`;
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: healthEduGetIconScoutHeadersDownload(),
+    body: JSON.stringify({ format: fmt })
+  });
+
+  if (!resp.ok) return null;
+
+  const data = await resp.json().catch(() => null);
+  // Normalmente retorna { url: "https://..." } ou { download: { url: ... } }
+  const dlUrl = (data && (data.url || (data.download && data.download.url))) ? (data.url || data.download.url) : null;
+  if (!dlUrl) return null;
+
+  const binResp = await fetch(dlUrl);
+  if (!binResp.ok) return null;
+  const buf = Buffer.from(await binResp.arrayBuffer());
+  if (!buf || !buf.length) return null;
+
+  return buf;
+}
+
+function healthEduDefaultSlides(tema) {
+  const t = String(tema || "").trim() || "Tema";
+  return [
+    {
+      titulo: `${t}: conceito e objetivo`,
+      topicos: [
+        { topico: "O que é", resumo: "Definição resumida e aplicável na prática clínica." },
+        { topico: "Por que importa", resumo: "Impacto em saúde individual e coletiva." }
+      ],
+      keywords: [t, "health", "education", "patient"]
+    },
+    {
+      titulo: `${t}: fatores de risco e proteção`,
+      topicos: [
+        { topico: "Fatores de risco", resumo: "Principais fatores modificáveis e não modificáveis." },
+        { topico: "Fatores de proteção", resumo: "Hábitos e medidas que reduzem o risco." }
+      ],
+      keywords: [t, "risk", "protection", "lifestyle"]
+    },
+    {
+      titulo: `${t}: sinais, sintomas e alerta`,
+      topicos: [
+        { topico: "Sinais/sintomas comuns", resumo: "O que observar no dia a dia." },
+        { topico: "Sinais de alarme", resumo: "Quando procurar atendimento imediato." }
+      ],
+      keywords: [t, "symptoms", "warning", "alert"]
+    },
+    {
+      titulo: `${t}: diagnóstico e monitoramento`,
+      topicos: [
+        { topico: "Como é avaliado", resumo: "Exames e critérios usados com mais frequência." },
+        { topico: "Acompanhamento", resumo: "Parâmetros para monitorar evolução e resposta." }
+      ],
+      keywords: [t, "diagnosis", "monitoring", "exam"]
+    },
+    {
+      titulo: `${t}: tratamento e cuidados`,
+      topicos: [
+        { topico: "Medidas não farmacológicas", resumo: "Orientações práticas e realistas." },
+        { topico: "Tratamento farmacológico", resumo: "Linhas gerais e adesão ao tratamento." }
+      ],
+      keywords: [t, "treatment", "care", "medicine"]
+    },
+    {
+      titulo: `${t}: prevenção e plano de ação`,
+      topicos: [
+        { topico: "Prevenção", resumo: "Ações essenciais e metas simples." },
+        { topico: "Plano de ação", resumo: "O que fazer em situações comuns e quando retornar." }
+      ],
+      keywords: [t, "prevention", "plan", "follow up"]
+    }
+  ];
+}
+
+async function healthEduGenerateSlidesPlan(tema) {
+  const t = String(tema || "").trim();
+  if (!t) return healthEduDefaultSlides("Tema");
+
+  if (!process.env.OPENAI_API_KEY) return healthEduDefaultSlides(t);
+
+  const prompt =
+`Você é um médico criando um material de Educação em Saúde para pacientes e profissionais.
+Gere um plano de slides (PowerPoint) para o tema: "${t}".
+
+Regras:
+- Linguagem clara e prática (técnica quando necessário), sem sensacionalismo.
+- Pouco texto por slide.
+- Retorne exatamente 6 slides.
+- Para cada slide: titulo, 2 a 3 topicos. Para cada topico: topico (curto) e resumo (curto).
+- Inclua keywords (3 a 6 palavras) para buscar uma animação no IconScout relacionada ao slide.
+
+Responda SOMENTE JSON no formato:
+{
+  "slides": [
+    {"titulo": "...", "topicos":[{"topico":"...","resumo":"..."}], "keywords":["..."]}
+  ]
+}`;
+
+  const out = await callOpenAIJson(prompt, 3);
+  const slides = Array.isArray(out?.slides) ? out.slides : null;
+  if (!slides || slides.length !== 6) return healthEduDefaultSlides(t);
+
+  // saneamento mínimo
+  return slides.map((s) => ({
+    titulo: String(s?.titulo || "").trim() || "Slide",
+    topicos: (Array.isArray(s?.topicos) ? s.topicos : []).slice(0, 3).map(tp => ({
+      topico: String(tp?.topico || "").trim() || "Tópico",
+      resumo: String(tp?.resumo || "").trim() || ""
+    })).filter(tp => tp.topico),
+    keywords: (Array.isArray(s?.keywords) ? s.keywords : []).map(x => String(x || "").trim()).filter(Boolean).slice(0, 6)
+  }));
+}
+
+// ---------------- ZIP (validação .pptx) ----------------
+
+function zipReadUInt32LE(buf, off) { return buf.readUInt32LE(off); }
+function zipReadUInt16LE(buf, off) { return buf.readUInt16LE(off); }
+
+function zipFindEOCD(buf) {
+  // EOCD signature: 0x06054b50
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) {
+    if (buf[i] === 0x50 && buf[i+1] === 0x4b && buf[i+2] === 0x05 && buf[i+3] === 0x06) return i;
+  }
+  return -1;
+}
+
+function zipListCentralDirectory(buf) {
+  const eocd = zipFindEOCD(buf);
+  if (eocd < 0) throw new Error("ZIP inválido: EOCD não encontrado.");
+
+  const cdSize = zipReadUInt32LE(buf, eocd + 12);
+  const cdOffset = zipReadUInt32LE(buf, eocd + 16);
+
+  let p = cdOffset;
+  const entries = [];
+
+  while (p < cdOffset + cdSize) {
+    // Central directory header signature 0x02014b50
+    if (!(buf[p] === 0x50 && buf[p+1] === 0x4b && buf[p+2] === 0x01 && buf[p+3] === 0x02)) {
+      throw new Error("ZIP inválido: central directory corrompido.");
+    }
+
+    const compMethod = zipReadUInt16LE(buf, p + 10);
+    const compSize = zipReadUInt32LE(buf, p + 20);
+    const uncompSize = zipReadUInt32LE(buf, p + 24);
+
+    const nameLen = zipReadUInt16LE(buf, p + 28);
+    const extraLen = zipReadUInt16LE(buf, p + 30);
+    const commentLen = zipReadUInt16LE(buf, p + 32);
+
+    const localHeaderOffset = zipReadUInt32LE(buf, p + 42);
+
+    const nameStart = p + 46;
+    const name = buf.slice(nameStart, nameStart + nameLen).toString("utf8");
+
+    entries.push({
+      name,
+      compMethod,
+      compSize,
+      uncompSize,
+      localHeaderOffset
+    });
+
+    p = nameStart + nameLen + extraLen + commentLen;
+  }
+
+  return entries;
+}
+
+function zipExtractEntry(buf, entry) {
+  const off = entry.localHeaderOffset;
+  // Local file header signature 0x04034b50
+  if (!(buf[off] === 0x50 && buf[off+1] === 0x4b && buf[off+2] === 0x03 && buf[off+3] === 0x04)) {
+    throw new Error(`ZIP inválido: header local ausente (${entry.name}).`);
+  }
+
+  const nameLen = zipReadUInt16LE(buf, off + 26);
+  const extraLen = zipReadUInt16LE(buf, off + 28);
+
+  const dataStart = off + 30 + nameLen + extraLen;
+  const dataEnd = dataStart + entry.compSize;
+  const compressed = buf.slice(dataStart, dataEnd);
+
+  if (entry.compMethod === 0) {
+    return compressed;
+  }
+
+  if (entry.compMethod === 8) {
+    // deflate
+    const zlib = require("zlib");
+    return zlib.inflateRawSync(compressed);
+  }
+
+  throw new Error(`ZIP: método de compressão não suportado (${entry.compMethod}).`);
+}
+
+function healthEduValidatePptx(pptxBuffer, expectedSlideCount) {
+  const entries = zipListCentralDirectory(pptxBuffer);
+
+  const slideXml = entries.filter(e => /^ppt\/slides\/slide\d+\.xml$/i.test(e.name));
+  if (expectedSlideCount && slideXml.length !== expectedSlideCount) {
+    throw new Error(`PPTX inválido: número de slides diferente do esperado (${slideXml.length} != ${expectedSlideCount}).`);
+  }
+
+  // precisa ter mídia
+  const mediaFiles = entries.filter(e => /^ppt\/media\/.+\.(gif|mp4)$/i.test(e.name));
+  if (mediaFiles.length < (expectedSlideCount || 1)) {
+    throw new Error("PPTX inválido: mídia insuficiente em ppt/media.");
+  }
+
+  // valida que cada slide tem ao menos 1 relação com mídia (../media/)
+  for (let i = 1; i <= (expectedSlideCount || slideXml.length); i++) {
+    const relName = `ppt/slides/_rels/slide${i}.xml.rels`;
+    const relEntry = entries.find(e => e.name === relName);
+    if (!relEntry) throw new Error(`PPTX inválido: arquivo de relações ausente (${relName}).`);
+
+    const relXml = zipExtractEntry(pptxBuffer, relEntry).toString("utf8");
+    if (!relXml.includes("../media/")) {
+      throw new Error(`PPTX inválido: slide${i} sem referência de mídia.`);
+    }
+  }
+
+  return true;
+}
+
+// ---------------- PPTX (geração) ----------------
+
+function healthEduBuildRichTopicRuns(topico, resumo) {
+  const t = String(topico || "").trim();
+  const r = String(resumo || "").trim();
+  const runs = [];
+
+  runs.push({ text: t + "\n", options: { color: "C00000", bold: true, fontSize: 22 } }); // vermelho
+  if (r) runs.push({ text: r + "\n", options: { color: "000000", fontSize: 16 } }); // preto
+  else runs.push({ text: "\n", options: { color: "000000", fontSize: 16 } });
+
+  return runs;
+}
+
+async function healthEduGeneratePptx(tema, slides, mediaBuffers, mediaExts) {
+  const PptxGenJS = require("pptxgenjs");
+  const pptx = new PptxGenJS();
+
+  // Layout wide padrão
+  pptx.layout = "LAYOUT_WIDE";
+  pptx.author = "Queimadas Telemedicina";
+  pptx.company = "Queimadas Telemedicina";
+
+  // Fonte padrão
+  pptx.theme = { headFontFace: "Calibri", bodyFontFace: "Calibri" };
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "health-edu-"));
+  const mediaPaths = [];
+
+  try {
+    // salva mídias em disco para o pptxgenjs inserir
+    for (let i = 0; i < mediaBuffers.length; i++) {
+      const ext = mediaExts[i] || "gif";
+      const p = path.join(tmpDir, `media_${i + 1}.${ext}`);
+      fs.writeFileSync(p, mediaBuffers[i]);
+      mediaPaths.push(p);
+    }
+
+    // cria slides
+    for (let i = 0; i < slides.length; i++) {
+      const s = slides[i];
+      const slide = pptx.addSlide();
+
+      // Título (vermelho)
+      slide.addText(String(s.titulo || `Slide ${i + 1}`), {
+        x: 0.6, y: 0.3, w: 12.3, h: 0.8,
+        fontFace: "Calibri",
+        fontSize: 34,
+        bold: true,
+        color: "C00000"
+      });
+
+      // Caixa de texto (esquerda)
+      const topicos = Array.isArray(s.topicos) ? s.topicos.slice(0, 3) : [];
+      const richRuns = [];
+      topicos.forEach(tp => {
+        const runs = healthEduBuildRichTopicRuns(tp.topico, tp.resumo);
+        richRuns.push(...runs);
+        richRuns.push({ text: "\n", options: { fontSize: 10, color: "000000" } });
+      });
+
+      slide.addText(richRuns.length ? richRuns : [{ text: " ", options: { fontSize: 1 } }], {
+        x: 0.7, y: 1.35, w: 7.1, h: 5.8,
+        fontFace: "Calibri",
+        valign: "top",
+        margin: 0.2
+      });
+
+      // Mídia (direita) - obrigatório: 1 por slide
+      const mediaPath = mediaPaths[i];
+      const ext = (mediaExts[i] || "").toLowerCase();
+
+      if (ext === "mp4") {
+        slide.addMedia({
+          type: "video",
+          path: mediaPath,
+          x: 8.2, y: 1.6, w: 4.8, h: 4.8
+        });
+      } else {
+        slide.addImage({
+          path: mediaPath,
+          x: 8.2, y: 1.6, w: 4.8, h: 4.8
+        });
+      }
+
+      // Rodapé discreto
+      slide.addText("Queimadas Telemedicina", {
+        x: 0.6, y: 7.05, w: 12.3, h: 0.3,
+        fontFace: "Calibri",
+        fontSize: 10,
+        color: "666666"
+      });
+    }
+
+    const outPath = path.join(os.tmpdir(), `educacao-em-saude_${healthEduMakeId()}.pptx`);
+    await pptx.writeFile({ fileName: outPath });
+
+    const pptxBuf = fs.readFileSync(outPath);
+
+    // valida antes de liberar
+    healthEduValidatePptx(pptxBuf, slides.length);
+
+    return { outPath, pptxBuf };
+  } finally {
+    // limpa temporários de mídia
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
+}
+
+async function healthEduResolveMediaForSlides(tema, slides) {
+  const mediaBuffers = [];
+  const mediaExts = [];
+
+  for (let i = 0; i < slides.length; i++) {
+    const s = slides[i];
+    const keywords = Array.isArray(s?.keywords) ? s.keywords : [];
+    const slideQuery = (keywords && keywords.length)
+      ? keywords.join(" ")
+      : `${tema} saúde`;
+
+    // 1) busca no IconScout (lottie)
+    const items = await healthEduIconScoutSearchLotties(slideQuery, 12);
+    const picked = healthEduPickBestIconScoutItem(items);
+
+    if (!picked || !picked.uuid) {
+      throw new Error(`IconScout: não foi possível encontrar animação para o slide ${i + 1}.`);
+    }
+
+    // 2) baixa preferencialmente GIF; fallback MP4
+    let buf = await healthEduIconScoutDownload(picked.uuid, "gif");
+    if (buf) {
+      mediaBuffers.push(buf);
+      mediaExts.push("gif");
+      continue;
+    }
+
+    buf = await healthEduIconScoutDownload(picked.uuid, "mp4");
+    if (buf) {
+      mediaBuffers.push(buf);
+      mediaExts.push("mp4");
+      continue;
+    }
+
+    throw new Error(`IconScout: falha ao baixar GIF/MP4 para o slide ${i + 1}.`);
+  }
+
+  return { mediaBuffers, mediaExts };
+}
+
+app.post("/api/educacao-em-saude/gerar-slides", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const tema = String(req?.body?.tema || "").trim();
+    if (!tema) return res.status(400).json({ error: "Tema é obrigatório." });
+
+    if (!healthEduHasIconScoutCreds()) {
+      return res.status(500).json({
+        error: "IconScout não configurado.",
+        detail: "Configure as variáveis de ambiente ICONSCOUT_CLIENT_ID e ICONSCOUT_CLIENT_SECRET no servidor."
+      });
+    }
+
+    const slides = await healthEduGenerateSlidesPlan(tema);
+    if (!slides || !slides.length) return res.status(500).json({ error: "Falha ao gerar plano de slides." });
+
+    const { mediaBuffers, mediaExts } = await healthEduResolveMediaForSlides(tema, slides);
+    if (!mediaBuffers.length || mediaBuffers.length !== slides.length) {
+      return res.status(500).json({ error: "Falha ao obter mídia para todos os slides." });
+    }
+
+    const { outPath } = await healthEduGeneratePptx(tema, slides, mediaBuffers, mediaExts);
+
+    const id = healthEduMakeId();
+    HEALTH_EDU_STORE.set(id, { filePath: outPath, createdAt: Date.now(), tema, slides });
+
+    return res.json({
+      tema,
+      slides: slides.map(s => ({ titulo: s.titulo })),
+      download_url: `/api/educacao-em-saude/slides/${id}.pptx`
+    });
+  } catch (err) {
+    console.error("Erro Educação em Saúde:", err);
+    return res.status(500).json({ error: "Erro ao gerar slides." });
+  }
+});
+
+app.get("/api/educacao-em-saude/slides/:id.pptx", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || "").trim();
+    const rec = HEALTH_EDU_STORE.get(id);
+    if (!rec || !rec.filePath || !fs.existsSync(rec.filePath)) {
+      return res.status(404).send("Arquivo não encontrado.");
+    }
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+    res.setHeader("Content-Disposition", `attachment; filename="educacao-em-saude_${id}.pptx"`);
+
+    const stream = fs.createReadStream(rec.filePath);
+    stream.on("error", () => res.status(500).end());
+    stream.pipe(res);
+  } catch (err) {
+    console.error("Erro download Educação em Saúde:", err);
+    return res.status(500).send("Erro ao baixar arquivo.");
+  }
+});
+
 app.post("/api/gerar-documento-medico", requirePaidOrAdmin, async (req, res) => {
   try {
     const body = req.body || {};
@@ -4606,88 +4953,6 @@ app.post("/api/gerar-documento-medico", requirePaidOrAdmin, async (req, res) => 
 });
 
 // Guia em tempo real (tipo + até 5 perguntas) para documento médico durante a gravação
-// =========================
-// EDUCAÇÃO EM SAÚDE: planejar slides + imagens (retorna JSON para gerar PPTX no frontend)
-// =========================
-app.post("/api/educacao-em-saude/planejar", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const tema = String(req.body?.tema || "").trim();
-    const publico = String(req.body?.publico || "adultos").trim();
-    const quantidade_slides = Math.max(4, Math.min(12, parseInt(String(req.body?.quantidade_slides || 8), 10) || 8));
-
-    if (!tema || tema.length < 3) {
-      return res.status(400).json({ error: "Tema inválido." });
-    }
-
-    let plan = null;
-
-    // Tenta usar o modelo para estruturar os tópicos; se falhar, usa fallback determinístico.
-    try {
-      const prompt = `
-Crie um roteiro de apresentação em PowerPoint de educação em saúde.
-Idioma: português do Brasil.
-Tema: ${tema}
-Público-alvo: ${publico}
-Quantidade de slides (sem contar capa): ${quantidade_slides}
-
-Regras:
-- Texto objetivo, sem jargão excessivo.
-- Cada slide deve ter 3 a 5 tópicos curtos.
-- Para cada slide, forneça também um termo de pesquisa curto para buscar uma animação/imagem no IconScout (campo "termo_iconscout").
-
-Responda SOMENTE com um JSON válido neste formato:
-{
-  "titulo_apresentacao": "string",
-  "slides": [
-    {
-      "titulo": "string",
-      "topicos": ["string", "string"],
-      "termo_iconscout": "string"
-    }
-  ]
-}
-`;
-      plan = await callOpenAIJson(prompt, 2);
-    } catch (e) {
-      plan = null;
-    }
-
-    if (!plan || typeof plan !== "object" || !Array.isArray(plan.slides) || !plan.slides.length) {
-      plan = buildHealthEducationFallback(tema, publico, quantidade_slides);
-    }
-
-    const titulo_apresentacao = String(plan.titulo_apresentacao || `Educação em saúde: ${tema}`).trim();
-    const slidesRaw = Array.isArray(plan.slides) ? plan.slides : [];
-    const slidesTrimmed = slidesRaw.slice(0, quantidade_slides).map((s) => {
-      const titulo = String(s?.titulo || "").trim();
-      const topicos = Array.isArray(s?.topicos) ? s.topicos.map((x) => String(x || "").trim()).filter(Boolean) : [];
-      const termo = String(s?.termo_iconscout || titulo || tema).trim();
-      return { titulo, topicos, termo_iconscout: termo };
-    });
-
-    const slidesWithImages = [];
-    for (const s of slidesTrimmed) {
-      const img = await fetchIconScoutImageDataUri(s.termo_iconscout || tema);
-      slidesWithImages.push({
-        titulo: s.titulo || s.termo_iconscout || tema,
-        topicos: s.topicos && s.topicos.length ? s.topicos : ["Conteúdo não informado."],
-        image_data_uri: img.image_data_uri,
-        fonte_url: img.fonte_url
-      });
-    }
-
-    return res.json({
-      titulo_apresentacao,
-      publico,
-      tema,
-      slides: slidesWithImages
-    });
-  } catch (e) {
-    console.error("[EDU_HEALTH] erro:", e?.message || e);
-    return res.status(500).json({ error: "Erro ao planejar apresentação." });
-  }
-});
-
 app.post("/api/documento-medico-tempo-real", requirePaidOrAdmin, async (req, res) => {
   try {
     const { transcricao } = req.body || {};
