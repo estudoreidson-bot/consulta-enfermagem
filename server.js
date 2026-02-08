@@ -711,180 +711,6 @@ function normalizeText(input, maxLen) {
   return s.length > maxLen ? s.slice(0, maxLen) : s;
 }
 
-
-// ============================
-// EDUCAÇÃO EM SAÚDE – ICONSCOUT (Lottie/GIF) helpers
-// ============================
-// Observação: este módulo tenta buscar GIFs/imagens pela API do IconScout (Lottie Animations).
-// Para funcionar em produção, configure as variáveis de ambiente:
-// ICONSCOUT_CLIENT_ID e ICONSCOUT_CLIENT_SECRET.
-//
-// Referência de alto nível: IconScout API (Client-ID/Client-Secret) e endpoints de busca/itens.
-// (Sem credenciais, o servidor retorna placeholders visuais e o cliente ainda consegue gerar o .pptx.)
-
-function buildSvgPlaceholderDataUrl(label) {
-  const safe = String(label || "Educação em Saúde").slice(0, 60).replace(/[<>]/g, "");
-  const svg = `
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720">
-  <rect width="100%" height="100%" fill="#ffffff"/>
-  <rect x="20" y="20" width="920" height="680" rx="24" ry="24" fill="#f7f7f7" stroke="#dddddd" stroke-width="4"/>
-  <rect x="20" y="20" width="920" height="80" fill="#C00000"/>
-  <text x="60" y="75" font-family="Arial" font-size="36" fill="#ffffff">Educação em Saúde</text>
-  <text x="60" y="220" font-family="Arial" font-size="44" fill="#000000">${safe}</text>
-  <text x="60" y="280" font-family="Arial" font-size="24" fill="#444444">Mídia indisponível no momento</text>
-</svg>`.trim();
-  const b64 = Buffer.from(svg, "utf8").toString("base64");
-  return "data:image/svg+xml;base64," + b64;
-}
-
-function collectUrlsDeep(obj, exts, out) {
-  const extsArr = Array.isArray(exts) ? exts : [];
-  const pushIf = (v) => {
-    if (typeof v !== "string") return;
-    const s = v.trim();
-    if (!s) return;
-    const low = s.toLowerCase();
-    for (const ext of extsArr) {
-      if (low.includes(ext)) {
-        out.push(s);
-        return;
-      }
-    }
-  };
-
-  if (!obj) return;
-  if (typeof obj === "string") {
-    pushIf(obj);
-    return;
-  }
-  if (Array.isArray(obj)) {
-    for (const it of obj) collectUrlsDeep(it, extsArr, out);
-    return;
-  }
-  if (typeof obj === "object") {
-    for (const k of Object.keys(obj)) {
-      collectUrlsDeep(obj[k], extsArr, out);
-    }
-  }
-}
-
-async function iconscoutRequestJson(url) {
-  const cid = process.env.ICONSCOUT_CLIENT_ID || process.env.ICONSCOUT_CLIENT_ID;
-  const csec = process.env.ICONSCOUT_CLIENT_SECRET || process.env.ICONSCOUT_CLIENT_SECRET;
-
-  if (!cid || !csec) {
-    const err = new Error("ICONSCOUT_CREDENTIALS_MISSING");
-    err.code = "ICONSCOUT_CREDENTIALS_MISSING";
-    throw err;
-  }
-
-  const resp = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Client-ID": cid,
-      "Client-Secret": csec,
-      "Accept": "application/json"
-    }
-  });
-
-  if (!resp.ok) {
-    const txt = await resp.text().catch(() => "");
-    const err = new Error("ICONSCOUT_API_ERROR: " + resp.status + " " + (txt || ""));
-    err.code = "ICONSCOUT_API_ERROR";
-    throw err;
-  }
-  return await resp.json();
-}
-
-async function iconscoutSearchLottie(keyword) {
-  const q = encodeURIComponent(String(keyword || "").trim());
-  const url = `https://api.iconscout.com/v3/search?asset=lottie&query=${q}&per_page=5`;
-  const data = await iconscoutRequestJson(url);
-
-  // Variações de payload possíveis; normaliza para lista de itens
-  const items =
-    (Array.isArray(data?.items) ? data.items :
-    Array.isArray(data?.response?.items) ? data.response.items :
-    Array.isArray(data?.response?.results) ? data.response.results :
-    Array.isArray(data?.results) ? data.results : []);
-
-  return items;
-}
-
-async function iconscoutGetItemDetails(uuid) {
-  const id = encodeURIComponent(String(uuid || "").trim());
-  const url = `https://api.iconscout.com/v3/items/${id}`;
-  return await iconscoutRequestJson(url);
-}
-
-async function fetchBinaryAsDataUrl(mediaUrl, maxBytes) {
-  const u = String(mediaUrl || "").trim();
-  if (!u) return null;
-
-  const resp = await fetch(u, { method: "GET" });
-  if (!resp.ok) return null;
-
-  const len = parseInt(resp.headers.get("content-length") || "0", 10);
-  if (Number.isFinite(len) && len > 0 && maxBytes && len > maxBytes) return null;
-
-  const buf = Buffer.from(await resp.arrayBuffer());
-  if (maxBytes && buf.length > maxBytes) return null;
-
-  const low = u.toLowerCase();
-  let mime = "image/png";
-  if (low.includes(".gif")) mime = "image/gif";
-  else if (low.includes(".jpg") || low.includes(".jpeg")) mime = "image/jpeg";
-  else if (low.includes(".webp")) mime = "image/webp";
-  else if (low.includes(".svg")) mime = "image/svg+xml";
-  else if (low.includes(".mp4")) mime = "video/mp4";
-
-  return { data_url: `data:${mime};base64,${buf.toString("base64")}`, mime, source_url: u };
-}
-
-async function iconscoutPickBestMediaDataUrl(keyword) {
-  // Retorna sempre um data URL (placeholder como fallback)
-  const fallback = { data_url: buildSvgPlaceholderDataUrl(keyword), mime: "image/svg+xml", source_url: "" };
-
-  try {
-    const items = await iconscoutSearchLottie(keyword);
-    const first = items && items.length ? items[0] : null;
-    const uuid =
-      (typeof first?.uuid === "string" ? first.uuid :
-      typeof first?.id === "string" ? first.id :
-      typeof first?.item_uuid === "string" ? first.item_uuid :
-      typeof first?._id === "string" ? first._id : "");
-
-    if (!uuid) return fallback;
-
-    const details = await iconscoutGetItemDetails(uuid);
-
-    // Tenta achar URL de transparent GIF (preferência), depois GIF comum, depois PNG/JPG, depois MP4.
-    const urls = [];
-    collectUrlsDeep(details, [".gif", ".png", ".jpg", ".jpeg", ".webp", ".mp4"], urls);
-
-    const uniq = Array.from(new Set(urls));
-    const prefer = (arr, ext) => arr.find(u => String(u).toLowerCase().includes(ext)) || null;
-
-    const best =
-      prefer(uniq, ".gif") ||
-      prefer(uniq, ".png") ||
-      prefer(uniq, ".jpg") ||
-      prefer(uniq, ".jpeg") ||
-      prefer(uniq, ".webp") ||
-      prefer(uniq, ".mp4");
-
-    if (!best) return fallback;
-
-    // Limita o tamanho do arquivo para não estourar payload (base64 é pesado)
-    const bin = await fetchBinaryAsDataUrl(best, 2_000_000);
-    return bin || fallback;
-  } catch (e) {
-    // Sem credenciais ou falha de API: usa placeholder
-    return fallback;
-  }
-}
-
-
 function normalizeImageDataUrl(input, maxLen) {
   const s = (typeof input === "string" ? input : "").trim();
   if (!s) return "";
@@ -4549,166 +4375,6 @@ Transcrição:
   };
 }
 
-
-// ======================================================================
-// ROTA – EDUCAÇÃO EM SAÚDE (GERAR APRESENTAÇÃO .PPTX NO FRONTEND)
-// ======================================================================
-// Retorna roteiro estruturado + 1 mídia (GIF/imagem) por slide em data URL.
-// O arquivo .pptx é montado no navegador (PptxGenJS) para evitar dependências no servidor.
-app.post("/api/educacao-em-saude/gerar-apresentacao", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const body = req.body || {};
-    const tema = normalizeText(body.tema || body.topic || "", 120);
-    const publico_alvo = normalizeText(body.publico_alvo || body.audience || "comunidade", 60);
-    const observacoes = normalizeText(body.observacoes || body.notes || "", 600);
-    const nSlidesRaw = parseInt(String(body.n_slides || body.slides || 8), 10);
-    const n_slides = Number.isFinite(nSlidesRaw) ? Math.max(4, Math.min(20, nSlidesRaw)) : 8;
-
-    if (!tema || tema.length < 3) {
-      return res.status(400).json({ error: "Tema inválido." });
-    }
-
-    // Sem OpenAI configurada: retorna um roteiro mínimo (permite testar o fluxo local)
-    if (!process.env.OPENAI_API_KEY) {
-      const slides = Array.from({ length: n_slides }, (_, i) => {
-        const titulo = `${tema} – Parte ${i + 1}`;
-        const topicos = [
-          "Conceito e importância",
-          "Fatores de risco e proteção",
-          "Sinais e sintomas relevantes",
-          "Prevenção e autocuidado",
-          "Quando procurar atendimento"
-        ];
-        const media = { data_url: buildSvgPlaceholderDataUrl(tema), mime: "image/svg+xml", source_url: "" };
-        return {
-          titulo,
-          topicos,
-          pesquisa_gif: tema,
-          media_data_url: media.data_url,
-          media_mime: media.mime,
-          media_fonte: media.source_url
-        };
-      });
-
-      const outline_text = [
-        `Título: ${tema}`,
-        `Público-alvo: ${publico_alvo}`,
-        "",
-        ...slides.map((s, idx) => {
-          const b = (Array.isArray(s.topicos) ? s.topicos : []).map(x => `- ${x}`).join("\n");
-          return `${idx + 1}. ${s.titulo}\n${b}`;
-        })
-      ].join("\n\n");
-
-      return res.json({
-        titulo_apresentacao: tema,
-        publico_alvo,
-        n_slides,
-        slides,
-        outline_text,
-        filename: `educacao-em-saude-${tema}`.replace(/[^a-z0-9\-\_\s]/gi, "").trim().replace(/\s+/g, "-").slice(0, 60)
-      });
-    }
-
-    // Prompt para gerar roteiro estruturado
-    const prompt = `
-Você está criando uma apresentação de Educação em Saúde para uso em UBS.
-Gere um roteiro de slides, em português, com linguagem adequada ao público-alvo.
-Não use emojis e não use símbolos gráficos especiais.
-
-Tema: ${JSON.stringify(tema)}
-Público-alvo: ${JSON.stringify(publico_alvo)}
-Quantidade de slides (conteúdo): ${n_slides}
-
-Observações (se houver): ${observacoes ? JSON.stringify(observacoes) : "null"}
-
-Regras de formatação dos slides:
-- Cada slide deve ter: título curto + 3 a 6 tópicos curtos.
-- Títulos e tópicos devem ser clínicos, didáticos e objetivos.
-- Não invente dados epidemiológicos locais. Evite números específicos se não forem essenciais.
-- Retorne JSON estrito, sem texto fora do JSON.
-
-Formato obrigatório:
-{
-  "titulo_apresentacao": "string",
-  "slides": [
-    {
-      "titulo": "string",
-      "topicos": ["..."],
-      "pesquisa_gif": "termo simples para buscar mídia coerente no IconScout"
-    }
-  ]
-}
-
-Importante:
-- O array "slides" deve ter exatamente ${n_slides} itens.
-`;
-
-    const plan = await callOpenAIJson(prompt, 3);
-
-    const titulo_apresentacao = normalizeText(plan?.titulo_apresentacao || tema, 140) || tema;
-    const rawSlides = Array.isArray(plan?.slides) ? plan.slides : [];
-
-    // Ajusta quantidade
-    const slidesFixed = rawSlides.slice(0, n_slides);
-    while (slidesFixed.length < n_slides) {
-      slidesFixed.push({
-        titulo: `${titulo_apresentacao} – Parte ${slidesFixed.length + 1}`,
-        topicos: ["Conceito", "Prevenção", "Cuidados", "Sinais de alerta"],
-        pesquisa_gif: tema
-      });
-    }
-
-    // Baixa 1 mídia por slide (GIF ou imagem) via IconScout, retornando data URL.
-    const slidesEnriched = [];
-    for (const s of slidesFixed) {
-      const titulo = normalizeText(s?.titulo || "", 120) || "Tópico";
-      const topicos = normalizeArrayOfStrings(s?.topicos, 12, 140).slice(0, 6);
-      const pesquisa_gif = normalizeText(s?.pesquisa_gif || tema, 80) || tema;
-
-      const media = await iconscoutPickBestMediaDataUrl(pesquisa_gif);
-
-      slidesEnriched.push({
-        titulo,
-        topicos,
-        pesquisa_gif,
-        media_data_url: media?.data_url || buildSvgPlaceholderDataUrl(pesquisa_gif),
-        media_mime: media?.mime || "image/svg+xml",
-        media_fonte: media?.source_url || ""
-      });
-    }
-
-    const outline_text = [
-      `Título: ${titulo_apresentacao}`,
-      `Público-alvo: ${publico_alvo}`,
-      "",
-      ...slidesEnriched.map((s, idx) => {
-        const b = (Array.isArray(s.topicos) ? s.topicos : []).map(x => `- ${x}`).join("\n");
-        return `${idx + 1}. ${s.titulo}\n${b}`;
-      })
-    ].join("\n\n");
-
-    const filename = `educacao-em-saude-${titulo_apresentacao}`
-      .replace(/[^a-z0-9\-\_\s]/gi, "")
-      .trim()
-      .replace(/\s+/g, "-")
-      .slice(0, 60);
-
-    return res.json({
-      titulo_apresentacao,
-      publico_alvo,
-      n_slides,
-      slides: slidesEnriched,
-      outline_text,
-      filename
-    });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha interna ao gerar apresentação de Educação em Saúde." });
-  }
-});
-
-
 app.post("/api/gerar-documento-medico", requirePaidOrAdmin, async (req, res) => {
   try {
     const body = req.body || {};
@@ -5469,6 +5135,337 @@ Transcrição (trecho):
   }
 });
 
+
+
+
+// ======================================================================
+// EDUCAÇÃO EM SAÚDE (PowerPoint) + IconScout (Lottie/GIF)
+// - O frontend solicita um roteiro de slides ao backend.
+// - Para cada slide, o backend resolve um asset do IconScout e retorna:
+//   - gif_data_uri (preferencial) OU lottie_json (fallback).
+// Observação: o IconScout pode mudar estrutura interna. Por isso:
+// - O resolver tenta múltiplas estratégias e faz fallback para Lottie JSON.
+// ======================================================================
+
+function base64FromArrayBuffer(buf) {
+  const b = Buffer.from(buf);
+  return b.toString("base64");
+}
+
+function toDataUri(mime, base64) {
+  const m = String(mime || "application/octet-stream");
+  return `data:${m};base64,${base64}`;
+}
+
+function safeShortText(v, maxLen = 120) {
+  const s = String(v || "").trim();
+  return s.length > maxLen ? s.slice(0, maxLen) : s;
+}
+
+function isProbablyUrl(s) {
+  return /^https?:\/\//i.test(String(s || "").trim());
+}
+
+async function fetchTextRaw(url, timeoutMs = 18000) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, {
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "text/html,application/json;q=0.9,*/*;q=0.8"
+      },
+      signal: controller.signal
+    });
+    const text = await resp.text();
+    return { ok: resp.ok, status: resp.status, text };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function fetchArrayBufferRaw(url, timeoutMs = 20000) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, {
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "*/*"
+      },
+      signal: controller.signal
+    });
+    const ab = await resp.arrayBuffer();
+    const ct = resp.headers.get("content-type") || "application/octet-stream";
+    return { ok: resp.ok, status: resp.status, arrayBuffer: ab, contentType: ct };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function pickFirst(list) {
+  return Array.isArray(list) && list.length ? list[0] : "";
+}
+
+function uniq(arr) {
+  const out = [];
+  const seen = new Set();
+  for (const x of (arr || [])) {
+    const s = String(x || "").trim();
+    if (!s) continue;
+    if (seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
+}
+
+function extractUrls(html, exts) {
+  const out = [];
+  const h = String(html || "");
+  const rx = /https?:\/\/[^\s"'<>]+/g;
+  const m = h.match(rx) || [];
+  for (const u of m) {
+    const lu = u.toLowerCase();
+    if (exts.some(e => lu.includes(e))) out.push(u);
+  }
+  return uniq(out);
+}
+
+function isIconScoutHost(url) {
+  try {
+    const u = new URL(url);
+    const h = u.hostname.toLowerCase();
+    if (h === "iconscout.com" || h.endsWith(".iconscout.com")) return true;
+    if (h.includes("iconscout")) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+async function ddgSearchFirstIconScoutLottie(term) {
+  const q = encodeURIComponent(`site:iconscout.com lottie-animation ${term}`);
+  const url = `https://duckduckgo.com/html/?q=${q}`;
+  const { ok, text } = await fetchTextRaw(url, 18000);
+  if (!ok || !text) return "";
+
+  // DuckDuckGo HTML: <a rel="nofollow" class="result__a" href="...">
+  const rx = /class="result__a"[^>]*href="([^"]+)"/g;
+  let match;
+  const found = [];
+  while ((match = rx.exec(text)) !== null) {
+    const href = String(match[1] || "").trim();
+    if (!href) continue;
+    // alguns resultados vêm com redirecionador; tenta decodificar.
+    let finalUrl = href;
+    try {
+      const u = new URL(href);
+      if (u.hostname.toLowerCase().includes("duckduckgo.com") && u.searchParams.get("uddg")) {
+        finalUrl = decodeURIComponent(u.searchParams.get("uddg"));
+      }
+    } catch {}
+    if (finalUrl.includes("iconscout.com") && finalUrl.includes("/lottie-animation/")) {
+      found.push(finalUrl);
+    }
+    if (found.length >= 5) break;
+  }
+
+  // fallback: qualquer url do iconscout com lottie-animation
+  if (!found.length) {
+    const all = extractUrls(text, ["/lottie-animation/"]);
+    for (const u of all) {
+      if (u.includes("iconscout.com") && u.includes("/lottie-animation/")) return u;
+    }
+  }
+
+  return pickFirst(found);
+}
+
+function deepFindUrlsInJson(obj, predicate, acc) {
+  const a = acc || [];
+  if (obj == null) return a;
+  if (typeof obj === "string") {
+    const s = obj.trim();
+    if (predicate(s)) a.push(s);
+    return a;
+  }
+  if (Array.isArray(obj)) {
+    for (const it of obj) deepFindUrlsInJson(it, predicate, a);
+    return a;
+  }
+  if (typeof obj === "object") {
+    for (const k of Object.keys(obj)) {
+      deepFindUrlsInJson(obj[k], predicate, a);
+    }
+    return a;
+  }
+  return a;
+}
+
+function extractFromNextData(html) {
+  const h = String(html || "");
+  const rx = /<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i;
+  const m = h.match(rx);
+  if (!m || !m[1]) return null;
+  try {
+    return JSON.parse(m[1]);
+  } catch {
+    return null;
+  }
+}
+
+function pickBestUrl(urls, ext) {
+  const list = uniq(urls || []);
+  if (!list.length) return "";
+  const e = String(ext || "").toLowerCase();
+  // prioriza cdn + transparência quando disponível
+  const scored = list.map(u => {
+    const lu = u.toLowerCase();
+    let score = 0;
+    if (lu.includes("cdna.") || lu.includes("cdn.")) score += 5;
+    if (lu.includes("transparent")) score += 3;
+    if (lu.includes(".iconscout.")) score += 2;
+    if (e && lu.includes(e)) score += 2;
+    return { u, score };
+  }).sort((a,b) => b.score - a.score);
+  return scored[0].u || "";
+}
+
+async function resolveIconScoutAsset(termRaw) {
+  const term = safeShortText(termRaw, 90);
+  if (!term) return { error: "TERM_REQUIRED" };
+
+  const assetPage = await ddgSearchFirstIconScoutLottie(term);
+  if (!assetPage) return { error: "ASSET_NOT_FOUND" };
+
+  const pageResp = await fetchTextRaw(assetPage, 18000);
+  if (!pageResp.ok || !pageResp.text) return { error: "ASSET_PAGE_FETCH_FAILED", asset_page: assetPage };
+
+  const html = pageResp.text;
+
+  // tentativa 1: urls diretas no HTML
+  let gifUrls = extractUrls(html, [".gif"]);
+  let jsonUrls = extractUrls(html, [".json", ".lottie"]);
+
+  // tentativa 2: procurar em __NEXT_DATA__ (muito comum em sites Next.js)
+  const nextData = extractFromNextData(html);
+  if (nextData) {
+    const foundG = deepFindUrlsInJson(nextData, (s) => isProbablyUrl(s) && s.toLowerCase().includes(".gif"));
+    const foundJ = deepFindUrlsInJson(nextData, (s) => isProbablyUrl(s) && (s.toLowerCase().includes(".json") || s.toLowerCase().includes(".lottie")));
+    gifUrls = uniq(gifUrls.concat(foundG || []));
+    jsonUrls = uniq(jsonUrls.concat(foundJ || []));
+  }
+
+  const gifUrl = pickBestUrl(gifUrls, ".gif");
+  let jsonUrl = pickBestUrl(jsonUrls, ".json");
+  if (!jsonUrl) jsonUrl = pickBestUrl(jsonUrls, ".lottie");
+
+  // baixa GIF preferencialmente
+  if (gifUrl && isIconScoutHost(gifUrl)) {
+    const bin = await fetchArrayBufferRaw(gifUrl, 20000);
+    if (bin.ok && bin.arrayBuffer) {
+      return {
+        asset_page: assetPage,
+        gif_url: gifUrl,
+        gif_data_uri: toDataUri(bin.contentType || "image/gif", base64FromArrayBuffer(bin.arrayBuffer)),
+      };
+    }
+  }
+
+  // fallback: baixa Lottie JSON e retorna para o frontend renderizar em PNG
+  if (jsonUrl && isIconScoutHost(jsonUrl)) {
+    const txt = await fetchTextRaw(jsonUrl, 20000);
+    if (txt.ok && txt.text) {
+      try {
+        const parsed = JSON.parse(txt.text);
+        return {
+          asset_page: assetPage,
+          lottie_url: jsonUrl,
+          lottie_json: parsed
+        };
+      } catch {
+        // se não for JSON, retorna erro
+      }
+    }
+  }
+
+  return { error: "ASSET_RESOLVE_FAILED", asset_page: assetPage };
+}
+
+// Resolve um GIF (dataUri) ou Lottie JSON do IconScout a partir de um termo simples
+app.get("/api/iconscout/resolve", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const term = String(req.query.term || "").trim();
+    const out = await resolveIconScoutAsset(term);
+    if (out && out.error) {
+      const code = out.error === "TERM_REQUIRED" ? 400 : 404;
+      return res.status(code).json(out);
+    }
+    return res.json(out);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Falha interna ao resolver asset do IconScout." });
+  }
+});
+
+// Planeja o roteiro (títulos, tópicos e termos de busca) para o PowerPoint
+app.post("/api/educacao-em-saude/planejar", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const tema = String(req.body?.tema || "").trim();
+    const publico = String(req.body?.publico_alvo || "").trim();
+    const nivel = String(req.body?.nivel || "basico").trim();
+    const quantidade = Math.max(4, Math.min(20, parseInt(String(req.body?.quantidade_slides || 10), 10) || 10));
+
+    if (!tema) return res.status(400).json({ error: "Tema é obrigatório." });
+
+    const prompt = `
+Você é um médico experiente criando material de Educação em Saúde em português do Brasil.
+
+Gere um roteiro para uma apresentação de PowerPoint com o tema: "${tema}".
+Público-alvo: "${publico || "não especificado"}".
+Nível: "${nivel}".
+Quantidade de slides (excluindo a capa): ${quantidade}.
+
+Regras obrigatórias:
+- Responda SOMENTE com JSON válido (sem markdown).
+- O JSON deve ter: tema, publico_alvo, nivel, slides.
+- "slides" deve ser uma lista com exatamente ${quantidade} itens.
+- Cada slide deve conter:
+  - titulo (string curta)
+  - topicos (3 a 6 tópicos curtos, linguagem didática, objetiva)
+  - termos_iconscout (lista com 1 a 2 termos simples para buscar animações no IconScout Lottie, em português ou inglês, coerentes com o conteúdo do slide)
+- Evite promessas/afirmações absolutas de eficácia. Use recomendações de saúde pública amplamente aceitas.
+- Para slides de condutas, priorize prevenção, sinais de alarme e quando procurar atendimento.
+    `.trim();
+
+    const plan = await callOpenAIJson(prompt, 3);
+
+    // validação mínima para estabilidade do frontend
+    const slides = Array.isArray(plan?.slides) ? plan.slides : [];
+    const fixedSlides = slides.slice(0, quantidade).map((s, i) => {
+      const titulo = String(s?.titulo || `Slide ${i+1}`).trim();
+      const topicos = Array.isArray(s?.topicos) ? s.topicos.map(x => String(x||"").trim()).filter(Boolean).slice(0,6) : [];
+      const termos = Array.isArray(s?.termos_iconscout) ? s.termos_iconscout.map(x => String(x||"").trim()).filter(Boolean).slice(0,2) : [];
+      return { titulo, topicos: topicos.length ? topicos : ["Conteúdo a revisar."], termos_iconscout: termos.length ? termos : [titulo] };
+    });
+
+    return res.json({
+      tema,
+      publico_alvo: publico,
+      nivel,
+      slides: fixedSlides
+    });
+  } catch (e) {
+    console.error(e);
+    if (e && e.code === "OPENAI_API_KEY_MISSING") {
+      return res.status(400).json({ error: "OPENAI_API_KEY não configurada no backend." });
+    }
+    return res.status(500).json({ error: "Falha interna ao planejar slides de Educação em Saúde." });
+  }
+});
 
 
 
