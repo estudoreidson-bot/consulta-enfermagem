@@ -5,8 +5,6 @@
   <meta charset="UTF-8" />
   <title>Atendimento de Enfermagem</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -2277,6 +2275,8 @@
   background: rgba(255,255,255,0.1);
 }
 </style>
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
 </head>
 <body>
 
@@ -4203,21 +4203,20 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
   </div>
 
 
-  
-  <div id="healthEduGuidePanel" class="recommendations-panel">
+    <div id="healthEducationGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
       <h3>Guia: Educação em saúde</h3>
-      <button id="closeHealthEduGuideBtn" class="close-panel-btn" aria-label="Fechar guia de educação em saúde">X</button>
+      <button id="closeHealthEducationGuideBtn" class="close-panel-btn" aria-label="Fechar guia de educação em saúde">X</button>
     </div>
     <div class="recommendations-status">
-      Gere apresentações em PowerPoint para educação em saúde com conteúdo didático e imagens ou animações (IconScout Lottie) compatíveis com o tema de cada slide.
+      Este módulo cria uma apresentação em PowerPoint (.pptx) para ações educativas, com um slide por tópico e pelo menos uma imagem por slide.
     </div>
     <div class="recommendations-list">
-      <div class="recommendation-item"><strong>1) Como escolher o tema</strong><br>Use termos objetivos: por exemplo, “Hipertensão arterial”, “Diabetes tipo 2”, “Dengue”, “Planejamento familiar”, “Saúde do idoso”, “Saúde da criança”, “Tabagismo”.</div>
-      <div class="recommendation-item"><strong>2) Público-alvo</strong><br>Defina se é para pacientes, agentes comunitários, equipe de enfermagem, escola ou comunidade. Isso ajusta linguagem e profundidade.</div>
-      <div class="recommendation-item"><strong>3) Estrutura sugerida</strong><br>Introdução, fatores de risco, sinais e sintomas, prevenção, quando procurar atendimento, condutas no SUS e mensagens-chave.</div>
-      <div class="recommendation-item"><strong>4) Imagens e GIFs</strong><br>Cada slide recebe pelo menos uma imagem ou GIF. As animações são buscadas em IconScout (Lottie) a partir de termos simples do tema e inseridas no slide.</div>
-      <div class="recommendation-item"><strong>5) Revisão</strong><br>Após gerar, revise títulos, números, doses e recomendações locais antes de apresentar ao público.</div>
+      <div class="recommendation-item"><strong>1) Tema e público</strong><br>Informe o tema e selecione o público-alvo. Isso define linguagem, exemplos e foco.</div>
+      <div class="recommendation-item"><strong>2) Quantidade de slides</strong><br>Use 6 a 10 para palestras rápidas. Para sala de espera, 4 a 6 costuma ser suficiente.</div>
+      <div class="recommendation-item"><strong>3) Imagens</strong><br>O sistema tenta buscar imagens relacionadas ao tema no IconScout para cada slide. Se não encontrar, usa uma imagem de contingência para não falhar.</div>
+      <div class="recommendation-item"><strong>4) Revisão</strong><br>Revise mensagens, termos e recomendações conforme protocolo local. Ajuste o texto antes de apresentar.</div>
+      <div class="recommendation-item"><strong>5) Download</strong><br>Ao finalizar, o arquivo é baixado no formato .pptx, pronto para abrir no PowerPoint ou similares.</div>
     </div>
   </div>
 
@@ -14880,345 +14879,211 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
 
 
-// ======================================================================
-// EDUCAÇÃO EM SAÚDE (PowerPoint com imagens/GIFs da internet)
-// Regras:
-// - Sempre antes do módulo "Geração de documentos" (card inserido antes).
-// - Cada slide deve ter pelo menos 1 imagem ou GIF.
-// - GIFs/Animações: buscar no IconScout (Lottie Animations) via backend.
-// ======================================================================
+    // =========================
+    // EDUCAÇÃO EM SAÚDE (PPTX)
+    // =========================
 
-let healthEduLastPptxBlob = null;
+    async function healthEducationPlanSlides(theme, audience, slidesCount) {
+      const payload = {
+        tema: String(theme || "").trim(),
+        publico: String(audience || "").trim(),
+        quantidade_slides: parseInt(String(slidesCount || "8"), 10) || 8
+      };
 
-function healthEduSetStatus(text, isError) {
-  const el = document.getElementById("healthEduStatus");
-  if (!el) return;
-  el.innerText = String(text || "");
-  el.style.color = isError ? "#b00020" : "#374151";
-}
-
-function healthEduSetPreview(items) {
-  const box = document.getElementById("healthEduPreview");
-  if (!box) return;
-  box.innerHTML = "";
-  const arr = Array.isArray(items) ? items : [];
-  if (!arr.length) {
-    box.innerHTML = '<div class="rx-sheet-placeholder">Nenhum conteúdo disponível.</div>';
-    return;
-  }
-  for (const it of arr) {
-    const card = document.createElement("div");
-    card.className = "rx-original-card";
-    const title = document.createElement("div");
-    title.className = "rx-original-caption";
-    title.innerText = String(it.title || "Slide");
-    const img = document.createElement("img");
-    img.alt = String(it.alt || "Imagem");
-    img.src = String(it.dataUri || "");
-    img.style.width = "100%";
-    img.style.borderRadius = "10px";
-    img.style.background = "#fff";
-    img.style.objectFit = "contain";
-    card.appendChild(img);
-    card.appendChild(title);
-    box.appendChild(card);
-  }
-}
-
-async function healthEduPostJson(path, payload) {
-  const resp = await fetch(BACKEND_URL + path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload || {})
-  });
-  const txt = await resp.text();
-  let data = null;
-  try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
-  if (!resp.ok) {
-    const msg = (data && (data.error || data.message)) ? (data.error || data.message) : ("Falha: " + resp.status);
-    const err = new Error(msg);
-    err.status = resp.status;
-    err.data = data;
-    throw err;
-  }
-  return data;
-}
-
-async function healthEduGetJson(path) {
-  const resp = await fetch(BACKEND_URL + path, { method: "GET" });
-  const txt = await resp.text();
-  let data = null;
-  try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
-  if (!resp.ok) {
-    const msg = (data && (data.error || data.message)) ? (data.error || data.message) : ("Falha: " + resp.status);
-    const err = new Error(msg);
-    err.status = resp.status;
-    err.data = data;
-    throw err;
-  }
-  return data;
-}
-
-function healthEduDownloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
-}
-
-function healthEduClampInt(v, min, max, fallback) {
-  const n = parseInt(String(v || ""), 10);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.max(min, Math.min(max, n));
-}
-
-function healthEduSafeFileName(s) {
-  const t = String(s || "").trim().toLowerCase();
-  const clean = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-  return clean || "educacao-em-saude";
-}
-
-async function healthEduRenderLottieToPngDataUri(lottieJson) {
-  if (!window.lottie || !lottieJson) return null;
-
-  const holder = document.createElement("div");
-  holder.style.position = "fixed";
-  holder.style.left = "-99999px";
-  holder.style.top = "-99999px";
-  holder.style.width = "640px";
-  holder.style.height = "360px";
-  holder.style.overflow = "hidden";
-  document.body.appendChild(holder);
-
-  try {
-    const anim = window.lottie.loadAnimation({
-      container: holder,
-      renderer: "canvas",
-      loop: false,
-      autoplay: false,
-      animationData: lottieJson
-    });
-
-    await new Promise((resolve) => {
-      anim.addEventListener("DOMLoaded", () => resolve());
-      setTimeout(() => resolve(), 2500);
-    });
-
-    const total = Number(anim.getDuration(true) || 0);
-    const frame = total > 0 ? Math.floor(total * 0.35) : 0;
-    try { anim.goToAndStop(frame, true); } catch {}
-
-    const canvas = holder.querySelector("canvas");
-    if (!canvas) return null;
-
-    return canvas.toDataURL("image/png");
-  } finally {
-    try { window.lottie.destroy(); } catch {}
-    holder.remove();
-  }
-}
-
-async function healthEduBuildPptx(plan, assetsBySlide) {
-  if (!window.PptxGenJS) throw new Error("Biblioteca do PowerPoint não carregou.");
-  const pptx = new window.PptxGenJS();
-  pptx.layout = "LAYOUT_WIDE";
-
-  const theme = String(plan?.tema || "").trim() || "Educação em saúde";
-
-  // Slide 1 (capa)
-  {
-    const slide = pptx.addSlide();
-    slide.background = { color: "FFFFFF" };
-
-    slide.addText(theme, {
-      x: 0.65, y: 1.5, w: 12.0, h: 1.0,
-      fontFace: "Calibri",
-      fontSize: 40,
-      bold: true,
-      color: "C1121F"
-    });
-
-    const sub = String(plan?.publico_alvo || "").trim();
-    if (sub) {
-      slide.addText("Público-alvo: " + sub, {
-        x: 0.65, y: 2.5, w: 12.0, h: 0.6,
-        fontFace: "Calibri",
-        fontSize: 18,
-        color: "111827"
+      const resp = await fetch(BACKEND_URL + "/api/educacao-em-saude/planejar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
+
+      if (!resp.ok) {
+        let msg = "Falha ao planejar a apresentação.";
+        try {
+          const data = await resp.json();
+          if (data && data.error) msg = String(data.error);
+        } catch (e) {}
+        throw new Error(msg);
+      }
+
+      const data = await resp.json();
+      return data;
     }
 
-    slide.addText("Gerado automaticamente para uso em ações educativas.", {
-      x: 0.65, y: 3.1, w: 12.0, h: 0.6,
-      fontFace: "Calibri",
-      fontSize: 14,
-      color: "374151"
-    });
-  }
+    function healthEducationRenderPreview(plan) {
+      const box = document.getElementById("healthEducationPreviewBox");
+      if (!box) return;
 
-  const slides = Array.isArray(plan?.slides) ? plan.slides : [];
-  for (let i = 0; i < slides.length; i++) {
-    const s = slides[i] || {};
-    const slide = pptx.addSlide();
-    slide.background = { color: "FFFFFF" };
+      const slides = Array.isArray(plan?.slides) ? plan.slides : [];
+      if (!slides.length) {
+        box.textContent = "Nenhum conteúdo disponível.";
+        return;
+      }
 
-    const title = String(s.titulo || "").trim() || ("Slide " + (i + 2));
-    slide.addText(title, {
-      x: 0.6, y: 0.35, w: 12.2, h: 0.6,
-      fontFace: "Calibri",
-      fontSize: 28,
-      bold: true,
-      color: "C1121F"
-    });
+      const lines = [];
+      const title = String(plan?.titulo_apresentacao || "").trim();
+      if (title) lines.push(title);
 
-    const bullets = Array.isArray(s.topicos) ? s.topicos : [];
-    const bulletText = bullets.map(x => "• " + String(x || "").trim()).filter(x => x.length > 2).join("\n");
-    slide.addText(bulletText || "•", {
-      x: 0.75, y: 1.2, w: 7.3, h: 5.6,
-      fontFace: "Calibri",
-      fontSize: 18,
-      color: "111827",
-      valign: "top"
-    });
+      for (let i = 0; i < slides.length; i++) {
+        const s = slides[i] || {};
+        const t = String(s.titulo || "").trim();
+        const top = Array.isArray(s.topicos) ? s.topicos : [];
+        lines.push("");
+        lines.push((i + 1) + ". " + (t || "Slide"));
+        for (const item of top) {
+          const v = String(item || "").trim();
+          if (v) lines.push(" - " + v);
+        }
+      }
 
-    const asset = (assetsBySlide && assetsBySlide[i]) ? assetsBySlide[i] : null;
-    if (asset && asset.dataUri) {
-      slide.addImage({
-        data: asset.dataUri,
-        x: 8.35, y: 1.2, w: 4.7, h: 4.7
-      });
-      if (asset.attribution) {
-        slide.addText(String(asset.attribution), {
-          x: 8.35, y: 6.0, w: 4.7, h: 0.35,
+      box.textContent = lines.join("\n");
+    }
+
+    async function healthEducationGeneratePptx(plan) {
+      if (typeof window.PptxGenJS !== "function") {
+        throw new Error("Biblioteca de PowerPoint não carregou. Recarregue a página e tente novamente.");
+      }
+
+      const pptx = new window.PptxGenJS();
+      pptx.layout = "LAYOUT_WIDE";
+
+      const presentationTitle = String(plan?.titulo_apresentacao || "Educação em saúde").trim();
+      const slides = Array.isArray(plan?.slides) ? plan.slides : [];
+
+      // Slide de capa
+      {
+        const slide = pptx.addSlide();
+        slide.addText(presentationTitle, {
+          x: 0.7, y: 1.4, w: 12, h: 1.2,
           fontFace: "Calibri",
-          fontSize: 10,
-          color: "6B7280"
+          fontSize: 40,
+          bold: true,
+          color: "C00000"
+        });
+
+        slide.addText("Material educativo", {
+          x: 0.7, y: 2.6, w: 12, h: 0.6,
+          fontFace: "Calibri",
+          fontSize: 20,
+          color: "000000"
+        });
+
+        const coverImg = slides[0]?.image_data_uri ? String(slides[0].image_data_uri) : "";
+        if (coverImg && coverImg.startsWith("data:")) {
+          try {
+            slide.addImage({ data: coverImg, x: 8.2, y: 0.9, w: 4.6, h: 4.6 });
+          } catch (e) {}
+        }
+      }
+
+      for (const s of slides) {
+        const slide = pptx.addSlide();
+
+        const title = String(s?.titulo || "").trim() || "Tópico";
+        const topics = Array.isArray(s?.topicos) ? s.topicos : [];
+        const img = String(s?.image_data_uri || "").trim();
+        const fonte = String(s?.fonte_url || "").trim();
+
+        slide.addText(title, {
+          x: 0.7, y: 0.4, w: 12.0, h: 0.7,
+          fontFace: "Calibri",
+          fontSize: 30,
+          bold: true,
+          color: "C00000"
+        });
+
+        const bullets = topics
+          .map(v => String(v || "").trim())
+          .filter(Boolean)
+          .map(v => "• " + v)
+          .join("\n");
+
+        slide.addText(bullets || "•", {
+          x: 0.8, y: 1.4, w: 7.2, h: 5.6,
+          fontFace: "Calibri",
+          fontSize: 20,
+          color: "000000",
+          valign: "top"
+        });
+
+        if (img && img.startsWith("data:")) {
+          try {
+            slide.addImage({ data: img, x: 8.2, y: 1.4, w: 4.8, h: 4.8 });
+          } catch (e) {}
+        }
+
+        if (fonte) {
+          slide.addText("Fonte: " + fonte, {
+            x: 0.7, y: 7.1, w: 12.4, h: 0.3,
+            fontFace: "Calibri",
+            fontSize: 10,
+            color: "666666"
+          });
+        }
+      }
+
+      const safeName = presentationTitle
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .slice(0, 60);
+
+      const fileName = (safeName ? safeName : "educacao_em_saude") + ".pptx";
+      await pptx.writeFile({ fileName });
+    }
+
+    function healthEducationBindElementsAndWire() {
+      const guideBtn = document.getElementById("healthEducationGuideBtn");
+      const guidePanel = document.getElementById("healthEducationGuidePanel");
+      const closeGuideBtn = document.getElementById("closeHealthEducationGuideBtn");
+
+      const themeEl = document.getElementById("healthEducationTheme");
+      const audienceEl = document.getElementById("healthEducationAudience");
+      const slidesCountEl = document.getElementById("healthEducationSlidesCount");
+      const genBtn = document.getElementById("healthEducationGenerateBtn");
+      const statusEl = document.getElementById("healthEducationStatus");
+      const errEl = document.getElementById("healthEducationError");
+
+      if (guideBtn) guideBtn.addEventListener("click", () => setPanelVisible(guidePanel, true));
+      if (closeGuideBtn) closeGuideBtn.addEventListener("click", () => setPanelVisible(guidePanel, false));
+
+      if (genBtn) {
+        genBtn.addEventListener("click", async () => {
+          if (errEl) errEl.textContent = "";
+          const theme = themeEl ? String(themeEl.value || "").trim() : "";
+          const audience = audienceEl ? String(audienceEl.value || "").trim() : "adultos";
+          const count = slidesCountEl ? String(slidesCountEl.value || "8").trim() : "8";
+
+          if (!theme || theme.length < 3) {
+            if (errEl) errEl.textContent = "Informe um tema válido.";
+            return;
+          }
+
+          try {
+            if (genBtn) genBtn.disabled = true;
+            if (statusEl) statusEl.textContent = "Planejando conteúdo e preparando imagens...";
+            const plan = await healthEducationPlanSlides(theme, audience, count);
+            healthEducationRenderPreview(plan);
+
+            if (statusEl) statusEl.textContent = "Gerando arquivo .pptx para download...";
+            await healthEducationGeneratePptx(plan);
+            if (statusEl) statusEl.textContent = "Arquivo gerado. Verifique o download do navegador.";
+          } catch (e) {
+            const msg = e && e.message ? String(e.message) : "Erro ao gerar apresentação.";
+            if (errEl) errEl.textContent = msg;
+            if (statusEl) statusEl.textContent = "Falha ao gerar apresentação.";
+          } finally {
+            if (genBtn) genBtn.disabled = false;
+          }
         });
       }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", healthEducationBindElementsAndWire);
     } else {
-      // fallback visual: box vazio para manter layout
-      slide.addShape(pptx.ShapeType.rect, {
-        x: 8.35, y: 1.2, w: 4.7, h: 4.7,
-        fill: { color: "F3F4F6" },
-        line: { color: "E5E7EB" }
-      });
-      slide.addText("Sem imagem disponível", {
-        x: 8.35, y: 3.35, w: 4.7, h: 0.5,
-        fontFace: "Calibri",
-        fontSize: 14,
-        color: "6B7280",
-        align: "center"
-      });
+      healthEducationBindElementsAndWire();
     }
-  }
-
-  const out = await pptx.write("blob");
-  return out;
-}
-
-async function healthEduGenerate() {
-  const themeEl = document.getElementById("healthEduTheme");
-  const audienceEl = document.getElementById("healthEduAudience");
-  const slidesEl = document.getElementById("healthEduSlides");
-  const levelEl = document.getElementById("healthEduLevel");
-  const downloadBtn = document.getElementById("healthEduDownloadBtn");
-
-  const tema = String(themeEl ? themeEl.value : "").trim();
-  const publico = String(audienceEl ? audienceEl.value : "").trim();
-  const nivel = String(levelEl ? levelEl.value : "basico").trim() || "basico";
-  const qtd = healthEduClampInt(slidesEl ? slidesEl.value : 10, 4, 20, 10);
-
-  if (!tema) {
-    healthEduSetStatus("Informe o tema para gerar a apresentação.", true);
-    return;
-  }
-
-  if (downloadBtn) downloadBtn.classList.add("hidden");
-  healthEduLastPptxBlob = null;
-  healthEduSetPreview([]);
-  healthEduSetStatus("Gerando roteiro dos slides...", false);
-
-  let plan = null;
-  try {
-    plan = await healthEduPostJson("/api/educacao-em-saude/planejar", {
-      tema,
-      publico_alvo: publico,
-      nivel,
-      quantidade_slides: qtd
-    });
-  } catch (e) {
-    healthEduSetStatus("Falha ao gerar roteiro: " + (e?.message || "erro"), true);
-    return;
-  }
-
-  const slides = Array.isArray(plan?.slides) ? plan.slides : [];
-  healthEduSetStatus("Buscando imagens/animações no IconScout para cada slide...", false);
-
-  const assetsBySlide = [];
-  const previews = [];
-
-  for (let i = 0; i < slides.length; i++) {
-    const s = slides[i] || {};
-    const terms = Array.isArray(s.termos_iconscout) ? s.termos_iconscout : [];
-    const term = String(terms[0] || s.titulo || tema).trim();
-
-    try {
-      const resolved = await healthEduGetJson("/api/iconscout/resolve?term=" + encodeURIComponent(term));
-      let dataUri = resolved && resolved.gif_data_uri ? String(resolved.gif_data_uri) : "";
-      let attribution = resolved && resolved.asset_page ? ("Fonte: IconScout (" + String(resolved.asset_page) + ")") : "Fonte: IconScout";
-
-      if (!dataUri && resolved && resolved.lottie_json) {
-        const png = await healthEduRenderLottieToPngDataUri(resolved.lottie_json);
-        if (png) dataUri = png;
-      }
-
-      assetsBySlide.push({ dataUri: dataUri || "", attribution });
-      if (dataUri) {
-        previews.push({ title: String(s.titulo || ("Slide " + (i + 2))), dataUri, alt: term });
-      }
-    } catch (e) {
-      assetsBySlide.push({ dataUri: "", attribution: "" });
-    }
-  }
-
-  healthEduSetPreview(previews);
-  healthEduSetStatus("Montando PowerPoint...", false);
-
-  try {
-    const blob = await healthEduBuildPptx(plan, assetsBySlide);
-    healthEduLastPptxBlob = blob;
-
-    if (downloadBtn) {
-      downloadBtn.classList.remove("hidden");
-      downloadBtn.onclick = () => {
-        const name = healthEduSafeFileName(tema) + ".pptx";
-        healthEduDownloadBlob(blob, name);
-      };
-    }
-
-    healthEduSetStatus("Pronto. Revise e baixe o PowerPoint.", false);
-  } catch (e) {
-    healthEduSetStatus("Falha ao montar PowerPoint: " + (e?.message || "erro"), true);
-  }
-}
-
-function healthEduBindElementsAndWire() {
-  const btn = document.getElementById("healthEduGenerateBtn");
-  const guideBtn = document.getElementById("healthEduGuideBtn");
-  const guidePanel = document.getElementById("healthEduGuidePanel");
-  const closeGuideBtn = document.getElementById("closeHealthEduGuideBtn");
-
-  if (btn) btn.addEventListener("click", () => healthEduGenerate());
-
-  if (guideBtn) guideBtn.addEventListener("click", () => setPanelVisible(guidePanel, true));
-  if (closeGuideBtn) closeGuideBtn.addEventListener("click", () => setPanelVisible(guidePanel, false));
-}
-
-document.addEventListener("DOMContentLoaded", healthEduBindElementsAndWire);
 
 </script>
 
@@ -15226,56 +15091,47 @@ document.addEventListener("DOMContentLoaded", healthEduBindElementsAndWire);
 
   <div class="module-divider"></div>
 
-  
   <div id="healthEducationCard" class="module-card">
     <div class="section-header-row">
       <h2>Educação em saúde</h2>
-      <button id="healthEduGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
+      <button id="healthEducationGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
     </div>
 
     <p class="mini-status" style="margin-top: 0;">
-      Gere apresentações (PowerPoint) para ações educativas com conteúdo didático e visual atrativo. Cada slide inclui pelo menos uma imagem ou animação conforme o tema.
+      Gere apresentações educativas em PowerPoint (.pptx) com linguagem clara, tópicos objetivos e uma imagem por slide.
     </p>
 
-    <div class="inline-input-row" style="margin-top: 8px; flex-wrap: wrap;">
-      <div style="flex: 1; min-width: 220px;">
-        <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Tema</div>
-        <input id="healthEduTheme" class="input" type="text" placeholder="Ex.: Hipertensão arterial" />
-      </div>
-
-      <div style="flex: 1; min-width: 220px;">
-        <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Público-alvo</div>
-        <input id="healthEduAudience" class="input" type="text" placeholder="Ex.: Pacientes / ACS / Escola" />
-      </div>
+    <div class="inline-input-row" style="gap: 10px; align-items: stretch; flex-wrap: wrap;">
+      <input id="healthEducationTheme" class="text-input" type="text" placeholder="Tema (ex.: hipertensão, diabetes, dengue, aleitamento materno)" autocomplete="off" style="flex: 1 1 320px; margin: 0;" />
+      <select id="healthEducationAudience" class="text-input" style="flex: 0 0 220px;">
+        <option value="adultos">Adultos</option>
+        <option value="idosos">Idosos</option>
+        <option value="gestantes">Gestantes</option>
+        <option value="adolescentes">Adolescentes</option>
+        <option value="criancas">Crianças (responsáveis)</option>
+        <option value="agentes">Agentes comunitários</option>
+      </select>
+      <select id="healthEducationSlidesCount" class="text-input" style="flex: 0 0 160px;">
+        <option value="6">6 slides</option>
+        <option value="8" selected>8 slides</option>
+        <option value="10">10 slides</option>
+        <option value="12">12 slides</option>
+      </select>
+      <button id="healthEducationGenerateBtn" class="btn-print" type="button" style="white-space: nowrap; flex: 0 0 auto;">Gerar e baixar .pptx</button>
     </div>
 
-    <div class="inline-input-row" style="margin-top: 10px; flex-wrap: wrap;">
-      <div style="flex: 1; min-width: 220px;">
-        <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Quantidade de slides</div>
-        <input id="healthEduSlides" class="input" type="number" min="4" max="20" value="10" />
-      </div>
+    <div id="healthEducationStatus" class="mini-status" style="margin-top: 10px;">Preencha o tema e clique em "Gerar e baixar .pptx".</div>
+    <div id="healthEducationError" class="error-text"></div>
 
-      <div style="flex: 1; min-width: 220px;">
-        <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Nível</div>
-        <select id="healthEduLevel" class="input">
-          <option value="basico" selected>Básico</option>
-          <option value="intermediario">Intermediário</option>
-          <option value="avancado">Avançado</option>
-        </select>
-      </div>
+    <div style="margin-top: 10px;">
+      <div style="font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px;">Prévia do roteiro</div>
+      <div id="healthEducationPreviewBox" class="answer-box" style="min-height: 60px;">Nenhum conteúdo disponível.</div>
     </div>
-
-    <div class="prescription-actions" style="justify-content: flex-start; gap: 10px; margin-top: 12px;">
-      <button id="healthEduGenerateBtn" class="btn-print" type="button">Gerar apresentação</button>
-      <button id="healthEduDownloadBtn" class="btn-print hidden" type="button">Baixar PowerPoint</button>
-    </div>
-
-    <div id="healthEduStatus" class="mini-status" style="margin-top: 8px;"></div>
-    <div id="healthEduPreview" class="rx-original-grid" style="margin-top: 10px;"></div>
   </div>
 
+  <div class="module-divider"></div>
 
-  <div id="medicalDocsCard" class="module-card">
+    <div id="medicalDocsCard" class="module-card">
     <div class="section-header-row">
       <h2>Geração de documentos</h2>
       <button id="medicalDocsGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>

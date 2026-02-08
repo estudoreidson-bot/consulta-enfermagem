@@ -4,6 +4,8 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const path = require("path");
 const fs = require("fs");
+const https = require("https");
+const http = require("http");
 const crypto = require("crypto");
 const os = require("os");
 
@@ -570,6 +572,176 @@ async function callOpenAIJson(prompt, maxAttempts = 3) {
   }
 
   throw lastErr || new Error("Falha ao obter JSON do modelo.");
+}
+
+// =========================
+// EDUCAÇÃO EM SAÚDE (PPTX) - Planejamento + Imagens
+// =========================
+
+function stripDiacritics(v) {
+  return String(v || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function slugifyPt(v) {
+  const s = stripDiacritics(v)
+    .toLowerCase()
+    .replace(/&/g, " e ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, "-");
+  return s || "saude";
+}
+
+function guessMimeFromUrl(url) {
+  const u = String(url || "").toLowerCase();
+  if (u.endsWith(".png")) return "image/png";
+  if (u.endsWith(".jpg") || u.endsWith(".jpeg")) return "image/jpeg";
+  if (u.endsWith(".webp")) return "image/webp";
+  return "application/octet-stream";
+}
+
+function httpGetBuffer(url, redirectsLeft = 5) {
+  return new Promise((resolve, reject) => {
+    try {
+      const u = new URL(url);
+      const lib = u.protocol === "http:" ? http : https;
+      const req = lib.request(
+        {
+          method: "GET",
+          hostname: u.hostname,
+          path: u.pathname + (u.search || ""),
+          headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; HealthEduPPTX/1.0)",
+            "Accept": "*/*",
+          },
+        },
+        (res) => {
+          const status = res.statusCode || 0;
+          const loc = res.headers?.location;
+
+          if ([301, 302, 303, 307, 308].includes(status) && loc && redirectsLeft > 0) {
+            const next = loc.startsWith("http") ? loc : (u.origin + loc);
+            res.resume();
+            return resolve(httpGetBuffer(next, redirectsLeft - 1));
+          }
+
+          if (status >= 400) {
+            res.resume();
+            return reject(new Error("HTTP_" + status));
+          }
+
+          const chunks = [];
+          res.on("data", (d) => chunks.push(d));
+          res.on("end", () => resolve(Buffer.concat(chunks)));
+        }
+      );
+      req.on("error", reject);
+      req.end();
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+async function httpGetText(url) {
+  const buf = await httpGetBuffer(url);
+  return buf.toString("utf-8");
+}
+
+function svgFallbackDataUri(text) {
+  const safe = String(text || "Saúde").slice(0, 60).replace(/[<>&]/g, "");
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <rect width="1024" height="1024" fill="#ffffff"/>
+  <rect x="40" y="40" width="944" height="944" rx="48" ry="48" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="6"/>
+  <text x="512" y="520" font-family="Calibri, Arial, sans-serif" font-size="64" text-anchor="middle" fill="#111827">${safe}</text>
+  <text x="512" y="610" font-family="Calibri, Arial, sans-serif" font-size="28" text-anchor="middle" fill="#6b7280">Educação em saúde</text>
+</svg>`;
+  const b64 = Buffer.from(svg, "utf-8").toString("base64");
+  return "data:image/svg+xml;base64," + b64;
+}
+
+function pickBestImageUrl(urls) {
+  const list = (urls || []).map(String).filter(Boolean);
+  if (!list.length) return "";
+
+  const bad = (u) => {
+    const x = u.toLowerCase();
+    return (
+      x.includes("logo") ||
+      x.includes("stripe") ||
+      x.includes("favicon") ||
+      x.includes("avatar") ||
+      x.includes("sprite")
+    );
+  };
+
+  const goodHost = (u) => {
+    const x = u.toLowerCase();
+    return x.includes("cdn.iconscout.com") || x.includes("cdnl.iconscout.com") || x.includes("iconscout.com");
+  };
+
+  const filtered = list.filter((u) => !bad(u));
+  const preferred = filtered.filter(goodHost);
+  return (preferred[0] || filtered[0] || list[0] || "");
+}
+
+async function fetchIconScoutImageDataUri(query) {
+  const term = String(query || "").trim() || "saude";
+  const slug = slugifyPt(term);
+  const listingUrl = `https://iconscout.com/pt/lottie-animations/${slug}`;
+
+  try {
+    const listingHtml = await httpGetText(listingUrl);
+
+    const linkMatch = listingHtml.match(/href="(\/pt\/lottie-animation\/[^"]+)"/i);
+    const animationUrl = linkMatch ? ("https://iconscout.com" + linkMatch[1]) : listingUrl;
+
+    const animHtml = await httpGetText(animationUrl);
+
+    const imgUrls = [];
+    const reImg = /(https?:\/\/[^"' ]+\.(?:png|jpg|jpeg|webp))/gi;
+    let m;
+    while ((m = reImg.exec(animHtml)) !== null) {
+      const u = m[1];
+      if (u && u.toLowerCase().includes("iconscout")) imgUrls.push(u);
+      if (imgUrls.length >= 40) break;
+    }
+
+    const best = pickBestImageUrl(imgUrls);
+    if (!best) {
+      return { image_data_uri: svgFallbackDataUri(term), fonte_url: animationUrl };
+    }
+
+    const buf = await httpGetBuffer(best);
+    const mime = guessMimeFromUrl(best);
+    const b64 = buf.toString("base64");
+    return { image_data_uri: `data:${mime};base64,${b64}`, fonte_url: animationUrl };
+  } catch (e) {
+    return { image_data_uri: svgFallbackDataUri(term), fonte_url: listingUrl };
+  }
+}
+
+function buildHealthEducationFallback(tema, publico, quantidade) {
+  const t = String(tema || "Saúde").trim();
+  const p = String(publico || "adultos").trim();
+
+  const base = [
+    { titulo: `O que é ${t}`, topicos: ["Definição simples", "Por que é importante", "Como afeta o dia a dia"] },
+    { titulo: "Fatores de risco", topicos: ["Principais fatores", "O que é modificável", "O que não é modificável"] },
+    { titulo: "Sinais e sintomas", topicos: ["Sinais iniciais", "Sinais de alerta", "Quando pode piorar"] },
+    { titulo: "Prevenção", topicos: ["Hábitos de vida", "Vacinas e prevenção específica (se aplicável)", "Redução de riscos"] },
+    { titulo: "Diagnóstico e acompanhamento", topicos: ["Como é avaliado", "Exames mais comuns (quando necessário)", "Acompanhamento na atenção básica"] },
+    { titulo: "Tratamento e condutas", topicos: ["Medidas não medicamentosas", "Tratamentos possíveis", "Adesão e metas práticas"] },
+    { titulo: "Quando procurar atendimento", topicos: ["Sinais de gravidade", "Retorno programado", "Encaminhamento quando indicado"] },
+    { titulo: "Mensagem final", topicos: ["Resumo em 3 pontos", "Plano prático para 7 dias", "Reforço de autocuidado"] }
+  ];
+
+  const slides = base.slice(0, Math.max(4, Math.min(12, parseInt(String(quantidade || 8), 10) || 8)));
+  const titulo_apresentacao = `Educação em saúde: ${t}`;
+  return { titulo_apresentacao, publico: p, slides };
 }
 
 // Função para chamar o modelo com imagem (data URL) e retornar JSON
@@ -4434,6 +4606,88 @@ app.post("/api/gerar-documento-medico", requirePaidOrAdmin, async (req, res) => 
 });
 
 // Guia em tempo real (tipo + até 5 perguntas) para documento médico durante a gravação
+// =========================
+// EDUCAÇÃO EM SAÚDE: planejar slides + imagens (retorna JSON para gerar PPTX no frontend)
+// =========================
+app.post("/api/educacao-em-saude/planejar", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const tema = String(req.body?.tema || "").trim();
+    const publico = String(req.body?.publico || "adultos").trim();
+    const quantidade_slides = Math.max(4, Math.min(12, parseInt(String(req.body?.quantidade_slides || 8), 10) || 8));
+
+    if (!tema || tema.length < 3) {
+      return res.status(400).json({ error: "Tema inválido." });
+    }
+
+    let plan = null;
+
+    // Tenta usar o modelo para estruturar os tópicos; se falhar, usa fallback determinístico.
+    try {
+      const prompt = `
+Crie um roteiro de apresentação em PowerPoint de educação em saúde.
+Idioma: português do Brasil.
+Tema: ${tema}
+Público-alvo: ${publico}
+Quantidade de slides (sem contar capa): ${quantidade_slides}
+
+Regras:
+- Texto objetivo, sem jargão excessivo.
+- Cada slide deve ter 3 a 5 tópicos curtos.
+- Para cada slide, forneça também um termo de pesquisa curto para buscar uma animação/imagem no IconScout (campo "termo_iconscout").
+
+Responda SOMENTE com um JSON válido neste formato:
+{
+  "titulo_apresentacao": "string",
+  "slides": [
+    {
+      "titulo": "string",
+      "topicos": ["string", "string"],
+      "termo_iconscout": "string"
+    }
+  ]
+}
+`;
+      plan = await callOpenAIJson(prompt, 2);
+    } catch (e) {
+      plan = null;
+    }
+
+    if (!plan || typeof plan !== "object" || !Array.isArray(plan.slides) || !plan.slides.length) {
+      plan = buildHealthEducationFallback(tema, publico, quantidade_slides);
+    }
+
+    const titulo_apresentacao = String(plan.titulo_apresentacao || `Educação em saúde: ${tema}`).trim();
+    const slidesRaw = Array.isArray(plan.slides) ? plan.slides : [];
+    const slidesTrimmed = slidesRaw.slice(0, quantidade_slides).map((s) => {
+      const titulo = String(s?.titulo || "").trim();
+      const topicos = Array.isArray(s?.topicos) ? s.topicos.map((x) => String(x || "").trim()).filter(Boolean) : [];
+      const termo = String(s?.termo_iconscout || titulo || tema).trim();
+      return { titulo, topicos, termo_iconscout: termo };
+    });
+
+    const slidesWithImages = [];
+    for (const s of slidesTrimmed) {
+      const img = await fetchIconScoutImageDataUri(s.termo_iconscout || tema);
+      slidesWithImages.push({
+        titulo: s.titulo || s.termo_iconscout || tema,
+        topicos: s.topicos && s.topicos.length ? s.topicos : ["Conteúdo não informado."],
+        image_data_uri: img.image_data_uri,
+        fonte_url: img.fonte_url
+      });
+    }
+
+    return res.json({
+      titulo_apresentacao,
+      publico,
+      tema,
+      slides: slidesWithImages
+    });
+  } catch (e) {
+    console.error("[EDU_HEALTH] erro:", e?.message || e);
+    return res.status(500).json({ error: "Erro ao planejar apresentação." });
+  }
+});
+
 app.post("/api/documento-medico-tempo-real", requirePaidOrAdmin, async (req, res) => {
   try {
     const { transcricao } = req.body || {};
@@ -5135,337 +5389,6 @@ Transcrição (trecho):
   }
 });
 
-
-
-
-// ======================================================================
-// EDUCAÇÃO EM SAÚDE (PowerPoint) + IconScout (Lottie/GIF)
-// - O frontend solicita um roteiro de slides ao backend.
-// - Para cada slide, o backend resolve um asset do IconScout e retorna:
-//   - gif_data_uri (preferencial) OU lottie_json (fallback).
-// Observação: o IconScout pode mudar estrutura interna. Por isso:
-// - O resolver tenta múltiplas estratégias e faz fallback para Lottie JSON.
-// ======================================================================
-
-function base64FromArrayBuffer(buf) {
-  const b = Buffer.from(buf);
-  return b.toString("base64");
-}
-
-function toDataUri(mime, base64) {
-  const m = String(mime || "application/octet-stream");
-  return `data:${m};base64,${base64}`;
-}
-
-function safeShortText(v, maxLen = 120) {
-  const s = String(v || "").trim();
-  return s.length > maxLen ? s.slice(0, maxLen) : s;
-}
-
-function isProbablyUrl(s) {
-  return /^https?:\/\//i.test(String(s || "").trim());
-}
-
-async function fetchTextRaw(url, timeoutMs = 18000) {
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const resp = await fetch(url, {
-      method: "GET",
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "text/html,application/json;q=0.9,*/*;q=0.8"
-      },
-      signal: controller.signal
-    });
-    const text = await resp.text();
-    return { ok: resp.ok, status: resp.status, text };
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-async function fetchArrayBufferRaw(url, timeoutMs = 20000) {
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const resp = await fetch(url, {
-      method: "GET",
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "*/*"
-      },
-      signal: controller.signal
-    });
-    const ab = await resp.arrayBuffer();
-    const ct = resp.headers.get("content-type") || "application/octet-stream";
-    return { ok: resp.ok, status: resp.status, arrayBuffer: ab, contentType: ct };
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-function pickFirst(list) {
-  return Array.isArray(list) && list.length ? list[0] : "";
-}
-
-function uniq(arr) {
-  const out = [];
-  const seen = new Set();
-  for (const x of (arr || [])) {
-    const s = String(x || "").trim();
-    if (!s) continue;
-    if (seen.has(s)) continue;
-    seen.add(s);
-    out.push(s);
-  }
-  return out;
-}
-
-function extractUrls(html, exts) {
-  const out = [];
-  const h = String(html || "");
-  const rx = /https?:\/\/[^\s"'<>]+/g;
-  const m = h.match(rx) || [];
-  for (const u of m) {
-    const lu = u.toLowerCase();
-    if (exts.some(e => lu.includes(e))) out.push(u);
-  }
-  return uniq(out);
-}
-
-function isIconScoutHost(url) {
-  try {
-    const u = new URL(url);
-    const h = u.hostname.toLowerCase();
-    if (h === "iconscout.com" || h.endsWith(".iconscout.com")) return true;
-    if (h.includes("iconscout")) return true;
-    return false;
-  } catch {
-    return false;
-  }
-}
-
-async function ddgSearchFirstIconScoutLottie(term) {
-  const q = encodeURIComponent(`site:iconscout.com lottie-animation ${term}`);
-  const url = `https://duckduckgo.com/html/?q=${q}`;
-  const { ok, text } = await fetchTextRaw(url, 18000);
-  if (!ok || !text) return "";
-
-  // DuckDuckGo HTML: <a rel="nofollow" class="result__a" href="...">
-  const rx = /class="result__a"[^>]*href="([^"]+)"/g;
-  let match;
-  const found = [];
-  while ((match = rx.exec(text)) !== null) {
-    const href = String(match[1] || "").trim();
-    if (!href) continue;
-    // alguns resultados vêm com redirecionador; tenta decodificar.
-    let finalUrl = href;
-    try {
-      const u = new URL(href);
-      if (u.hostname.toLowerCase().includes("duckduckgo.com") && u.searchParams.get("uddg")) {
-        finalUrl = decodeURIComponent(u.searchParams.get("uddg"));
-      }
-    } catch {}
-    if (finalUrl.includes("iconscout.com") && finalUrl.includes("/lottie-animation/")) {
-      found.push(finalUrl);
-    }
-    if (found.length >= 5) break;
-  }
-
-  // fallback: qualquer url do iconscout com lottie-animation
-  if (!found.length) {
-    const all = extractUrls(text, ["/lottie-animation/"]);
-    for (const u of all) {
-      if (u.includes("iconscout.com") && u.includes("/lottie-animation/")) return u;
-    }
-  }
-
-  return pickFirst(found);
-}
-
-function deepFindUrlsInJson(obj, predicate, acc) {
-  const a = acc || [];
-  if (obj == null) return a;
-  if (typeof obj === "string") {
-    const s = obj.trim();
-    if (predicate(s)) a.push(s);
-    return a;
-  }
-  if (Array.isArray(obj)) {
-    for (const it of obj) deepFindUrlsInJson(it, predicate, a);
-    return a;
-  }
-  if (typeof obj === "object") {
-    for (const k of Object.keys(obj)) {
-      deepFindUrlsInJson(obj[k], predicate, a);
-    }
-    return a;
-  }
-  return a;
-}
-
-function extractFromNextData(html) {
-  const h = String(html || "");
-  const rx = /<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i;
-  const m = h.match(rx);
-  if (!m || !m[1]) return null;
-  try {
-    return JSON.parse(m[1]);
-  } catch {
-    return null;
-  }
-}
-
-function pickBestUrl(urls, ext) {
-  const list = uniq(urls || []);
-  if (!list.length) return "";
-  const e = String(ext || "").toLowerCase();
-  // prioriza cdn + transparência quando disponível
-  const scored = list.map(u => {
-    const lu = u.toLowerCase();
-    let score = 0;
-    if (lu.includes("cdna.") || lu.includes("cdn.")) score += 5;
-    if (lu.includes("transparent")) score += 3;
-    if (lu.includes(".iconscout.")) score += 2;
-    if (e && lu.includes(e)) score += 2;
-    return { u, score };
-  }).sort((a,b) => b.score - a.score);
-  return scored[0].u || "";
-}
-
-async function resolveIconScoutAsset(termRaw) {
-  const term = safeShortText(termRaw, 90);
-  if (!term) return { error: "TERM_REQUIRED" };
-
-  const assetPage = await ddgSearchFirstIconScoutLottie(term);
-  if (!assetPage) return { error: "ASSET_NOT_FOUND" };
-
-  const pageResp = await fetchTextRaw(assetPage, 18000);
-  if (!pageResp.ok || !pageResp.text) return { error: "ASSET_PAGE_FETCH_FAILED", asset_page: assetPage };
-
-  const html = pageResp.text;
-
-  // tentativa 1: urls diretas no HTML
-  let gifUrls = extractUrls(html, [".gif"]);
-  let jsonUrls = extractUrls(html, [".json", ".lottie"]);
-
-  // tentativa 2: procurar em __NEXT_DATA__ (muito comum em sites Next.js)
-  const nextData = extractFromNextData(html);
-  if (nextData) {
-    const foundG = deepFindUrlsInJson(nextData, (s) => isProbablyUrl(s) && s.toLowerCase().includes(".gif"));
-    const foundJ = deepFindUrlsInJson(nextData, (s) => isProbablyUrl(s) && (s.toLowerCase().includes(".json") || s.toLowerCase().includes(".lottie")));
-    gifUrls = uniq(gifUrls.concat(foundG || []));
-    jsonUrls = uniq(jsonUrls.concat(foundJ || []));
-  }
-
-  const gifUrl = pickBestUrl(gifUrls, ".gif");
-  let jsonUrl = pickBestUrl(jsonUrls, ".json");
-  if (!jsonUrl) jsonUrl = pickBestUrl(jsonUrls, ".lottie");
-
-  // baixa GIF preferencialmente
-  if (gifUrl && isIconScoutHost(gifUrl)) {
-    const bin = await fetchArrayBufferRaw(gifUrl, 20000);
-    if (bin.ok && bin.arrayBuffer) {
-      return {
-        asset_page: assetPage,
-        gif_url: gifUrl,
-        gif_data_uri: toDataUri(bin.contentType || "image/gif", base64FromArrayBuffer(bin.arrayBuffer)),
-      };
-    }
-  }
-
-  // fallback: baixa Lottie JSON e retorna para o frontend renderizar em PNG
-  if (jsonUrl && isIconScoutHost(jsonUrl)) {
-    const txt = await fetchTextRaw(jsonUrl, 20000);
-    if (txt.ok && txt.text) {
-      try {
-        const parsed = JSON.parse(txt.text);
-        return {
-          asset_page: assetPage,
-          lottie_url: jsonUrl,
-          lottie_json: parsed
-        };
-      } catch {
-        // se não for JSON, retorna erro
-      }
-    }
-  }
-
-  return { error: "ASSET_RESOLVE_FAILED", asset_page: assetPage };
-}
-
-// Resolve um GIF (dataUri) ou Lottie JSON do IconScout a partir de um termo simples
-app.get("/api/iconscout/resolve", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const term = String(req.query.term || "").trim();
-    const out = await resolveIconScoutAsset(term);
-    if (out && out.error) {
-      const code = out.error === "TERM_REQUIRED" ? 400 : 404;
-      return res.status(code).json(out);
-    }
-    return res.json(out);
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha interna ao resolver asset do IconScout." });
-  }
-});
-
-// Planeja o roteiro (títulos, tópicos e termos de busca) para o PowerPoint
-app.post("/api/educacao-em-saude/planejar", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const tema = String(req.body?.tema || "").trim();
-    const publico = String(req.body?.publico_alvo || "").trim();
-    const nivel = String(req.body?.nivel || "basico").trim();
-    const quantidade = Math.max(4, Math.min(20, parseInt(String(req.body?.quantidade_slides || 10), 10) || 10));
-
-    if (!tema) return res.status(400).json({ error: "Tema é obrigatório." });
-
-    const prompt = `
-Você é um médico experiente criando material de Educação em Saúde em português do Brasil.
-
-Gere um roteiro para uma apresentação de PowerPoint com o tema: "${tema}".
-Público-alvo: "${publico || "não especificado"}".
-Nível: "${nivel}".
-Quantidade de slides (excluindo a capa): ${quantidade}.
-
-Regras obrigatórias:
-- Responda SOMENTE com JSON válido (sem markdown).
-- O JSON deve ter: tema, publico_alvo, nivel, slides.
-- "slides" deve ser uma lista com exatamente ${quantidade} itens.
-- Cada slide deve conter:
-  - titulo (string curta)
-  - topicos (3 a 6 tópicos curtos, linguagem didática, objetiva)
-  - termos_iconscout (lista com 1 a 2 termos simples para buscar animações no IconScout Lottie, em português ou inglês, coerentes com o conteúdo do slide)
-- Evite promessas/afirmações absolutas de eficácia. Use recomendações de saúde pública amplamente aceitas.
-- Para slides de condutas, priorize prevenção, sinais de alarme e quando procurar atendimento.
-    `.trim();
-
-    const plan = await callOpenAIJson(prompt, 3);
-
-    // validação mínima para estabilidade do frontend
-    const slides = Array.isArray(plan?.slides) ? plan.slides : [];
-    const fixedSlides = slides.slice(0, quantidade).map((s, i) => {
-      const titulo = String(s?.titulo || `Slide ${i+1}`).trim();
-      const topicos = Array.isArray(s?.topicos) ? s.topicos.map(x => String(x||"").trim()).filter(Boolean).slice(0,6) : [];
-      const termos = Array.isArray(s?.termos_iconscout) ? s.termos_iconscout.map(x => String(x||"").trim()).filter(Boolean).slice(0,2) : [];
-      return { titulo, topicos: topicos.length ? topicos : ["Conteúdo a revisar."], termos_iconscout: termos.length ? termos : [titulo] };
-    });
-
-    return res.json({
-      tema,
-      publico_alvo: publico,
-      nivel,
-      slides: fixedSlides
-    });
-  } catch (e) {
-    console.error(e);
-    if (e && e.code === "OPENAI_API_KEY_MISSING") {
-      return res.status(400).json({ error: "OPENAI_API_KEY não configurada no backend." });
-    }
-    return res.status(500).json({ error: "Falha interna ao planejar slides de Educação em Saúde." });
-  }
-});
 
 
 
