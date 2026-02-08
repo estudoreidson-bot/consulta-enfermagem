@@ -4559,367 +4559,6 @@ app.post("/api/guia-documento-tempo-real", requirePaidOrAdmin, async (req, res) 
 });
 
 
-// ======================================================================
-// MÓDULO: Educação em Saúde (SlideShare)
-// - Busca por termo
-// - Carrega apresentação via oEmbed
-// - Exporta imagens em ZIP (armazenamento sem compressão) com um README "Gerado por ReiMed"
-// Observação: o sistema mantém referência da fonte e do autor original.
-// ======================================================================
-
-function sanitizeFilenamePart(input, maxLen = 80) {
-  const s = String(input || "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9\-_. ]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-  return (s || "arquivo").slice(0, maxLen);
-}
-
-function isLikelySlideshareUrl(u) {
-  try {
-    const url = new URL(String(u || ""));
-    const host = (url.host || "").toLowerCase();
-    return host.endsWith("slideshare.net") || host.endsWith("slideshare.com");
-  } catch {
-    return false;
-  }
-}
-
-async function slideshareOembed(presentationUrl) {
-  const u = String(presentationUrl || "").trim();
-  if (!isLikelySlideshareUrl(u)) {
-    throw new Error("URL inválida. Use um link do SlideShare.");
-  }
-  const endpoint = "https://www.slideshare.net/api/oembed/2?format=json&url=" + encodeURIComponent(u);
-  const resp = await fetch(endpoint, {
-    method: "GET",
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; ReiMed/1.0; +https://reimed.netlify.app/)"
-    }
-  });
-  if (!resp.ok) {
-    const t = await resp.text().catch(() => "");
-    throw new Error(t || "Falha ao obter oEmbed do SlideShare.");
-  }
-  return await resp.json();
-}
-
-function extractSlideImageUrlsFromHtml(html) {
-  const src = String(html || "");
-  const re = /https?:\/\/image\.slidesharecdn\.com\/[^"'\s]+?\.(?:jpg|jpeg|png)(?:\?[^"'\s]*)?/ig;
-  const out = [];
-  const seen = new Set();
-  let m;
-  while ((m = re.exec(src)) !== null) {
-    const url = m[0];
-    if (!seen.has(url)) {
-      seen.add(url);
-      out.push(url);
-    }
-  }
-  return out;
-}
-
-function extractPossibleDownloadsFromHtml(html) {
-  const src = String(html || "");
-  const links = [];
-  const seen = new Set();
-
-  // tenta capturar links explícitos
-  const hrefRe = /href\s*=\s*"([^"]+)"/ig;
-  let m;
-  while ((m = hrefRe.exec(src)) !== null) {
-    const href = String(m[1] || "").trim();
-    if (!href) continue;
-    const lower = href.toLowerCase();
-    if (!(lower.includes("download") || lower.endsWith(".ppt") || lower.endsWith(".pptx") || lower.endsWith(".pdf"))) continue;
-    if (seen.has(href)) continue;
-    seen.add(href);
-    links.push(href);
-  }
-
-  const pick = (ext) => {
-    const h = links.find((x) => String(x).toLowerCase().endsWith(ext));
-    return h || "";
-  };
-
-  const pptxUrl = pick(".pptx") || pick(".ppt") || (links.find((x) => String(x).toLowerCase().includes("download")) || "");
-  const pdfUrl = pick(".pdf") || "";
-  return { pptxUrl, pdfUrl };
-}
-
-// CRC32 (para ZIP sem compressão)
-const _CRC32_TABLE = (() => {
-  const table = new Uint32Array(256);
-  for (let i = 0; i < 256; i++) {
-    let c = i;
-    for (let k = 0; k < 8; k++) {
-      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
-    }
-    table[i] = c >>> 0;
-  }
-  return table;
-})();
-
-function crc32(buf) {
-  let crc = 0xFFFFFFFF;
-  for (let i = 0; i < buf.length; i++) {
-    const b = buf[i];
-    crc = _CRC32_TABLE[(crc ^ b) & 0xFF] ^ (crc >>> 8);
-  }
-  return (crc ^ 0xFFFFFFFF) >>> 0;
-}
-
-function zipStore(files) {
-  // files: [{ name: string, data: Buffer }]
-  const localParts = [];
-  const centralParts = [];
-  let offset = 0;
-
-  const writeUInt16LE = (n) => {
-    const b = Buffer.alloc(2);
-    b.writeUInt16LE(n & 0xFFFF, 0);
-    return b;
-  };
-  const writeUInt32LE = (n) => {
-    const b = Buffer.alloc(4);
-    b.writeUInt32LE(n >>> 0, 0);
-    return b;
-  };
-
-  for (const f of files) {
-    const name = Buffer.from(String(f.name || "file"), "utf8");
-    const data = Buffer.isBuffer(f.data) ? f.data : Buffer.from(f.data || "");
-    const crc = crc32(data);
-    const size = data.length;
-
-    // Local file header
-    const localHeader = Buffer.concat([
-      writeUInt32LE(0x04034b50),
-      writeUInt16LE(20),
-      writeUInt16LE(0),
-      writeUInt16LE(0),
-      writeUInt16LE(0),
-      writeUInt16LE(0),
-      writeUInt32LE(crc),
-      writeUInt32LE(size),
-      writeUInt32LE(size),
-      writeUInt16LE(name.length),
-      writeUInt16LE(0)
-    ]);
-
-    localParts.push(localHeader, name, data);
-
-    // Central directory header
-    const centralHeader = Buffer.concat([
-      writeUInt32LE(0x02014b50),
-      writeUInt16LE(20),
-      writeUInt16LE(20),
-      writeUInt16LE(0),
-      writeUInt16LE(0),
-      writeUInt16LE(0),
-      writeUInt16LE(0),
-      writeUInt32LE(crc),
-      writeUInt32LE(size),
-      writeUInt32LE(size),
-      writeUInt16LE(name.length),
-      writeUInt16LE(0),
-      writeUInt16LE(0),
-      writeUInt16LE(0),
-      writeUInt16LE(0),
-      writeUInt32LE(0),
-      writeUInt32LE(offset)
-    ]);
-    centralParts.push(centralHeader, name);
-
-    offset += localHeader.length + name.length + size;
-  }
-
-  const centralStart = offset;
-  const centralData = Buffer.concat(centralParts);
-  offset += centralData.length;
-
-  const end = Buffer.concat([
-    writeUInt32LE(0x06054b50),
-    writeUInt16LE(0),
-    writeUInt16LE(0),
-    writeUInt16LE(files.length),
-    writeUInt16LE(files.length),
-    writeUInt32LE(centralData.length),
-    writeUInt32LE(centralStart),
-    writeUInt16LE(0)
-  ]);
-
-  return Buffer.concat([...localParts, centralData, end]);
-}
-
-async function fetchText(url) {
-  const resp = await fetch(url, {
-    method: "GET",
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; ReiMed/1.0; +https://reimed.netlify.app/)"
-    }
-  });
-  if (!resp.ok) throw new Error("Falha ao baixar conteúdo.");
-  return await resp.text();
-}
-
-async function fetchBuffer(url) {
-  const resp = await fetch(url, {
-    method: "GET",
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; ReiMed/1.0; +https://reimed.netlify.app/)"
-    }
-  });
-  if (!resp.ok) throw new Error("Falha ao baixar imagem.");
-  const arr = await resp.arrayBuffer();
-  return Buffer.from(arr);
-}
-
-app.get("/api/educacao-saude/search", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const q = String(req.query.q || "").trim();
-    if (!q) return res.status(400).json({ error: "Parâmetro q é obrigatório." });
-
-    const searchUrl = "https://pt.slideshare.net/search/slideshow?searchfrom=header&q=" + encodeURIComponent(q);
-    const html = await fetchText(searchUrl);
-
-    // Parser simples (pode variar conforme o SlideShare). Mantém resultados básicos; usuário pode colar URL se necessário.
-    const items = [];
-    const seen = new Set();
-    const linkRe = /href\s*=\s*"(\/[^\"]+)"/ig;
-    let m;
-    while ((m = linkRe.exec(html)) !== null) {
-      const path = String(m[1] || "");
-      if (!path) continue;
-      if (!path.includes("/slideshow/")) continue;
-      const url = "https://pt.slideshare.net" + path;
-      if (seen.has(url)) continue;
-      seen.add(url);
-      items.push({ title: "Apresentação", url, thumbnail: "" });
-      if (items.length >= 12) break;
-    }
-
-    // tenta enriquecer com oEmbed (melhor título/thumb) para os primeiros links
-    const enriched = [];
-    for (const it of items.slice(0, 6)) {
-      try {
-        const oe = await slideshareOembed(it.url);
-        enriched.push({
-          title: oe.title || it.title,
-          url: it.url,
-          thumbnail: oe.thumbnail_url || ""
-        });
-      } catch {
-        enriched.push(it);
-      }
-    }
-    const remaining = items.slice(enriched.length);
-    const out = enriched.concat(remaining);
-
-    return res.json({ count: out.length, items: out });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha ao buscar no SlideShare." });
-  }
-});
-
-app.post("/api/educacao-saude/import", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const url = String(req.body?.url || "").trim();
-    if (!url) return res.status(400).json({ error: "URL é obrigatória." });
-
-    const oe = await slideshareOembed(url);
-    const title = String(oe.title || "").trim();
-    const author = String(oe.author_name || "").trim();
-    const provider = String(oe.provider_name || "SlideShare").trim();
-
-    // tenta extrair imagens a partir da página do SlideShare
-    let html = "";
-    let slideImages = [];
-    try {
-      html = await fetchText(url);
-      slideImages = extractSlideImageUrlsFromHtml(html);
-    } catch {
-      slideImages = [];
-    }
-
-    // tenta achar links de download (se existirem explicitamente)
-    const dl = html ? extractPossibleDownloadsFromHtml(html) : { pptxUrl: "", pdfUrl: "" };
-
-    return res.json({
-      provider,
-      sourceUrl: url,
-      title: title || "Apresentação",
-      author,
-      embedHtml: oe.html || "",
-      thumbnailUrl: oe.thumbnail_url || "",
-      slideImages: slideImages.slice(0, 120),
-      download: { pptxUrl: dl.pptxUrl || "", pdfUrl: dl.pdfUrl || "" }
-    });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Falha ao carregar a apresentação do SlideShare." });
-  }
-});
-
-app.post("/api/educacao-saude/download/images-zip", requirePaidOrAdmin, async (req, res) => {
-  try {
-    const url = String(req.body?.url || "").trim();
-    if (!url) return res.status(400).send("URL é obrigatória.");
-
-    const oe = await slideshareOembed(url);
-    const title = String(oe.title || "Apresentacao").trim();
-    const author = String(oe.author_name || "").trim();
-
-    const html = await fetchText(url);
-    const slideImages = extractSlideImageUrlsFromHtml(html).slice(0, 60);
-    if (!slideImages.length) {
-      return res.status(422).send("Não foi possível obter as imagens dos slides desta apresentação.");
-    }
-
-    // baixa imagens (limite de tamanho para evitar abuso)
-    const files = [];
-    let totalBytes = 0;
-    for (let i = 0; i < slideImages.length; i++) {
-      const imgUrl = slideImages[i];
-      const buf = await fetchBuffer(imgUrl);
-      totalBytes += buf.length;
-      if (totalBytes > 35 * 1024 * 1024) {
-        break;
-      }
-      const ext = (imgUrl.toLowerCase().includes(".png") ? "png" : "jpg");
-      const name = String(i + 1).padStart(2, "0") + "-slide." + ext;
-      files.push({ name, data: buf });
-    }
-
-    const readme = [
-      "Gerado por ReiMed",
-      "",
-      "Fonte: " + url,
-      (title ? ("Titulo: " + title) : ""),
-      (author ? ("Autor original: " + author) : ""),
-      "",
-      "Observacao: o conteudo original e publico no SlideShare, mas direitos autorais permanecem com o autor/publicador."
-    ].filter(Boolean).join("\n");
-
-    files.unshift({ name: "reimed-gerado-por-reimed.txt", data: Buffer.from(readme, "utf8") });
-
-    const zip = zipStore(files);
-    const fname = "reimed-" + sanitizeFilenamePart(title || "apresentacao") + ".zip";
-    res.setHeader("Content-Type", "application/zip");
-    res.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodeURIComponent(fname));
-    return res.send(zip);
-  } catch (e) {
-    console.error(e);
-    return res.status(500).send("Falha ao gerar ZIP de imagens.");
-  }
-});
-
-
 
 
 
@@ -5497,6 +5136,238 @@ Transcrição (trecho):
 });
 
 
+
+
+
+// ======================================================================
+// MÓDULO: EDUCAÇÃO EM SAÚDE (APRESENTAÇÃO EM SLIDES)
+// - Gera um roteiro de slides com linguagem prática
+// - Para cada slide, busca na internet pelo menos 1 mídia (GIF ou imagem)
+//   relacionada ao tema (Wikimedia Commons).
+// - O frontend pode pré-visualizar e exportar para PPTX (no navegador).
+// ======================================================================
+
+const EDU_FALLBACK_MEDIA_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Red_Cross.svg/1024px-Red_Cross.svg.png";
+
+function clampInt(n, min, max) {
+  const v = parseInt(String(n ?? ""), 10);
+  if (Number.isNaN(v)) return min;
+  return Math.max(min, Math.min(max, v));
+}
+
+function pickFirstValue(obj) {
+  if (!obj || typeof obj !== "object") return null;
+  for (const k of Object.keys(obj)) return obj[k];
+  return null;
+}
+
+async function commonsSearchTitles(searchTerm, limit = 10) {
+  const term = normalizeText(String(searchTerm || ""), 180);
+  if (!term) return [];
+  const url = "https://commons.wikimedia.org/w/api.php"
+    + "?action=query"
+    + "&list=search"
+    + "&srsearch=" + encodeURIComponent(term)
+    + "&srnamespace=6"
+    + "&srlimit=" + encodeURIComponent(String(Math.max(1, Math.min(20, limit))))
+    + "&format=json"
+    + "&origin=*";
+
+  const r = await fetch(url, { method: "GET", headers: { "User-Agent": "QueimadasTelemedicina/1.0" } });
+  if (!r.ok) return [];
+  const data = await r.json().catch(() => null);
+  const arr = Array.isArray(data?.query?.search) ? data.query.search : [];
+  return arr.map(x => String(x?.title || "").trim()).filter(Boolean);
+}
+
+async function commonsImageInfo(title) {
+  const t = normalizeText(String(title || ""), 240);
+  if (!t) return null;
+
+  const url = "https://commons.wikimedia.org/w/api.php"
+    + "?action=query"
+    + "&titles=" + encodeURIComponent(t)
+    + "&prop=imageinfo"
+    + "&iiprop=url|mime"
+    + "&iiurlwidth=1400"
+    + "&format=json"
+    + "&origin=*";
+
+  const r = await fetch(url, { method: "GET", headers: { "User-Agent": "QueimadasTelemedicina/1.0" } });
+  if (!r.ok) return null;
+  const data = await r.json().catch(() => null);
+  const page = pickFirstValue(data?.query?.pages);
+  const ii = Array.isArray(page?.imageinfo) ? page.imageinfo[0] : null;
+  if (!ii) return null;
+
+  const mediaUrl = (typeof ii.thumburl === "string" && ii.thumburl) ? ii.thumburl
+    : (typeof ii.url === "string" && ii.url) ? ii.url
+    : "";
+
+  const mime = (typeof ii.mime === "string" ? ii.mime : "");
+  if (!mediaUrl) return null;
+
+  return { url: mediaUrl, mime, title: t, source: "Wikimedia Commons" };
+}
+
+async function buscarMidiaInternetCommons(busca) {
+  const q = normalizeText(String(busca || ""), 180);
+  const queries = [
+    q ? (q + " animated gif") : "",
+    q ? (q + " gif") : "",
+    q
+  ].filter(Boolean);
+
+  for (const term of queries) {
+    try {
+      const titles = await commonsSearchTitles(term, 12);
+      if (!titles.length) continue;
+
+      // 1) tenta GIF primeiro
+      const gifTitle = titles.find(t => /(\.gif)$/i.test(t) || /File:.*gif/i.test(t));
+      if (gifTitle) {
+        const info = await commonsImageInfo(gifTitle);
+        if (info?.url) return info;
+      }
+
+      // 2) fallback: primeiro resultado que tenha URL
+      for (const t of titles.slice(0, 6)) {
+        const info = await commonsImageInfo(t);
+        if (info?.url) return info;
+      }
+    } catch {}
+  }
+
+  return { url: EDU_FALLBACK_MEDIA_URL, mime: "image/png", title: "fallback", source: "Wikimedia Commons" };
+}
+
+async function gerarApresentacaoEducacaoSaude(tema, publicoAlvo, numeroSlides) {
+  const temaNorm = normalizeText(String(tema || ""), 180);
+  const publicoNorm = normalizeText(String(publicoAlvo || ""), 180) || "Usuários da unidade";
+  const n = clampInt(numeroSlides, 3, 12);
+
+  const prompt = `
+Você é especialista em Educação em Saúde para Atenção Primária.
+Gere o roteiro de uma apresentação em slides para ser usada por um enfermeiro.
+
+Tema: "${temaNorm}"
+Público-alvo: "${publicoNorm}"
+Quantidade de slides: ${n}
+
+Regras críticas:
+1) Cada slide deve ter "titulo" e entre 3 e 5 "topicos".
+2) Cada tópico deve ter: "titulo" (frase curta) e "resumo" (1-2 linhas).
+3) Cada slide deve ter "busca_midia" com termos claros para buscar na internet uma imagem ou GIF relacionado ao conteúdo do slide.
+4) Não prescreva medicamentos. Foque educação, prevenção, orientação prática, sinais de alerta e quando buscar atendimento.
+
+Responda SOMENTE com JSON no formato exato:
+{
+  "tema": "...",
+  "publico_alvo": "...",
+  "slides": [
+    {
+      "titulo": "...",
+      "topicos": [{"titulo":"...","resumo":"..."}],
+      "busca_midia": "..."
+    }
+  ]
+}
+`.trim();
+
+  const out = await callOpenAIJson(prompt, 3);
+
+  const slides = Array.isArray(out?.slides) ? out.slides : [];
+  const cleanedSlides = slides.map(s => ({
+    titulo: normalizeText(String(s?.titulo || ""), 120),
+    topicos: Array.isArray(s?.topicos) ? s.topicos.slice(0, 6).map(t => ({
+      titulo: normalizeText(String(t?.titulo || ""), 120),
+      resumo: normalizeText(String(t?.resumo || ""), 320)
+    })).filter(t => t.titulo || t.resumo) : [],
+    busca_midia: normalizeText(String(s?.busca_midia || ""), 200)
+  })).filter(s => s.titulo);
+
+  const finalSlides = [];
+  for (const s of cleanedSlides.slice(0, n)) {
+    const busca = s.busca_midia || `${temaNorm} ${s.titulo}`;
+    const midia = await buscarMidiaInternetCommons(busca);
+    finalSlides.push({ ...s, midia });
+  }
+
+  while (finalSlides.length < n) {
+    const i = finalSlides.length + 1;
+    const titulo = `Slide ${i}`;
+    const midia = await buscarMidiaInternetCommons(`${temaNorm} ${titulo}`);
+    finalSlides.push({
+      titulo,
+      topicos: [{ titulo: "Ponto principal", resumo: "Ajuste este slide conforme a necessidade do público-alvo." }],
+      busca_midia: `${temaNorm} ${titulo}`,
+      midia
+    });
+  }
+
+  return {
+    tema: temaNorm,
+    publico_alvo: publicoNorm,
+    slides: finalSlides
+  };
+}
+
+app.post("/api/educacao-saude/apresentacao", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const tema = normalizeText(req?.body?.tema, 180);
+    const publico_alvo = normalizeText(req?.body?.publico_alvo, 180);
+    const numero_slides = req?.body?.numero_slides;
+
+    if (!tema) {
+      return res.status(400).json({ error: "Informe o assunto (tema) para gerar a apresentação." });
+    }
+
+    const payload = await gerarApresentacaoEducacaoSaude(tema, publico_alvo, numero_slides);
+    return res.json(payload);
+  } catch (e) {
+    console.error(e);
+    const code = e?.code || "";
+    if (code === "OPENAI_API_KEY_MISSING") {
+      return res.status(500).json({ error: "Configuração ausente: OPENAI_API_KEY." });
+    }
+    return res.status(500).json({ error: "Falha ao gerar a apresentação." });
+  }
+});
+
+// Proxy seguro para baixar mídia (evita CORS no frontend e reduz SSRF)
+app.get("/api/proxy", requirePaidOrAdmin, async (req, res) => {
+  try {
+    const raw = String(req.query.url || "").trim();
+    if (!raw) return res.status(400).send("missing url");
+
+    let u = null;
+    try { u = new URL(raw); } catch { return res.status(400).send("invalid url"); }
+
+    const allowedHosts = new Set([
+      "upload.wikimedia.org",
+      "commons.wikimedia.org"
+    ]);
+
+    if (!allowedHosts.has(String(u.hostname || "").toLowerCase())) {
+      return res.status(403).send("host not allowed");
+    }
+
+    const r = await fetch(u.toString(), { method: "GET", headers: { "User-Agent": "QueimadasTelemedicina/1.0" } });
+    if (!r.ok) return res.status(502).send("fetch failed");
+
+    const ct = r.headers.get("content-type") || "application/octet-stream";
+    res.setHeader("Content-Type", ct);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+
+    const ab = await r.arrayBuffer();
+    if (ab.byteLength > 5 * 1024 * 1024) return res.status(413).send("payload too large");
+
+    return res.status(200).send(Buffer.from(ab));
+  } catch (e) {
+    console.error(e);
+    return res.status(500).send("proxy error");
+  }
+});
 
 
 // ======================================================================

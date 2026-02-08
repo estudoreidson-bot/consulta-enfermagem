@@ -2274,6 +2274,43 @@
 .rx-link-btn:hover {
   background: rgba(255,255,255,0.1);
 }
+
+/* MÓDULO: Educação em Saúde (slides) */
+.education-form { width: 100%; }
+.education-grid { display: grid; grid-template-columns: 1fr; gap: 10px; width: 100%; }
+@media (min-width: 720px) { .education-grid { grid-template-columns: 2fr 1fr 1fr; } }
+.education-field label { display: block; font-weight: 700; margin: 2px 0 6px 0; }
+.education-field input { width: 100%; }
+.education-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.education-deck-wrap { margin-top: 12px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); border-radius: 14px; padding: 12px; }
+.education-deck-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.education-deck-title { font-weight: 800; }
+.education-deck-nav { display: flex; align-items: center; gap: 10px; }
+.education-deck-counter { font-weight: 700; opacity: 0.85; }
+.education-slide-stage { margin-top: 10px; }
+.education-slide { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
+@media (min-width: 860px) { .education-slide { grid-template-columns: 1.2fr 0.8fr; } }
+.education-slide h2 { margin: 0 0 8px 0; color: #b00020; font-size: 22px; }
+.education-slide ul { margin: 0; padding-left: 18px; }
+.education-slide li { margin: 8px 0; }
+.education-topic-title { color: #b00020; font-weight: 800; }
+.education-topic-text { color: #111; font-weight: 600; }
+.education-media { width: 100%; }
+.education-media img { width: 100%; height: auto; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); background: #fff; }
+.education-thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.education-thumb { border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); padding: 8px 10px; border-radius: 10px; cursor: pointer; font-weight: 700; }
+.education-thumb.active { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.32); }
+.education-fullscreen { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 9999; display: none; }
+.education-fullscreen.open { display: flex; flex-direction: column; }
+.education-fullscreen-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.18); }
+.education-fullscreen-title { color: #fff; font-weight: 800; }
+.education-fullscreen-close { border: 1px solid rgba(255,255,255,0.28); background: rgba(255,255,255,0.08); color: #fff; padding: 10px 12px; border-radius: 10px; cursor: pointer; font-weight: 700; }
+.education-fullscreen-close:hover { background: rgba(255,255,255,0.14); }
+.education-fullscreen-body { padding: 16px; overflow: auto; }
+.education-fullscreen-stage { max-width: 1100px; margin: 0 auto; }
+.education-fullscreen-stage .education-slide { background: #fff; border-radius: 14px; padding: 16px; }
+
+
 </style>
 </head>
 <body>
@@ -3005,6 +3042,58 @@
           <div class="roster-table-wrap roster-desktop-only">
             <table id="rosterSummaryOut" class="roster-table"></table>
           </div>
+        </div>
+      </div>
+
+
+      <div class="module-divider"></div>
+      <p class="module-title">Educação em Saúde</p>
+      <p class="module-subtitle">Digite o tema e gere uma apresentação em slides. Cada slide sempre inclui pelo menos uma imagem ou GIF relacionado ao tema, buscado na internet.</p>
+
+      <div class="education-form">
+        <div class="education-grid">
+          <div class="education-field">
+            <label for="eduTopic">Assunto</label>
+            <input id="eduTopic" type="text" placeholder="Ex.: Higienização das mãos na Atenção Primária" />
+          </div>
+          <div class="education-field">
+            <label for="eduAudience">Público-alvo</label>
+            <input id="eduAudience" type="text" value="Usuários da unidade" />
+          </div>
+          <div class="education-field">
+            <label for="eduSlides">Quantidade de slides</label>
+            <input id="eduSlides" type="number" min="3" max="12" value="6" />
+          </div>
+        </div>
+
+        <div class="education-actions">
+          <button id="eduGenerateBtn" type="button" class="auth-btn">Gerar apresentação</button>
+          <button id="eduFullscreenBtn" type="button" class="auth-btn outline" disabled>Tela cheia</button>
+          <button id="eduDownloadPptxBtn" type="button" class="auth-btn outline" disabled>Baixar PPTX</button>
+        </div>
+        <div id="eduStatus" class="mini-status"></div>
+      </div>
+
+      <div id="eduDeckWrap" class="education-deck-wrap hidden">
+        <div class="education-deck-header">
+          <div class="education-deck-title" id="eduDeckTitle"></div>
+          <div class="education-deck-nav">
+            <button id="eduPrevBtn" type="button" class="secondary">Anterior</button>
+            <div class="education-deck-counter" id="eduCounter"></div>
+            <button id="eduNextBtn" type="button" class="secondary">Próximo</button>
+          </div>
+        </div>
+        <div id="eduSlideStage" class="education-slide-stage"></div>
+        <div id="eduThumbs" class="education-thumbs"></div>
+      </div>
+
+      <div id="eduFullscreen" class="education-fullscreen" aria-hidden="true">
+        <div class="education-fullscreen-top">
+          <div id="eduFullscreenTitle" class="education-fullscreen-title"></div>
+          <button id="eduFullscreenClose" type="button" class="education-fullscreen-close">Fechar</button>
+        </div>
+        <div class="education-fullscreen-body">
+          <div id="eduFullscreenStage" class="education-fullscreen-stage"></div>
         </div>
       </div>
 
@@ -3809,41 +3898,7 @@
 
 
 
-    <div id="healthEduCard" class="module-card">
-      <h2>Educação em Saúde (apresentações prontas)</h2>
-      <p class="mini-status" style="margin-top: 0;">
-        Busque apresentações públicas no SlideShare e incorpore para uso em sala de espera, grupos educativos ou consulta.
-        O sistema exibe a fonte e o autor original. As exportações geradas pelo sistema incluem a marca "Gerado por ReiMed".
-      </p>
-
-      <div class="inline-input-row">
-        <input id="eduSearchQuery" class="text-input" type="text" placeholder="Buscar no SlideShare (ex.: hipertensão, diabetes, dengue, vacinação...)" />
-        <button id="eduSearchBtn" class="btn-print" type="button">Buscar</button>
-      </div>
-      <div id="eduSearchStatus" class="mini-status"></div>
-      <div id="eduSearchResults" class="answer-box" style="padding: 10px; min-height: 58px;"></div>
-
-      <div class="module-divider" style="margin: 16px 0;"></div>
-
-      <div class="inline-input-row">
-        <input id="eduUrlInput" class="text-input" type="text" placeholder="Cole o link da apresentação (SlideShare)" />
-        <button id="eduLoadBtn" class="btn-print" type="button">Carregar</button>
-      </div>
-
-      <div id="eduImportStatus" class="mini-status"></div>
-      <div id="eduMeta" class="answer-box" style="margin-top: 8px; min-height: 44px;"></div>
-
-      <div id="eduPreviewMount" class="classification-box" style="margin-top: 12px; padding: 10px; display: none;"></div>
-
-      <div class="inline-input-row" style="margin-top: 10px; gap: 10px; flex-wrap: wrap;">
-        <button id="eduDownloadImagesBtn" class="btn-print" type="button" disabled>Baixar imagens (ZIP)</button>
-        <button id="eduDownloadPptBtn" class="btn-print" type="button" disabled>Baixar PPTX</button>
-        <button id="eduDownloadPdfBtn" class="btn-print" type="button" disabled>Baixar PDF</button>
-      </div>
-    </div>
-
-
-                <div id="patientReportCard" class="module-card">
+                <div id="patientReportCard" class="module-card hidden">
       <h2>Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado de comparecimento ou permanência / ATA reunião / Registros de procedimentos</h2>
       <p class="mini-status" style="margin-top: 0;">
         Grave em voz alta o conteúdo do documento. Diga claramente qual documento deseja produzir (por exemplo: declaração de comparecimento, relatório de curativo seriado, encaminhamento para CAPS, solicitação de insumos, comunicado para escola, ata de reunião). Ao encerrar
@@ -5239,23 +5294,6 @@ if (!handoffMode) {
     const closeDocsGuideBtn = document.getElementById("closeDocsGuideBtn");
 
     const patientReportCard = document.getElementById("patientReportCard");
-
-    // MÓDULO: Educação em Saúde (SlideShare)
-    const healthEduCard = document.getElementById("healthEduCard");
-    const eduSearchQuery = document.getElementById("eduSearchQuery");
-    const eduSearchBtn = document.getElementById("eduSearchBtn");
-    const eduSearchStatus = document.getElementById("eduSearchStatus");
-    const eduSearchResults = document.getElementById("eduSearchResults");
-    const eduUrlInput = document.getElementById("eduUrlInput");
-    const eduLoadBtn = document.getElementById("eduLoadBtn");
-    const eduImportStatus = document.getElementById("eduImportStatus");
-    const eduMeta = document.getElementById("eduMeta");
-    const eduPreviewMount = document.getElementById("eduPreviewMount");
-    const eduDownloadImagesBtn = document.getElementById("eduDownloadImagesBtn");
-    const eduDownloadPptBtn = document.getElementById("eduDownloadPptBtn");
-    const eduDownloadPdfBtn = document.getElementById("eduDownloadPdfBtn");
-
-    let eduLastImport = null;
 
     const handoffPanel = document.getElementById("handoffPanel");
     const handoffOutput = document.getElementById("handoffOutput");
@@ -11175,220 +11213,6 @@ if (handoffAskQuestionsBtn) {
         openPrintWindow("Documento", t);
       });
     }
-
-    // Educação em Saúde (SlideShare)
-    function eduSetStatus(el, msg) {
-      if (!el) return;
-      el.textContent = String(msg || "");
-    }
-
-    function eduSafeText(s) {
-      return String(s ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
-    function renderEduResults(items) {
-      if (!eduSearchResults) return;
-      const list = Array.isArray(items) ? items : [];
-      if (!list.length) {
-        eduSearchResults.innerHTML = "Nenhum resultado encontrado.";
-        return;
-      }
-
-      const rows = list.slice(0, 12).map((it, idx) => {
-        const title = eduSafeText(it.title || it.name || "Apresentação");
-        const url = eduSafeText(it.url || "");
-        const thumb = eduSafeText(it.thumbnail || it.thumbnail_url || "");
-
-        const img = thumb ? `<img src="${thumb}" alt="${title}" style="width: 96px; height: 54px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb;" />` : `<div style="width: 96px; height: 54px; border-radius: 8px; border: 1px solid #e5e7eb; background: #f3f4f6;"></div>`;
-
-        return `
-          <div style="display: flex; gap: 10px; align-items: center; padding: 10px; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 10px; background: white;">
-            ${img}
-            <div style="flex: 1; min-width: 0;">
-              <div style="font-weight: 700; color: #111827; font-size: 14px; line-height: 1.2;">${title}</div>
-              <div style="font-size: 12px; color: #374151; word-break: break-all;">${url}</div>
-              <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
-                <button type="button" class="btn-print" data-edu-open="${url}">Abrir</button>
-                <button type="button" class="btn-print" data-edu-load="${url}">Carregar</button>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join("");
-
-      eduSearchResults.innerHTML = rows;
-
-      // Delegação de eventos
-      eduSearchResults.querySelectorAll("button[data-edu-open]").forEach((b) => {
-        b.addEventListener("click", () => {
-          const u = b.getAttribute("data-edu-open") || "";
-          if (u) window.open(u, "_blank", "noopener");
-        });
-      });
-
-      eduSearchResults.querySelectorAll("button[data-edu-load]").forEach((b) => {
-        b.addEventListener("click", async () => {
-          const u = b.getAttribute("data-edu-load") || "";
-          if (eduUrlInput) eduUrlInput.value = u;
-          if (eduLoadBtn) eduLoadBtn.click();
-        });
-      });
-    }
-
-    async function eduSearchSlideshare() {
-      if (!eduSearchQuery) return;
-      const q = String(eduSearchQuery.value || "").trim();
-      if (!q) {
-        alert("Digite um termo de busca.");
-        return;
-      }
-
-      eduSetStatus(eduSearchStatus, "Buscando no SlideShare...");
-      if (eduSearchResults) eduSearchResults.textContent = "";
-
-      try {
-        const url = BACKEND_URL + "/api/educacao-saude/search?q=" + encodeURIComponent(q);
-        const resp = await fetch(url, { method: "GET" });
-        if (!resp.ok) throw new Error("Falha ao buscar no SlideShare.");
-        const data = await resp.json();
-        eduSetStatus(eduSearchStatus, (data && data.count !== undefined) ? ("Resultados: " + data.count) : "Busca concluída.");
-        renderEduResults((data && data.items) ? data.items : []);
-      } catch (e) {
-        eduSetStatus(eduSearchStatus, String(e.message || e));
-      }
-    }
-
-    async function eduImportFromUrl() {
-      const u = eduUrlInput ? String(eduUrlInput.value || "").trim() : "";
-      if (!u) {
-        alert("Cole o link da apresentação.");
-        return;
-      }
-
-      eduSetStatus(eduImportStatus, "Carregando apresentação...");
-      if (eduMeta) eduMeta.textContent = "";
-      if (eduPreviewMount) {
-        eduPreviewMount.style.display = "none";
-        eduPreviewMount.innerHTML = "";
-      }
-      if (eduDownloadImagesBtn) eduDownloadImagesBtn.disabled = true;
-      if (eduDownloadPptBtn) eduDownloadPptBtn.disabled = true;
-      if (eduDownloadPdfBtn) eduDownloadPdfBtn.disabled = true;
-      eduLastImport = null;
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/educacao-saude/import", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: u })
-        });
-        if (!resp.ok) {
-          const t = await resp.text();
-          throw new Error(t || "Falha ao carregar a apresentação.");
-        }
-        const data = await resp.json();
-        eduLastImport = data;
-
-        const title = data && data.title ? String(data.title) : "Apresentação";
-        const author = data && data.author ? String(data.author) : "";
-        const sourceUrl = data && data.sourceUrl ? String(data.sourceUrl) : u;
-        const provider = data && data.provider ? String(data.provider) : "SlideShare";
-
-        if (eduMeta) {
-          const lines = [];
-          lines.push("Gerado por ReiMed");
-          lines.push("Título: " + title);
-          if (author) lines.push("Autor original: " + author);
-          lines.push("Fonte: " + provider + " | " + sourceUrl);
-          eduMeta.innerHTML = "<div style=\"white-space: pre-wrap;\">" + eduSafeText(lines.join("\n")) + "</div>";
-        }
-
-        if (eduPreviewMount && data && data.embedHtml) {
-          // Mostra embed em iframe; conteúdo vem do oEmbed do SlideShare
-          eduPreviewMount.innerHTML = data.embedHtml;
-          eduPreviewMount.style.display = "block";
-          // Ajuste: garante que o iframe seja responsivo
-          const iframe = eduPreviewMount.querySelector("iframe");
-          if (iframe) {
-            iframe.setAttribute("style", "width: 100%; height: 420px; border: 0; border-radius: 12px;");
-            iframe.setAttribute("loading", "lazy");
-            iframe.setAttribute("referrerpolicy", "no-referrer");
-          }
-        }
-
-        if (eduDownloadImagesBtn) eduDownloadImagesBtn.disabled = false;
-        if (eduDownloadPptBtn) eduDownloadPptBtn.disabled = !(data && data.download && data.download.pptxUrl);
-        if (eduDownloadPdfBtn) eduDownloadPdfBtn.disabled = !(data && data.download && data.download.pdfUrl);
-
-        eduSetStatus(eduImportStatus, "Apresentação carregada.");
-      } catch (e) {
-        eduSetStatus(eduImportStatus, String(e.message || e));
-      }
-    }
-
-    async function eduDownloadImagesZip() {
-      const u = eduUrlInput ? String(eduUrlInput.value || "").trim() : "";
-      if (!u) {
-        alert("Cole o link da apresentação.");
-        return;
-      }
-      eduSetStatus(eduImportStatus, "Gerando ZIP de imagens...");
-      if (eduDownloadImagesBtn) eduDownloadImagesBtn.disabled = true;
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/educacao-saude/download/images-zip", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: u })
-        });
-        if (!resp.ok) {
-          const t = await resp.text();
-          throw new Error(t || "Falha ao gerar ZIP.");
-        }
-        const blob = await resp.blob();
-
-        // tenta usar nome do header; fallback
-        const disp = resp.headers.get("content-disposition") || "";
-        const m = /filename\*=UTF-8''([^;]+)|filename=([^;]+)/i.exec(disp);
-        const fname = decodeURIComponent((m && (m[1] || m[2])) ? String(m[1] || m[2]).replaceAll('"','').trim() : "reimed-apresentacao.zip");
-
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = fname;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(a.href), 30000);
-
-        eduSetStatus(eduImportStatus, "ZIP gerado.");
-      } catch (e) {
-        eduSetStatus(eduImportStatus, String(e.message || e));
-      } finally {
-        if (eduDownloadImagesBtn) eduDownloadImagesBtn.disabled = false;
-      }
-    }
-
-    function eduOpenDownloadLink(kind) {
-      const data = eduLastImport;
-      const link = (data && data.download) ? (kind === "pptx" ? data.download.pptxUrl : data.download.pdfUrl) : "";
-      if (!link) {
-        alert("Download indisponível para esta apresentação no SlideShare.");
-        return;
-      }
-      window.open(String(link), "_blank", "noopener");
-    }
-
-    if (eduSearchBtn) eduSearchBtn.addEventListener("click", (e) => { e.preventDefault(); eduSearchSlideshare(); });
-    if (eduLoadBtn) eduLoadBtn.addEventListener("click", (e) => { e.preventDefault(); eduImportFromUrl(); });
-    if (eduDownloadImagesBtn) eduDownloadImagesBtn.addEventListener("click", (e) => { e.preventDefault(); eduDownloadImagesZip(); });
-    if (eduDownloadPptBtn) eduDownloadPptBtn.addEventListener("click", (e) => { e.preventDefault(); eduOpenDownloadLink("pptx"); });
-    if (eduDownloadPdfBtn) eduDownloadPdfBtn.addEventListener("click", (e) => { e.preventDefault(); eduOpenDownloadLink("pdf"); });
-
     copySbarBtn.addEventListener("click", () => {
       const text = sbarOutput.value.trim();
       if (!text) {
@@ -15121,6 +14945,319 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       w.focus();
       w.print();
     }
+
+
+    // ============================
+    // MÓDULO: Educação em Saúde (slides com mídia da internet)
+    // ============================
+    (function initEducacaoSaude() {
+      const topicEl = document.getElementById('eduTopic');
+      const audienceEl = document.getElementById('eduAudience');
+      const slidesEl = document.getElementById('eduSlides');
+      const btnGen = document.getElementById('eduGenerateBtn');
+      const btnFull = document.getElementById('eduFullscreenBtn');
+      const btnPptx = document.getElementById('eduDownloadPptxBtn');
+      const st = document.getElementById('eduStatus');
+      const wrap = document.getElementById('eduDeckWrap');
+      const titleDeck = document.getElementById('eduDeckTitle');
+      const counter = document.getElementById('eduCounter');
+      const stage = document.getElementById('eduSlideStage');
+      const thumbs = document.getElementById('eduThumbs');
+      const btnPrev = document.getElementById('eduPrevBtn');
+      const btnNext = document.getElementById('eduNextBtn');
+
+      const fs = document.getElementById('eduFullscreen');
+      const fsTitle = document.getElementById('eduFullscreenTitle');
+      const fsStage = document.getElementById('eduFullscreenStage');
+      const fsClose = document.getElementById('eduFullscreenClose');
+
+      if (!topicEl || !audienceEl || !slidesEl || !btnGen || !btnFull || !btnPptx || !st || !wrap || !stage || !thumbs || !btnPrev || !btnNext || !fs || !fsTitle || !fsStage || !fsClose) {
+        return;
+      }
+
+      let deck = null;
+      let idx = 0;
+
+      function setStatus(msg, isErr) {
+        st.textContent = String(msg || '');
+        st.style.color = isErr ? '#b00020' : '#333';
+      }
+
+      function escapeHtml(s) {
+        return String(s ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+
+      function getSlide(i) {
+        if (!deck || !Array.isArray(deck.slides)) return null;
+        if (i < 0 || i >= deck.slides.length) return null;
+        return deck.slides[i];
+      }
+
+      function renderSlide(targetEl, slide) {
+        if (!targetEl) return;
+        if (!slide) {
+          targetEl.innerHTML = '';
+          return;
+        }
+
+        const mediaUrl = slide?.midia?.url || '';
+        const topicos = Array.isArray(slide?.topicos) ? slide.topicos : [];
+
+        const items = topicos.map(t => {
+          const tt = escapeHtml(t?.titulo || '');
+          const rr = escapeHtml(t?.resumo || '');
+          if (tt && rr) {
+            return `<li><span class="education-topic-title">${tt}:</span> <span class="education-topic-text">${rr}</span></li>`;
+          }
+          if (tt) return `<li><span class="education-topic-title">${tt}</span></li>`;
+          if (rr) return `<li><span class="education-topic-text">${rr}</span></li>`;
+          return '';
+        }).filter(Boolean).join('');
+
+        targetEl.innerHTML = `
+          <div class="education-slide">
+            <div>
+              <h2>${escapeHtml(slide?.titulo || '')}</h2>
+              <ul>${items}</ul>
+            </div>
+            <div class="education-media">
+              ${mediaUrl ? `<img src="${escapeHtml(mediaUrl)}" alt="mídia do slide" loading="lazy" />` : ''}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderThumbs() {
+        if (!deck || !Array.isArray(deck.slides)) {
+          thumbs.innerHTML = '';
+          return;
+        }
+        thumbs.innerHTML = deck.slides.map((s, i) => {
+          const active = (i === idx) ? 'active' : '';
+          return `<div class="education-thumb ${active}" data-idx="${i}">${escapeHtml(String(i + 1) + '. ' + (s?.titulo || ''))}</div>`;
+        }).join('');
+
+        Array.from(thumbs.querySelectorAll('.education-thumb')).forEach(el => {
+          el.addEventListener('click', () => {
+            const n = parseInt(el.getAttribute('data-idx') || '0', 10);
+            goTo(n);
+          });
+        });
+      }
+
+      function updateNav() {
+        const total = Array.isArray(deck?.slides) ? deck.slides.length : 0;
+        counter.textContent = total ? `${idx + 1} / ${total}` : '';
+        btnPrev.disabled = idx <= 0;
+        btnNext.disabled = (total === 0) || (idx >= total - 1);
+        btnFull.disabled = total === 0;
+        btnPptx.disabled = total === 0;
+        renderThumbs();
+      }
+
+      function goTo(n) {
+        const total = Array.isArray(deck?.slides) ? deck.slides.length : 0;
+        if (!total) return;
+        idx = Math.max(0, Math.min(total - 1, n));
+        const s = getSlide(idx);
+        renderSlide(stage, s);
+        if (fs.classList.contains('open')) {
+          renderSlide(fsStage, s);
+          fsTitle.textContent = `${deck.tema || ''} (${idx + 1}/${total})`;
+        }
+        updateNav();
+      }
+
+      function openFullscreen() {
+        const total = Array.isArray(deck?.slides) ? deck.slides.length : 0;
+        if (!total) return;
+        fs.classList.add('open');
+        fs.setAttribute('aria-hidden', 'false');
+        fsTitle.textContent = `${deck.tema || ''} (${idx + 1}/${total})`;
+        renderSlide(fsStage, getSlide(idx));
+      }
+
+      function closeFullscreen() {
+        fs.classList.remove('open');
+        fs.setAttribute('aria-hidden', 'true');
+      }
+
+      async function postJson(path, body) {
+        const resp = await fetch(BACKEND_URL + path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body || {})
+        });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok) {
+          const msg = (data && (data.error || data.message)) ? (data.error || data.message) : ('Erro HTTP ' + resp.status);
+          throw new Error(msg);
+        }
+        return data;
+      }
+
+      function loadScriptOnce(src) {
+        return new Promise((resolve, reject) => {
+          const exists = Array.from(document.querySelectorAll('script')).some(s => (s.src || '').includes(src));
+          if (exists) return resolve(true);
+          const s = document.createElement('script');
+          s.src = src;
+          s.async = true;
+          s.onload = () => resolve(true);
+          s.onerror = () => reject(new Error('Falha ao carregar biblioteca de PPTX.'));
+          document.head.appendChild(s);
+        });
+      }
+
+      function blobToDataUrl(blob) {
+        return new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(String(r.result || ''));
+          r.onerror = () => reject(new Error('Falha ao converter mídia.'));
+          r.readAsDataURL(blob);
+        });
+      }
+
+      async function fetchMediaAsDataUrl(url) {
+        const prox = BACKEND_URL + '/api/proxy?url=' + encodeURIComponent(String(url || ''));
+        const resp = await fetch(prox);
+        if (!resp.ok) throw new Error('Falha ao baixar mídia do slide.');
+        const blob = await resp.blob();
+        return await blobToDataUrl(blob);
+      }
+
+      async function exportPptx() {
+        if (!deck || !Array.isArray(deck.slides) || !deck.slides.length) return;
+
+        setStatus('Preparando PPTX...', false);
+
+        // CDN recomendado pelo PptxGenJS
+        const CDN = 'https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs/dist/pptxgen.bundle.js';
+        await loadScriptOnce(CDN);
+
+        const PptxGenJS = window.PptxGenJS || window.pptxgen || window.PptxGen;
+        if (!PptxGenJS) throw new Error('Biblioteca de PPTX não disponível no navegador.');
+
+        const pptx = new PptxGenJS();
+        pptx.layout = 'LAYOUT_WIDE';
+
+        for (const s of deck.slides) {
+          const slide = pptx.addSlide();
+          slide.background = { color: 'FFFFFF' };
+
+          // Título (vermelho)
+          slide.addText(String(s.titulo || ''), {
+            x: 0.6, y: 0.4, w: 7.4, h: 0.6,
+            fontFace: 'Calibri', fontSize: 30,
+            color: 'B00020', bold: true
+          });
+
+          // Mídia (direita)
+          const mediaUrl = s?.midia?.url || '';
+          if (mediaUrl) {
+            try {
+              const dataUrl = await fetchMediaAsDataUrl(mediaUrl);
+              slide.addImage({ data: dataUrl, x: 8.2, y: 1.2, w: 4.7, h: 5.9 });
+            } catch {
+              // se falhar, segue sem travar o PPTX
+            }
+          }
+
+          // Tópicos (título em vermelho, resumo em preto)
+          const topicos = Array.isArray(s.topicos) ? s.topicos : [];
+          let y = 1.2;
+          for (const t of topicos.slice(0, 6)) {
+            const tt = String(t?.titulo || '').trim();
+            const rr = String(t?.resumo || '').trim();
+
+            const runs = [];
+            if (tt) runs.push({ text: tt + (rr ? ': ' : ''), options: { color: 'B00020', bold: true } });
+            if (rr) runs.push({ text: rr, options: { color: '111111' } });
+            if (!runs.length) continue;
+
+            slide.addText(runs, {
+              x: 0.7, y, w: 7.3, h: 0.6,
+              fontFace: 'Calibri', fontSize: 18,
+              margin: 0
+            });
+            y += 0.65;
+            if (y > 6.8) break;
+          }
+        }
+
+        const fname = ('EducacaoSaude_' + String(deck.tema || 'apresentacao').replace(/[^a-z0-9]+/gi, '_').slice(0, 50) + '.pptx');
+        await pptx.writeFile({ fileName: fname });
+        setStatus('PPTX gerado.', false);
+      }
+
+      btnPrev.addEventListener('click', () => goTo(idx - 1));
+      btnNext.addEventListener('click', () => goTo(idx + 1));
+      btnFull.addEventListener('click', () => openFullscreen());
+      fsClose.addEventListener('click', () => closeFullscreen());
+
+      window.addEventListener('keydown', (ev) => {
+        if (!deck || !Array.isArray(deck.slides) || !deck.slides.length) return;
+        if (!fs.classList.contains('open')) return;
+        if (ev.key === 'ArrowLeft') { ev.preventDefault(); goTo(idx - 1); }
+        if (ev.key === 'ArrowRight') { ev.preventDefault(); goTo(idx + 1); }
+        if (ev.key === 'Escape') { ev.preventDefault(); closeFullscreen(); }
+      });
+
+      btnPptx.addEventListener('click', async () => {
+        try {
+          btnPptx.disabled = true;
+          await exportPptx();
+        } catch (e) {
+          setStatus(String(e.message || e), true);
+        } finally {
+          btnPptx.disabled = false;
+        }
+      });
+
+      btnGen.addEventListener('click', async () => {
+        try {
+          const tema = String(topicEl.value || '').trim();
+          const publico = String(audienceEl.value || '').trim();
+          const numero = parseInt(String(slidesEl.value || '6'), 10);
+
+          if (!tema) {
+            setStatus('Informe o assunto.', true);
+            return;
+          }
+
+          btnGen.disabled = true;
+          btnFull.disabled = true;
+          btnPptx.disabled = true;
+          wrap.classList.add('hidden');
+          setStatus('Gerando apresentação...', false);
+
+          const data = await postJson('/api/educacao-saude/apresentacao', {
+            tema,
+            publico_alvo: publico,
+            numero_slides: Number.isFinite(numero) ? numero : 6
+          });
+
+          deck = data;
+          idx = 0;
+
+          titleDeck.textContent = `${deck.tema || ''} - ${deck.publico_alvo || ''}`;
+          wrap.classList.remove('hidden');
+          renderSlide(stage, getSlide(0));
+          updateNav();
+          setStatus('Apresentação pronta.', false);
+        } catch (e) {
+          setStatus(String(e.message || e), true);
+        } finally {
+          btnGen.disabled = false;
+        }
+      });
+
+    })();
 
 </script>
 
