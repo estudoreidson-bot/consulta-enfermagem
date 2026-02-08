@@ -5401,7 +5401,7 @@ async function generateHealthEducationDeckPlan(tema, duracaoMin) {
         ],
         notas: "Abra a conversa perguntando o que as pessoas já sabem. Ajuste a linguagem ao público. Estimule dúvidas ao longo da apresentação.",
         busca_imagem: `${t} educação em saúde`,
-        busca_gif: "educação em saúde"
+        busca_gif: `${t} animação saúde`
       },
       {
         titulo: "Conceitos essenciais",
@@ -5468,6 +5468,8 @@ Seu objetivo é gerar o roteiro COMPLETO de uma apresentação em PPTX (não cri
 Tema: "${t}"
 Duração: ${d} minutos
 
+Regra crítica: todo o conteúdo deve ser estritamente sobre o tema informado. Se o tema NÃO for hipertensão, NÃO use hipertensão como exemplo, título ou conteúdo.
+
 Regras obrigatórias:
 - Português do Brasil.
 - Sem emojis e sem símbolos gráficos.
@@ -5488,7 +5490,7 @@ Formato: responda SOMENTE com um JSON válido, sem texto fora do JSON:
   "slides": [
     {
       "titulo": "string",
-      "topicos": ["string"],
+      "topicos": [{"titulo":"string","resumo":"string"}],
       "notas": "string",
       "busca_imagem": "string",
       "busca_gif": "string"
@@ -5499,7 +5501,122 @@ Formato: responda SOMENTE com um JSON válido, sem texto fora do JSON:
 `;
 
   const raw = await callOpenAIJson(prompt);
-  return normalizeSlidePlan(raw, t, d);
+  const plan = normalizeSlidePlan(raw, t, d);
+
+  // Validação simples para evitar "deriva" de tema (ex.: gerar hipertensão quando o tema é outro)
+  const temaNorm = String(t || "").toLowerCase();
+  const planText = JSON.stringify(plan || {}).toLowerCase();
+  const temaIsHipert = temaNorm.includes("hipert") || temaNorm.includes("pressao alta") || temaNorm.includes("pressão alta");
+  const planHasHipert = planText.includes("hipertens") || planText.includes("pressão arterial") || planText.includes("pressao arterial") || planText.includes("has");
+
+  if (!temaIsHipert && planHasHipert) {
+    // fallback determinístico: mantém estrutura, porém ancorado no tema informado
+    const fallback = await (async () => {
+      const slides = [
+        {
+          titulo: `O que é ${t}`,
+          topicos: [
+            { titulo: "Definição prática", resumo: "Explique em linguagem simples e aplicável ao dia a dia." },
+            { titulo: "Por que é importante", resumo: "Relacione com prevenção, qualidade de vida e acompanhamento na APS." },
+            { titulo: "Impacto na comunidade", resumo: "Traga exemplos do território e consequências se não houver cuidado." }
+          ],
+          notas: "Pergunte o que o público já sabe. Use exemplos locais e termos simples.",
+          busca_imagem: `${t} ilustração`,
+          busca_gif: `${t} animação`
+        },
+        {
+          titulo: "Sinais, sintomas e evolução",
+          topicos: [
+            { titulo: "Sinais comuns", resumo: "Liste manifestações frequentes quando aplicável; se assintomático, esclareça." },
+            { titulo: "Evolução", resumo: "Explique como pode piorar sem cuidados e como pode melhorar com adesão." },
+            { titulo: "Quando suspeitar", resumo: "Mostre situações típicas que devem levar à procura de avaliação." }
+          ],
+          notas: "Evite números e percentuais. Use 'comum'/'frequente' e pergunte se alguém já vivenciou.",
+          busca_imagem: `${t} sintomas`,
+          busca_gif: ""
+        },
+        {
+          titulo: "Fatores de risco e proteção",
+          topicos: [
+            { titulo: "O que aumenta o risco", resumo: "Destaque fatores modificáveis e não modificáveis." },
+            { titulo: "O que protege", resumo: "Mostre hábitos e suporte social que ajudam." },
+            { titulo: "Barreiras reais", resumo: "Aborde dificuldades e soluções viáveis no SUS/APS." }
+          ],
+          notas: "Conecte com rotina do território: alimentação, trabalho, acesso, apoio familiar.",
+          busca_imagem: `${t} prevenção`,
+          busca_gif: `${t} hábitos saudáveis`
+        },
+        {
+          titulo: "Prevenção e autocuidado",
+          topicos: [
+            { titulo: "O que fazer em casa", resumo: "Orientações práticas, simples e seguras para o cotidiano." },
+            { titulo: "Adesão", resumo: "Estratégias para manter o cuidado ao longo do tempo." },
+            { titulo: "Apoio", resumo: "Como família/comunidade/unidade podem ajudar." }
+          ],
+          notas: "Transforme recomendações em ações específicas e alcançáveis.",
+          busca_imagem: `${t} autocuidado`,
+          busca_gif: ""
+        },
+        {
+          titulo: "Tratamento e acompanhamento na APS",
+          topicos: [
+            { titulo: "Abordagem geral", resumo: "Explique que o tratamento depende do caso e deve ser individualizado." },
+            { titulo: "Acompanhamento", resumo: "Importância de retornos e continuidade do cuidado." },
+            { titulo: "Encaminhamentos", resumo: "Quando a equipe pode precisar de suporte especializado." }
+          ],
+          notas: "Reforce que condutas são definidas em consulta. Oriente a procurar a unidade para avaliação.",
+          busca_imagem: `${t} tratamento`,
+          busca_gif: ""
+        },
+        {
+          titulo: "Sinais de alarme",
+          topicos: [
+            { titulo: "Quando é urgência", resumo: "Explique sintomas/situações que exigem atendimento imediato." },
+            { titulo: "Como agir", resumo: "Orientar procurar UPA/PS SAMU quando indicado." },
+            { titulo: "O que levar", resumo: "Documentos, lista de medicamentos e informações importantes." }
+          ],
+          notas: "Se o tema for infecção/dor/gestação etc., adapte os sinais de alarme ao contexto do tema.",
+          busca_imagem: `${t} sinais de alarme`,
+          busca_gif: ""
+        },
+        {
+          titulo: "Mitos e verdades",
+          topicos: [
+            { titulo: "Mito comum", resumo: "Desfaça uma crença frequente relacionada ao tema." },
+            { titulo: "Verdade prática", resumo: "Reforce comportamento protetor simples." },
+            { titulo: "Mensagem final", resumo: "Convite para acompanhamento e esclarecimento de dúvidas." }
+          ],
+          notas: "Abra espaço para perguntas. Reforce acolhimento na unidade.",
+          busca_imagem: `${t} educação em saúde`,
+          busca_gif: ""
+        }
+      ];
+
+      // Ajusta quantidade de slides para a duração
+      const target = estimateSlideCount(d);
+      const outSlides = [];
+      while (outSlides.length < target) {
+        for (const s of slides) {
+          if (outSlides.length >= target) break;
+          outSlides.push(s);
+        }
+      }
+
+      return {
+        titulo: `Educação em Saúde: ${t}`,
+        subtitulo: `Duração: ${d} min`,
+        slides: outSlides.slice(0, target),
+        referencias: [
+          "Ministério da Saúde (Brasil) – Materiais de educação em saúde",
+          "OMS/OPAS – Comunicação em saúde e promoção da saúde"
+        ]
+      };
+    })();
+
+    return fallback;
+  }
+
+  return plan;
 }
 
 function addFooter(slide, text) {
@@ -5613,36 +5730,41 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
     } catch {}
   }
 
-  async function pickMedia({ imgQuery, gifQuery, forceGif = false }) {
+  async function pickMedia({ imgQuery, gifQuery }) {
     const qImg = String(imgQuery || "").trim();
     const qGif = String(gifQuery || "").trim();
     const baseTema = String(plan.titulo || tema || "").trim();
 
-    // 1) GIF (quando solicitado ou forçado)
-    if (forceGif || qGif) {
-      const qBase = (qGif || qImg || baseTema || "saúde") + " " + baseTema;
-      const q = qBase + " gif animation";
-      const gifs = await searchWikimediaCommonsMedia(q, { limit: 10, wantGif: true, wantPhoto: false }).catch(() => []);
-      if (gifs && gifs[0] && gifs[0].url) return gifs[0];
+    // Monta uma query curta e estável, sempre ancorada no tema
+    const parts = [];
+    if (qGif) parts.push(qGif);
+    if (qImg) parts.push(qImg);
+    if (baseTema) parts.push(baseTema);
+    const qBase = parts.join(" ").trim() || "saúde";
 
-      // Se não encontrou GIF, só força fallback se for obrigatório ter GIF.
-      if (forceGif) return FALLBACK_GIF;
-      // Caso contrário, cai para busca de imagem.
+    // 1) Tenta GIF animado (se tiver termo de gif). Se não achar, não força fallback de GIF.
+    if (qGif) {
+      const gifs = await searchWikimediaCommonsMedia(qBase, { limit: 12, wantGif: true, wantPhoto: false }).catch(() => []);
+      if (gifs && gifs[0] && gifs[0].url) return gifs[0];
+    } else {
+      // Mesmo sem termo de gif, tenta achar um GIF educativo relacionado
+      const gifs = await searchWikimediaCommonsMedia(qBase + " animação", { limit: 8, wantGif: true, wantPhoto: false }).catch(() => []);
+      if (gifs && gifs[0] && gifs[0].url) return gifs[0];
     }
-// 2) Imagem via Wikimedia
+
+    // 2) Imagem via Wikimedia
     {
-      const q = (qImg || baseTema || "saúde") + " " + baseTema;
-      const imgs = await searchWikimediaCommonsMedia(q, { limit: 12, wantGif: false, wantPhoto: true }).catch(() => []);
+      const imgs = await searchWikimediaCommonsMedia(qBase, { limit: 14, wantGif: false, wantPhoto: true }).catch(() => []);
       if (imgs && imgs[0] && imgs[0].url) return imgs[0];
     }
 
     // 3) Fallback Openverse
     {
-      const q = (qImg || baseTema || "saúde") + " " + baseTema;
-      const ov = await searchOpenverseImages(q, { limit: 12 }).catch(() => []);
+      const ov = await searchOpenverseImages(qBase, { limit: 14 }).catch(() => []);
       if (ov && ov[0] && ov[0].url) return ov[0];
     }
 
+    // 4) Fallback final genérico (imagem), nunca específico de um tema
     return FALLBACK_IMAGE;
   }
 
@@ -5728,7 +5850,7 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
     const s = pptx.addSlide();
     setSlideBackground(s);
 
-    const coverMedia = await pickMedia({ imgQuery: `${plan.titulo || tema} educação em saúde`, gifQuery: `${plan.titulo || tema} animação saúde`, forceGif: false });
+    const coverMedia = await pickMedia({ imgQuery: `${plan.titulo || tema} educação em saúde`, gifQuery: "educação em saúde", forceGif: false });
     const { credit } = await addMedia(s, coverMedia, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
 
     // Painel do texto
@@ -5783,7 +5905,7 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
     ];
     renderTopicBlocks(s, objectives, { x: 0.85, y: 1.3, w: 6.2, maxH: 5.6 });
 
-    const media = await pickMedia({ imgQuery: "educação em saúde comunidade", gifQuery: `${plan.titulo || tema} animação saúde`, forceGif: true });
+    const media = await pickMedia({ imgQuery: "educação em saúde comunidade", gifQuery: "educação em saúde", forceGif: true });
     const { credit } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
 
     addFooter(s, credit);

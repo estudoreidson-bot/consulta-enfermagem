@@ -3407,7 +3407,7 @@
       </p>
 
       <div class="inline-input-row" style="gap: 10px; align-items: stretch;">
-        <input id="healthEduTheme" class="text-input" type="text" placeholder="Tema (ex.: Hipertensão arterial na APS)" autocomplete="off" style="flex: 1 1 auto; margin: 0;" />
+        <input id="healthEduTheme" class="text-input" type="text" placeholder="Tema (ex.: Diabetes mellitus tipo 2 na APS)" autocomplete="off" style="flex: 1 1 auto; margin: 0;" />
         <select id="healthEduDuration" class="text-input" style="max-width: 140px;">
           <option value="10">10 min</option>
           <option value="15">15 min</option>
@@ -10338,7 +10338,7 @@ updateReportActions();
 
       healthEduDownloadBtn.disabled = true;
       if (healthEduStatus) {
-        healthEduStatus.textContent = "Gerando apresentação...";
+        healthEduStatus.textContent = `Gerando apresentação... Tema: ${tema} | Duração: ${duracao} min`;
         healthEduStatus.classList.add("loading-dot");
       }
 
