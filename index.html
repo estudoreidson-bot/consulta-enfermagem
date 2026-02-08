@@ -3396,38 +3396,6 @@
 
                 
 
-
-<div id="healthEducationCard" class="module-card">
-      <div class="section-header-row">
-        <h2>Educação em Saúde</h2>
-      </div>
-
-      <p class="mini-status" style="margin-top: 0;">
-        Informe o tema e a duração. O sistema irá gerar uma apresentação PPTX completa com imagens e GIFs (quando disponíveis), pronta para educação em saúde.
-      </p>
-
-      <div class="inline-input-row" style="gap: 10px; align-items: stretch;">
-        <input id="healthEduTheme" class="text-input" type="text" placeholder="Tema (ex.: Diabetes mellitus tipo 2 na APS)" autocomplete="off" style="flex: 1 1 auto; margin: 0;" />
-        <select id="healthEduDuration" class="text-input" style="max-width: 140px;">
-          <option value="10">10 min</option>
-          <option value="15">15 min</option>
-          <option value="20">20 min</option>
-          <option value="25">25 min</option>
-          <option value="30">30 min</option>
-          <option value="35">35 min</option>
-          <option value="40">40 min</option>
-          <option value="45">45 min</option>
-          <option value="50">50 min</option>
-          <option value="55">55 min</option>
-          <option value="60">60 min</option>
-        </select>
-        <button id="healthEduDownloadBtn" class="btn-print" type="button" style="white-space: nowrap;">Gerar apresentação (PPTX)</button>
-      </div>
-
-      <div id="healthEduStatus" class="mini-status"></div>
-    </div>
-
-
 <div id="calculatorsCard" class="module-card">
       <div class="section-header-row">
       <h2>Calculadoras Clínicas</h2>
@@ -5395,10 +5363,6 @@ const handoffQuestionsTimerEl = document.getElementById("handoffQuestionsTimer")
     const medicalDoubtStatus = document.getElementById("medicalDoubtStatus");
     const medicalDoubtAnswer = document.getElementById("medicalDoubtAnswer");
     const medicalDoubtSendBtn = document.getElementById("medicalDoubtSendBtn");
-    const healthEduTheme = document.getElementById("healthEduTheme");
-    const healthEduDuration = document.getElementById("healthEduDuration");
-    const healthEduDownloadBtn = document.getElementById("healthEduDownloadBtn");
-    const healthEduStatus = document.getElementById("healthEduStatus");
 
 
 
@@ -10319,107 +10283,6 @@ updateReportActions();
         medicalDoubtStatus.classList.remove("loading-dot");
       }
     }
-
-    async function downloadHealthEducationPptx() {
-      if (!healthEduTheme || !healthEduDuration || !healthEduDownloadBtn) return;
-
-      const tema = (healthEduTheme.value || "").trim();
-      const duracao = parseInt(String(healthEduDuration.value || ""), 10);
-
-      if (!tema) {
-        if (healthEduStatus) healthEduStatus.textContent = "Informe o tema para gerar a apresentação.";
-        return;
-      }
-
-      if (!(duracao >= 10 && duracao <= 60)) {
-        if (healthEduStatus) healthEduStatus.textContent = "A duração deve estar entre 10 e 60 minutos.";
-        return;
-      }
-
-      healthEduDownloadBtn.disabled = true;
-      if (healthEduStatus) {
-        healthEduStatus.textContent = `Gerando apresentação... Tema: ${tema} | Duração: ${duracao} min`;
-        healthEduStatus.classList.add("loading-dot");
-      }
-
-      try {
-        const resp = await fetch(BACKEND_URL + "/api/educacao-saude-pptx", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tema, duracao_minutos: duracao })
-        });
-
-        if (!resp.ok) {
-          let backendMsg = "Não foi possível gerar a apresentação.";
-          try {
-            const ct = (resp.headers.get("content-type") || "").toLowerCase();
-            if (ct.includes("application/json")) {
-              const j = await resp.json().catch(() => null);
-              if (j && typeof j.error === "string" && j.error.trim()) backendMsg = j.error.trim();
-            } else {
-              const txt = await resp.text().catch(() => "");
-              if (txt && txt.trim() && txt.trim().length <= 300) backendMsg = txt.trim();
-            }
-          } catch {}
-
-          console.error("Erro HTTP do backend (educação em saúde):", resp.status, backendMsg);
-          if (healthEduStatus) {
-            healthEduStatus.textContent = backendMsg;
-            healthEduStatus.classList.remove("loading-dot");
-          }
-          return;
-        }
-
-        const blob = await resp.blob();
-        const cd = resp.headers.get("content-disposition") || "";
-        let filename = "";
-        const m = cd.match(/filename\*=UTF-8''([^;]+)|filename=\"?([^\";]+)\"?/i);
-        if (m) filename = decodeURIComponent(m[1] || m[2] || "");
-        if (!filename) filename = "Educacao_em_Saude.pptx";
-
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          try { URL.revokeObjectURL(url); } catch {}
-          try { a.remove(); } catch {}
-        }, 300);
-
-        if (healthEduStatus) {
-          healthEduStatus.textContent = "Apresentação pronta.";
-          healthEduStatus.classList.remove("loading-dot");
-        }
-      } catch (err) {
-        console.error("Erro ao gerar PPTX (educação em saúde):", err);
-        if (healthEduStatus) {
-          healthEduStatus.textContent = "Erro ao gerar a apresentação.";
-          healthEduStatus.classList.remove("loading-dot");
-        }
-      } finally {
-        healthEduDownloadBtn.disabled = false;
-        if (healthEduStatus) healthEduStatus.classList.remove("loading-dot");
-      }
-    }
-
-    // Educação em Saúde: Enter no tema e botão Gerar
-    if (healthEduTheme) {
-      healthEduTheme.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          downloadHealthEducationPptx();
-        }
-      });
-    }
-
-    if (healthEduDownloadBtn) {
-      healthEduDownloadBtn.addEventListener("click", () => {
-        downloadHealthEducationPptx();
-      });
-    }
-
 
 
     // Dúvidas em Saúde: Enter e botão Enviar
