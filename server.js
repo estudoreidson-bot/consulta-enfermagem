@@ -5584,7 +5584,7 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
   };
 
   const FALLBACK_GIF = {
-    url: "https://commons.wikimedia.org/wiki/Special:FilePath/Hypertension-graphic-normal-ranges.gif",
+    url: "https://commons.wikimedia.org/wiki/Special:FilePath/Stethoscope_Flat_Icon_GIF_Animation.gif",
     mime: "image/gif",
     credit: "Wikimedia Commons",
     license: ""
@@ -5620,14 +5620,16 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
 
     // 1) GIF (quando solicitado ou forçado)
     if (forceGif || qGif) {
-      const q = (qGif || qImg || baseTema || "saúde") + " " + baseTema;
+      const qBase = (qGif || qImg || baseTema || "saúde") + " " + baseTema;
+      const q = qBase + " gif animation";
       const gifs = await searchWikimediaCommonsMedia(q, { limit: 10, wantGif: true, wantPhoto: false }).catch(() => []);
       if (gifs && gifs[0] && gifs[0].url) return gifs[0];
-      // fallback gif
-      if (forceGif || qGif) return FALLBACK_GIF;
-    }
 
-    // 2) Imagem via Wikimedia
+      // Se não encontrou GIF, só força fallback se for obrigatório ter GIF.
+      if (forceGif) return FALLBACK_GIF;
+      // Caso contrário, cai para busca de imagem.
+    }
+// 2) Imagem via Wikimedia
     {
       const q = (qImg || baseTema || "saúde") + " " + baseTema;
       const imgs = await searchWikimediaCommonsMedia(q, { limit: 12, wantGif: false, wantPhoto: true }).catch(() => []);
@@ -5726,7 +5728,7 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
     const s = pptx.addSlide();
     setSlideBackground(s);
 
-    const coverMedia = await pickMedia({ imgQuery: `${plan.titulo || tema} educação em saúde`, gifQuery: "educação em saúde", forceGif: false });
+    const coverMedia = await pickMedia({ imgQuery: `${plan.titulo || tema} educação em saúde`, gifQuery: `${plan.titulo || tema} animação saúde`, forceGif: false });
     const { credit } = await addMedia(s, coverMedia, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
 
     // Painel do texto
@@ -5781,7 +5783,7 @@ async function buildEducationPptxBuffer({ tema, duracaoMin }) {
     ];
     renderTopicBlocks(s, objectives, { x: 0.85, y: 1.3, w: 6.2, maxH: 5.6 });
 
-    const media = await pickMedia({ imgQuery: "educação em saúde comunidade", gifQuery: "educação em saúde", forceGif: true });
+    const media = await pickMedia({ imgQuery: "educação em saúde comunidade", gifQuery: `${plan.titulo || tema} animação saúde`, forceGif: true });
     const { credit } = await addMedia(s, media, { x: 7.45, y: 1.05, w: 5.33, h: 6.05 });
 
     addFooter(s, credit);
