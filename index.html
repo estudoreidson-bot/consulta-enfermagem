@@ -2322,16 +2322,14 @@
       <h1>Atendimento de Enfermagem</h1>
       <p class="auth-subtitle">Ferramenta para auxiliar os profissionais de enfermagem.<br>Acesso restrito para profissionais cadastrados.</p>
 
-      <form id="loginForm" class="auth-form" autocomplete="on">
       <label class="auth-label" for="loginField">CPF (Login)</label>
       <input id="loginField" class="auth-input" autocomplete="username" inputmode="numeric" />
 
       <label class="auth-label" for="passwordField">Senha</label>
-      <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" enterkeyhint="done" />
+      <input id="passwordField" class="auth-input" type="password" autocomplete="current-password" />
 
-      <button id="loginBtn" class="auth-btn" type="submit">Entrar</button>
+      <button id="loginBtn" class="auth-btn" type="button">Entrar</button>
       <div id="loginError" class="auth-error"></div>
-      </form>
 
       <button id="openSignupBtn" class="auth-btn outline" type="button">Cadastrar enfermeiro(a)</button>
 
@@ -4807,35 +4805,9 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
     }
 
     // Eventos de login/logout
-    const loginForm = document.getElementById("loginForm");
-    if (loginForm) {
-      loginForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        doLogin();
-      });
-    }
-
-    // Clique no botão (mantém compatibilidade com navegadores antigos)
-    document.getElementById("loginBtn")?.addEventListener("click", (e) => {
-      try { if (e) e.preventDefault(); } catch {}
-      const f = document.getElementById("loginForm");
-      // Se requestSubmit existir, garante comportamento idêntico ao Enter do teclado virtual
-      if (f && typeof f.requestSubmit === "function") {
-        f.requestSubmit();
-        return;
-      }
-      doLogin();
-    });
-
-    // Enter em desktop (fallback)
-    document.getElementById("loginField")?.addEventListener("keydown", (e) => {
-      const k = e && (e.key || "");
-      if (k === "Enter" || k === "NumpadEnter" || (e && e.keyCode === 13)) doLogin();
-    });
-    document.getElementById("passwordField")?.addEventListener("keydown", (e) => {
-      const k = e && (e.key || "");
-      if (k === "Enter" || k === "NumpadEnter" || (e && e.keyCode === 13)) doLogin();
-    });
+    document.getElementById("loginBtn")?.addEventListener("click", doLogin);
+    document.getElementById("loginField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+    document.getElementById("passwordField")?.addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
     document.getElementById("openSignupBtn")?.addEventListener("click", () => {
       resetSignupForm();
       showSignup();
@@ -15006,8 +14978,6 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       let deck = null;
       let idx = 0;
 
-      const EDU_FALLBACK_MEDIA_URL = 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Red_Cross.svg/1024px-Red_Cross.svg.png';
-
       function setStatus(msg, isErr) {
         st.textContent = String(msg || '');
         st.style.color = isErr ? '#b00020' : '#333';
@@ -15028,15 +14998,17 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
         return deck.slides[i];
       }
 
-            function renderSlide(targetEl, slide) {
+      function renderSlide(targetEl, slide) {
         if (!targetEl) return;
         if (!slide) {
           targetEl.innerHTML = '';
           return;
         }
 
-        const mid = slide?.midia || {};
-        const chosen = (mid.url || mid.thumb_url || EDU_FALLBACK_MEDIA_URL || '');
+        const mediaUrl = slide?.midia?.url || '';
+        const proxiedMediaUrl = mediaUrl
+          ? (BACKEND_URL + '/api/proxy?url=' + encodeURIComponent(String(mediaUrl)))
+          : '';
         const topicos = Array.isArray(slide?.topicos) ? slide.topicos : [];
 
         const items = topicos.map(t => {
@@ -15050,9 +15022,6 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
           return '';
         }).filter(Boolean).join('');
 
-        const safeMedia = escapeHtml(chosen);
-        const safeFallback = escapeHtml(EDU_FALLBACK_MEDIA_URL);
-
         targetEl.innerHTML = `
           <div class="education-slide">
             <div>
@@ -15060,14 +15029,30 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
               <ul>${items}</ul>
             </div>
             <div class="education-media">
-              <img src="${safeMedia}" alt="mídia do slide" loading="lazy"
-                   onerror="this.onerror=null; this.src='${safeFallback}';" />
+              ${proxiedMediaUrl ? `<img src="${escapeHtml(proxiedMediaUrl)}" alt="mídia do slide" loading="lazy" />` : ''}
             </div>
           </div>
         `;
+
+        // Fallback silencioso: se a mídia não carregar via proxy, tenta URL direta; se falhar, usa imagem padrão.
+        const img = targetEl.querySelector('.education-media img');
+        if (img) {
+          const direct = String(mediaUrl || '');
+          const fallback = 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Red_Cross.svg/1024px-Red_Cross.svg.png';
+          img.onerror = () => {
+            // 1) tenta URL direta (útil se o proxy foi bloqueado por tamanho).
+            if (direct && img.src !== direct) {
+              img.src = direct;
+              return;
+            }
+            // 2) fallback final.
+            img.onerror = null;
+            img.src = BACKEND_URL + '/api/proxy?url=' + encodeURIComponent(fallback);
+          };
+        }
       }
 
-      function renderThumbs()() {
+      function renderThumbs() {
         if (!deck || !Array.isArray(deck.slides)) {
           thumbs.innerHTML = '';
           return;
@@ -15192,23 +15177,19 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
             color: 'B00020', bold: true
           });
 
-                    // Mídia (direita) - garante pelo menos 1 imagem por slide no PPTX
-          const mid = s?.midia || {};
-          const candidates = [
-            mid.url,
-            mid.thumb_url,
-            EDU_FALLBACK_MEDIA_URL
-          ].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
-
-          for (const candidate of candidates) {
+          // Mídia (direita)
+          const mediaUrl = s?.midia?.url || '';
+          const fallback = 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Red_Cross.svg/1024px-Red_Cross.svg.png';
+          try {
+            const preferred = mediaUrl || fallback;
+            const dataUrl = await fetchMediaAsDataUrl(preferred);
+            slide.addImage({ data: dataUrl, x: 8.2, y: 1.2, w: 4.7, h: 5.9 });
+          } catch {
+            // Último fallback (se a mídia do slide for grande ou indisponível).
             try {
-              const dataUrl = await fetchMediaAsDataUrl(candidate);
-              slide.addImage({ data: dataUrl, x: 8.2, y: 1.2, w: 4.7, h: 5.9 });
-              break;
-            } catch {
-              // tenta o próximo candidato
-            }
-          }
+              const fbDataUrl = await fetchMediaAsDataUrl(fallback);
+              slide.addImage({ data: fbDataUrl, x: 8.2, y: 1.2, w: 4.7, h: 5.9 });
+            } catch {}
           }
 
           // Tópicos (título em vermelho, resumo em preto)

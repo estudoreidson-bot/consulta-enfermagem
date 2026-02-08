@@ -5188,7 +5188,8 @@ async function commonsImageInfo(title) {
     + "?action=query"
     + "&titles=" + encodeURIComponent(t)
     + "&prop=imageinfo"
-    + "&iiprop=url|mime|size"
+    + "&iiprop=url|mime"
+    // Mantém a mídia mais leve para reduzir falhas no download/exportação.
     + "&iiurlwidth=900"
     + "&format=json"
     + "&origin=*";
@@ -5200,60 +5201,14 @@ async function commonsImageInfo(title) {
   const ii = Array.isArray(page?.imageinfo) ? page.imageinfo[0] : null;
   if (!ii) return null;
 
-  const originalUrl = (typeof ii.url === "string" && ii.url) ? ii.url : "";
-  const thumbUrl = (typeof ii.thumburl === "string" && ii.thumburl) ? ii.thumburl : "";
-  const rawMime = (typeof ii.mime === "string" ? ii.mime : "");
-  const sizeBytes = (typeof ii.size === "number" ? ii.size : null);
+  const mediaUrl = (typeof ii.thumburl === "string" && ii.thumburl) ? ii.thumburl
+    : (typeof ii.url === "string" && ii.url) ? ii.url
+    : "";
 
-  // Ignora mídias que não são imagens (ex.: vídeo)
-  if (rawMime && rawMime.startsWith("video/")) return null;
+  const mime = (typeof ii.mime === "string" ? ii.mime : "");
+  if (!mediaUrl) return null;
 
-  let chosenUrl = "";
-  let chosenMime = rawMime || "";
-
-  // Preferências:
-  // - GIF: prioriza thumb GIF (menor) se for realmente .gif; senão usa o original.
-  // - SVG: usa thumb (geralmente PNG/JPG) para compatibilidade.
-  // - Demais: usa thumb quando existir, senão original.
-  const isGif = /(^|\b)image\/gif(\b|$)/i.test(rawMime) || /\.gif$/i.test(t);
-  const isSvg = /(^|\b)image\/svg\+xml(\b|$)/i.test(rawMime) || /\.svg$/i.test(t);
-
-  if (isGif) {
-    if (thumbUrl && /\.gif(\?|$)/i.test(thumbUrl)) {
-      chosenUrl = thumbUrl;
-      chosenMime = "image/gif";
-    } else if (originalUrl) {
-      chosenUrl = originalUrl;
-      chosenMime = "image/gif";
-    } else if (thumbUrl) {
-      chosenUrl = thumbUrl;
-    }
-  } else if (isSvg) {
-    if (thumbUrl) {
-      chosenUrl = thumbUrl;
-      // thumb de SVG costuma ser PNG/JPG
-      if (/\.png(\?|$)/i.test(thumbUrl)) chosenMime = "image/png";
-      else if (/\.(jpg|jpeg)(\?|$)/i.test(thumbUrl)) chosenMime = "image/jpeg";
-      else chosenMime = chosenMime || "image/png";
-    } else if (originalUrl) {
-      chosenUrl = originalUrl;
-    }
-  } else {
-    chosenUrl = thumbUrl || originalUrl || "";
-  }
-
-  if (!chosenUrl) return null;
-
-  return {
-    url: chosenUrl,
-    mime: chosenMime,
-    title: t,
-    source: "Wikimedia Commons",
-    original_url: originalUrl || chosenUrl,
-    thumb_url: thumbUrl || chosenUrl,
-    size_bytes: sizeBytes,
-    kind: isGif ? "gif" : "image"
-  };
+  return { url: mediaUrl, mime, title: t, source: "Wikimedia Commons" };
 }
 
 async function buscarMidiaInternetCommons(busca) {
@@ -5261,58 +5216,30 @@ async function buscarMidiaInternetCommons(busca) {
   const queries = [
     q ? (q + " animated gif") : "",
     q ? (q + " gif") : "",
-    q ? (q + " imagem") : "",
     q
   ].filter(Boolean);
 
-  function shuffle(arr) {
-    const a = arr.slice();
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  }
-
   for (const term of queries) {
     try {
-      const titles = await commonsSearchTitles(term, 18);
+      const titles = await commonsSearchTitles(term, 12);
       if (!titles.length) continue;
 
-      const gifCandidates = shuffle(titles.filter(t => /\.gif$/i.test(t)));
-      const imgCandidates = shuffle(titles.filter(t => /\.(png|jpe?g|svg)$/i.test(t) && !/\.gif$/i.test(t)));
-      const otherCandidates = shuffle(titles.filter(t => !/\.(png|jpe?g|svg|gif)$/i.test(t)));
-
-      // 1) tenta GIF primeiro (até 8 tentativas)
-      for (const t of gifCandidates.slice(0, 8)) {
-        const info = await commonsImageInfo(t);
+      // 1) tenta GIF primeiro
+      const gifTitle = titles.find(t => /(\.gif)$/i.test(t) || /File:.*gif/i.test(t));
+      if (gifTitle) {
+        const info = await commonsImageInfo(gifTitle);
         if (info?.url) return info;
       }
 
-      // 2) depois imagens comuns (até 10 tentativas)
-      for (const t of imgCandidates.slice(0, 10)) {
-        const info = await commonsImageInfo(t);
-        if (info?.url) return info;
-      }
-
-      // 3) por fim, qualquer outro resultado que tenha URL
-      for (const t of otherCandidates.slice(0, 10)) {
+      // 2) fallback: primeiro resultado que tenha URL
+      for (const t of titles.slice(0, 6)) {
         const info = await commonsImageInfo(t);
         if (info?.url) return info;
       }
     } catch {}
   }
 
-  return {
-    url: EDU_FALLBACK_MEDIA_URL,
-    mime: "image/png",
-    title: "fallback",
-    source: "Wikimedia Commons",
-    original_url: EDU_FALLBACK_MEDIA_URL,
-    thumb_url: EDU_FALLBACK_MEDIA_URL,
-    size_bytes: null,
-    kind: "image"
-  };
+  return { url: EDU_FALLBACK_MEDIA_URL, mime: "image/png", title: "fallback", source: "Wikimedia Commons" };
 }
 
 async function gerarApresentacaoEducacaoSaude(tema, publicoAlvo, numeroSlides) {
@@ -5434,7 +5361,8 @@ app.get("/api/proxy", requirePaidOrAdmin, async (req, res) => {
     res.setHeader("Cache-Control", "public, max-age=86400");
 
     const ab = await r.arrayBuffer();
-    if (ab.byteLength > 15 * 1024 * 1024) return res.status(413).send("payload too large");
+    // Evita estourar memória, mas permite imagens/GIFs razoáveis para PPTX.
+    if (ab.byteLength > 12 * 1024 * 1024) return res.status(413).send("payload too large");
 
     return res.status(200).send(Buffer.from(ab));
   } catch (e) {
