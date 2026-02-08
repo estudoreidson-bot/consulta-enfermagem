@@ -3809,7 +3809,41 @@
 
 
 
-                <div id="patientReportCard" class="module-card hidden">
+    <div id="healthEduCard" class="module-card">
+      <h2>Educação em Saúde (apresentações prontas)</h2>
+      <p class="mini-status" style="margin-top: 0;">
+        Busque apresentações públicas no SlideShare e incorpore para uso em sala de espera, grupos educativos ou consulta.
+        O sistema exibe a fonte e o autor original. As exportações geradas pelo sistema incluem a marca "Gerado por ReiMed".
+      </p>
+
+      <div class="inline-input-row">
+        <input id="eduSearchQuery" class="text-input" type="text" placeholder="Buscar no SlideShare (ex.: hipertensão, diabetes, dengue, vacinação...)" />
+        <button id="eduSearchBtn" class="btn-print" type="button">Buscar</button>
+      </div>
+      <div id="eduSearchStatus" class="mini-status"></div>
+      <div id="eduSearchResults" class="answer-box" style="padding: 10px; min-height: 58px;"></div>
+
+      <div class="module-divider" style="margin: 16px 0;"></div>
+
+      <div class="inline-input-row">
+        <input id="eduUrlInput" class="text-input" type="text" placeholder="Cole o link da apresentação (SlideShare)" />
+        <button id="eduLoadBtn" class="btn-print" type="button">Carregar</button>
+      </div>
+
+      <div id="eduImportStatus" class="mini-status"></div>
+      <div id="eduMeta" class="answer-box" style="margin-top: 8px; min-height: 44px;"></div>
+
+      <div id="eduPreviewMount" class="classification-box" style="margin-top: 12px; padding: 10px; display: none;"></div>
+
+      <div class="inline-input-row" style="margin-top: 10px; gap: 10px; flex-wrap: wrap;">
+        <button id="eduDownloadImagesBtn" class="btn-print" type="button" disabled>Baixar imagens (ZIP)</button>
+        <button id="eduDownloadPptBtn" class="btn-print" type="button" disabled>Baixar PPTX</button>
+        <button id="eduDownloadPdfBtn" class="btn-print" type="button" disabled>Baixar PDF</button>
+      </div>
+    </div>
+
+
+                <div id="patientReportCard" class="module-card">
       <h2>Relatórios de Enfermagem / Encaminhamentos / Declarações / Solicitações / Comunicados / Atestado de comparecimento ou permanência / ATA reunião / Registros de procedimentos</h2>
       <p class="mini-status" style="margin-top: 0;">
         Grave em voz alta o conteúdo do documento. Diga claramente qual documento deseja produzir (por exemplo: declaração de comparecimento, relatório de curativo seriado, encaminhamento para CAPS, solicitação de insumos, comunicado para escola, ata de reunião). Ao encerrar
@@ -5205,6 +5239,23 @@ if (!handoffMode) {
     const closeDocsGuideBtn = document.getElementById("closeDocsGuideBtn");
 
     const patientReportCard = document.getElementById("patientReportCard");
+
+    // MÓDULO: Educação em Saúde (SlideShare)
+    const healthEduCard = document.getElementById("healthEduCard");
+    const eduSearchQuery = document.getElementById("eduSearchQuery");
+    const eduSearchBtn = document.getElementById("eduSearchBtn");
+    const eduSearchStatus = document.getElementById("eduSearchStatus");
+    const eduSearchResults = document.getElementById("eduSearchResults");
+    const eduUrlInput = document.getElementById("eduUrlInput");
+    const eduLoadBtn = document.getElementById("eduLoadBtn");
+    const eduImportStatus = document.getElementById("eduImportStatus");
+    const eduMeta = document.getElementById("eduMeta");
+    const eduPreviewMount = document.getElementById("eduPreviewMount");
+    const eduDownloadImagesBtn = document.getElementById("eduDownloadImagesBtn");
+    const eduDownloadPptBtn = document.getElementById("eduDownloadPptBtn");
+    const eduDownloadPdfBtn = document.getElementById("eduDownloadPdfBtn");
+
+    let eduLastImport = null;
 
     const handoffPanel = document.getElementById("handoffPanel");
     const handoffOutput = document.getElementById("handoffOutput");
@@ -11124,6 +11175,220 @@ if (handoffAskQuestionsBtn) {
         openPrintWindow("Documento", t);
       });
     }
+
+    // Educação em Saúde (SlideShare)
+    function eduSetStatus(el, msg) {
+      if (!el) return;
+      el.textContent = String(msg || "");
+    }
+
+    function eduSafeText(s) {
+      return String(s ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function renderEduResults(items) {
+      if (!eduSearchResults) return;
+      const list = Array.isArray(items) ? items : [];
+      if (!list.length) {
+        eduSearchResults.innerHTML = "Nenhum resultado encontrado.";
+        return;
+      }
+
+      const rows = list.slice(0, 12).map((it, idx) => {
+        const title = eduSafeText(it.title || it.name || "Apresentação");
+        const url = eduSafeText(it.url || "");
+        const thumb = eduSafeText(it.thumbnail || it.thumbnail_url || "");
+
+        const img = thumb ? `<img src="${thumb}" alt="${title}" style="width: 96px; height: 54px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb;" />` : `<div style="width: 96px; height: 54px; border-radius: 8px; border: 1px solid #e5e7eb; background: #f3f4f6;"></div>`;
+
+        return `
+          <div style="display: flex; gap: 10px; align-items: center; padding: 10px; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 10px; background: white;">
+            ${img}
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 700; color: #111827; font-size: 14px; line-height: 1.2;">${title}</div>
+              <div style="font-size: 12px; color: #374151; word-break: break-all;">${url}</div>
+              <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" class="btn-print" data-edu-open="${url}">Abrir</button>
+                <button type="button" class="btn-print" data-edu-load="${url}">Carregar</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      eduSearchResults.innerHTML = rows;
+
+      // Delegação de eventos
+      eduSearchResults.querySelectorAll("button[data-edu-open]").forEach((b) => {
+        b.addEventListener("click", () => {
+          const u = b.getAttribute("data-edu-open") || "";
+          if (u) window.open(u, "_blank", "noopener");
+        });
+      });
+
+      eduSearchResults.querySelectorAll("button[data-edu-load]").forEach((b) => {
+        b.addEventListener("click", async () => {
+          const u = b.getAttribute("data-edu-load") || "";
+          if (eduUrlInput) eduUrlInput.value = u;
+          if (eduLoadBtn) eduLoadBtn.click();
+        });
+      });
+    }
+
+    async function eduSearchSlideshare() {
+      if (!eduSearchQuery) return;
+      const q = String(eduSearchQuery.value || "").trim();
+      if (!q) {
+        alert("Digite um termo de busca.");
+        return;
+      }
+
+      eduSetStatus(eduSearchStatus, "Buscando no SlideShare...");
+      if (eduSearchResults) eduSearchResults.textContent = "";
+
+      try {
+        const url = BACKEND_URL + "/api/educacao-saude/search?q=" + encodeURIComponent(q);
+        const resp = await fetch(url, { method: "GET" });
+        if (!resp.ok) throw new Error("Falha ao buscar no SlideShare.");
+        const data = await resp.json();
+        eduSetStatus(eduSearchStatus, (data && data.count !== undefined) ? ("Resultados: " + data.count) : "Busca concluída.");
+        renderEduResults((data && data.items) ? data.items : []);
+      } catch (e) {
+        eduSetStatus(eduSearchStatus, String(e.message || e));
+      }
+    }
+
+    async function eduImportFromUrl() {
+      const u = eduUrlInput ? String(eduUrlInput.value || "").trim() : "";
+      if (!u) {
+        alert("Cole o link da apresentação.");
+        return;
+      }
+
+      eduSetStatus(eduImportStatus, "Carregando apresentação...");
+      if (eduMeta) eduMeta.textContent = "";
+      if (eduPreviewMount) {
+        eduPreviewMount.style.display = "none";
+        eduPreviewMount.innerHTML = "";
+      }
+      if (eduDownloadImagesBtn) eduDownloadImagesBtn.disabled = true;
+      if (eduDownloadPptBtn) eduDownloadPptBtn.disabled = true;
+      if (eduDownloadPdfBtn) eduDownloadPdfBtn.disabled = true;
+      eduLastImport = null;
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/educacao-saude/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: u })
+        });
+        if (!resp.ok) {
+          const t = await resp.text();
+          throw new Error(t || "Falha ao carregar a apresentação.");
+        }
+        const data = await resp.json();
+        eduLastImport = data;
+
+        const title = data && data.title ? String(data.title) : "Apresentação";
+        const author = data && data.author ? String(data.author) : "";
+        const sourceUrl = data && data.sourceUrl ? String(data.sourceUrl) : u;
+        const provider = data && data.provider ? String(data.provider) : "SlideShare";
+
+        if (eduMeta) {
+          const lines = [];
+          lines.push("Gerado por ReiMed");
+          lines.push("Título: " + title);
+          if (author) lines.push("Autor original: " + author);
+          lines.push("Fonte: " + provider + " | " + sourceUrl);
+          eduMeta.innerHTML = "<div style=\"white-space: pre-wrap;\">" + eduSafeText(lines.join("\n")) + "</div>";
+        }
+
+        if (eduPreviewMount && data && data.embedHtml) {
+          // Mostra embed em iframe; conteúdo vem do oEmbed do SlideShare
+          eduPreviewMount.innerHTML = data.embedHtml;
+          eduPreviewMount.style.display = "block";
+          // Ajuste: garante que o iframe seja responsivo
+          const iframe = eduPreviewMount.querySelector("iframe");
+          if (iframe) {
+            iframe.setAttribute("style", "width: 100%; height: 420px; border: 0; border-radius: 12px;");
+            iframe.setAttribute("loading", "lazy");
+            iframe.setAttribute("referrerpolicy", "no-referrer");
+          }
+        }
+
+        if (eduDownloadImagesBtn) eduDownloadImagesBtn.disabled = false;
+        if (eduDownloadPptBtn) eduDownloadPptBtn.disabled = !(data && data.download && data.download.pptxUrl);
+        if (eduDownloadPdfBtn) eduDownloadPdfBtn.disabled = !(data && data.download && data.download.pdfUrl);
+
+        eduSetStatus(eduImportStatus, "Apresentação carregada.");
+      } catch (e) {
+        eduSetStatus(eduImportStatus, String(e.message || e));
+      }
+    }
+
+    async function eduDownloadImagesZip() {
+      const u = eduUrlInput ? String(eduUrlInput.value || "").trim() : "";
+      if (!u) {
+        alert("Cole o link da apresentação.");
+        return;
+      }
+      eduSetStatus(eduImportStatus, "Gerando ZIP de imagens...");
+      if (eduDownloadImagesBtn) eduDownloadImagesBtn.disabled = true;
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/educacao-saude/download/images-zip", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: u })
+        });
+        if (!resp.ok) {
+          const t = await resp.text();
+          throw new Error(t || "Falha ao gerar ZIP.");
+        }
+        const blob = await resp.blob();
+
+        // tenta usar nome do header; fallback
+        const disp = resp.headers.get("content-disposition") || "";
+        const m = /filename\*=UTF-8''([^;]+)|filename=([^;]+)/i.exec(disp);
+        const fname = decodeURIComponent((m && (m[1] || m[2])) ? String(m[1] || m[2]).replaceAll('"','').trim() : "reimed-apresentacao.zip");
+
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = fname;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+
+        eduSetStatus(eduImportStatus, "ZIP gerado.");
+      } catch (e) {
+        eduSetStatus(eduImportStatus, String(e.message || e));
+      } finally {
+        if (eduDownloadImagesBtn) eduDownloadImagesBtn.disabled = false;
+      }
+    }
+
+    function eduOpenDownloadLink(kind) {
+      const data = eduLastImport;
+      const link = (data && data.download) ? (kind === "pptx" ? data.download.pptxUrl : data.download.pdfUrl) : "";
+      if (!link) {
+        alert("Download indisponível para esta apresentação no SlideShare.");
+        return;
+      }
+      window.open(String(link), "_blank", "noopener");
+    }
+
+    if (eduSearchBtn) eduSearchBtn.addEventListener("click", (e) => { e.preventDefault(); eduSearchSlideshare(); });
+    if (eduLoadBtn) eduLoadBtn.addEventListener("click", (e) => { e.preventDefault(); eduImportFromUrl(); });
+    if (eduDownloadImagesBtn) eduDownloadImagesBtn.addEventListener("click", (e) => { e.preventDefault(); eduDownloadImagesZip(); });
+    if (eduDownloadPptBtn) eduDownloadPptBtn.addEventListener("click", (e) => { e.preventDefault(); eduOpenDownloadLink("pptx"); });
+    if (eduDownloadPdfBtn) eduDownloadPdfBtn.addEventListener("click", (e) => { e.preventDefault(); eduOpenDownloadLink("pdf"); });
+
     copySbarBtn.addEventListener("click", () => {
       const text = sbarOutput.value.trim();
       if (!text) {
@@ -14857,176 +15122,9 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
       w.print();
     }
 
-    // ============================================================
-    // MÓDULO: Educação em Saúde (Slides .pptx)
-    // Regras:
-    // - Sempre aparece antes do módulo "Geração de documentos"
-    // - Cada slide deve conter mídia (GIF/MP4) obtida no IconScout
-    // ============================================================
-
-    let healthEduThemeInput = null;
-    let healthEduGenerateBtn = null;
-    let healthEduDownloadBtn = null;
-    let healthEduStatus = null;
-    let healthEduPreview = null;
-    let healthEduGuideBtn = null;
-
-    let healthEduDownloadUrl = null;
-
-    function healthEduSetStatus(msg) {
-      if (healthEduStatus) healthEduStatus.textContent = String(msg || "");
-    }
-
-    function healthEduSetPreviewHtml(html) {
-      if (!healthEduPreview) return;
-      healthEduPreview.classList.add("formatted-output");
-      healthEduPreview.innerHTML = html || "Nenhum conteúdo disponível.";
-    }
-
-    function healthEduEscapeHtml(s) {
-      return String(s || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
-
-    function healthEduRenderPreview(data) {
-      const slides = Array.isArray(data?.slides) ? data.slides : [];
-      if (!slides.length) {
-        healthEduSetPreviewHtml("Nenhum conteúdo disponível.");
-        return;
-      }
-
-      const blocks = [];
-      blocks.push(`<p><span class="topic">Tema:</span> ${healthEduEscapeHtml(data?.tema || "")}</p>`);
-      blocks.push(`<p><span class="topic">Estrutura dos slides:</span></p>`);
-      blocks.push("<ol>");
-      slides.forEach((s) => {
-        const t = healthEduEscapeHtml(s?.titulo || "");
-        blocks.push(`<li><span class="topic">${t}</span></li>`);
-      });
-      blocks.push("</ol>");
-
-      healthEduSetPreviewHtml(blocks.join(""));
-    }
-
-    async function healthEduGenerateSlides() {
-      const tema = healthEduThemeInput ? String(healthEduThemeInput.value || "").trim() : "";
-      if (!tema) {
-        healthEduSetStatus("Informe um tema.");
-        return;
-      }
-
-      healthEduSetStatus("Gerando slides...");
-      if (healthEduGenerateBtn) healthEduGenerateBtn.disabled = true;
-      if (healthEduDownloadBtn) healthEduDownloadBtn.style.display = "none";
-      healthEduDownloadUrl = null;
-
-      try {
-        const resp = await fetch("/api/educacao-em-saude/gerar-slides", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tema })
-        });
-
-        if (!resp.ok) {
-          healthEduSetStatus("Erro ao gerar slides.");
-          return;
-        }
-
-        const data = await resp.json();
-        healthEduRenderPreview(data);
-        healthEduDownloadUrl = data?.download_url ? String(data.download_url) : null;
-
-        if (healthEduDownloadUrl && healthEduDownloadBtn) {
-          healthEduDownloadBtn.style.display = "inline-block";
-        }
-
-        healthEduSetStatus("Slides prontos para download.");
-      } catch (e) {
-        console.error("Erro no módulo Educação em Saúde:", e);
-        healthEduSetStatus("Erro ao gerar slides.");
-      } finally {
-        if (healthEduGenerateBtn) healthEduGenerateBtn.disabled = false;
-      }
-    }
-
-    function healthEduBindElementsAndWire() {
-      healthEduThemeInput = document.getElementById("healthEduThemeInput");
-      healthEduGenerateBtn = document.getElementById("healthEduGenerateBtn");
-      healthEduDownloadBtn = document.getElementById("healthEduDownloadBtn");
-      healthEduStatus = document.getElementById("healthEduStatus");
-      healthEduPreview = document.getElementById("healthEduPreview");
-      healthEduGuideBtn = document.getElementById("healthEduGuideBtn");
-
-      if (healthEduGenerateBtn) {
-        healthEduGenerateBtn.addEventListener("click", healthEduGenerateSlides);
-      }
-
-      if (healthEduThemeInput) {
-        healthEduThemeInput.addEventListener("keydown", (ev) => {
-          if (ev.key === "Enter") {
-            ev.preventDefault();
-            healthEduGenerateSlides();
-          }
-        });
-      }
-
-      if (healthEduDownloadBtn) {
-        healthEduDownloadBtn.addEventListener("click", () => {
-          if (!healthEduDownloadUrl) return;
-          window.location.href = healthEduDownloadUrl;
-        });
-      }
-
-      if (healthEduGuideBtn) {
-        healthEduGuideBtn.addEventListener("click", () => {
-          const txt =
-            "Educação em Saúde (Slides)\n\n" +
-            "Entrada: Tema.\n" +
-            "Saída: arquivo .pptx com slides completos e mídia por slide.\n\n" +
-            "Observação: as mídias (GIF/MP4) são obtidas no IconScout e inseridas de forma compatível com o PowerPoint. Para habilitar a geração, o servidor precisa das credenciais do IconScout (Client-ID e Client-Secret) em variáveis de ambiente.";
-          alert(txt);
-        });
-      }
-    }
-
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", healthEduBindElementsAndWire);
-    } else {
-      healthEduBindElementsAndWire();
-    }
-
 </script>
 
 <div id="postLoginOnlyModules" class="hidden">
-
-  <div class="module-divider"></div>
-
-  <div id="healthEduCard" class="module-card">
-    <div class="section-header-row">
-      <h2>Educação em Saúde</h2>
-      <button id="healthEduGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
-    </div>
-
-    <p class="mini-status" style="margin-top: 0;">
-      Gere uma apresentação em PowerPoint (.pptx) para educação em saúde a partir de um tema (ex.: Hipertensão arterial, Diabetes, Dengue, Saúde mental, Pré-natal). Cada slide inclui mídia (GIF/MP4) obtida no IconScout e inserida de forma compatível com o PowerPoint.
-    </p>
-
-    <div class="inline-input-row" style="gap: 10px; align-items: stretch;">
-      <input id="healthEduThemeInput" class="text-input" type="text" placeholder="Tema" autocomplete="off" style="flex: 1 1 auto; margin: 0;" />
-      <button id="healthEduGenerateBtn" class="btn-print" type="button" style="white-space: nowrap;">Gerar slides</button>
-    </div>
-
-    <div id="healthEduStatus" class="mini-status"></div>
-    <div id="healthEduPreview" class="answer-box formatted-output">Nenhum conteúdo disponível.</div>
-
-    <div class="prescription-actions" style="margin-top: 10px;">
-      <button id="healthEduDownloadBtn" class="btn-print" type="button" style="display:none;">Download .pptx</button>
-    </div>
-  </div>
 
   <div class="module-divider"></div>
 
