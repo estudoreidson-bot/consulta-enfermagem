@@ -2275,6 +2275,7 @@
   background: rgba(255,255,255,0.1);
 }
 </style>
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
 </head>
 <body>
 
@@ -4201,7 +4202,24 @@ Recomendação: Pendências prioritárias: (1) [tarefa] até [horário]; (2) [ta
   </div>
 
 
-  <div id="medicalDocsGuidePanel" class="recommendations-panel">
+  
+  <div id="healthEduGuidePanel" class="recommendations-panel">
+    <div class="recommendations-header">
+      <h3>Guia: Educação em saúde</h3>
+      <button id="closeHealthEduGuideBtn" class="close-panel-btn" aria-label="Fechar guia de educação em saúde">X</button>
+    </div>
+    <div class="recommendations-status">
+      Este módulo gera slides para educação em saúde com linguagem clara, sequência lógica e animações/imagens do acervo do IconScout.
+    </div>
+    <div class="recommendations-list">
+      <div class="recommendation-item"><strong>1) Defina o tema</strong><br>Escreva o tema e, se necessário, detalhe o público (gestantes, idosos, hipertensos, diabéticos, crianças, etc.).</div>
+      <div class="recommendation-item"><strong>2) Selecione o número de slides</strong><br>Recomendação (6 a 10) para usar em sala de espera, grupos e consultas.</div>
+      <div class="recommendation-item"><strong>3) Revise o conteúdo</strong><br>Confira dados, condutas e termos. Ajuste ao protocolo e à realidade local antes de usar em atividade educativa.</div>
+      <div class="recommendation-item"><strong>4) Sempre com material visual</strong><br>Cada slide vem com pelo menos uma animação/imagem. Se algo ficar vazio, gere novamente com tema mais específico.</div>
+    </div>
+  </div>
+
+<div id="medicalDocsGuidePanel" class="recommendations-panel">
     <div class="recommendations-header">
       <h3>Guia: Geração de documentos</h3>
       <button id="closeMedicalDocsGuideBtn" class="close-panel-btn" aria-label="Fechar guia de geração de documentos">X</button>
@@ -5199,15 +5217,6 @@ if (!handoffMode) {
     const docsTimerEl = document.getElementById("docsTimer");
     const docsMicStatus = document.getElementById("docsMicStatus");
     const docsError = document.getElementById("docsError");
-
-	    const healthEduTopicEl = document.getElementById("healthEduTopic");
-	    const healthEduDurationEl = document.getElementById("healthEduDuration");
-	    const healthEduGenerateBtn = document.getElementById("healthEduGenerateBtn");
-	    const healthEduStatusEl = document.getElementById("healthEduStatus");
-
-        const healthEduGuideBtn = document.getElementById("healthEduGuideBtn");
-        const healthEduGuidePanel = document.getElementById("healthEduGuidePanel");
-        const closeHealthEduGuideBtn = document.getElementById("closeHealthEduGuideBtn");
 
     const docsGuideBtn = document.getElementById("docsGuideBtn");
     const docsGuidePanel = document.getElementById("docsGuidePanel");
@@ -10689,88 +10698,6 @@ if (reportOutput) {
       await generateDocumentFromTranscript(combined);
     }
 
-	    function healthEduSetStatus(text) {
-	      if (!healthEduStatusEl) return;
-	      healthEduStatusEl.textContent = String(text || "");
-	    }
-
-	    function healthEduSafeFileName(topic, minutes) {
-	      const base = String(topic || "apresentacao").trim().toLowerCase();
-	      const cleaned = base
-	        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-	        .replace(/[^a-z0-9]+/g, "_")
-	        .replace(/_+/g, "_")
-	        .replace(/^_+|_+$/g, "")
-	        .slice(0, 60) || "apresentacao";
-	      const m = Number(minutes) || 0;
-	      return `educacao_saude_${cleaned}_${m || ""}min.pptx`;
-	    }
-
-	    function healthEduParseFilenameFromHeaders(resp) {
-	      try {
-	        const cd = resp && resp.headers ? resp.headers.get("Content-Disposition") : "";
-	        if (!cd) return "";
-	        const m = cd.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i);
-	        const raw = (m && (m[1] || m[2])) ? String(m[1] || m[2]) : "";
-	        return decodeURIComponent(raw).trim();
-	      } catch {
-	        return "";
-	      }
-	    }
-
-	    async function healthEduGenerate() {
-	      const topic = (healthEduTopicEl && healthEduTopicEl.value) ? healthEduTopicEl.value.trim() : "";
-	      const minutes = (healthEduDurationEl && healthEduDurationEl.value) ? parseInt(String(healthEduDurationEl.value), 10) : 10;
-
-	      if (!topic || topic.length < 3) {
-	        alert("Digite um tema com pelo menos 3 caracteres.");
-	        return;
-	      }
-
-	      const dur = Number.isFinite(minutes) ? Math.max(5, Math.min(120, minutes)) : 10;
-	      try {
-	        if (healthEduGenerateBtn) healthEduGenerateBtn.disabled = true;
-	        healthEduSetStatus("Gerando apresentação. Isso pode levar alguns instantes.");
-
-	        const resp = await fetch(BACKEND_URL + "/api/educacao-saude/apresentacao", {
-	          method: "POST",
-	          headers: { "Content-Type": "application/json" },
-	          body: JSON.stringify({ tema: topic, duracao_min: dur })
-	        });
-
-	        if (!resp.ok) {
-	          let msg = "Não foi possível gerar a apresentação.";
-	          try {
-	            const data = await resp.json();
-	            if (data && data.error) msg = String(data.error);
-	          } catch {}
-	          throw new Error(msg);
-	        }
-
-	        const blob = await resp.blob();
-	        const url = URL.createObjectURL(blob);
-	        const a = document.createElement("a");
-	        a.href = url;
-	        a.download = healthEduParseFilenameFromHeaders(resp) || healthEduSafeFileName(topic, dur);
-	        document.body.appendChild(a);
-	        a.click();
-	        document.body.removeChild(a);
-	        setTimeout(() => URL.revokeObjectURL(url), 1500);
-
-	        healthEduSetStatus("Apresentação gerada e baixada.");
-	      } catch (e) {
-	        healthEduSetStatus(String(e?.message || e || "Falha ao gerar."));
-	      } finally {
-	        if (healthEduGenerateBtn) healthEduGenerateBtn.disabled = false;
-	      }
-	    }
-
-	    if (healthEduGenerateBtn) {
-	      healthEduGenerateBtn.onclick = () => {
-	        healthEduGenerate();
-	      };
-	    }
-
 
 
 if (triageRecordBtn) {
@@ -10917,18 +10844,6 @@ if (calculatorsGuideBtn) {
 if (closeCalculatorsGuideBtn) {
   closeCalculatorsGuideBtn.addEventListener("click", () => {
     setPanelVisible(calculatorsGuidePanel, false);
-  });
-}
-
-
-if (healthEduGuideBtn) {
-  healthEduGuideBtn.addEventListener("click", () => {
-    setPanelVisible(healthEduGuidePanel, true);
-  });
-}
-if (closeHealthEduGuideBtn) {
-  closeHealthEduGuideBtn.addEventListener("click", () => {
-    setPanelVisible(healthEduGuidePanel, false);
   });
 }
 
@@ -14506,6 +14421,325 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
 
 
+
+    // ============================
+    // Educação em Saúde (slides) via /api/educacao-saude-slides
+    // ============================
+
+    let healthEduThemeEl = null;
+    let healthEduSlidesCountEl = null;
+    let healthEduGenerateBtn = null;
+    let healthEduStatusEl = null;
+    let healthEduErrorEl = null;
+
+    let healthEduDeckWrap = null;
+    let healthEduSlideEl = null;
+    let healthEduCounterEl = null;
+    let healthEduPrevBtn = null;
+    let healthEduNextBtn = null;
+    let healthEduPrintBtn = null;
+
+    let healthEduSlides = [];
+    let healthEduIdx = 0;
+
+    function healthEduSetStatus(msg) {
+      if (healthEduStatusEl) healthEduStatusEl.textContent = String(msg || "").trim();
+    }
+
+    function healthEduSetError(msg) {
+      if (healthEduErrorEl) healthEduErrorEl.textContent = String(msg || "").trim();
+    }
+
+    function healthEduMediaNode(media) {
+      const url = media && media.media_url ? String(media.media_url).trim() : "";
+      if (!url) return null;
+
+      const type = (media && media.media_type ? String(media.media_type).toLowerCase() : "");
+      const lower = url.toLowerCase();
+
+      const wrap = document.createElement("div");
+      wrap.style.flex = "1";
+      wrap.style.minWidth = "160px";
+      wrap.style.display = "flex";
+      wrap.style.alignItems = "center";
+      wrap.style.justifyContent = "center";
+      wrap.style.border = "1px solid rgba(17,24,39,0.08)";
+      wrap.style.borderRadius = "12px";
+      wrap.style.padding = "10px";
+      wrap.style.background = "rgba(249,250,251,0.75)";
+
+      if (type === "json" || lower.endsWith(".json") || lower.endsWith(".lottie") || lower.endsWith(".dotlottie")) {
+        const lp = document.createElement("lottie-player");
+        lp.setAttribute("src", url);
+        lp.setAttribute("background", "transparent");
+        lp.setAttribute("speed", "1");
+        lp.setAttribute("loop", "");
+        lp.setAttribute("autoplay", "");
+        lp.style.width = "220px";
+        lp.style.height = "220px";
+        wrap.appendChild(lp);
+        return wrap;
+      }
+
+      if (type === "mp4" || lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov")) {
+        const v = document.createElement("video");
+        v.src = url;
+        v.autoplay = true;
+        v.loop = true;
+        v.muted = true;
+        v.playsInline = true;
+        v.style.width = "220px";
+        v.style.height = "220px";
+        v.style.objectFit = "contain";
+        wrap.appendChild(v);
+        return wrap;
+      }
+
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = "Animação";
+      img.style.width = "220px";
+      img.style.height = "220px";
+      img.style.objectFit = "contain";
+      wrap.appendChild(img);
+      return wrap;
+    }
+
+    function healthEduRenderCurrentSlide() {
+      if (!healthEduSlideEl || !healthEduDeckWrap) return;
+
+      const total = Array.isArray(healthEduSlides) ? healthEduSlides.length : 0;
+      if (!total) {
+        healthEduDeckWrap.classList.add("hidden");
+        return;
+      }
+
+      const s = healthEduSlides[healthEduIdx] || {};
+      const titulo = String(s.titulo || "").trim();
+      const topicos = Array.isArray(s.topicos) ? s.topicos : [];
+      const resumo = String(s.resumo || "").trim();
+      const midias = Array.isArray(s.midias) ? s.midias : [];
+
+      if (healthEduCounterEl) healthEduCounterEl.textContent = "Slide " + (healthEduIdx + 1) + "/" + total;
+
+      if (healthEduPrevBtn) healthEduPrevBtn.disabled = healthEduIdx <= 0;
+      if (healthEduNextBtn) healthEduNextBtn.disabled = healthEduIdx >= total - 1;
+
+      healthEduSlideEl.innerHTML = "";
+
+      const titleEl = document.createElement("div");
+      titleEl.textContent = titulo || "Slide";
+      titleEl.style.fontSize = "22px";
+      titleEl.style.fontWeight = "800";
+      titleEl.style.color = "#b91c1c";
+      titleEl.style.marginBottom = "10px";
+      healthEduSlideEl.appendChild(titleEl);
+
+      const bodyRow = document.createElement("div");
+      bodyRow.style.display = "flex";
+      bodyRow.style.gap = "14px";
+      bodyRow.style.flexWrap = "wrap";
+
+      const textCol = document.createElement("div");
+      textCol.style.flex = "2";
+      textCol.style.minWidth = "260px";
+
+      if (topicos && topicos.length) {
+        const topicsWrap = document.createElement("div");
+        topicsWrap.style.display = "flex";
+        topicsWrap.style.flexDirection = "column";
+        topicsWrap.style.gap = "8px";
+        topicsWrap.style.marginBottom = "12px";
+
+        topicos.slice(0, 7).forEach((t) => {
+          const line = document.createElement("div");
+          line.textContent = String(t || "").trim();
+          line.style.fontSize = "15px";
+          line.style.fontWeight = "800";
+          line.style.color = "#b91c1c";
+          topicsWrap.appendChild(line);
+        });
+
+        textCol.appendChild(topicsWrap);
+      }
+
+      if (resumo) {
+        const summaryEl = document.createElement("div");
+        summaryEl.textContent = resumo;
+        summaryEl.style.fontSize = "14px";
+        summaryEl.style.lineHeight = "1.5";
+        summaryEl.style.color = "#111827";
+        textCol.appendChild(summaryEl);
+      }
+
+      const mediaCol = document.createElement("div");
+      mediaCol.style.flex = "1";
+      mediaCol.style.minWidth = "220px";
+      mediaCol.style.display = "flex";
+      mediaCol.style.flexDirection = "column";
+      mediaCol.style.gap = "10px";
+
+      if (midias && midias.length) {
+        midias.slice(0, 2).forEach((m) => {
+          const node = healthEduMediaNode(m);
+          if (node) mediaCol.appendChild(node);
+        });
+      }
+
+      bodyRow.appendChild(textCol);
+      bodyRow.appendChild(mediaCol);
+      healthEduSlideEl.appendChild(bodyRow);
+
+      healthEduDeckWrap.classList.remove("hidden");
+    }
+
+    function healthEduPrintDeck() {
+      const slides = Array.isArray(healthEduSlides) ? healthEduSlides : [];
+      if (!slides.length) return;
+
+      const css = `
+        body{font-family: Arial, Helvetica, sans-serif; padding:18px;}
+        .slide{page-break-after:always; border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:16px;}
+        .title{font-size:22px; font-weight:800; color:#b91c1c; margin:0 0 10px 0;}
+        .topic{font-size:15px; font-weight:800; color:#b91c1c; margin:0 0 8px 0;}
+        .summary{font-size:14px; line-height:1.5; color:#111827;}
+        .media{margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;}
+        img,video{width:220px; height:220px; object-fit:contain; border:1px solid #eee; border-radius:12px; padding:10px; background:#f9fafb;}
+      `;
+
+      const parts = slides.map((s) => {
+        const t = String(s.titulo || "").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        const topics = (Array.isArray(s.topicos) ? s.topicos : []).slice(0,7).map(x => `<div class="topic">${String(x||"").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>`).join("");
+        const resumo = String(s.resumo || "").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        const medias = (Array.isArray(s.midias) ? s.midias : []).slice(0,2).map(m => {
+          const url = m && m.media_url ? String(m.media_url).trim() : "";
+          if (!url) return "";
+          const lower = url.toLowerCase();
+          if (lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov")) return `<video src="${url}" autoplay loop muted playsinline></video>`;
+          return `<img src="${url}" alt="Animação">`;
+        }).join("");
+        return `<div class="slide"><div class="title">${t}</div>${topics}<div class="summary">${resumo}</div><div class="media">${medias}</div></div>`;
+      }).join("");
+
+      const html = `<html><head><meta charset="utf-8"><title>Educação em saúde</title><style>${css}</style></head><body>${parts}</body></html>`;
+      const w = window.open("", "_blank");
+      if (!w) { alert("Seu navegador bloqueou a janela de impressão."); return; }
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+      setTimeout(() => { try { w.print(); } catch {} }, 350);
+    }
+
+    async function healthEduGenerateNow() {
+      healthEduSetError("");
+      const tema = healthEduThemeEl ? String(healthEduThemeEl.value || "").trim() : "";
+      const nSlides = healthEduSlidesCountEl ? parseInt(String(healthEduSlidesCountEl.value || "6"), 10) : 6;
+
+      if (!tema) {
+        healthEduSetError("Informe o tema para gerar os slides.");
+        return;
+      }
+
+      healthEduSetStatus("Gerando slides e buscando animações...");
+      if (healthEduGenerateBtn) healthEduGenerateBtn.disabled = true;
+
+      try {
+        const resp = await fetch(BACKEND_URL + "/api/educacao-saude-slides", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tema, nSlides })
+        });
+
+        if (!resp.ok) {
+          const raw = await resp.text().catch(() => "");
+          console.error("Erro HTTP do backend (educação em saúde):", resp.status, raw);
+          healthEduSetError("Não foi possível gerar os slides.");
+          healthEduSetStatus("Pronto.");
+          return;
+        }
+
+        const data = await resp.json().catch(() => ({}));
+        const slides = Array.isArray(data?.slides) ? data.slides : [];
+        healthEduSlides = slides;
+        healthEduIdx = 0;
+
+        if (!slides.length) {
+          healthEduSetError("O backend não retornou slides.");
+          healthEduSetStatus("Pronto.");
+          return;
+        }
+
+        healthEduSetStatus("Slides gerados.");
+        healthEduRenderCurrentSlide();
+      } catch (e) {
+        healthEduSetError("Falha ao conectar ao backend.");
+        healthEduSetStatus("Pronto.");
+      } finally {
+        if (healthEduGenerateBtn) healthEduGenerateBtn.disabled = false;
+      }
+    }
+
+    try {
+      healthEduThemeEl = document.getElementById("healthEduTheme");
+      healthEduSlidesCountEl = document.getElementById("healthEduSlidesCount");
+      healthEduGenerateBtn = document.getElementById("healthEduGenerateBtn");
+      healthEduStatusEl = document.getElementById("healthEduStatus");
+      healthEduErrorEl = document.getElementById("healthEduError");
+
+      healthEduDeckWrap = document.getElementById("healthEduDeckWrap");
+      healthEduSlideEl = document.getElementById("healthEduSlide");
+      healthEduCounterEl = document.getElementById("healthEduCounter");
+      healthEduPrevBtn = document.getElementById("healthEduPrevBtn");
+      healthEduNextBtn = document.getElementById("healthEduNextBtn");
+      healthEduPrintBtn = document.getElementById("healthEduPrintBtn");
+
+      if (healthEduGenerateBtn) {
+        healthEduGenerateBtn.addEventListener("click", healthEduGenerateNow);
+      }
+      if (healthEduThemeEl) {
+        healthEduThemeEl.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") healthEduGenerateNow();
+        });
+      }
+      if (healthEduPrevBtn) {
+        healthEduPrevBtn.addEventListener("click", () => {
+          if (healthEduIdx > 0) {
+            healthEduIdx -= 1;
+            healthEduRenderCurrentSlide();
+          }
+        });
+      }
+      if (healthEduNextBtn) {
+        healthEduNextBtn.addEventListener("click", () => {
+          const total = Array.isArray(healthEduSlides) ? healthEduSlides.length : 0;
+          if (healthEduIdx < total - 1) {
+            healthEduIdx += 1;
+            healthEduRenderCurrentSlide();
+          }
+        });
+      }
+      if (healthEduPrintBtn) {
+        healthEduPrintBtn.addEventListener("click", healthEduPrintDeck);
+      }
+
+      const healthEduGuideBtn = document.getElementById("healthEduGuideBtn");
+      const healthEduGuidePanel = document.getElementById("healthEduGuidePanel");
+      const closeHealthEduGuideBtn = document.getElementById("closeHealthEduGuideBtn");
+      if (healthEduGuideBtn) {
+        healthEduGuideBtn.addEventListener("click", () => {
+          setPanelVisible(healthEduGuidePanel, true);
+        });
+      }
+      if (closeHealthEduGuideBtn) {
+        closeHealthEduGuideBtn.addEventListener("click", () => {
+          setPanelVisible(healthEduGuidePanel, false);
+        });
+      }
+    } catch {}
+
+
+
     // ============================
     // Documentos Médicos (consulta completa -> documento) via /api/gerar-documento-medico
     // ============================
@@ -14966,7 +15200,46 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
 
   <div class="module-divider"></div>
 
-  <div id="medicalDocsCard" class="module-card">
+  
+  <div id="healthEduCard" class="module-card">
+    <div class="section-header-row">
+      <h2>Educação em saúde</h2>
+      <button id="healthEduGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
+    </div>
+
+    <div class="module-subtitle" style="margin-top: 8px; margin-bottom: 8px;">
+      Gere uma apresentação em slides com orientações claras e visual atrativo, com animações/imagens buscadas no IconScout.
+    </div>
+
+    <div class="inline-input-row" style="margin-top: 6px; flex-wrap: wrap;">
+      <input id="healthEduTheme" class="inline-text-input" type="text" placeholder="Tema (ex.: hipertensão, diabetes, dengue, vacinação, saúde da mulher)" style="flex: 2; min-width: 260px;" />
+      <select id="healthEduSlidesCount" class="inline-text-input" style="flex: 0 0 180px; min-width: 180px;">
+        <option value="6">6 slides</option>
+        <option value="8">8 slides</option>
+        <option value="10">10 slides</option>
+        <option value="12">12 slides</option>
+      </select>
+      <button id="healthEduGenerateBtn" class="btn-print" type="button">Gerar slides</button>
+    </div>
+
+    <div id="healthEduStatus" class="mini-status" style="margin-top: 8px;">Informe o tema e clique em "Gerar slides".</div>
+    <div id="healthEduError" class="error-text"></div>
+
+    <div id="healthEduDeckWrap" class="answer-box hidden" style="margin-top: 10px; padding: 12px;">
+      <div class="inline-input-row" style="justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div id="healthEduCounter" style="font-size: 12px; font-weight: 700; color: #111827;">Slide 1/1</div>
+        <div class="inline-input-row" style="gap: 8px;">
+          <button id="healthEduPrevBtn" class="btn-print" type="button">Anterior</button>
+          <button id="healthEduNextBtn" class="btn-print" type="button">Próximo</button>
+          <button id="healthEduPrintBtn" class="btn-print" type="button">Imprimir</button>
+        </div>
+      </div>
+
+      <div id="healthEduSlide" style="border: 1px solid rgba(17,24,39,0.10); border-radius: 12px; padding: 14px; background: #ffffff;"></div>
+    </div>
+  </div>
+
+<div id="medicalDocsCard" class="module-card">
     <div class="section-header-row">
       <h2>Geração de documentos</h2>
       <button id="medicalDocsGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
@@ -15011,58 +15284,6 @@ document.getElementById("closePaymentsBtn")?.addEventListener("click", () => {
     <div class="prescription-actions">
       <button id="copyMedicalDocsBtn" class="btn-copy hidden" type="button">Copiar</button>
       <button id="printMedicalDocsBtn" class="btn-print hidden" type="button">Imprimir</button>
-    </div>
-  </div>
-
-  <div id="healthEduCard" class="module-card">
-    <div class="section-header-row">
-      <h2>Educação em saúde</h2>
-      <button id="healthEduGuideBtn" class="btn-print guide-main-btn" type="button">Guia</button>
-    </div>
-
-    <p class="mini-status" style="margin-top: 0;">
-      Digite o tema e o tempo da apresentação. Ao gerar, será baixado um arquivo PPTX com slides visualmente atraentes e mídia em todos os slides, conforme o tema.
-    </p>
-
-    <div class="inline-input-row">
-      <input id="healthEduTopic" class="text-input" type="text" placeholder="Tema da apresentação" />
-      <select id="healthEduDuration" class="text-input" style="max-width: 180px; flex: 0 0 180px;">
-        <option value="5">5 min</option>
-        <option value="10" selected>10 min</option>
-        <option value="15">15 min</option>
-        <option value="20">20 min</option>
-        <option value="30">30 min</option>
-        <option value="45">45 min</option>
-        <option value="60">60 min</option>
-      </select>
-    </div>
-
-    <div class="prescription-actions" style="justify-content: flex-start; gap: 10px; margin-top: 10px;">
-      <button id="healthEduGenerateBtn" class="btn-print" type="button">Gerar apresentação</button>
-    </div>
-
-    <div id="healthEduStatus" class="mini-status"></div>
-  </div>
-
-  <div id="healthEduGuidePanel" class="recommendations-panel">
-    <div class="recommendations-header">
-      <h3>Guia de Educação em saúde</h3>
-      <button id="closeHealthEduGuideBtn" class="close-panel-btn" aria-label="Fechar guia de educação em saúde">X</button>
-    </div>
-
-    <div class="recommendations-status">
-      Este módulo gera um arquivo PPTX com uma apresentação completa sobre o tema informado. Cada slide tem título e tópicos, com mídia relacionada ao conteúdo.
-    </div>
-
-    <div class="recommendations-list">
-      <div class="recommendation-item"><strong>1) Tema específico</strong> Prefira um tema objetivo (ex.: "Hipertensão arterial: adesão ao tratamento", "Prevenção de dengue", "Aleitamento materno: pega e manejo").</div>
-      <div class="recommendation-item"><strong>2) Duração</strong> Selecione 5 a 15 minutos para uma apresentação rápida. Para 20 a 60 minutos, use um tema mais amplo ou uma população-alvo bem definida.</div>
-      <div class="recommendation-item"><strong>3) Público-alvo</strong> Se necessário, inclua no tema o público (ex.: "para gestantes", "para adolescentes", "para idosos"). Isso melhora a linguagem e os exemplos.</div>
-      <div class="recommendation-item"><strong>4) Conferência final</strong> Revise o conteúdo antes de apresentar. Ajuste termos, exemplos locais e orientações conforme o protocolo da unidade.</div>
-    </div>
-
-    <div class="recommendations-footer">
-      Ao gerar, o arquivo será baixado automaticamente pelo navegador.
     </div>
   </div>
 </div>
